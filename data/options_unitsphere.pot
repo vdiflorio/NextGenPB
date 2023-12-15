@@ -1,0 +1,50 @@
+#Parameters file
+
+[mesh]
+minlevel   = 8          # min mesh refinement level
+maxlevel   = 8          # max mesh refinement level 
+unilevel   = 8          # initial uniform refinement level
+mesh_shape = 2          # 1 for "stretched" mesh, 0 for cubic mesh, 2 for manual setting, 3 for manual specification of grid size 
+x1 = -50.00             # only for mesh_shape = 2 or mesh_shape = 3
+x2 =  50.00
+y1 = -50.00
+y2 =  50.00
+z1 = -50.00
+z2 =  50.00
+refine_x1   = -20.00    # only for mesh_shape = 2
+refine_x2   =  20.00
+refine_y1   = -20.00
+refine_y2   =  20.00
+refine_z1   = -20.00
+refine_z2   =  20.00
+outlevel    = 2         # de-refinement level outside refine box (only for mesh_shape = 2)
+num_trees_x = 10        # only for mesh_shape = 3
+num_trees_y = 10
+num_trees_z = 10
+[../]
+
+[model]
+linearized = 1                        #1 for linearized model
+bc_type = 1                           #boundary conditions: 1 for Dirichlet, 0 for Neumann, 2 for Coulombic
+molecular_dielectric_constant = 1     #molecular relative dielectric constant 
+solvent_dielectric_constant = 1       #solvent relative dielectric constant
+ionic_strength = 0.00                 #ionic strength expressend in molar concentration
+[../]
+
+[surface]
+surface_type = 0              #surface type: ses=0, skin=1, blobby=2
+surface_parameter = 1.4       #SES probe radius (1.4), skin surface parameter, blobbyness (-1.5)
+stern_layer_thickness = 2.    #stern layer thickness
+number_of_threads = 1         #number of threads used by nanoshaper
+[../]
+
+[algorithm]
+linear_solver = lis					#mumps = direct solver, lis = iterative solver
+solver_options = -i\ cg\ -p\ ilu\ -ilu_fill\ [0]\ -tol\ 1.e-12\ -print\ 2\ -conv_cond\ 2\ -tol_w\ 0 	#-i for linear solver, -p for preconditioner, -tol for tolerance, etc (lis manual for more options)
+[../]
+
+[output]
+p4estfilename = poisson_boltzmann_p4est       #file name for p4forest output
+markerfilename = poisson_boltzmann_marker_0   #file name for marker output
+surffilename = poisson_boltzmann_surface_0    #file name for molecular surface output
+[../]
