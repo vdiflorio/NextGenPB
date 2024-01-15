@@ -6,17 +6,18 @@ static char filename[255];
 
 double crossings_t::start[3] = {0., 0., 0.};
 double crossings_t::end[3] = {0., 0., 0.};
-unsigned ray_cache_t::dir = 1; //direction of the ray
 
 int_coord_t ray_cache_t::count_cache = 0;
 int_coord_t ray_cache_t::count_new = 0;
 
+/*
 void
 print_map(const std::map<std::array<double, 2> , crossings_t, map_compare>& r); 
 
 void
 save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2> , crossings_t, map_compare>& r);
-   
+*/
+
 int
 main (int argc, char **argv)
 {
@@ -116,18 +117,18 @@ main (int argc, char **argv)
       if (pb.surf_type != 2)
         {
           //Save ray_cache:
-          nlohmann::json j;
-          save_ray_cache (j, ray_cache.rays);
-          std::cout << "Count cached rays: " << ray_cache_t::count_cache << std::endl;
-          std::cout << "Count new rays: " << ray_cache_t::count_new << std::endl;
+          //nlohmann::json j;
+          //save_ray_cache (j, ray_cache.rays);
+          //std::cout << "Count cached rays: " << ray_cache_t::count_cache << std::endl;
+          //std::cout << "Count new rays: " << ray_cache_t::count_new << std::endl;
 
-          std::ofstream ray_cached_file;
-          ray_cached_file.open ("ray_cache.txt");
+          //std::ofstream ray_cached_file;
+          //ray_cached_file.open ("ray_cache.txt");
   
-          if (ray_cached_file.is_open ())
-            ray_cached_file << j;
+          //if (ray_cached_file.is_open ())
+            //ray_cached_file << j;
     
-          ray_cached_file.close ();
+          //ray_cached_file.close ();
           
           //Alternative way to save results:
           //print_map (ray_cache.rays); 
@@ -161,7 +162,7 @@ print_map(const std::map<std::array<double, 2> , crossings_t, map_compare>& r)
     }
   }
   ray_cached_file.close (); 
-}*/
+}
 
 void
 save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2> , crossings_t, map_compare>& r)
@@ -174,3 +175,4 @@ save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2> , crossi
     j += nlohmann::json{{"ray", it.first}, {"inters", (it.second.inters)}, {"normals", (it.second.normals)}};
   }
 }
+*/
