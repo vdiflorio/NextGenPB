@@ -69,7 +69,7 @@ ray_cache_t::fill_cache ()
   MPI_Comm_size(mpicomm, &size);
 
   for (unsigned idir = 0; idir < 3; ++idir) {
-    std::vector<std::array<double, 2>> rays_vector (rays_list.begin (), rays_list.end ()); //copy the set content inside a vector
+    std::vector<std::array<double, 2>> rays_vector (rays_list[idir].begin (), rays_list[idir].end ()); //copy the set content inside a vector
     num_req_rays = rays_vector.size (); //numb of req rays from each proc
     MPI_Barrier(mpicomm);
     std::cout << "Sending " << num_req_rays << " rays requested from rank " << rank << std::endl;
@@ -116,10 +116,10 @@ ray_cache_t::fill_cache ()
       // Transform the char rays in vector<array<double,2>> 
       serialize::read (global_ser_rays_vec, rays_vector);
       //std::copy (rays_vector.begin (), rays_vector.end (), 
-      //std::inserter(rays_list, rays_list.begin ())); //copy the req rays in a set, to avoid repetitions in for loop
+      //std::inserter(rays_list[idir], rays_list[idir].begin ())); //copy the req rays in a set, to avoid repetitions in for loop
 
       // Add the rays to rank 0 map:
-      //for (auto it = rays_list.begin (); it != rays_list.end (); it ++)
+      //for (auto it = rays_list[idir].begin (); it != rays_list[idir].end (); it ++)
       //crossings_t & ct = (*this)((*it)[0], (*it)[1]);
 
       for (int i = 1; i < size; i++) { 
@@ -150,7 +150,7 @@ ray_cache_t::fill_cache ()
   if (rank != 0) {
     local_req_rays_map.clear ();
     read_map (local_ser_map, local_req_rays_map);
-    (this->rays).insert (local_req_rays_map.begin (), local_req_rays_map.end ());
+    (this->rays)[idir].insert (local_req_rays_map.begin (), local_req_rays_map.end ());
   }
   
   //MPI_Barrier (mpicomm);
