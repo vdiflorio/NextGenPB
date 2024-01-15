@@ -43,18 +43,22 @@ ray_cache_t
    //static double start[3], end[3]; //start and end point of the analytical surface
    static unsigned dir; //direction of the ray
    
-   std::map<std::array<double, 2>, crossings_t, map_compare> rays; //x-coord and z-coord, correspondent ray
-   
+   std::map<std::array<double, 2>, crossings_t, map_compare> xdir_rays; //y-coord and z-coord, correspondent ray
+   std::map<std::array<double, 2>, crossings_t, map_compare> ydir_rays; //x-coord and z-coord, correspondent ray
+   std::map<std::array<double, 2>, crossings_t, map_compare> zdir_rays; //x-coord and y-coord, correspondent ray
+
    static int_coord_t count_cache;
    static int_coord_t count_new;
    
    NS::NanoShaper ns;
    
    int num_req_rays = 0;
-   std::set<std::array<double, 2>, map_compare> rays_list; //list of req rays
-   
+   std::set<std::array<double, 2>, map_compare> xdir_rays_list; //list of req rays
+   std::set<std::array<double, 2>, map_compare> ydir_rays_list; //list of req rays
+   std::set<std::array<double, 2>, map_compare> zdir_rays_list; //list of req rays
+
    crossings_t &
-   operator() (double x0, double x1);
+   operator() (double x0, double x1, unsigned dir = 1);
    
    void 
    fill_cache ();
