@@ -50,7 +50,7 @@ ray_cache_t
    NS::NanoShaper ns;
    
    int num_req_rays = 0;
-   std::array<std::set<std::array<double, 2>, map_compare>, 3> xdir_rays_list; //list of req rays
+   std::array<std::set<std::array<double, 2>, map_compare>, 3> rays_list; //list of req rays
 
    crossings_t &
    operator() (double x0, double x1, unsigned dir = 1);
