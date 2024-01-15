@@ -538,7 +538,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 		
 	for (int jj = 0; jj < num_cycles; jj++)
 	  {        
-            ray_cache.num_req_rays = 0; //zero at each ref/coars cycle
+            ray_cache.num_req_rays = 0; //zero at each ref/coarsen cycle
             ray_cache.rays_list.clear (); 
 
             if (rank == 0 && jj == 0)
@@ -556,14 +556,14 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
                       {
                         if (surf_type == 2)
                           rcoeff[quadrant->gt (ii)] = levelsetfun (quadrant->p (0, ii),
-                                     				                       quadrant->p (1, ii),
+                                                                   quadrant->p (1, ii),
                                    				                         quadrant->p (2, ii));
                         else
                           {
                             rcoeff[quadrant->gt (ii)] = is_in_ns_surf (ray_cache,
-                  					                                  quadrant->p (0, ii),
-                  		            		                        quadrant->p (1, ii),
-                  	         			                            quadrant->p (2, ii));
+                  					                                           quadrant->p (0, ii),
+                  		            		                                 quadrant->p (1, ii),
+                                                                       quadrant->p (2, ii));
                     
                            if (rcoeff[quadrant->gt (ii)] < -0.5)
                              {
@@ -646,8 +646,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
       {
         distributed_vector rcoeff (tmsh.num_owned_nodes ());
         
-        for (int jj = 0; jj < num_cycles; jj++)
-	  {
+        for (int jj = 0; jj < num_cycles; jj++) {
             ray_cache.num_req_rays = 0; //zero at each ref/coars cycle
             ray_cache.rays_list.clear (); 
 
@@ -656,8 +655,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
             for (auto quadrant = tmsh.begin_quadrant_sweep ();
                  quadrant != tmsh.end_quadrant_sweep ();
-                 ++quadrant)
-              {
+                 ++quadrant) {
 
                 for (int ii = 0; ii < 8; ++ii)
                   {
@@ -666,21 +664,21 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
                       {
                         if (surf_type == 2)
                           rcoeff[quadrant->gt (ii)] = levelsetfun (quadrant->p (0, ii),
-                                     				 quadrant->p (1, ii),
-                                   				 quadrant->p (2, ii));
+                                                                   quadrant->p (1, ii),
+                                                                   quadrant->p (2, ii));
                        else
                          {
                            rcoeff[quadrant->gt (ii)] = is_in_ns_surf (ray_cache,
-                  					    quadrant->p (0, ii),
-                  		            		    quadrant->p (1, ii),
-                  	         			    quadrant->p (2, ii));
+                                                                      quadrant->p (0, ii),
+                                                                      quadrant->p (1, ii),
+                                                                      quadrant->p (2, ii));
                     
                            if (rcoeff[quadrant->gt (ii)] < -0.5)
                              {
                                ray_cache.num_req_rays++;
       			        
       			        std::array<double, 2> ray;
-                               ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
+                    ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
       			        ray_cache.rays_list.insert(ray);
       			      }
                          }
