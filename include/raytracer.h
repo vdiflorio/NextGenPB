@@ -40,12 +40,9 @@ struct
 ray_cache_t 
 {  
    
-   //static double start[3], end[3]; //start and end point of the analytical surface
-   static unsigned dir; //direction of the ray
-   
-   std::map<std::array<double, 2>, crossings_t, map_compare> xdir_rays; //y-coord and z-coord, correspondent ray
-   std::map<std::array<double, 2>, crossings_t, map_compare> ydir_rays; //x-coord and z-coord, correspondent ray
-   std::map<std::array<double, 2>, crossings_t, map_compare> zdir_rays; //x-coord and y-coord, correspondent ray
+   std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3> rays; //y-coord and z-coord, correspondent ray
+                                                                                  //x-coord and z-coord, correspondent ray
+                                                                                  //x-coord and y-coord, correspondent ray
 
    static int_coord_t count_cache;
    static int_coord_t count_new;
