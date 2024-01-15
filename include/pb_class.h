@@ -96,15 +96,14 @@ poisson_boltzmann
   std::vector<double> epsilon; 
   std::vector<double> epsilon_in; 
   std::vector<double> epsilon_out; 
-  // std::vector<double> rho_fixed; 
   std::vector<double> reaction; 
   std::vector<double> ones_in;
 
+  std::unique_ptr<distributed_vector> markn;
+  std::unique_ptr<distributed_vector> epsilon_nodes;
+
   std::unique_ptr<distributed_vector> phi;
   std::unique_ptr<distributed_vector> rho_fixed;
-  
-  std::unique_ptr<distributed_vector> phi_energy;
-  std::unique_ptr<distributed_vector> rho_fixed_energy;
 
 
   poisson_boltzmann (int maxlevel_ = 9, int minlevel_ = 3, int unilevel_ = 5, int mesh_shape_ = 1,
@@ -187,7 +186,7 @@ poisson_boltzmann
   mumps_compute_electric_potential ();
   
   void
-  lis_compute_electric_potential ();
+  lis_compute_electric_potential (ray_cache_t & ray_cache);
   
   
   void 
@@ -210,6 +209,9 @@ poisson_boltzmann
   
   void
   abs_value_field(distributed_vector &phi);
+
+  std::array<double,12>
+  cube_fraction_intersection(double x1, double y1, double z1, double x2, double y2, double z2,ray_cache_t & ray_cache);
   
 };
 

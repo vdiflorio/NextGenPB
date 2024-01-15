@@ -74,7 +74,7 @@ main (int argc, char **argv)
   TIC ();
   pb.create_markers (ray_cache);
   TOC ("create element markers");
-  /*
+  
   TIC ();
   pb.export_tmesh (ray_cache);
   TOC ("export tmesh");
@@ -82,14 +82,14 @@ main (int argc, char **argv)
   TIC ();
   pb.export_marked_tmesh ();
   TOC ("export marked tmesh");
-  */
+  
   
   TIC ();
   if (pb.linear_solver_name == "mumps")
      //pb.mumps_compute_electric_potential ();
      ;
   else if (pb.linear_solver_name == "lis")
-     pb.lis_compute_electric_potential ();
+     pb.lis_compute_electric_potential (ray_cache);
   else 
     {
        std::cerr << "Invalid linear solver selected" << std::endl;
@@ -106,9 +106,9 @@ main (int argc, char **argv)
   // pb.create_markers (ray_cache);
   // TOC ("create element markers");
 
-  TIC ();
-  pb.surface_integrals_energy ();
-  TOC ("compute energy");
+  // TIC ();
+  // pb.surface_integrals_energy ();
+  // TOC ("compute energy");
 
   if (rank == 0) 
     { 

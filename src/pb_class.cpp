@@ -197,9 +197,11 @@ poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, d
   int rank;
   MPI_Comm_rank (mpicomm, &rank);  
   
-  crossings_t & ct = ray_cache (x, z); //check if the ray is in the cache
+  crossings_t & cty = ray_cache (x, z); //check if the ray parallel to y-axis is in the cache
+  crossings_t & ctx = ray_cache (y, z); //check if the ray parallel to x-axis is in the cache
+  crossings_t & ctz = ray_cache (x, y); //check if the ray parallel to z-axis is in the cache
   
-  if (!ct.init && rank != 0)
+  if (!cty.init && rank != 0)
     {
       std::array<double, 2> ray = {x, z};
       ray_cache.rays[1].erase (ray);
@@ -207,10 +209,10 @@ poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, d
     }
     
   int i = 0;
-  if (ct.inters.size () == 0 || y < ct.inters[i])
+  if (cty.inters.size () == 0 || y < cty.inters[i])
    return 0; //if there are no inters or y_the coord is before the first intersection, the point is outside.
     
-  while (i < ct.inters.size () && y > ct.inters[i]) //go on until the inters is passed
+  while (i < cty.inters.size () && y > cty.inters[i]) //go on until the inters is passed
    i++;
 
   return (i % 2);
@@ -990,6 +992,9 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
   
   this->marker.assign (this->tmsh.num_local_quadrants (), 0.0); //marker = 0 -> in
   
+  markn = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ()); 
+  markn->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0); //markn = 0 -> out
+
   int num_cycles = 2;
   if (size == 0 || surf_type == 2)
     num_cycles = 1;
@@ -997,7 +1002,7 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
   for (int jj = 0; jj < num_cycles; jj++)
     {
       ray_cache.num_req_rays = 0; //zero at each ref/coars cycle
-      ray_cache.rays_list.clear (); 
+      ray_cache.rays_list[1].clear (); 
       for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
            quadrant != this->tmsh.end_quadrant_sweep ();
            ++quadrant)
@@ -1049,9 +1054,48 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
                   //else: all the nodes are inside: the quadrant is inside and the marker value is 0
                 }
             }
-        MPI_Barrier(mpicomm);     
-        ray_cache.fill_cache();
-      }          
+          }
+          else
+          {
+            if (this->is_in_ns_surf (ray_cache,
+           	                quadrant->p (0, ii),
+                            quadrant->p (1, ii),
+                            quadrant->p (2, ii)) > 0.5) //inside the molecule
+              {
+                ++num_int_nodes;
+                (*markn)[quadrant->gt (ii)] =1;
+              }
+              
+
+            else if (this->is_in_ns_surf (ray_cache,
+           	                     quadrant->p (0, ii),
+                                 quadrant->p (1, ii),
+                                 quadrant->p (2, ii)) < -0.5 )
+              {
+                ray_cache.num_req_rays++;
+                
+                std::array<double, 2> ray;
+                ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
+                ray_cache.rays_list[1].insert(ray);
+              }
+          }
+        }
+        else
+          ++num_hanging; 
+      }
+      
+      if (jj != 0 || num_cycles == 1)
+      {
+        if (num_int_nodes == 0)  //if there's no node inside the molecule
+          this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out 
+        else if (num_int_nodes < (8 - num_hanging)) //if the non hanging nodes are not all inside
+          this->marker[quadrant->get_forest_quad_idx ()] = 1.0/2.0; //"border"
+        //else: all the nodes are inside: the quadrant is inside and the marker value is 0
+      }
+    }
+    MPI_Barrier(mpicomm);     
+    ray_cache.fill_cache();
+  }          
 }
 
 void
@@ -1187,143 +1231,6 @@ q1 (double X, double Y, double Z, const double *x,
 }
 
 
-// Evaluate Nedelec x-gradient of u
-// (on quadrant [x[0], x[1]] x [y[0], y[1]] x [z[0], z[1]])
-// at (X, Y, Z).
-static double
-dudx (double X, double Y, double Z, const double *x,
-      const double *y, const double *z, const double *u)
-{
-  double hxhyhz = (x[1] - x[0]) * (y[1] - y[0]) * (z[1] - z[0]);
-
-  double db1 = (u[1] - u[0]);
-  double dt1 = (u[3] - u[2]);
-
-  double db2 = (u[5] - u[4]);
-  double dt2 = (u[7] - u[6]);
-
-  double result = (db1 * (y[1] - Y) * (z[1] - Z) +
-                   dt1 * (Y - y[0]) * (z[1] - Z) +
-                   db2 * (y[1] - Y) * (Z - z[0]) +
-                   dt2 * (Y - y[0]) * (Z - z[0])) / hxhyhz;
-
-  return  result;
-}
-
-// Evaluate x-component of dielectric displacement
-// (on quadrant [x[0], x[1]] x [y[0], y[1]] x [z[0], z[1]])
-// at (X, Y, Z).
-static double
-Dx (double X, double Y, double Z, const double *x,
-    const double *y, const double *z, const double *u, const double *eps)
-{
-  double hxhyhz = (x[1] - x[0]) * (y[1] - y[0]) * (z[1] - z[0]);
-
-  double db1 = (u[1] - u[0])*2.0*(1.0/eps[1] + 1.0/eps[0]);
-  double dt1 = (u[3] - u[2])*2.0*(1.0/eps[3] + 1.0/eps[2]);
-
-  double db2 = (u[5] - u[4])*2.0*(1.0/eps[5] + 1.0/eps[4]);
-  double dt2 = (u[7] - u[6])*2.0*(1.0/eps[7] + 1.0/eps[6]);
-
-  double result = (db1 * (y[1] - Y) * (z[1] - Z) +
-                   dt1 * (Y - y[0]) * (z[1] - Z) +
-                   db2 * (y[1] - Y) * (Z - z[0]) +
-                   dt2 * (Y - y[0]) * (Z - z[0])) / hxhyhz;
-
-  return  result;
-}
-
-// Evaluate Nedelec y-gradient of u
-// (on quadrant [x[0], x[1]] x [y[0], y[1]] x [z[0], z[1]])
-// at (X, Y, Z).
-static double
-dudy (double X, double Y, double Z, const double *x,
-      const double *y, const double *z, const double *u)
-{
-  double hxhyhz = (x[1] - x[0]) * (y[1] - y[0]) * (z[1] - z[0]);
-
-  double dl1 = (u[2] - u[0]);
-  double dr1 = (u[3] - u[1]);
-
-  double dl2 = (u[6] - u[4]);
-  double dr2 = (u[7] - u[5]);
-
-  double result = (dl1 * (x[1] - X) * (z[1] - Z) +
-                   dr1 * (X - x[0]) * (z[1] - Z) +
-                   dl2 * (x[1] - X) * (Z - z[0]) +
-                   dr2 * (X - x[0]) * (Z - z[0])) / hxhyhz;
-
-  return result;
-}
-
-// Evaluate y-component of dielectric displacement
-// (on quadrant [x[0], x[1]] x [y[0], y[1]] x [z[0], z[1]])
-// at (X, Y, Z).
-static double
-Dy (double X, double Y, double Z, const double *x,
-    const double *y, const double *z, const double *u, const double *eps)
-{
-  double hxhyhz = (x[1] - x[0]) * (y[1] - y[0]) * (z[1] - z[0]);
-
-  double dl1 = (u[2] - u[0])*2.0*(1.0/eps[2] + 1.0/eps[0]);
-  double dr1 = (u[3] - u[1])*2.0*(1.0/eps[3] + 1.0/eps[1]);
-
-  double dl2 = (u[6] - u[4])*2.0*(1.0/eps[6] + 1.0/eps[4]);
-  double dr2 = (u[7] - u[5])*2.0*(1.0/eps[7] + 1.0/eps[5]);
-
-  double result = (dl1 * (x[1] - X) * (z[1] - Z) +
-                   dr1 * (X - x[0]) * (z[1] - Z) +
-                   dl2 * (x[1] - X) * (Z - z[0]) +
-                   dr2 * (X - x[0]) * (Z - z[0])) / hxhyhz;
-
-  return result;
-}
-
-// Evaluate Nedelec z-gradient of u
-// (on quadrant [x[0], x[1]] x [y[0], y[1]] x [z[0], z[1]])
-// at (X, Y, Z).
-static double
-dudz (double X, double Y, double Z, const double *x,
-      const double *y, const double *z, const double *u)
-{
-  double hxhyhz = (x[1] - x[0]) * (y[1] - y[0]) * (z[1] - z[0]);
-
-  double d11 = (u[4] - u[0]);
-  double d21 = (u[5] - u[1]);
-
-  double d12 = (u[6] - u[2]);
-  double d22 = (u[7] - u[3]);
-
-  double result = (d11 * (x[1] - X) * (y[1] - Y) +
-                   d21 * (X - x[0]) * (y[1] - Y) +
-                   d12 * (x[1] - X) * (Y - y[0]) +
-                   d22 * (X - x[0]) * (Y - y[0])) / hxhyhz;
-
-  return result;
-}
-
-// Evaluate z-component of dielectric displacement
-// (on quadrant [x[0], x[1]] x [y[0], y[1]] x [z[0], z[1]])
-// at (X, Y, Z).
-static double
-Dz (double X, double Y, double Z, const double *x,
-    const double *y, const double *z, const double *u, const double *eps)
-{
-  double hxhyhz = (x[1] - x[0]) * (y[1] - y[0]) * (z[1] - z[0]);
-
-  double d11 = (u[4] - u[0])*2.0*(1.0/eps[4] + 1.0/eps[0]);
-  double d21 = (u[5] - u[1])*2.0*(1.0/eps[5] + 1.0/eps[1]);
-
-  double d12 = (u[6] - u[2])*2.0*(1.0/eps[6] + 1.0/eps[2]);
-  double d22 = (u[7] - u[3])*2.0*(1.0/eps[7] + 1.0/eps[3]);
-
-  double result = (d11 * (x[1] - X) * (y[1] - Y) +
-                   d21 * (X - x[0]) * (y[1] - Y) +
-                   d12 * (x[1] - X) * (Y - y[0]) +
-                   d22 * (X - x[0]) * (Y - y[0])) / hxhyhz;
-
-  return result;
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1527,7 +1434,7 @@ poisson_boltzmann::mumps_compute_electric_potential ()
 */
 
 void
-poisson_boltzmann::lis_compute_electric_potential ()
+poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 {
   int rank;
   MPI_Comm_rank (mpicomm, &rank);
@@ -1539,9 +1446,15 @@ poisson_boltzmann::lis_compute_electric_potential ()
   double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/(e*e); //adim e_out
   epsilon.assign (tmsh.num_local_quadrants (), eps_in); //e_in
   
-  distributed_vector  psi (tmsh.num_owned_nodes ());
-  psi.get_owned_data ().assign (psi.get_owned_data ().size (), 0.0);
-    
+  epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ()); 
+  epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out);
+  for (auto ii = 0; ii< tmsh.num_owned_nodes (); ++ii){
+    if ((*markn).get_owned_data ()[ii]>0.5)
+      (*epsilon_nodes).get_owned_data ()[ii] = eps_in;
+  }
+  bim3a_solution_with_ghosts (tmsh, *epsilon_nodes, replace_op);
+  
+   
   for (auto epsp = epsilon.begin (), mp = marker.begin ();
        epsp != epsilon.end () || mp != marker.end ();
        ++epsp, ++mp) 
@@ -1622,11 +1535,9 @@ poisson_boltzmann::lis_compute_electric_potential ()
   
   distributed_vector  rhs (tmsh.num_owned_nodes (), mpicomm);
   
-  bim3a_solution_with_ghosts (tmsh, psi);
-   
-  // bim3a_advection_diffusion (tmsh, epsilon, psi, A);
-  bim3a_laplacian (tmsh, epsilon, A);
-
+  bim3a_laplacian_eafe (tmsh, (*epsilon_nodes), A);
+  // bim3a_laplacian (tmsh, epsilon, A);
+  
   bim3a_solution_with_ghosts (tmsh, ones, replace_op);
   bim3a_reaction (tmsh, reaction, ones, A); 
     
@@ -1805,36 +1716,187 @@ poisson_boltzmann::lis_compute_electric_potential ()
   }
 
   bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
-  phi_energy = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
-  phi_energy -> get_owned_data () = phi->get_owned_data();
-
-  rho_fixed_energy = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
-  rho_fixed_energy -> get_owned_data () = rho_fixed->get_owned_data();
   ///////
   
 	/////////////////////////////////////////////////////////
-	
-//   MPI_Barrier(mpicomm);
-//   auto start4 = std::chrono::steady_clock::now(); 
-//   tmsh.octbin_export_quadrant ("epsilon_0", epsilon);
-//   tmsh.octbin_export ("phi_0", phi_tmp);
-//   tmsh.octbin_export ("rho_0", rho_fixed);
-//   MPI_Barrier(mpicomm);
-//   auto end4 = std::chrono::steady_clock::now(); 
-//   if(rank==0)
-//   {
-//     std::cout << "\nTime to export files:  "
-//               << std::chrono::duration_cast<std::chrono::milliseconds>(end4-start4).count ()
-//               << " ms"
-//               <<std::endl;      
-//   }
   
+  // MPI_Barrier(mpicomm);
+  // auto start4 = std::chrono::steady_clock::now(); 
+  // tmsh.octbin_export_quadrant ("epsilon_0", epsilon);
+  // tmsh.octbin_export ("phi_0", *phi);
+  // tmsh.octbin_export ("rho_0", rho_fixed);
+  // tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
+  // MPI_Barrier(mpicomm);
+  // auto end4 = std::chrono::steady_clock::now(); 
+  // if(rank==0)
+  // {
+  //   std::cout << "\nTime to export files:  "
+  //             << std::chrono::duration_cast<std::chrono::milliseconds>(end4-start4).count ()
+  //             << " ms"
+  //             <<std::endl;      
+  // }
+  
+
+  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
+             quadrant != this->tmsh.end_quadrant_sweep ();
+             ++quadrant)
+  {
+    std::array<double,12> frac;
+    double x1 =quadrant->p(0, 0), x2 = quadrant->p(0, 7),
+           y1 =quadrant->p(1, 0), y2 = quadrant->p(1, 7),
+           z1 =quadrant->p(2, 0), z2 = quadrant->p(2, 7);
+
+    frac = cube_fraction_intersection(x1, y1, z1, x2, y2, z2,ray_cache);
+                      
+    for (int i = 0; i < 12; ++i)
+    {
+      std::cout << frac[i] << "   ";
+    }
+    std::cout<<std::endl;
+  }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+std::array<double,12>
+poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
+                                              double x2, double y2, double z2, ray_cache_t & ray_cache)
+  //            v7_________e7_________v8
+  //             /|                  /|
+  //         e8 / |                 / |
+  //           /  |             e6 /  |
+  //          /   | e12           /   | e11
+  //       v5/____|_____e5_______/v6  |
+  //         |    |              |    |
+  //         |  v3|______e3______|____|v4
+  //     e9  |   /               |   /   
+  //         |  /            e10 |  / 
+  //         | /  e4             | / e2
+  //         |/                  |/
+  //       v1/_________e1________/v2
+{
+  std::array<double,12> fraction = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+
+  crossings_t & ct0 = ray_cache (y1, z1);
+ 
+  for (int ii =0; ii<ct0.inters.size (); ii++)
+  {
+    if (ct0.inters[ii]>= x1 && ct0.inters[ii] <=x2)
+    {
+      fraction[0] = (ct0.inters[ii]  - x1)/(x2 - x1);
+    }
+  } 
+  
+  ct0 = ray_cache (x2, z1);
+  for (int ii =0; ii<ct0.inters.size (); ii++)
+  {
+    if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)
+    {
+      fraction[1]  = (ct0.inters[ii]  - y1)/(y2 - y1);
+    }
+  } 
+  
+  
+  ct0 = ray_cache (y2, z1);
+  for (int ii =0; ii<ct0.inters.size (); ii++)
+  {
+    if (ct0.inters[ii]>= x1 && ct0.inters[ii] <=x2)
+    {
+      fraction[2]  = (ct0.inters[ii]  - x1)/(x2 - x1);
+    }
+  } 
+  
+
+  ct0 = ray_cache (x1, z1);
+  for (int ii =0; ii<ct0.inters.size (); ii++)
+  {
+    if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)
+    {
+      fraction[3]  = (ct0.inters[ii]  - y1)/(y2 - y1);
+    }
+  } 
+  
+
+  ct0 = ray_cache (x1, z2);
+  for (int ii =0; ii<ct0.inters.size (); ii++)
+  {
+    if (ct0.inters[ii]>= x1 && ct0.inters[ii] <=x2)
+    {
+      fraction[4] = (ct0.inters[ii]  - x1)/(x2 - x1);
+    }
+  } 
+  
+  
+  ct0 = ray_cache (x2, z2);
+  for (int ii =0; ii<ct0.inters.size (); ii++)
+  {
+    if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)
+    {
+      fraction[5]  = (ct0.inters[ii]  - y1)/(y2 - y1);
+    }
+  } 
+  
+  
+  ct0 = ray_cache (y2, z2);
+  for (int ii =0; ii<ct0.inters.size (); ii++)
+  {
+    if (ct0.inters[ii]>= x1 && ct0.inters[ii] <=x2)
+    {
+      fraction[6]  = (ct0.inters[ii]  - x1)/(x2 - x1);
+    }
+  } 
+  
+
+  ct0 = ray_cache (x1, z2);
+  for (int ii =0; ii<ct0.inters.size (); ii++)
+  {
+    if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)
+    {
+      fraction[7]  = (ct0.inters[ii]  - y1)/(y2 - y1);
+    }
+  } 
+
+  ct0 = ray_cache (x1, y1);
+  for (int ii =0; ii<ct0.inters.size (); ii++)
+  {
+    if (ct0.inters[ii]>= z1 && ct0.inters[ii] <=z2)
+    {
+      fraction[8]  = (ct0.inters[ii]  - z1)/(z2 - z1);
+    }
+  } 
+
+  ct0 = ray_cache (x2, y1);
+  for (int ii =0; ii<ct0.inters.size (); ii++)
+  {
+    if (ct0.inters[ii]>= z1 && ct0.inters[ii] <=z2)
+    {
+      fraction[9]  = (ct0.inters[ii]  - z1)/(z2 - z1);
+    }
+  } 
+  
+
+  ct0 = ray_cache (x2, y2);
+  for (int ii =0; ii<ct0.inters.size (); ii++)
+  {
+    if (ct0.inters[ii]>= z1 && ct0.inters[ii] <=z2)
+    {
+      fraction[10]  = (ct0.inters[ii]  - z1)/(z2 - z1);
+    }
+  } 
+
+  ct0 = ray_cache (x1, y2);
+  for (int ii =0; ii<ct0.inters.size (); ii++)
+  {
+    if (ct0.inters[ii]>= z1 && ct0.inters[ii] <=z2)
+    {
+      fraction[11]  = (ct0.inters[ii]  - z1)/(z2 - z1);
+    }
+  } 
+  
+  return fraction;
+}
 
 void 
 poisson_boltzmann::surface_integrals_energy()
@@ -1929,34 +1991,25 @@ poisson_boltzmann::surface_integrals_energy()
   bim3a_solution_with_ghosts (tmsh, sf_nodes, replace_op);
   tmsh.octbin_export ("sf_nodes_0", sf_nodes);
 
-  distributed_vector  psi (tmsh.num_owned_nodes ());
-  psi.get_owned_data ().assign (psi.get_owned_data ().size (), 0.0);
-  bim3a_solution_with_ghosts (tmsh, psi);
-  bim3a_solution_with_ghosts (tmsh, *phi_energy,replace_op);
-  bim3a_solution_with_ghosts (tmsh, *rho_fixed_energy, replace_op);
+
+  bim3a_solution_with_ghosts (tmsh, *phi,replace_op);
+  bim3a_solution_with_ghosts (tmsh, *rho_fixed, replace_op);
   distributed_sparse_matrix A_in; 
   A_in.set_ranges (tmsh.num_owned_nodes ());
-  bim3a_advection_diffusion (tmsh, epsilon_in, psi, A_in);
+  bim3a_laplacian (tmsh, epsilon_in, A_in);
   A_in.assemble ();
   
   distributed_vector  sigma_free_in (tmsh.num_owned_nodes (), mpicomm); 
   sigma_free_in.get_owned_data().assign(tmsh.num_owned_nodes (), 0.0);
-  bim3a_rhs (tmsh, ones_in, *rho_fixed_energy, sigma_free_in);
+  bim3a_rhs (tmsh, ones_in, *rho_fixed, sigma_free_in);
   sigma_free_in.assemble();
 
   distributed_vector tmp_vec (tmsh.num_owned_nodes (), mpicomm);
 
-  tmp_vec = A_in*(*phi_energy);
+  tmp_vec = A_in*(*phi);
   tmp_vec.assemble ();
   ////////////////////////////////////////////////////////////////////////////
-  
-  // for (auto iA = (*phi_energy).get_range_start (); iA < (*phi_energy).get_range_end (); ++iA)
-  //     for (auto j = A_in[iA].begin (); j != A_in[iA].end (); ++j)
-  //       if (A_in.col_val (j) != 0)
-  //         tmp_vec(iA) += A_in.col_val (j) * (*phi_energy)(A_in.col_idx (j));
-  
-  // tmp_vec.assemble (replace_op);
-  ////////////////////////////////////////////////////////////////////////////
+
              
   std::transform(sigma_free_in.get_owned_data ().begin (), 
                  sigma_free_in.get_owned_data ().end (),
@@ -1967,8 +2020,6 @@ poisson_boltzmann::surface_integrals_energy()
   // sigma_free_in.assemble(replace_op);
 
   bim3a_solution_with_ghosts (tmsh, sigma_free_in, replace_op);
-  tmsh.octbin_export ("sigma_0", sigma_free_in);
-  tmsh.octbin_export ("phi_en_0", *phi_energy);
   
   double charge_pol = std::accumulate(sigma_free_in.get_owned_data ().begin (), 
                                       sigma_free_in.get_owned_data ().end (),
@@ -2016,18 +2067,11 @@ poisson_boltzmann::surface_integrals_energy()
       v_i=A_in*u_i;  
       v_i.assemble ();
 
-      // for (auto iA = (*phi_energy).get_range_start (); iA < (*phi_energy).get_range_end (); ++iA)
-      //   for (auto j = A_in[iA].begin (); j != A_in[iA].end (); ++j)
-      //     if (A_in.col_val (j) != 0)
-      //       v_i(iA) += A_in.col_val (j) * u_i(A_in.col_idx (j));
-   
-      // v_i.assemble (replace_op);
-      
-      // ///////////////////////////////////////////
+  
       
       for (auto jj = 0; jj< tmsh.num_owned_nodes (); ++jj){
         if(sf_nodes.get_owned_data ()[jj] == 1.0){
-          second_int += 0.5*i.charge*(*phi_energy).get_owned_data ()[jj]*
+          second_int += 0.5*i.charge*(*phi).get_owned_data ()[jj]*
                           v_i.get_owned_data ()[jj]/(4.0*pi);                
         }       
       }
