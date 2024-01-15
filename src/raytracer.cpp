@@ -19,26 +19,25 @@ map_compare::operator ()(const std::array<double, 2> & arr1, const std::array<do
 }
 
 crossings_t &
-ray_cache_t::operator() (double x0, double x1) 
+ray_cache_t::operator() (double x0, double x1, unsigned dir) 
 {
   
   int rank;
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
   
-  static crossings_t dummy;
-  crossings_t & cr_t = dummy;
-  
+  static crossings_t cr_t;  
   static std::array<double, 2> start_point;
   start_point = {x0, x1};
-  auto it0 = rays.find (start_point);
+	
+  auto it0 = rays[dir].find (start_point);
    
-  if (it0 != rays.end () && it0->second.init == 1)
+  if (it0 != rays[dir].end () && it0->second.init == 1)
     {
       count_cache++;
       cr_t = it0->second;
     }
    
-  else if (it0 != rays.end () && it0->second.init == 0)
+  else if (it0 != rays[dir].end () && it0->second.init == 0)
     {
       count_new++;
       if (rank == 0)
@@ -50,14 +49,15 @@ ray_cache_t::operator() (double x0, double x1)
       crossings_t tmp;
       tmp.point[0] = x0;
       tmp.point[1] = x1;
+      tmp.dir = dir;
       if (rank == 0)
           compute_ns_inters (tmp);
-      rays[start_point] = tmp;
-      cr_t = rays[start_point];
+      rays[dir][start_point] = std::move (tmp);
+      cr_t = rays[dir][start_point];
       count_new++;
     }
     
-  return rays[start_point];
+  return rays[dir][start_point];
 }
 
 void 
@@ -67,38 +67,38 @@ ray_cache_t::fill_cache ()
   MPI_Comm mpicomm = MPI_COMM_WORLD; 
   MPI_Comm_rank (mpicomm, &rank);
   MPI_Comm_size(mpicomm, &size);
-  
-  std::vector<std::array<double, 2>> rays_vector (rays_list.begin (), rays_list.end ()); //copy the set content inside a vector
-  num_req_rays = rays_vector.size (); //numb of req rays from each proc
-  MPI_Barrier(mpicomm);
-  std::cout << "Sending " << num_req_rays << " rays requested from rank " << rank << std::endl;
 
-  std::vector<unsigned char> local_ser_rays_vec = serialize::write (rays_vector); //vector of char for the rays_vector
-  std::vector<unsigned char> global_ser_rays_vec; //vector with all the rays from all proc
+  for (unsigned idir = 0; idir < 3; ++idir) {
+    std::vector<std::array<double, 2>> rays_vector (rays_list.begin (), rays_list.end ()); //copy the set content inside a vector
+    num_req_rays = rays_vector.size (); //numb of req rays from each proc
+    MPI_Barrier(mpicomm);
+    std::cout << "Sending " << num_req_rays << " rays requested from rank " << rank << std::endl;
+
+    std::vector<unsigned char> local_ser_rays_vec = serialize::write (rays_vector); //vector of char for the rays_vector
+    std::vector<unsigned char> global_ser_rays_vec; //vector with all the rays from all proc
   
-  int ser_rays_len = local_ser_rays_vec.size (); //length of each vect of char
-  int global_ser_rays_len; //variable with total number of rays (sum all the proc rays)
+    int ser_rays_len = local_ser_rays_vec.size (); //length of each vect of char
+    int global_ser_rays_len; //variable with total number of rays (sum all the proc rays)
   
-  int proc_ser_rays_len[size] = {}; //array that contains in pos i the leng of char req rays from rank i
-  int proc_num_req_rays[size] = {}; //array that contains in pos i the numb of req rays from rank i
-  int displ_ser_rays_vec[size] = {}; //displacement for sending the vector list
-  int cum_rays_vec[size] = {}; //cumulative sum of the requested rays
+    int proc_ser_rays_len[size] = {}; //array that contains in pos i the leng of char req rays from rank i
+    int proc_num_req_rays[size] = {}; //array that contains in pos i the numb of req rays from rank i
+    int displ_ser_rays_vec[size] = {}; //displacement for sending the vector list
+    int cum_rays_vec[size] = {}; //cumulative sum of the requested rays
      
-  std::vector<unsigned char> global_ser_map; //vector of char for the map of rank 0
-  std::vector<unsigned char> local_ser_map; //vector of char for the local map to send to each rank
+    std::vector<unsigned char> global_ser_map; //vector of char for the map of rank 0
+    std::vector<unsigned char> local_ser_map; //vector of char for the local map to send to each rank
   
-  int global_ser_map_len;
-  int local_ser_map_len;
-  int proc_ser_map_len[size] = {};
-  int displ_ser_map[size] = {};
+    int global_ser_map_len;
+    int local_ser_map_len;
+    int proc_ser_map_len[size] = {};
+    int displ_ser_map[size] = {};
   
-  MPI_Reduce (&ser_rays_len, &global_ser_rays_len, 1, MPI_INT, MPI_SUM, 0, mpicomm); //fill global_ser_rays_len
+    MPI_Reduce (&ser_rays_len, &global_ser_rays_len, 1, MPI_INT, MPI_SUM, 0, mpicomm); //fill global_ser_rays_len
    
-  MPI_Gather (&ser_rays_len, 1, MPI_INT, proc_ser_rays_len, 1, MPI_INT, 0, mpicomm); //fill proc_ser_rays_len
-  MPI_Gather (&num_req_rays, 1, MPI_INT, proc_num_req_rays, 1, MPI_INT, 0, mpicomm); //fill proc_num_req_rays
+    MPI_Gather (&ser_rays_len, 1, MPI_INT, proc_ser_rays_len, 1, MPI_INT, 0, mpicomm); //fill proc_ser_rays_len
+    MPI_Gather (&num_req_rays, 1, MPI_INT, proc_num_req_rays, 1, MPI_INT, 0, mpicomm); //fill proc_num_req_rays
   
-  if (rank == 0)
-    {
+    if (rank == 0) {
       for (int i = 1; i < size; i++)
         {
           displ_ser_rays_vec[i] = displ_ser_rays_vec[i-1] + proc_ser_rays_len[i-1];
@@ -107,24 +107,22 @@ ray_cache_t::fill_cache ()
       global_ser_rays_vec.resize (global_ser_rays_len);
     }
   
-  // Send the requested rays to rank 0
-  MPI_Gatherv (&local_ser_rays_vec[0], ser_rays_len, MPI_CHAR, &global_ser_rays_vec[0], proc_ser_rays_len, displ_ser_rays_vec, MPI_CHAR, 0, mpicomm);
+    // Send the requested rays to rank 0
+    MPI_Gatherv (&local_ser_rays_vec[0], ser_rays_len, MPI_CHAR, &global_ser_rays_vec[0], proc_ser_rays_len, displ_ser_rays_vec, MPI_CHAR, 0, mpicomm);
 
-  std::map<std::array<double, 2>, crossings_t, map_compare> local_req_rays_map;
+    std::map<std::array<double, 2>, crossings_t, map_compare> local_req_rays_map;
   
-  if (rank == 0)
-  {
-    // Transform the char rays in vector<array<double,2>> 
-    serialize::read (global_ser_rays_vec, rays_vector);
-    //std::copy (rays_vector.begin (), rays_vector.end (), 
-               //std::inserter(rays_list, rays_list.begin ())); //copy the req rays in a set, to avoid repetitions in for loop
+    if (rank == 0) {
+      // Transform the char rays in vector<array<double,2>> 
+      serialize::read (global_ser_rays_vec, rays_vector);
+      //std::copy (rays_vector.begin (), rays_vector.end (), 
+      //std::inserter(rays_list, rays_list.begin ())); //copy the req rays in a set, to avoid repetitions in for loop
 
-    // Add the rays to rank 0 map:
-    //for (auto it = rays_list.begin (); it != rays_list.end (); it ++)
+      // Add the rays to rank 0 map:
+      //for (auto it = rays_list.begin (); it != rays_list.end (); it ++)
       //crossings_t & ct = (*this)((*it)[0], (*it)[1]);
 
-    for (int i = 1; i < size; i++)
-      { 
+      for (int i = 1; i < size; i++) { 
         local_req_rays_map.clear ();
 
         std::transform (rays_vector.begin () + cum_rays_vec[i-1], 
@@ -139,25 +137,25 @@ ray_cache_t::fill_cache ()
         displ_ser_map[i] = displ_ser_map[i-1] + proc_ser_map_len[i-1];
       }
       
-    global_ser_map_len = global_ser_map.size ();
+      global_ser_map_len = global_ser_map.size ();
    
-  }
-    
-  MPI_Scatter (proc_ser_map_len, 1, MPI_INT, &local_ser_map_len, 1, MPI_INT, 0, mpicomm);
-  
-  local_ser_map.resize(local_ser_map_len);
-  MPI_Scatterv (&global_ser_map[0], proc_ser_map_len, displ_ser_map, MPI_CHAR, 
-                &local_ser_map[0], local_ser_map_len, MPI_CHAR, 0, mpicomm);
-  
-  if (rank != 0)
-    {
-      local_req_rays_map.clear ();
-      read_map (local_ser_map, local_req_rays_map);
-      (this->rays).insert (local_req_rays_map.begin (), local_req_rays_map.end ());
     }
+    
+    MPI_Scatter (proc_ser_map_len, 1, MPI_INT, &local_ser_map_len, 1, MPI_INT, 0, mpicomm);
+  
+    local_ser_map.resize(local_ser_map_len);
+    MPI_Scatterv (&global_ser_map[0], proc_ser_map_len, displ_ser_map, MPI_CHAR, 
+                  &local_ser_map[0], local_ser_map_len, MPI_CHAR, 0, mpicomm);
+  
+  if (rank != 0) {
+    local_req_rays_map.clear ();
+    read_map (local_ser_map, local_req_rays_map);
+    (this->rays).insert (local_req_rays_map.begin (), local_req_rays_map.end ());
+  }
   
   //MPI_Barrier (mpicomm);
   std::cout << "Rays created in rank " << rank << std::endl;
+  }
 }
 
 void 
