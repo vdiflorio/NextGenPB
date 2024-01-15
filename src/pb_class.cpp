@@ -202,7 +202,7 @@ poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, d
   if (!ct.init && rank != 0)
     {
       std::array<double, 2> ray = {x, z};
-      ray_cache.rays.erase (ray);
+      ray_cache.rays[1].erase (ray);
       return -1.;
     }
     
@@ -539,7 +539,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 	for (int jj = 0; jj < num_cycles; jj++)
 	  {        
             ray_cache.num_req_rays = 0; //zero at each ref/coarsen cycle
-            ray_cache.rays_list.clear (); 
+            ray_cache.rays_list[1].clear (); 
 
             if (rank == 0 && jj == 0)
               std::cout << "Refinement: " << kk << std::endl;
@@ -561,7 +561,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
                         else
                           {
                             rcoeff[quadrant->gt (ii)] = is_in_ns_surf (ray_cache,
-                  					                                           quadrant->p (0, ii),
+                                                                       quadrant->p (0, ii),
                   		            		                                 quadrant->p (1, ii),
                                                                        quadrant->p (2, ii));
                     
@@ -571,7 +571,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
       			        
       			                   std::array<double, 2> ray;
                                ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
-                               ray_cache.rays_list.insert(ray);
+                               ray_cache.rays_list[1].insert(ray);
       			                 }
                          }
                        }
@@ -648,7 +648,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
         
         for (int jj = 0; jj < num_cycles; jj++) {
             ray_cache.num_req_rays = 0; //zero at each ref/coars cycle
-            ray_cache.rays_list.clear (); 
+            ray_cache.rays_list[1].clear (); 
 
             if (rank == 0 && jj == 0)
               std::cout << "Coarsening: " << kk << std::endl;
@@ -679,7 +679,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
       			        
       			        std::array<double, 2> ray;
                     ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
-      			        ray_cache.rays_list.insert(ray);
+      			        ray_cache.rays_list[1].insert(ray);
       			      }
                          }
                        }
@@ -769,7 +769,7 @@ poisson_boltzmann::refine_only_surface (ray_cache_t & ray_cache)
         for (int jj = 0; jj < num_cycles; jj++)
           {        
             ray_cache.num_req_rays = 0; //zero at each ref/coars cycle
-            ray_cache.rays_list.clear (); 
+            ray_cache.rays_list[1].clear (); 
 
             if (rank == 0 && jj == 0)
               std::cout << "Refinement: " << kk << std::endl;
@@ -791,9 +791,9 @@ poisson_boltzmann::refine_only_surface (ray_cache_t & ray_cache)
                         else
                           {
                             rcoeff[quadrant->gt (ii)] = is_in_ns_surf (ray_cache,
-                                                              quadrant->p (0, ii),
-                                                              quadrant->p (1, ii),
-                                                              quadrant->p (2, ii));
+                                                                       quadrant->p (0, ii),
+                                                                       quadrant->p (1, ii),
+                                                                       quadrant->p (2, ii));
                     
                            if (rcoeff[quadrant->gt (ii)] < -0.5)
                              {
@@ -801,7 +801,7 @@ poisson_boltzmann::refine_only_surface (ray_cache_t & ray_cache)
                     
                                std::array<double, 2> ray;
                                ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
-                               ray_cache.rays_list.insert(ray);
+                               ray_cache.rays_list[1].insert(ray);
                              }
                          }
                        }
@@ -879,7 +879,7 @@ poisson_boltzmann::refine_only_surface (ray_cache_t & ray_cache)
         for (int jj = 0; jj < num_cycles; jj++)
           {
             ray_cache.num_req_rays = 0; //zero at each ref/coars cycle
-            ray_cache.rays_list.clear (); 
+            ray_cache.rays_list[1].clear (); 
 
             if (rank == 0 && jj == 0)
               std::cout << "Coarsening: " << kk << std::endl;
@@ -911,7 +911,7 @@ poisson_boltzmann::refine_only_surface (ray_cache_t & ray_cache)
                     
                                 std::array<double, 2> ray;
                                 ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
-                                ray_cache.rays_list.insert(ray);
+                                ray_cache.rays_list[1].insert(ray);
                              }
                          }
                        }
@@ -1019,20 +1019,20 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
                     else
                       {
                         if (this->is_in_ns_surf (ray_cache,
-                       	                quadrant->p (0, ii),
-                                        quadrant->p (1, ii),
-                                        quadrant->p (2, ii)) > 0.5) //inside the molecule
+                                                 quadrant->p (0, ii),
+                                                 quadrant->p (1, ii),
+                                                 quadrant->p (2, ii)) > 0.5) //inside the molecule
                           ++num_int_nodes;
                         else if (this->is_in_ns_surf (ray_cache,
-                       	                     quadrant->p (0, ii),
-                                             quadrant->p (1, ii),
-                                             quadrant->p (2, ii)) < -0.5 )
+                                                      quadrant->p (0, ii),
+                                                      quadrant->p (1, ii),
+                                                      quadrant->p (2, ii)) < -0.5 )
                           {
                             ray_cache.num_req_rays++;
                             
       			                std::array<double, 2> ray;
       			                ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
-      			                ray_cache.rays_list.insert(ray);
+      			                ray_cache.rays_list[1].insert(ray);
       			              }
                       }
                     }
