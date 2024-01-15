@@ -129,7 +129,7 @@ ray_cache_t::fill_cache ()
                         rays_vector.begin () + cum_rays_vec[i],
                         std::inserter(local_req_rays_map, end(local_req_rays_map)),
                         [this](std::array<double,2> arr) 
-                        { return (std::pair<std::array<double,2>, crossings_t>(arr, (*this)(arr[0], arr[1]))); }); //return ((this->rays).find(arr));
+                        { return (std::pair<std::array<double,2>, crossings_t>(arr, (*this)(arr[0], arr[1])),idir); }); //return ((this->rays).find(arr));
               
         local_ser_map = write_map (local_req_rays_map);
         proc_ser_map_len[i] = local_ser_map.size ();
