@@ -197,17 +197,31 @@ poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, d
   int rank;
   MPI_Comm_rank (mpicomm, &rank);  
   
-  crossings_t & cty = ray_cache (x, z); //check if the ray parallel to y-axis is in the cache
-  crossings_t & ctx = ray_cache (y, z); //check if the ray parallel to x-axis is in the cache
-  crossings_t & ctz = ray_cache (x, y); //check if the ray parallel to z-axis is in the cache
-  
+  crossings_t & cty = ray_cache (x, z, 1); //check if the ray parallel to y-axis is in the cache
+  crossings_t & ctx = ray_cache (y, z, 0); //check if the ray parallel to x-axis is in the cache
+  crossings_t & ctz = ray_cache (x, y, 2);
+
   if (!cty.init && rank != 0)
     {
       std::array<double, 2> ray = {x, z};
       ray_cache.rays[1].erase (ray);
       return -1.;
     }
-    
+  
+  if (!ctx.init && rank != 0)
+    {
+      std::array<double, 2> ray = {y, z};
+      ray_cache.rays[0].erase (ray);
+      return -1.;
+    }
+
+  if (!ctz.init && rank != 0)
+    {
+      std::array<double, 2> ray = {x, y};
+      ray_cache.rays[2].erase (ray);
+      return -1.;
+    }
+
   int i = 0;
   if (cty.inters.size () == 0 || y < cty.inters[i])
    return 0; //if there are no inters or y_the coord is before the first intersection, the point is outside.
@@ -1021,40 +1035,8 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
                                                quadrant->p (2, ii)) > 1.0)
                           ++num_int_nodes;
                       }
-                    else
-                      {
-                        if (this->is_in_ns_surf (ray_cache,
-                                                 quadrant->p (0, ii),
-                                                 quadrant->p (1, ii),
-                                                 quadrant->p (2, ii)) > 0.5) //inside the molecule
-                          ++num_int_nodes;
-                        else if (this->is_in_ns_surf (ray_cache,
-                                                      quadrant->p (0, ii),
-                                                      quadrant->p (1, ii),
-                                                      quadrant->p (2, ii)) < -0.5 )
-                          {
-                            ray_cache.num_req_rays++;
-                            
-      			                std::array<double, 2> ray;
-      			                ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
-      			                ray_cache.rays_list[1].insert(ray);
-      			              }
-                      }
-                    }
-                  else
-                    ++num_hanging; 
-                }
-              
-              if (jj != 0 || num_cycles == 1)
-                {
-                  if (num_int_nodes == 0)  //if there's no node inside the molecule
-                    this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out 
-                  else if (num_int_nodes < (8 - num_hanging)) //if the non hanging nodes are not all inside
-                    this->marker[quadrant->get_forest_quad_idx ()] = 1.0/2.0; //"border"
-                  //else: all the nodes are inside: the quadrant is inside and the marker value is 0
-                }
-            }
-          }
+                    
+          
           else
           {
             if (this->is_in_ns_surf (ray_cache,
@@ -1723,9 +1705,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   // MPI_Barrier(mpicomm);
   // auto start4 = std::chrono::steady_clock::now(); 
   // tmsh.octbin_export_quadrant ("epsilon_0", epsilon);
-  // tmsh.octbin_export ("phi_0", *phi);
-  // tmsh.octbin_export ("rho_0", rho_fixed);
-  // tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
+  tmsh.octbin_export ("phi_0", *phi);
+  tmsh.octbin_export ("rho_0", *rho_fixed);
+  tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
   // MPI_Barrier(mpicomm);
   // auto end4 = std::chrono::steady_clock::now(); 
   // if(rank==0)
@@ -1736,23 +1718,25 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   //             <<std::endl;      
   // }
   
-
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
              quadrant != this->tmsh.end_quadrant_sweep ();
              ++quadrant)
   {
-    std::array<double,12> frac;
-    double x1 =quadrant->p(0, 0), x2 = quadrant->p(0, 7),
-           y1 =quadrant->p(1, 0), y2 = quadrant->p(1, 7),
-           z1 =quadrant->p(2, 0), z2 = quadrant->p(2, 7);
+    if (marker[quadrant->get_forest_quad_idx()] == 0.5){
+      std::array<double,12> frac;
+      double x1 =quadrant->p(0, 0), x2 = quadrant->p(0, 7),
+             y1 =quadrant->p(1, 0), y2 = quadrant->p(1, 7),
+             z1 =quadrant->p(2, 0), z2 = quadrant->p(2, 7);
 
-    frac = cube_fraction_intersection(x1, y1, z1, x2, y2, z2,ray_cache);
+      frac = cube_fraction_intersection(x1, y1, z1, x2, y2, z2,ray_cache);
                       
-    for (int i = 0; i < 12; ++i)
-    {
-      std::cout << frac[i] << "   ";
+      for (int i = 0; i < 12; ++i)
+      {
+        std::cout << std::setw(10) << frac[i] << "   ";
+      }
+      std::cout<<std::endl;
     }
-    std::cout<<std::endl;
+    
   }
 }
 
@@ -1779,7 +1763,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
 {
   std::array<double,12> fraction = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 
-  crossings_t & ct0 = ray_cache (y1, z1);
+  crossings_t & ct0 = ray_cache (y1, z1,0);
  
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
@@ -1789,7 +1773,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
     }
   } 
   
-  ct0 = ray_cache (x2, z1);
+  ct0 = ray_cache (x2, z1,1);
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
     if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)
@@ -1799,7 +1783,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
   } 
   
   
-  ct0 = ray_cache (y2, z1);
+  ct0 = ray_cache (y2, z1,0);
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
     if (ct0.inters[ii]>= x1 && ct0.inters[ii] <=x2)
@@ -1809,7 +1793,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
   } 
   
 
-  ct0 = ray_cache (x1, z1);
+  ct0 = ray_cache (x1, z1,1);
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
     if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)
@@ -1819,7 +1803,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
   } 
   
 
-  ct0 = ray_cache (x1, z2);
+  ct0 = ray_cache (y1, z2,0);
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
     if (ct0.inters[ii]>= x1 && ct0.inters[ii] <=x2)
@@ -1829,7 +1813,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
   } 
   
   
-  ct0 = ray_cache (x2, z2);
+  ct0 = ray_cache (x2, z2,1);
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
     if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)
@@ -1839,7 +1823,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
   } 
   
   
-  ct0 = ray_cache (y2, z2);
+  ct0 = ray_cache (y2, z2,0);
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
     if (ct0.inters[ii]>= x1 && ct0.inters[ii] <=x2)
@@ -1849,7 +1833,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
   } 
   
 
-  ct0 = ray_cache (x1, z2);
+  ct0 = ray_cache (x1, z2,1);
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
     if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)
@@ -1858,7 +1842,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
     }
   } 
 
-  ct0 = ray_cache (x1, y1);
+  ct0 = ray_cache (x1, y1,2);
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
     if (ct0.inters[ii]>= z1 && ct0.inters[ii] <=z2)
@@ -1867,7 +1851,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
     }
   } 
 
-  ct0 = ray_cache (x2, y1);
+  ct0 = ray_cache (x2, y1,2);
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
     if (ct0.inters[ii]>= z1 && ct0.inters[ii] <=z2)
@@ -1877,7 +1861,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
   } 
   
 
-  ct0 = ray_cache (x2, y2);
+  ct0 = ray_cache (x2, y2,2);
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
     if (ct0.inters[ii]>= z1 && ct0.inters[ii] <=z2)
@@ -1886,7 +1870,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
     }
   } 
 
-  ct0 = ray_cache (x1, y2);
+  ct0 = ray_cache (x1, y2,2);
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
     if (ct0.inters[ii]>= z1 && ct0.inters[ii] <=z2)

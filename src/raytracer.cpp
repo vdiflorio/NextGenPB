@@ -19,25 +19,25 @@ map_compare::operator ()(const std::array<double, 2> & arr1, const std::array<do
 }
 
 crossings_t &
-ray_cache_t::operator() (double x0, double x1, unsigned dir) 
+ray_cache_t::operator() (double x0, double x1, unsigned direct) 
 {
   
   int rank;
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-  
+  ray_cache_t::dir = direct;
   static crossings_t cr_t;  
   static std::array<double, 2> start_point;
   start_point = {x0, x1};
 	
-  auto it0 = rays[dir].find (start_point);
+  auto it0 = rays[direct].find (start_point);
    
-  if (it0 != rays[dir].end () && it0->second.init == 1)
+  if (it0 != rays[direct].end () && it0->second.init == 1)
     {
       count_cache++;
       cr_t = it0->second;
     }
    
-  else if (it0 != rays[dir].end () && it0->second.init == 0)
+  else if (it0 != rays[direct].end () && it0->second.init == 0)
     {
       count_new++;
       if (rank == 0)
@@ -49,15 +49,15 @@ ray_cache_t::operator() (double x0, double x1, unsigned dir)
       crossings_t tmp;
       tmp.point[0] = x0;
       tmp.point[1] = x1;
-      tmp.dir = dir;
+      tmp.dir = direct;
       if (rank == 0)
           compute_ns_inters (tmp);
-      rays[dir][start_point] = std::move (tmp);
-      cr_t = rays[dir][start_point];
+      rays[direct][start_point] = std::move (tmp);
+      cr_t = rays[direct][start_point];
       count_new++;
     }
     
-  return rays[dir][start_point];
+  return rays[direct][start_point];
 }
 
 void 
@@ -70,6 +70,7 @@ ray_cache_t::fill_cache ()
 
   for (unsigned idir = 0; idir < 3; ++idir) {
     std::vector<std::array<double, 2>> rays_vector (rays_list[idir].begin (), rays_list[idir].end ()); //copy the set content inside a vector
+    
     num_req_rays = rays_vector.size (); //numb of req rays from each proc
     MPI_Barrier(mpicomm);
     std::cout << "Sending " << num_req_rays << " rays requested from rank " << rank << std::endl;
@@ -128,8 +129,8 @@ ray_cache_t::fill_cache ()
         std::transform (rays_vector.begin () + cum_rays_vec[i-1], 
                         rays_vector.begin () + cum_rays_vec[i],
                         std::inserter(local_req_rays_map, end(local_req_rays_map)),
-                        [this](std::array<double,2> arr) 
-                        { return (std::pair<std::array<double,2>, crossings_t>(arr, (*this)(arr[0], arr[1])),idir); }); //return ((this->rays).find(arr));
+                        [this,idir](std::array<double,2> arr) 
+                        { return (std::pair<std::array<double,2>, crossings_t>(arr, (*this)(arr[0], arr[1],idir))); }); //return ((this->rays).find(arr));
               
         local_ser_map = write_map (local_req_rays_map);
         proc_ser_map_len[i] = local_ser_map.size ();
@@ -167,8 +168,8 @@ ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS
   ns.setConfig<double>("Grid_scale", 3.0);
   ns.setConfig<double>("Self_Intersections_Grid_Coefficient", 1.5);
   ns.buildAnalyticalSurface();
-  ray_cache_t::dir = 1; 
-  ns.setDirection(ray_cache_t::dir);
+  // ray_cache_t::dir = 1; 
+  // ns.setDirection(ray_cache_t::dir);
   std::cout << "\n" << std::endl;
          
   std::vector<unsigned> idx; 
@@ -189,6 +190,8 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
 {  
   double start_ray[3] = {ct.point[0], crossings_t::start[ct.dir], ct.point[1]};
   bool compute_normals = true;
+  ns.setDirection(ct.dir);
+  // ns.setDirection(ray_cache_t::dir);
   
   if (ct.point[0] < crossings_t::start[0] || ct.point[1] < crossings_t::start[2] || ct.point[0] > crossings_t::end[0] || ct.point[1] > crossings_t::end[2]) //out of the molecule
     {

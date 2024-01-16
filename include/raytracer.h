@@ -46,7 +46,7 @@ ray_cache_t
 
    static int_coord_t count_cache;
    static int_coord_t count_new;
-   
+   unsigned dir =1; //direction of the ray
    NS::NanoShaper ns;
    
    int num_req_rays = 0;
