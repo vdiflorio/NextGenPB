@@ -129,8 +129,11 @@ poisson_boltzmann
   double
   levelsetfun (double x, double y, double z);
   
+  // double
+  // is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z);
+
   double
-  is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z);
+  is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir);
 
   static int
   uniform_refinement (tmesh_3d::quadrant_iterator quadrant)

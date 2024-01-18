@@ -18,8 +18,8 @@ crossings_t
 {
 
    static double start[3], end[3]; 
-
-   unsigned dir = 1;
+   
+   unsigned dir;
    bool init = 0; //1 when the ray is initilized
    double point[2]; //point x and z coords: the ones that prescribe the ray
  
@@ -46,7 +46,7 @@ ray_cache_t
 
    static int_coord_t count_cache;
    static int_coord_t count_new;
-   unsigned dir =1; //direction of the ray
+   // unsigned dir; //direction of the ray
    NS::NanoShaper ns;
    
    int num_req_rays = 0;

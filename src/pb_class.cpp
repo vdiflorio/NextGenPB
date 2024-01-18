@@ -191,6 +191,7 @@ poisson_boltzmann::levelsetfun (double x, double y, double z)
   return dist;
 }
 
+/* versione backup
 double
 poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z)
 { 
@@ -227,6 +228,46 @@ poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, d
    return 0; //if there are no inters or y_the coord is before the first intersection, the point is outside.
     
   while (i < cty.inters.size () && y > cty.inters[i]) //go on until the inters is passed
+   i++;
+
+  return (i % 2);
+}
+*/
+
+double
+poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir)
+{ 
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);  
+  double x1 = x;
+  double x2 = y;
+  double x3 = z;
+  if (dir == 0)
+  {
+    x1 = y;
+    x2 = z;
+    x3 = x;
+  } else if (dir == 1 )
+  {
+    x1 = x;
+    x2 = z;
+    x3 = y;
+  }
+  crossings_t & ct = ray_cache (x1, x2, dir); 
+
+  if (!ct.init && rank != 0)
+    {
+      std::array<double, 2> ray = {x1, x2};
+      ray_cache.rays[dir].erase (ray);
+      return -1.;
+    }
+  
+
+  int i = 0;
+  if (ct.inters.size () == 0 || x3 < ct.inters[i])
+   return 0; //if there are no inters or y_the coord is before the first intersection, the point is outside.
+    
+  while (i < ct.inters.size () && x3 > ct.inters[i]) //go on until the inters is passed
    i++;
 
   return (i % 2);
@@ -534,6 +575,7 @@ poisson_boltzmann::is_in (const NS::Atom& i,
   return retval;
 }
 
+/* versione backup
 void
 poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 {
@@ -550,10 +592,10 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
     {
       // REFINEMENT
       {
-	distributed_vector rcoeff (tmsh.num_owned_nodes ());	
+	      distributed_vector rcoeff (tmsh.num_owned_nodes ());	
 		
-	for (int jj = 0; jj < num_cycles; jj++)
-	  {        
+      	for (int jj = 0; jj < num_cycles; jj++)
+      	  {        
             ray_cache.num_req_rays = 0; //zero at each ref/coarsen cycle
             ray_cache.rays_list[1].clear (); 
 
@@ -760,8 +802,264 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
       }
     }
 }
+*/
 
 
+void
+poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
+{
+  int rank, size;
+  MPI_Comm_size (mpicomm, &size);
+  MPI_Comm_rank (mpicomm, &rank);
+  
+  int num_cycles = 2;
+  if (size == 0 || surf_type == 2)
+    num_cycles = 1;
+  
+  int coars_ref_cycles = (maxlevel - unilevel) > (unilevel - minlevel) ? (maxlevel - unilevel) : (unilevel - minlevel);
+  for (int kk = 0; kk < coars_ref_cycles; ++kk)
+    {
+      // REFINEMENT
+      {
+        distributed_vector rcoeff (tmsh.num_owned_nodes ());  
+    
+        for (int jj = 0; jj < num_cycles; jj++)
+          {        
+            ray_cache.num_req_rays = 0; //zero at each ref/coarsen cycle
+            ray_cache.rays_list[0].clear (); 
+            ray_cache.rays_list[1].clear (); 
+            ray_cache.rays_list[2].clear (); 
+
+            if (rank == 0 && jj == 0)
+              std::cout << "Refinement: " << kk << std::endl;
+
+            for (auto quadrant = tmsh.begin_quadrant_sweep ();
+                 quadrant != tmsh.end_quadrant_sweep ();
+                 ++quadrant)
+              {
+
+                for (int ii = 0; ii < 8; ++ii)
+                  {
+                            
+                    if (! quadrant->is_hanging (ii))
+                    {
+                      if (surf_type == 2)
+                        rcoeff[quadrant->gt (ii)] = levelsetfun (quadrant->p (0, ii),
+                                                                 quadrant->p (1, ii),
+                                                                 quadrant->p (2, ii));
+                      else {
+                        for (int idir = 0; idir < 3; ++idir){
+                          rcoeff[quadrant->gt (ii)] = is_in_ns_surf (ray_cache,
+                                                                     quadrant->p (0, ii),
+                                                                     quadrant->p (1, ii),
+                                                                     quadrant->p (2, ii), idir);
+                          
+                          if (rcoeff[quadrant->gt (ii)] < -0.5){
+                            ray_cache.num_req_rays++;
+                
+                            std::array<double, 2> ray;
+                            if (idir == 0)
+                            {
+                              ray = {quadrant->p (1, ii), quadrant->p (2, ii)};
+                              ray_cache.rays_list[idir].insert(ray);
+                            }
+                            else if (idir == 1){
+                              ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
+                              ray_cache.rays_list[idir].insert(ray);
+                            }
+                            else if (idir == 2){
+                              ray = {quadrant->p (0, ii), quadrant->p (1, ii)};
+                              ray_cache.rays_list[idir].insert(ray);
+                            }
+                          }
+                        }
+                      }
+                    }
+                  else
+                    for (int jj = 0; jj < quadrant->num_parents (ii); ++jj)
+                      rcoeff[quadrant->gparent (jj, ii)] += 0.;
+                  }
+              }
+            MPI_Barrier(mpicomm);  
+            ray_cache.fill_cache();
+          }
+            
+        auto refinement = [&rcoeff,this]
+          (tmesh_3d::quadrant_iterator q) -> int
+          {
+            int currentlevel = static_cast<int> (q->the_quadrant->level);
+            int retval = 0;
+            double min = 2.0; 
+            double max = 0.0;
+            double tmp = 0.0;
+
+            if (currentlevel >= this->maxlevel)
+              retval = 0;
+            else
+              {
+                for (int ii = 0; ii < 8; ++ii)
+                  {
+
+                    if (! q->is_hanging (ii))
+                      {
+                        tmp = rcoeff[q->gt (ii)];
+
+                        if (tmp > max) max = tmp;
+                        if (tmp < min) min = tmp;
+                      }
+
+                  }
+                if (this->surf_type == 2)
+                  {
+                    if (max > 1 && min < 1)
+                      retval = this->maxlevel - currentlevel;
+                    else
+                      for (const NS::Atom& i : atoms) 
+                        if (is_in (i, q))
+                          {
+                            retval = this->maxlevel - currentlevel;
+                            break;
+                          }
+                   }
+                else 
+                  {
+                    if (max > 0.5 && min < 0.5)
+                      retval = this->maxlevel - currentlevel;
+                    else
+                      for (const NS::Atom& i : atoms) 
+                        if (is_in (i, q))
+                          {
+                            retval = this->maxlevel - currentlevel;
+                            break;
+                          }
+                  }
+              }
+      
+            return (retval);
+          };
+
+        tmsh.set_refine_marker (refinement);
+        tmsh.refine (0, 1);
+      }
+      
+      // COARSENING
+      {
+        distributed_vector rcoeff (tmsh.num_owned_nodes ());
+        
+        for (int jj = 0; jj < num_cycles; jj++) {
+            ray_cache.num_req_rays = 0; //zero at each ref/coars cycle
+            ray_cache.rays_list[0].clear (); 
+            ray_cache.rays_list[1].clear (); 
+            ray_cache.rays_list[2].clear (); 
+
+            if (rank == 0 && jj == 0)
+              std::cout << "Coarsening: " << kk << std::endl;
+
+            for (auto quadrant = tmsh.begin_quadrant_sweep ();
+                 quadrant != tmsh.end_quadrant_sweep ();
+                 ++quadrant) {
+
+                for (int ii = 0; ii < 8; ++ii)
+                  {
+                            
+                    if (! quadrant->is_hanging (ii))
+                      {
+                        if (surf_type == 2)
+                          rcoeff[quadrant->gt (ii)] = levelsetfun (quadrant->p (0, ii),
+                                                                   quadrant->p (1, ii),
+                                                                   quadrant->p (2, ii));
+                        else {
+                          for (int idir = 0; idir < 3; ++idir){
+                            rcoeff[quadrant->gt (ii)] = is_in_ns_surf (ray_cache,
+                                                                       quadrant->p (0, ii),
+                                                                       quadrant->p (1, ii),
+                                                                       quadrant->p (2, ii), idir);
+                            
+                            if (rcoeff[quadrant->gt (ii)] < -0.5){
+                              ray_cache.num_req_rays++;
+                  
+                              std::array<double, 2> ray;
+                              if (idir == 0)
+                              {
+                                ray = {quadrant->p (1, ii), quadrant->p (2, ii)};
+                                ray_cache.rays_list[idir].insert(ray);
+                              }
+                              else if (idir == 1){
+                                ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
+                                ray_cache.rays_list[idir].insert(ray);
+                              }
+                              else if (idir ==2){
+                                ray = {quadrant->p (0, ii), quadrant->p (1, ii)};
+                                ray_cache.rays_list[idir].insert(ray);
+                              }
+                            }
+                          }
+                        }
+                      }
+                  else
+                    for (int jj = 0; jj < quadrant->num_parents (ii); ++jj)
+                      rcoeff[quadrant->gparent (jj, ii)] += 0.;
+                  }
+              }
+            MPI_Barrier(mpicomm);   
+            ray_cache.fill_cache();
+          }
+          
+        auto coarsening = [&rcoeff,this]
+          (tmesh_3d::quadrant_iterator q) -> int
+          {
+            int currentlevel = static_cast<int> (q->the_quadrant->level);
+            int retval = 0;
+            double min = 2.0;
+            double max = 0.0;
+            double tmp = 0.0;
+
+            if (currentlevel <= this->minlevel)
+              retval = 0;
+            else
+              {
+                for (int ii = 0; ii < 8; ++ii)
+                  {
+
+                    if (! q->is_hanging (ii))
+                      {
+                        tmp = rcoeff[q->gt (ii)];
+
+                        if (tmp > max) max = tmp;
+                        if (tmp < min) min = tmp;
+                      }
+
+                   }
+                 if (this->surf_type == 2)
+                   {
+                     if (min > 1 || max < 1)
+                       retval = currentlevel - this->minlevel;  
+                   }
+                 else
+                   {
+                     if (min > 0.5 || max < 0.5)
+                       retval = currentlevel - this->minlevel;
+                   }
+
+                 for (const NS::Atom& i : atoms) 
+                   if (is_in (i, q))
+                     {
+                       retval = 0;
+                       break;
+                     }
+               }
+               
+             return (retval);
+          };
+
+        tmsh.set_coarsen_marker (coarsening);
+        tmsh.coarsen (0, 1);
+      }
+    }
+}
+
+
+/*
 void
 poisson_boltzmann::refine_only_surface (ray_cache_t & ray_cache)
 {
@@ -993,8 +1291,7 @@ poisson_boltzmann::refine_only_surface (ray_cache_t & ray_cache)
 
     }
 }
-
-
+*/
 
 void
 poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
@@ -1013,70 +1310,72 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
   if (size == 0 || surf_type == 2)
     num_cycles = 1;
     
-  for (int jj = 0; jj < num_cycles; jj++)
-    {
-      ray_cache.num_req_rays = 0; //zero at each ref/coars cycle
-      ray_cache.rays_list[1].clear (); 
-      for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-           quadrant != this->tmsh.end_quadrant_sweep ();
-           ++quadrant)
-        {            
-            int num_int_nodes = 0;
-            int num_hanging = 0;
-      
-            for (int ii = 0; ii < 8; ++ii)
-              {         
-                if (! quadrant->is_hanging (ii)) 
-                  {
-                    if (surf_type == 2)
-                      {
-                        if (this->levelsetfun (quadrant->p (0, ii),
-                                               quadrant->p (1, ii),
-                                               quadrant->p (2, ii)) > 1.0)
-                          ++num_int_nodes;
-                      }
-                    
-          
-          else
-          {
-            if (this->is_in_ns_surf (ray_cache,
-           	                quadrant->p (0, ii),
-                            quadrant->p (1, ii),
-                            quadrant->p (2, ii)) > 0.5) //inside the molecule
-              {
-                ++num_int_nodes;
-                (*markn)[quadrant->gt (ii)] =1;
-              }
-              
+  for (int jj = 0; jj < num_cycles; jj++){
+    ray_cache.num_req_rays = 0; //zero at each ref/coars cycle
+    ray_cache.rays_list[0].clear (); 
+    ray_cache.rays_list[1].clear (); 
+    ray_cache.rays_list[2].clear (); 
 
-            else if (this->is_in_ns_surf (ray_cache,
-           	                     quadrant->p (0, ii),
-                                 quadrant->p (1, ii),
-                                 quadrant->p (2, ii)) < -0.5 )
-              {
-                ray_cache.num_req_rays++;
+    for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
+         quadrant != this->tmsh.end_quadrant_sweep ();
+         ++quadrant)
+      {            
+        int num_int_nodes = 0;
+        int num_hanging = 0;
+  
+        for (int ii = 0; ii < 8; ++ii){         
+          if (! quadrant->is_hanging (ii)){
+            if (surf_type == 2){
+              if (this->levelsetfun (quadrant->p (0, ii),
+                                     quadrant->p (1, ii),
+                                     quadrant->p (2, ii)) > 1.0)
+                ++num_int_nodes;
+            }
                 
-                std::array<double, 2> ray;
-                ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
-                ray_cache.rays_list[1].insert(ray);
-              }
+      
+            else
+            {
+              if (this->is_in_ns_surf (ray_cache,
+             	                quadrant->p (0, ii),
+                              quadrant->p (1, ii),
+                              quadrant->p (2, ii),1) > 0.5) //inside the molecule
+                {
+                  ++num_int_nodes;
+                  (*markn)[quadrant->gt (ii)] =1;
+                }
+                
+
+              else if (this->is_in_ns_surf (ray_cache,
+             	                     quadrant->p (0, ii),
+                                   quadrant->p (1, ii),
+                                   quadrant->p (2, ii),1) < -0.5 )
+                {
+                  ray_cache.num_req_rays++;
+                  
+                  std::array<double, 2> ray;
+                  ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
+                  ray_cache.rays_list[1].insert(ray);
+                }
+            }
           }
+          else
+            ++num_hanging; 
         }
-        else
-          ++num_hanging; 
+    
+        if (jj != 0 || num_cycles == 1)
+        {
+          if (num_int_nodes == 0)  //if there's no node inside the molecule
+            this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out 
+          else if (num_int_nodes < (8 - num_hanging)) //if the non hanging nodes are not all inside
+            this->marker[quadrant->get_forest_quad_idx ()] = 1.0/2.0; //"border"
+          //else: all the nodes are inside: the quadrant is inside and the marker value is 0
+        }
       }
       
-      if (jj != 0 || num_cycles == 1)
-      {
-        if (num_int_nodes == 0)  //if there's no node inside the molecule
-          this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out 
-        else if (num_int_nodes < (8 - num_hanging)) //if the non hanging nodes are not all inside
-          this->marker[quadrant->get_forest_quad_idx ()] = 1.0/2.0; //"border"
-        //else: all the nodes are inside: the quadrant is inside and the marker value is 0
-      }
-    }
+    
     MPI_Barrier(mpicomm);     
     ray_cache.fill_cache();
+    
   }          
 }
 
@@ -1108,7 +1407,7 @@ poisson_boltzmann::export_tmesh (ray_cache_t & ray_cache)
                     rcoeff[quadrant->gt (ii)] = is_in_ns_surf (ray_cache,
                                                                quadrant->p (0, ii),
                                                                quadrant->p (1, ii),
-                                                               quadrant->p (2, ii));
+                                                               quadrant->p (2, ii),1);
                   }
                }
                       
@@ -1511,13 +1810,16 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   //////////////////////////////////////////////////////////////////
   MPI_Barrier(mpicomm);
   auto start3 = std::chrono::steady_clock::now();
+  auto func_frac = [&] (double x1, double y1, double z1, double x2, double y2, double z2) 
+                           {return cube_fraction_intersection(x1, y1, z1, x2, y2, z2,ray_cache);};
 
   distributed_sparse_matrix A; 
   A.set_ranges (tmsh.num_owned_nodes ());
   
   distributed_vector  rhs (tmsh.num_owned_nodes (), mpicomm);
   
-  bim3a_laplacian_eafe (tmsh, (*epsilon_nodes), A);
+  bim3a_laplacian_frac (tmsh, (*epsilon_nodes), A, func_frac);
+  // bim3a_laplacian_eafe (tmsh, (*epsilon_nodes), A);
   // bim3a_laplacian (tmsh, epsilon, A);
   
   bim3a_solution_with_ghosts (tmsh, ones, replace_op);
@@ -1704,7 +2006,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   
   // MPI_Barrier(mpicomm);
   // auto start4 = std::chrono::steady_clock::now(); 
-  // tmsh.octbin_export_quadrant ("epsilon_0", epsilon);
+  tmsh.octbin_export_quadrant ("react_0", reaction);
   tmsh.octbin_export ("phi_0", *phi);
   tmsh.octbin_export ("rho_0", *rho_fixed);
   tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
@@ -1717,18 +2019,21 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   //             << " ms"
   //             <<std::endl;      
   // }
-  
+   
+
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
              quadrant != this->tmsh.end_quadrant_sweep ();
              ++quadrant)
   {
     if (marker[quadrant->get_forest_quad_idx()] == 0.5){
+
       std::array<double,12> frac;
       double x1 =quadrant->p(0, 0), x2 = quadrant->p(0, 7),
              y1 =quadrant->p(1, 0), y2 = quadrant->p(1, 7),
              z1 =quadrant->p(2, 0), z2 = quadrant->p(2, 7);
 
-      frac = cube_fraction_intersection(x1, y1, z1, x2, y2, z2,ray_cache);
+      // frac = cube_fraction_intersection(x1, y1, z1, x2, y2, z2,ray_cache);
+      frac = func_frac(x1, y1, z1, x2, y2, z2);
                       
       for (int i = 0; i < 12; ++i)
       {
@@ -1738,6 +2043,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
     }
     
   }
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1774,6 +2080,7 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
   } 
   
   ct0 = ray_cache (x2, z1,1);
+
   for (int ii =0; ii<ct0.inters.size (); ii++)
   {
     if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)

@@ -10,13 +10,13 @@ double crossings_t::end[3] = {0., 0., 0.};
 int_coord_t ray_cache_t::count_cache = 0;
 int_coord_t ray_cache_t::count_new = 0;
 
-/*
+
 void
 print_map(const std::map<std::array<double, 2> , crossings_t, map_compare>& r); 
 
 void
 save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2> , crossings_t, map_compare>& r);
-*/
+
 
 int
 main (int argc, char **argv)
@@ -74,7 +74,7 @@ main (int argc, char **argv)
   TIC ();
   pb.create_markers (ray_cache);
   TOC ("create element markers");
-  
+
   TIC ();
   pb.export_tmesh (ray_cache);
   TOC ("export tmesh");
@@ -82,7 +82,6 @@ main (int argc, char **argv)
   TIC ();
   pb.export_marked_tmesh ();
   TOC ("export marked tmesh");
-  
   
   TIC ();
   if (pb.linear_solver_name == "mumps")
@@ -117,21 +116,28 @@ main (int argc, char **argv)
       if (pb.surf_type != 2)
         {
           //Save ray_cache:
-          //nlohmann::json j;
-          //save_ray_cache (j, ray_cache.rays);
-          //std::cout << "Count cached rays: " << ray_cache_t::count_cache << std::endl;
-          //std::cout << "Count new rays: " << ray_cache_t::count_new << std::endl;
+          for (int i = 0; i < 3; ++i)
+          { 
+            nlohmann::json j;
+            save_ray_cache (j, ray_cache.rays[i]);
+            std::cout << "Count cached rays: " << ray_cache_t::count_cache << std::endl;
+            std::cout << "Count new rays: " << ray_cache_t::count_new << std::endl;
 
-          //std::ofstream ray_cached_file;
-          //ray_cached_file.open ("ray_cache.txt");
-  
-          //if (ray_cached_file.is_open ())
-            //ray_cached_file << j;
+            std::ofstream ray_cached_file;
+            std::string filename = "ray_cache_";
+            std::string extension = ".json";
+            filename += std::to_string(i);
+            filename += extension;
+            ray_cached_file.open (filename.c_str ());
     
-          //ray_cached_file.close ();
-          
-          //Alternative way to save results:
-          //print_map (ray_cache.rays); 
+            if (ray_cached_file.is_open ())
+              ray_cached_file << j;
+      
+            ray_cached_file.close ();
+            
+            //Alternative way to save results:
+            //print_map (ray_cache.rays); 
+          }
         }
     }
   
@@ -143,26 +149,26 @@ main (int argc, char **argv)
   
 }
 
-/*
-void
-print_map(const std::map<std::array<double, 2> , crossings_t, map_compare>& r) 
-{
-  std::ofstream ray_cached_file;
-  ray_cached_file.open ("ray_cache_2.txt");
-  if (ray_cached_file.is_open ())
-  {
-    ray_cached_file << "Count cached rays: " << ray_cache_t::count_cache << std::endl;
-    ray_cached_file << "Count new rays: " << ray_cache_t::count_new << std::endl;
-    for (auto it : r)
-    {
-      ray_cached_file << "[[" << it.first.at(0) << ", " << it.first.at(1) << "]";
-      for (int i = 0; i < it.second.inters.size (); i++) 
-        ray_cached_file << ", " << it.second.inters[i].first;
-      ray_cached_file << "]" << std::endl;
-    }
-  }
-  ray_cached_file.close (); 
-}
+
+// void
+// print_map(const std::map<std::array<double, 2> , crossings_t, map_compare>& r) 
+// {
+//   std::ofstream ray_cached_file;
+//   ray_cached_file.open ("ray_cache_2.txt");
+//   if (ray_cached_file.is_open ())
+//   {
+//     ray_cached_file << "Count cached rays: " << ray_cache_t::count_cache << std::endl;
+//     ray_cached_file << "Count new rays: " << ray_cache_t::count_new << std::endl;
+//     for (auto it : r)
+//     {
+//       ray_cached_file << "[[" << it.first.at(0) << ", " << it.first.at(1) << "]";
+//       for (int i = 0; i < it.second.inters.size (); i++) 
+//         ray_cached_file << ", " << it.second.inters[i].first;
+//       ray_cached_file << "]" << std::endl;
+//     }
+//   }
+//   ray_cached_file.close (); 
+// }
 
 void
 save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2> , crossings_t, map_compare>& r)
@@ -175,4 +181,4 @@ save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2> , crossi
     j += nlohmann::json{{"ray", it.first}, {"inters", (it.second.inters)}, {"normals", (it.second.normals)}};
   }
 }
-*/
+

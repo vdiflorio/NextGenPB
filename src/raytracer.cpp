@@ -24,8 +24,10 @@ ray_cache_t::operator() (double x0, double x1, unsigned direct)
   
   int rank;
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-  ray_cache_t::dir = direct;
+
+  // this->dir = direct;
   static crossings_t cr_t;  
+  
   static std::array<double, 2> start_point;
   start_point = {x0, x1};
 	
@@ -165,11 +167,11 @@ ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS
 {
   NS::NanoShaper ns0 (atoms, surf_type, surf_param, stern_layer, num_threads);
   ns = ns0;
-  ns.setConfig<double>("Grid_scale", 3.0);
+  ns.setConfig<double>("Grid_scale", 1.0);
   ns.setConfig<double>("Self_Intersections_Grid_Coefficient", 1.5);
   ns.buildAnalyticalSurface();
   // ray_cache_t::dir = 1; 
-  // ns.setDirection(ray_cache_t::dir);
+  // ns.setDirection(dir);
   std::cout << "\n" << std::endl;
          
   std::vector<unsigned> idx; 
@@ -185,13 +187,13 @@ ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS
   std::copy(coords.cbegin(), coords.cend(), crossings_t::start);
 }
 
+
+/* versione backup
 void
 ray_cache_t::compute_ns_inters (crossings_t & ct)
 {  
   double start_ray[3] = {ct.point[0], crossings_t::start[ct.dir], ct.point[1]};
   bool compute_normals = true;
-  ns.setDirection(ct.dir);
-  // ns.setDirection(ray_cache_t::dir);
   
   if (ct.point[0] < crossings_t::start[0] || ct.point[1] < crossings_t::start[2] || ct.point[0] > crossings_t::end[0] || ct.point[1] > crossings_t::end[2]) //out of the molecule
     {
@@ -221,7 +223,107 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
   
   ct.init = 1; //ray is now initialized
 }
+*/  
+
+
+
+void
+ray_cache_t::compute_ns_inters (crossings_t & ct)
+{  
   
+  if (ct.dir == 0)
+  {
+    double start_ray[3] = {crossings_t::start[ct.dir], ct.point[0], ct.point[1]};
+    bool compute_normals = true;
+    ns.setDirection(ct.dir);
+    
+    if (ct.point[0] < crossings_t::start[1] || ct.point[1] < crossings_t::start[2] || ct.point[0] > crossings_t::end[1] || ct.point[1] > crossings_t::end[2]) //out of the molecule
+      {
+        ct.init = 1;
+        return;
+      }
+    
+    std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
+    ns.castAxisOrientedRay (start_ray, crossings_t::end[ct.dir], ints_norms, ct.dir, compute_normals);
+
+    if (ints_norms.size() != 0)
+    {
+       for (unsigned i = 0; i < ints_norms.size(); i++)
+       {
+          ct.inters.push_back (ints_norms[i].first);
+          
+          ct.normals.push_back (*(ints_norms[i].second));
+          ct.normals.push_back (*(ints_norms[i].second+1));
+          ct.normals.push_back (*(ints_norms[i].second+2));
+       }
+    }
+    
+    ct.init = 1; //ray is now initialized
+  }
+
+  if (ct.dir == 1)
+  {
+    double start_ray[3] = {ct.point[0], crossings_t::start[ct.dir], ct.point[1]};
+    bool compute_normals = true;
+    ns.setDirection(ct.dir);
+    
+    if (ct.point[0] < crossings_t::start[0] || ct.point[1] < crossings_t::start[2] || ct.point[0] > crossings_t::end[0] || ct.point[1] > crossings_t::end[2]) //out of the molecule
+      {
+        ct.init = 1;
+        return;
+      }
+    
+    std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
+    ns.castAxisOrientedRay (start_ray, crossings_t::end[ct.dir], ints_norms, ct.dir, compute_normals);
+
+    if (ints_norms.size() != 0)
+    {
+       for (unsigned i = 0; i < ints_norms.size(); i++)
+       {
+          ct.inters.push_back (ints_norms[i].first);
+          
+          ct.normals.push_back (*(ints_norms[i].second));
+          ct.normals.push_back (*(ints_norms[i].second+1));
+          ct.normals.push_back (*(ints_norms[i].second+2));
+       }
+    }
+    
+    ct.init = 1; //ray is now initialized
+  }
+
+  if (ct.dir == 2)
+  {
+    double start_ray[3] = {ct.point[0], ct.point[1], crossings_t::start[ct.dir]};
+    bool compute_normals = true;
+    ns.setDirection(ct.dir);
+    
+    if (ct.point[0] < crossings_t::start[0] || ct.point[1] < crossings_t::start[1] || ct.point[0] > crossings_t::end[0] || ct.point[1] > crossings_t::end[1]) //out of the molecule
+      {
+        ct.init = 1;
+        return;
+      }
+    
+    std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
+    ns.castAxisOrientedRay (start_ray, crossings_t::end[ct.dir], ints_norms, ct.dir, compute_normals);
+
+    if (ints_norms.size() != 0)
+    {
+       for (unsigned i = 0; i < ints_norms.size(); i++)
+       {
+          ct.inters.push_back (ints_norms[i].first);
+          
+          ct.normals.push_back (*(ints_norms[i].second));
+          ct.normals.push_back (*(ints_norms[i].second+1));
+          ct.normals.push_back (*(ints_norms[i].second+2));
+       }
+    }
+    
+    ct.init = 1; //ray is now initialized
+  }
+ 
+}
+
+
 //! Convert an crossings_t object
 //!  to a vector of bytes that can
 //!  be saved to a binary file or transmitted through
