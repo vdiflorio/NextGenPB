@@ -75,7 +75,7 @@ poisson_boltzmann::create_mesh ()
       
       std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
       std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t); 
-      for (int i = 0; i<5;i++)
+      for (int i = 0; i<6;i++)
         bcells.push_back(std::make_pair(0, i));                  
     }
   else if (mesh_shape == 1 || mesh_shape == 2)
@@ -90,8 +90,7 @@ poisson_boltzmann::create_mesh ()
       simple_conn_num_trees = 1;
    		simple_conn_p = new double[simple_conn_num_vertices*3];
       simple_conn_t = new p4est_topidx_t[simple_conn_num_vertices];
-      for (int i = 0; i<5;i++)
-        bcells.push_back(std::make_pair(0, i));
+    
       auto tmp_p = {l_c[0], l_c[1], l_c[2], 
       							r_c[0], l_c[1], l_c[2], 
       							l_c[0], r_c[1], l_c[2], 
@@ -104,7 +103,7 @@ poisson_boltzmann::create_mesh ()
       
       std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
       std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
-      for (int i = 0; i<5;i++)
+      for (int i = 0; i<6;i++)
         bcells.push_back(std::make_pair(0, i));
     }
 	else if (mesh_shape == 3)
@@ -163,7 +162,7 @@ poisson_boltzmann::create_mesh ()
       
       std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
       std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t); 
-      for (int i = 0; i<5;i++)
+      for (int i = 0; i<6;i++)
         bcells.push_back(std::make_pair(0, i));  
 		}
   
@@ -825,7 +824,9 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
     
         for (int jj = 0; jj < num_cycles; jj++)
           {        
-            ray_cache.num_req_rays = 0; //zero at each ref/coarsen cycle
+            ray_cache.num_req_rays[0] = 0; //zero at each ref/coarsen cycle
+            ray_cache.num_req_rays[1] = 0; //zero at each ref/coarsen cycle
+            ray_cache.num_req_rays[2] = 0; //zero at each ref/coarsen cycle
             ray_cache.rays_list[0].clear (); 
             ray_cache.rays_list[1].clear (); 
             ray_cache.rays_list[2].clear (); 
@@ -847,7 +848,8 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
                         rcoeff[quadrant->gt (ii)] = levelsetfun (quadrant->p (0, ii),
                                                                  quadrant->p (1, ii),
                                                                  quadrant->p (2, ii));
-                      else {
+                      else 
+                      {
                         for (int idir = 0; idir < 3; ++idir){
                           rcoeff[quadrant->gt (ii)] = is_in_ns_surf (ray_cache,
                                                                      quadrant->p (0, ii),
@@ -855,7 +857,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
                                                                      quadrant->p (2, ii), idir);
                           
                           if (rcoeff[quadrant->gt (ii)] < -0.5){
-                            ray_cache.num_req_rays++;
+                            ray_cache.num_req_rays[idir]++;
                 
                             std::array<double, 2> ray;
                             if (idir == 0)
@@ -947,7 +949,9 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
         distributed_vector rcoeff (tmsh.num_owned_nodes ());
         
         for (int jj = 0; jj < num_cycles; jj++) {
-            ray_cache.num_req_rays = 0; //zero at each ref/coars cycle
+            ray_cache.num_req_rays[0] = 0; //zero at each ref/coarsen cycle
+            ray_cache.num_req_rays[1] = 0; //zero at each ref/coarsen cycle
+            ray_cache.num_req_rays[2] = 0; //zero at each ref/coarsen cycle
             ray_cache.rays_list[0].clear (); 
             ray_cache.rays_list[1].clear (); 
             ray_cache.rays_list[2].clear (); 
@@ -976,7 +980,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
                                                                        quadrant->p (2, ii), idir);
                             
                             if (rcoeff[quadrant->gt (ii)] < -0.5){
-                              ray_cache.num_req_rays++;
+                              ray_cache.num_req_rays[idir]++;
                   
                               std::array<double, 2> ray;
                               if (idir == 0)
@@ -1311,7 +1315,9 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
     num_cycles = 1;
     
   for (int jj = 0; jj < num_cycles; jj++){
-    ray_cache.num_req_rays = 0; //zero at each ref/coars cycle
+    ray_cache.num_req_rays[0] = 0; //zero at each ref/coarsen cycle
+    ray_cache.num_req_rays[1] = 0; //zero at each ref/coarsen cycle
+    ray_cache.num_req_rays[2] = 0; //zero at each ref/coarsen cycle
     ray_cache.rays_list[0].clear (); 
     ray_cache.rays_list[1].clear (); 
     ray_cache.rays_list[2].clear (); 
@@ -1320,8 +1326,8 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
          quadrant != this->tmsh.end_quadrant_sweep ();
          ++quadrant)
       {            
-        int num_int_nodes = 0;
-        int num_hanging = 0;
+        int num_int_nodes[3] = {0, 0, 0};
+        int num_hanging[3] = {0, 0, 0};
   
         for (int ii = 0; ii < 8; ++ii){         
           if (! quadrant->is_hanging (ii)){
@@ -1329,44 +1335,59 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
               if (this->levelsetfun (quadrant->p (0, ii),
                                      quadrant->p (1, ii),
                                      quadrant->p (2, ii)) > 1.0)
-                ++num_int_nodes;
+                ++num_int_nodes[1];
             }
                 
       
             else
             {
-              if (this->is_in_ns_surf (ray_cache,
-             	                quadrant->p (0, ii),
-                              quadrant->p (1, ii),
-                              quadrant->p (2, ii),1) > 0.5) //inside the molecule
-                {
-                  ++num_int_nodes;
-                  (*markn)[quadrant->gt (ii)] =1;
-                }
-                
-
-              else if (this->is_in_ns_surf (ray_cache,
-             	                     quadrant->p (0, ii),
-                                   quadrant->p (1, ii),
-                                   quadrant->p (2, ii),1) < -0.5 )
-                {
-                  ray_cache.num_req_rays++;
+              for (int idir = 0; idir < 3; ++idir)
+              {
+                if (this->is_in_ns_surf (ray_cache,
+                                quadrant->p (0, ii),
+                                quadrant->p (1, ii),
+                                quadrant->p (2, ii),idir) > 0.5) //inside the molecule
+                  {
+                    ++num_int_nodes[idir];
+                    (*markn)[quadrant->gt (ii)] =1;
+                  }
                   
-                  std::array<double, 2> ray;
-                  ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
-                  ray_cache.rays_list[1].insert(ray);
-                }
+
+                else if (this->is_in_ns_surf (ray_cache,
+                                     quadrant->p (0, ii),
+                                     quadrant->p (1, ii),
+                                     quadrant->p (2, ii),idir) < -0.5 )
+                  {
+                    ray_cache.num_req_rays[idir]++;
+                    
+                    std::array<double, 2> ray;
+                    if (idir == 0)
+                    {
+                      ray = {quadrant->p (1, ii), quadrant->p (2, ii)};
+                      ray_cache.rays_list[idir].insert(ray);
+                    }
+                    else if (idir == 1){
+                      ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
+                      ray_cache.rays_list[idir].insert(ray);
+                    }
+                    else if (idir ==2){
+                      ray = {quadrant->p (0, ii), quadrant->p (1, ii)};
+                      ray_cache.rays_list[idir].insert(ray);
+                    }
+                  }
+              }
             }
           }
           else
-            ++num_hanging; 
+            for (int idir = 0; idir < 3; ++idir)
+              ++num_hanging[idir]; 
         }
     
         if (jj != 0 || num_cycles == 1)
         {
-          if (num_int_nodes == 0)  //if there's no node inside the molecule
+          if (num_int_nodes[1] == 0)  //if there's no node inside the molecule
             this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out 
-          else if (num_int_nodes < (8 - num_hanging)) //if the non hanging nodes are not all inside
+          else if (num_int_nodes[1] < (8 - num_hanging[1])) //if the non hanging nodes are not all inside
             this->marker[quadrant->get_forest_quad_idx ()] = 1.0/2.0; //"border"
           //else: all the nodes are inside: the quadrant is inside and the marker value is 0
         }
@@ -1521,7 +1542,7 @@ q1 (double X, double Y, double Z, const double *x,
 
 
 
-/*
+
 
 void
 poisson_boltzmann::mumps_compute_electric_potential ()
@@ -1621,26 +1642,19 @@ poisson_boltzmann::mumps_compute_electric_potential ()
             }
       }
   
-  distributed_sparse_matrix A, A_in; 
+  distributed_sparse_matrix A; 
   A.set_ranges (tmsh.num_owned_nodes ());
-  A_in.set_ranges (tmsh.num_owned_nodes ());
   
   distributed_vector  rhs (tmsh.num_owned_nodes (), mpicomm);
-  distributed_vector  sigma_free_in (tmsh.num_owned_nodes (), mpicomm); 
   
   bim3a_solution_with_ghosts (tmsh, psi);
   bim3a_advection_diffusion (tmsh, epsilon, psi, A);
-  bim3a_advection_diffusion (tmsh, epsilon_in, psi, A_in);
-  // A += A_in;
-  // bim3a_advection_diffusion (tmsh, epsilon_out, psi, A);
   
   bim3a_solution_with_ghosts (tmsh, ones, replace_op);
   bim3a_reaction (tmsh, reaction, ones, A); 
     
   bim3a_solution_with_ghosts (tmsh, rho_fixed);
-  bim3a_solution_with_ghosts (tmsh, sigma_free_in);
   bim3a_rhs (tmsh, const_ones, rho_fixed, rhs);
-  bim3a_rhs (tmsh, ones_in, rho_fixed, sigma_free_in);
     
   
   // Set boundary conditions.
@@ -1655,11 +1669,21 @@ poisson_boltzmann::mumps_compute_electric_potential ()
     }
     bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
   }
+   if (bc == 2) //coulombic Dir bc 
+  {
+    MPI_Barrier(mpicomm);
+    auto start = std::chrono::steady_clock::now();
+    for (auto const & ibc : bcells){
+      auto cella = ibc.first;
+      auto lato = ibc.second;
+      bcs.push_back (std::make_tuple (cella, lato, 
+                     [&] (double x, double y, double z) {return coulomb_boundary_conditions (x,y,z);}));
+    }
+    bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
+  }
   
   A.assemble ();
-  A_in.assemble (); 
   rhs.assemble();
-  sigma_free_in.assemble ();
   
   tmsh.octbin_export ("rho_0", rho_fixed);
   tmsh.octbin_export ("rhs_0", rhs); 
@@ -1694,25 +1718,10 @@ poisson_boltzmann::mumps_compute_electric_potential ()
   
   ///////
   
-  //phi.assemble ();
-  //distributed_vector  tmp_vec (tmsh.num_owned_nodes (), mpicomm); 
-  auto tmp_vec=A_in*phi;
-  //bim3a_rhs (tmsh, const_ones, rho_fixed, tmp_vec);
-  tmp_vec.assemble ();
-  
-  std::transform(sigma_free_in.get_owned_data ().begin (), 
-                 sigma_free_in.get_owned_data ().end (),
-                 tmp_vec.get_owned_data ().begin (), 
-                 sigma_free_in.get_owned_data ().begin (),
-                 [] (double a, double b) {return b-a;});
-  
-  sigma_free_in.assemble ();
-  tmsh.octbin_export ("sigma_0", sigma_free_in);
-  
   mumps_solver.cleanup ();
 }
 
-*/
+
 
 void
 poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
@@ -1726,15 +1735,6 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/(e*e);   //adim e_in
   double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/(e*e); //adim e_out
   epsilon.assign (tmsh.num_local_quadrants (), eps_in); //e_in
-  
-  epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ()); 
-  epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out);
-  for (auto ii = 0; ii< tmsh.num_owned_nodes (); ++ii){
-    if ((*markn).get_owned_data ()[ii]>0.5)
-      (*epsilon_nodes).get_owned_data ()[ii] = eps_in;
-  }
-  bim3a_solution_with_ghosts (tmsh, *epsilon_nodes, replace_op);
-  
    
   for (auto epsp = epsilon.begin (), mp = marker.begin ();
        epsp != epsilon.end () || mp != marker.end ();
@@ -1751,16 +1751,30 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   double k2 = 2.0*C_0*Angs*Angs*e*e/(e_0*e_out*kb*T);  
   reaction.assign (tmsh.num_local_quadrants (), 0.0);
   
-  distributed_vector ones (tmsh.num_owned_nodes ()); 
-  ones.get_owned_data ().assign (ones.get_owned_data ().size (), 1.0); 
-  
   for (auto rp = reaction.begin (), mp = marker.begin ();
        rp != reaction.end () || mp != marker.end ();
        ++rp, ++mp)
     if ((*mp) > 0.6) 
       (*rp) = eps_out*k2;
       
- 
+  
+  epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ()); 
+  epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out);
+
+  distributed_vector ones (tmsh.num_owned_nodes ()); 
+  ones.get_owned_data ().assign (ones.get_owned_data ().size (), 1.0); 
+
+  distributed_vector reaction_nodes (tmsh.num_owned_nodes ()); 
+  reaction_nodes.get_owned_data ().assign (ones.get_owned_data ().size (), eps_out*k2);
+
+  for (auto ii = 0; ii< tmsh.num_owned_nodes (); ++ii){
+    if ((*markn).get_owned_data ()[ii]>0.5){
+      (*epsilon_nodes).get_owned_data ()[ii] = eps_in;
+      reaction_nodes.get_owned_data ()[ii] = 0.0;
+    }
+  }
+  bim3a_solution_with_ghosts (tmsh, *epsilon_nodes, replace_op);
+  bim3a_solution_with_ghosts (tmsh, reaction_nodes, replace_op);
   //////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////
 
@@ -1808,10 +1822,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   
   //////////////////////////////////////////////////////////////////
-  MPI_Barrier(mpicomm);
-  auto start3 = std::chrono::steady_clock::now();
-  auto func_frac = [&] (double x1, double y1, double z1, double x2, double y2, double z2) 
-                           {return cube_fraction_intersection(x1, y1, z1, x2, y2, z2,ray_cache);};
+  auto func_frac = [&] (tmesh_3d::quadrant_iterator& quadrant) 
+                        {return cube_fraction_intersection(quadrant,ray_cache);};
 
   distributed_sparse_matrix A; 
   A.set_ranges (tmsh.num_owned_nodes ());
@@ -1823,86 +1835,43 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   // bim3a_laplacian (tmsh, epsilon, A);
   
   bim3a_solution_with_ghosts (tmsh, ones, replace_op);
-  bim3a_reaction (tmsh, reaction, ones, A); 
-    
+  // bim3a_reaction (tmsh, reaction, ones, A); 
+  bim3a_reaction_frac (tmsh, reaction_nodes, ones, A, func_frac); 
+  
   bim3a_solution_with_ghosts (tmsh, *rho_fixed);
   bim3a_rhs (tmsh, const_ones, *rho_fixed, rhs);
-  
-  MPI_Barrier(mpicomm);
-  auto end3 = std::chrono::steady_clock::now(); 
-  if(rank==0)
-  {
-    std::cout << "\nTime to calculate elements of A and rhs:  "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end3-start3).count ()
-              << " ms"
-              <<std::endl;      
-  }
 
-  // Set boundary conditions.
+
+ 
+ // Set boundary conditions.
   dirichlet_bcs3 bcs;
   if (bc == 1) //hom Dir bc
   {
-    MPI_Barrier(mpicomm);
-    auto start = std::chrono::steady_clock::now();
-    
     for (auto const & ibc : bcells){
-    	auto cella = ibc.first;
-    	auto lato = ibc.second;
-    	bcs.push_back (std::make_tuple (cella, lato, 
-    								 [] (double x, double y, double z) {return 0;}));
+      auto cella = ibc.first;
+      auto lato = ibc.second;
+      bcs.push_back (std::make_tuple (cella, lato, 
+               [] (double x, double y, double z) {return 0;}));
     }
     bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
-    
-    MPI_Barrier(mpicomm);
-    auto end = std::chrono::steady_clock::now(); 
-    if(rank==0)
-    {
-      std::cout << "\nTime for impose BC:  "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count ()
-                << " ms"
-                <<std::endl;      
-    }
   }
-  
-  if (bc == 2) //coulombic Dir bc 
+   if (bc == 2) //coulombic Dir bc 
   {
     MPI_Barrier(mpicomm);
     auto start = std::chrono::steady_clock::now();
     for (auto const & ibc : bcells){
-    	auto cella = ibc.first;
-    	auto lato = ibc.second;
-    	bcs.push_back (std::make_tuple (cella, lato, 
-    		             [&] (double x, double y, double z) {return coulomb_boundary_conditions (x,y,z);}));
+      auto cella = ibc.first;
+      auto lato = ibc.second;
+      bcs.push_back (std::make_tuple (cella, lato, 
+                     [&] (double x, double y, double z) {return coulomb_boundary_conditions (x,y,z);}));
     }
     bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
-    
-    MPI_Barrier(mpicomm);
-    auto end = std::chrono::steady_clock::now(); 
-    if(rank==0)
-    {
-      std::cout << "\nTime for impose BC:  "
-                << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count ()
-                << " ms"
-                <<std::endl;      
-    }
   }
-  /////////////////////////////////////////////////////////
-
-  MPI_Barrier(mpicomm);
-  auto start1 = std::chrono::steady_clock::now();
   
   A.assemble ();
   rhs.assemble();
-  
-  MPI_Barrier(mpicomm);
-  auto end1 = std::chrono::steady_clock::now(); 
-  if(rank==0)
-  {
-    std::cout << "\nTime to assemble matrix A and rhs:  "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end1-start1).count ()
-              << " ms"
-              <<std::endl;      
-  }
+
+    
   
   MPI_Barrier(mpicomm);
   auto start_sol = std::chrono::steady_clock::now();
@@ -2003,56 +1972,23 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   ///////
   
 	/////////////////////////////////////////////////////////
-  
-  // MPI_Barrier(mpicomm);
-  // auto start4 = std::chrono::steady_clock::now(); 
+   
   tmsh.octbin_export_quadrant ("react_0", reaction);
   tmsh.octbin_export ("phi_0", *phi);
   tmsh.octbin_export ("rho_0", *rho_fixed);
   tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
-  // MPI_Barrier(mpicomm);
-  // auto end4 = std::chrono::steady_clock::now(); 
-  // if(rank==0)
-  // {
-  //   std::cout << "\nTime to export files:  "
-  //             << std::chrono::duration_cast<std::chrono::milliseconds>(end4-start4).count ()
-  //             << " ms"
-  //             <<std::endl;      
-  // }
+  
    
-
-  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-             quadrant != this->tmsh.end_quadrant_sweep ();
-             ++quadrant)
-  {
-    if (marker[quadrant->get_forest_quad_idx()] == 0.5){
-
-      std::array<double,12> frac;
-      double x1 =quadrant->p(0, 0), x2 = quadrant->p(0, 7),
-             y1 =quadrant->p(1, 0), y2 = quadrant->p(1, 7),
-             z1 =quadrant->p(2, 0), z2 = quadrant->p(2, 7);
-
-      // frac = cube_fraction_intersection(x1, y1, z1, x2, y2, z2,ray_cache);
-      frac = func_frac(x1, y1, z1, x2, y2, z2);
-                      
-      for (int i = 0; i < 12; ++i)
-      {
-        std::cout << std::setw(10) << frac[i] << "   ";
-      }
-      std::cout<<std::endl;
-    }
-    
-  }
-
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 std::array<double,12>
-poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
-                                              double x2, double y2, double z2, ray_cache_t & ray_cache)
+poisson_boltzmann::cube_fraction_intersection(tmesh_3d::quadrant_iterator& quadrant, 
+                                              ray_cache_t & ray_cache)
+ 
+
   //            v7_________e7_________v8
   //             /|                  /|
   //         e8 / |                 / |
@@ -2067,125 +2003,152 @@ poisson_boltzmann::cube_fraction_intersection(double x1, double y1, double z1,
   //         |/                  |/
   //       v1/_________e1________/v2
 {
-  std::array<double,12> fraction = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
+  std::array<double,12> fraction = {-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5};
+  const std::map<std::array<double, 2> , crossings_t, map_compare> r;
+  double x1 =quadrant->p(0, 0), x2 = quadrant->p(0, 7),
+         y1 =quadrant->p(1, 0), y2 = quadrant->p(1, 7),
+         z1 =quadrant->p(2, 0), z2 = quadrant->p(2, 7);
+  // along x- axis
 
-  crossings_t & ct0 = ray_cache (y1, z1,0);
- 
-  for (int ii =0; ii<ct0.inters.size (); ii++)
-  {
-    if (ct0.inters[ii]>= x1 && ct0.inters[ii] <=x2)
-    {
-      fraction[0] = (ct0.inters[ii]  - x1)/(x2 - x1);
-    }
-  } 
-  
-  ct0 = ray_cache (x2, z1,1);
+  auto it0 = ray_cache.rays[0].find ({y1, z1});
+  auto inters = it0->second.inters;
 
-  for (int ii =0; ii<ct0.inters.size (); ii++)
+  for (int ii =0; ii<inters.size (); ii++)
   {
-    if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)
+    if (inters[ii]>= x1 && inters[ii] <=x2)
     {
-      fraction[1]  = (ct0.inters[ii]  - y1)/(y2 - y1);
+      fraction[0] = (inters[ii]  - x1)/(x2 - x1);
     }
   } 
   
-  
-  ct0 = ray_cache (y2, z1,0);
-  for (int ii =0; ii<ct0.inters.size (); ii++)
-  {
-    if (ct0.inters[ii]>= x1 && ct0.inters[ii] <=x2)
-    {
-      fraction[2]  = (ct0.inters[ii]  - x1)/(x2 - x1);
-    }
-  } 
-  
+  it0 = ray_cache.rays[0].find ({y2, z1});
+  inters = it0->second.inters;
 
-  ct0 = ray_cache (x1, z1,1);
-  for (int ii =0; ii<ct0.inters.size (); ii++)
+  for (int ii =0; ii<inters.size (); ii++)
   {
-    if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)
+    if (inters[ii]>= x1 && inters[ii] <=x2)
     {
-      fraction[3]  = (ct0.inters[ii]  - y1)/(y2 - y1);
+      fraction[2] = (inters[ii]  - x1)/(x2 - x1);
     }
-  } 
-  
+  }
 
-  ct0 = ray_cache (y1, z2,0);
-  for (int ii =0; ii<ct0.inters.size (); ii++)
-  {
-    if (ct0.inters[ii]>= x1 && ct0.inters[ii] <=x2)
-    {
-      fraction[4] = (ct0.inters[ii]  - x1)/(x2 - x1);
-    }
-  } 
-  
-  
-  ct0 = ray_cache (x2, z2,1);
-  for (int ii =0; ii<ct0.inters.size (); ii++)
-  {
-    if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)
-    {
-      fraction[5]  = (ct0.inters[ii]  - y1)/(y2 - y1);
-    }
-  } 
-  
-  
-  ct0 = ray_cache (y2, z2,0);
-  for (int ii =0; ii<ct0.inters.size (); ii++)
-  {
-    if (ct0.inters[ii]>= x1 && ct0.inters[ii] <=x2)
-    {
-      fraction[6]  = (ct0.inters[ii]  - x1)/(x2 - x1);
-    }
-  } 
-  
+  it0 = ray_cache.rays[0].find ({y1, z2});
+  inters = it0->second.inters;
 
-  ct0 = ray_cache (x1, z2,1);
-  for (int ii =0; ii<ct0.inters.size (); ii++)
+  for (int ii =0; ii<inters.size (); ii++)
   {
-    if (ct0.inters[ii]>= y1 && ct0.inters[ii] <=y2)
+    if (inters[ii]>= x1 && inters[ii] <=x2)
     {
-      fraction[7]  = (ct0.inters[ii]  - y1)/(y2 - y1);
+      fraction[4] = (inters[ii]  - x1)/(x2 - x1);
     }
-  } 
+  }
 
-  ct0 = ray_cache (x1, y1,2);
-  for (int ii =0; ii<ct0.inters.size (); ii++)
+  it0 = ray_cache.rays[0].find ({y2, z2});
+  inters = it0->second.inters;
+
+  for (int ii =0; ii<inters.size (); ii++)
   {
-    if (ct0.inters[ii]>= z1 && ct0.inters[ii] <=z2)
+    if (inters[ii]>= x1 && inters[ii] <=x2)
     {
-      fraction[8]  = (ct0.inters[ii]  - z1)/(z2 - z1);
+      fraction[6] = (inters[ii]  - x1)/(x2 - x1);
     }
-  } 
+  }
+  /////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////
+  // along y- axis
 
-  ct0 = ray_cache (x2, y1,2);
-  for (int ii =0; ii<ct0.inters.size (); ii++)
+  it0 = ray_cache.rays[1].find ({x2, z1});
+  inters = it0->second.inters;
+
+  for (int ii =0; ii<inters.size (); ii++)
   {
-    if (ct0.inters[ii]>= z1 && ct0.inters[ii] <=z2)
+    if (inters[ii]>= y1 && inters[ii] <=y2)
     {
-      fraction[9]  = (ct0.inters[ii]  - z1)/(z2 - z1);
+      fraction[1] = (inters[ii]  - y1)/(y2 - y1);
     }
   } 
   
+  it0 = ray_cache.rays[1].find ({x1, z1});
+  inters = it0->second.inters;
 
-  ct0 = ray_cache (x2, y2,2);
-  for (int ii =0; ii<ct0.inters.size (); ii++)
+  for (int ii =0; ii<inters.size (); ii++)
   {
-    if (ct0.inters[ii]>= z1 && ct0.inters[ii] <=z2)
+    if (inters[ii]>= y1 && inters[ii] <=y2)
     {
-      fraction[10]  = (ct0.inters[ii]  - z1)/(z2 - z1);
+      fraction[3] = (inters[ii]  - y1)/(y2 - y1);
+    }
+  }
+
+  it0 = ray_cache.rays[1].find ({x2, z2});
+  inters = it0->second.inters;
+
+  for (int ii =0; ii<inters.size (); ii++)
+  {
+    if (inters[ii]>= y1 && inters[ii] <=y2)
+    {
+      fraction[5] = (inters[ii]  - y1)/(y2 - y1);
+    }
+  }
+
+  it0 = ray_cache.rays[1].find ({x1, z2});
+  inters = it0->second.inters;
+
+  for (int ii =0; ii<inters.size (); ii++)
+  {
+    if (inters[ii]>= y1 && inters[ii] <=y2)
+    {
+      fraction[7] = (inters[ii]  - y1)/(y2 - y1);
+    }
+  }
+  
+  /////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////
+  // along z- axis
+
+  it0 = ray_cache.rays[2].find ({x1, y1});
+  inters = it0->second.inters;
+
+  for (int ii =0; ii<inters.size (); ii++)
+  {
+    if (inters[ii]>= z1 && inters[ii] <=z2)
+    {
+      fraction[8] = (inters[ii]  - z1)/(z2 - z1);
     }
   } 
 
-  ct0 = ray_cache (x1, y2,2);
-  for (int ii =0; ii<ct0.inters.size (); ii++)
+  it0 = ray_cache.rays[2].find ({x2, y1});
+  inters = it0->second.inters;
+
+  for (int ii =0; ii<inters.size (); ii++)
   {
-    if (ct0.inters[ii]>= z1 && ct0.inters[ii] <=z2)
+    if (inters[ii]>= z1 && inters[ii] <=z2)
     {
-      fraction[11]  = (ct0.inters[ii]  - z1)/(z2 - z1);
+      fraction[9] = (inters[ii]  - z1)/(z2 - z1);
     }
   } 
-  
+
+  it0 = ray_cache.rays[2].find ({x2, y2});
+  inters = it0->second.inters;
+
+  for (int ii =0; ii<inters.size (); ii++)
+  {
+    if (inters[ii]>= z1 && inters[ii] <=z2)
+    {
+      fraction[10] = (inters[ii]  - z1)/(z2 - z1);
+    }
+  } 
+
+  it0 = ray_cache.rays[2].find ({x1, y2});
+  inters = it0->second.inters;
+
+  for (int ii =0; ii<inters.size (); ii++)
+  {
+    if (inters[ii]>= z1 && inters[ii] <=z2)
+    {
+      fraction[11] = (inters[ii]  - z1)/(z2 - z1);
+    }
+  } 
+
   return fraction;
 }
 

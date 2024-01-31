@@ -46,10 +46,13 @@ ray_cache_t
 
    static int_coord_t count_cache;
    static int_coord_t count_new;
+   int count_new_dir[3] = {0, 0, 0};
+   int count_cache_dir[3] = {0, 0, 0};
    // unsigned dir; //direction of the ray
    NS::NanoShaper ns;
    
-   int num_req_rays = 0;
+   // int num_req_rays = 0;
+   int num_req_rays[3] = {0, 0, 0};
    std::array<std::set<std::array<double, 2>, map_compare>, 3> rays_list; //list of req rays
 
    crossings_t &

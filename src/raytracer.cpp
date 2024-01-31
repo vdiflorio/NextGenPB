@@ -25,8 +25,9 @@ ray_cache_t::operator() (double x0, double x1, unsigned direct)
   int rank;
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 
-  // this->dir = direct;
   static crossings_t cr_t;  
+  // static crossings_t dummy;
+  // crossings_t & cr_t = dummy;
   
   static std::array<double, 2> start_point;
   start_point = {x0, x1};
@@ -36,12 +37,14 @@ ray_cache_t::operator() (double x0, double x1, unsigned direct)
   if (it0 != rays[direct].end () && it0->second.init == 1)
     {
       count_cache++;
+      count_cache_dir[direct]++;
       cr_t = it0->second;
     }
    
   else if (it0 != rays[direct].end () && it0->second.init == 0)
     {
       count_new++;
+      count_new_dir[direct]++;
       if (rank == 0)
           compute_ns_inters (it0->second);
     }
@@ -57,6 +60,7 @@ ray_cache_t::operator() (double x0, double x1, unsigned direct)
       rays[direct][start_point] = std::move (tmp);
       cr_t = rays[direct][start_point];
       count_new++;
+      count_new_dir[direct]++;
     }
     
   return rays[direct][start_point];
@@ -73,9 +77,9 @@ ray_cache_t::fill_cache ()
   for (unsigned idir = 0; idir < 3; ++idir) {
     std::vector<std::array<double, 2>> rays_vector (rays_list[idir].begin (), rays_list[idir].end ()); //copy the set content inside a vector
     
-    num_req_rays = rays_vector.size (); //numb of req rays from each proc
+    num_req_rays[idir] = rays_vector.size (); //numb of req rays from each proc
     MPI_Barrier(mpicomm);
-    std::cout << "Sending " << num_req_rays << " rays requested from rank " << rank << std::endl;
+    std::cout << "Sending " << num_req_rays[idir] << " rays requested from rank " << rank << std::endl;
 
     std::vector<unsigned char> local_ser_rays_vec = serialize::write (rays_vector); //vector of char for the rays_vector
     std::vector<unsigned char> global_ser_rays_vec; //vector with all the rays from all proc
@@ -99,7 +103,7 @@ ray_cache_t::fill_cache ()
     MPI_Reduce (&ser_rays_len, &global_ser_rays_len, 1, MPI_INT, MPI_SUM, 0, mpicomm); //fill global_ser_rays_len
    
     MPI_Gather (&ser_rays_len, 1, MPI_INT, proc_ser_rays_len, 1, MPI_INT, 0, mpicomm); //fill proc_ser_rays_len
-    MPI_Gather (&num_req_rays, 1, MPI_INT, proc_num_req_rays, 1, MPI_INT, 0, mpicomm); //fill proc_num_req_rays
+    MPI_Gather (&num_req_rays[idir], 1, MPI_INT, proc_num_req_rays, 1, MPI_INT, 0, mpicomm); //fill proc_num_req_rays
   
     if (rank == 0) {
       for (int i = 1; i < size; i++)
@@ -170,8 +174,6 @@ ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS
   ns.setConfig<double>("Grid_scale", 1.0);
   ns.setConfig<double>("Self_Intersections_Grid_Coefficient", 1.5);
   ns.buildAnalyticalSurface();
-  // ray_cache_t::dir = 1; 
-  // ns.setDirection(dir);
   std::cout << "\n" << std::endl;
          
   std::vector<unsigned> idx; 
@@ -185,46 +187,9 @@ ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS
   // left-bottom corner
   ns.getGridPointCoordinates(0, 0, 0, coords);
   std::copy(coords.cbegin(), coords.cend(), crossings_t::start);
+
+  
 }
-
-
-/* versione backup
-void
-ray_cache_t::compute_ns_inters (crossings_t & ct)
-{  
-  double start_ray[3] = {ct.point[0], crossings_t::start[ct.dir], ct.point[1]};
-  bool compute_normals = true;
-  
-  if (ct.point[0] < crossings_t::start[0] || ct.point[1] < crossings_t::start[2] || ct.point[0] > crossings_t::end[0] || ct.point[1] > crossings_t::end[2]) //out of the molecule
-    {
-      ct.init = 1;
-      return;
-    }
-  
-  std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
-  ns.castAxisOrientedRay (start_ray, crossings_t::end[ct.dir], ints_norms, ct.dir, compute_normals);
-
-  if (ints_norms.size() != 0)
-  {
-     for (unsigned i = 0; i < ints_norms.size(); i++)
-     {
-        ct.inters.push_back (ints_norms[i].first);
-        
-        ct.normals.push_back (*(ints_norms[i].second));
-        ct.normals.push_back (*(ints_norms[i].second+1));
-        ct.normals.push_back (*(ints_norms[i].second+2));
-        
-        //if (i%2 == 0)
-          //ct.flags.push_back (1);
-        //else
-          //ct.flags.push_back (0); 
-     }
-  }
-  
-  ct.init = 1; //ray is now initialized
-}
-*/  
-
 
 
 void

@@ -98,6 +98,8 @@ poisson_boltzmann
   std::vector<double> epsilon_out; 
   std::vector<double> reaction; 
   std::vector<double> ones_in;
+  
+  std::set<std::array<int, 2>> int_nodes; 
 
   std::unique_ptr<distributed_vector> markn;
   std::unique_ptr<distributed_vector> epsilon_nodes;
@@ -213,9 +215,12 @@ poisson_boltzmann
   void
   abs_value_field(distributed_vector &phi);
 
-  std::array<double,12>
-  cube_fraction_intersection(double x1, double y1, double z1, double x2, double y2, double z2,ray_cache_t & ray_cache);
+  // std::array<double,12>
+  // cube_fraction_intersection(double x1, double y1, double z1, double x2, double y2, double z2,ray_cache_t & ray_cache);
   
+  std::array<double,12>
+  cube_fraction_intersection(tmesh_3d::quadrant_iterator& quadrant, 
+                                                ray_cache_t & ray_cache);
 };
 
 std::basic_istream<char>& 
