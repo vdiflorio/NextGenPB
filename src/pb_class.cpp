@@ -1989,22 +1989,21 @@ poisson_boltzmann::cube_fraction_intersection(tmesh_3d::quadrant_iterator& quadr
                                               ray_cache_t & ray_cache)
  
 
-  //            v7_________e7_________v8
+  //            v6_________e7_________v7
   //             /|                  /|
   //         e8 / |                 / |
   //           /  |             e6 /  |
   //          /   | e12           /   | e11
-  //       v5/____|_____e5_______/v6  |
+  //       v4/____|_____e5_______/v5  |
   //         |    |              |    |
-  //         |  v3|______e3______|____|v4
+  //         |  v2|______e3______|____|v3
   //     e9  |   /               |   /   
   //         |  /            e10 |  / 
   //         | /  e4             | / e2
   //         |/                  |/
-  //       v1/_________e1________/v2
+  //       v0/_________e1________/v1
 {
   std::array<double,12> fraction = {-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5};
-  const std::map<std::array<double, 2> , crossings_t, map_compare> r;
   double x1 =quadrant->p(0, 0), x2 = quadrant->p(0, 7),
          y1 =quadrant->p(1, 0), y2 = quadrant->p(1, 7),
          z1 =quadrant->p(2, 0), z2 = quadrant->p(2, 7);
@@ -2151,6 +2150,189 @@ poisson_boltzmann::cube_fraction_intersection(tmesh_3d::quadrant_iterator& quadr
 
   return fraction;
 }
+
+
+double wha( double alfa1, double alfa2, double frac)
+{
+  return 1.0/(frac/alfa1 + (1-frac)/alfa2);
+}
+
+double flux_dix( double alfa1, double alfa2)
+{
+  return alfa1 < alfa2 ? 1 : -1;
+}
+static constexpr
+std::array<int, 12> edge_axis = {0,1,0,1,0,1,0,1,2,2,2,2};
+
+static constexpr 
+std::array<std::array<int, 2>, 12> edge2nodes = {{
+                                                  {0, 1},
+                                                  {1, 3},
+                                                  {2, 3},
+                                                  {0, 2},
+                                                  {4, 5},
+                                                  {5, 7},
+                                                  {6, 7},
+                                                  {4, 6},
+                                                  {0, 4},
+                                                  {1, 5},
+                                                  {3, 7},
+                                                  {2, 6}
+                                                }};
+void 
+poisson_boltzmann::energy(ray_cache_t & ray_cache)
+{
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
+  if (rank == 0)
+     std::cout << "\nStarting energy calculation with surface integrals" << std::endl;
+  
+  
+  double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/(e*e);   //adim e_in
+  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/(e*e); //adim e_out
+
+  double net_charge = 0.0;
+  for (const NS::Atom& i : atoms){
+    net_charge += i.charge;
+  }
+
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////
+  double hx, hy, hz;
+  std::array<double,12> frac;
+  std::array<double,3> V;
+  std::array<double,3> h;
+  std::array<double,3> area_h;
+
+  
+
+  distributed_vector flux (tmsh.num_owned_nodes (), mpicomm);         
+  flux.get_owned_data ().assign (flux.get_owned_data ().size (), 0.0);
+
+  double constant_pol = 0.5*(1.0/eps_out - 1.0/eps_in)/(4.0*pi);
+  double constant_react = 1.0/(8*pi*eps_out);
+  double distance = 0;
+  double first_int = 0.0;
+  double tmp_flux;
+
+  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
+           quadrant != this->tmsh.end_quadrant_sweep ();
+           ++quadrant)
+  {
+    h[0] = quadrant->p(0, 7) - quadrant->p(0, 0);
+    h[1] = quadrant->p(1, 7) - quadrant->p(1, 0);
+    h[2] = quadrant->p(2, 7) - quadrant->p(2, 0);
+    
+    frac = cube_fraction_intersection(quadrant, ray_cache);
+    area_h[0] = h[1]*h[2]/h[0] * 0.25;
+    area_h[1] = h[0]*h[2]/h[1] * 0.25;
+    area_h[2] = h[0]*h[1]/h[2] * 0.25;
+
+    int i1 = 0, i2 = 0;
+    for (int kk = 0; kk < 12; ++kk)
+    {
+      tmp_flux = 0.0;
+      i1 = edge2nodes[kk][0];
+      i2 = edge2nodes[kk][1];
+      V[0] = quadrant->p(0, i1);
+      V[1] = quadrant->p(1, i1);
+      V[2] = quadrant->p(2, i1);
+      if (frac[kk] > -0.5)
+      {
+
+        V[edge_axis[kk]] += frac[kk]*h[edge_axis[kk]];
+
+        tmp_flux = -((*phi)[quadrant->gt (i2)] - (*phi)[quadrant->gt (i1)])*
+                      wha((*epsilon_nodes)[quadrant->gt (i1)],
+                          (*epsilon_nodes)[quadrant->gt (i2)], frac[kk])*
+                      flux_dix((*epsilon_nodes)[quadrant->gt (i1)],
+                              (*epsilon_nodes)[quadrant->gt (i2)])*
+                      area_h[edge_axis[kk]];
+
+        flux[quadrant->gt (i1)] += tmp_flux;
+        for (const NS::Atom& i : atoms){
+          distance = std::hypot(i.pos[0]-V[0], i.pos[1]-V[1], i.pos[2]-V[2]);
+          first_int +=  i.charge*tmp_flux/distance;
+        }
+      }
+        
+    }
+
+  }
+  flux.assemble(replace_op);
+  
+  
+  double charge_pol = std::accumulate(flux.get_owned_data ().begin (), 
+                                      flux.get_owned_data ().end (),
+                                      0.0);
+  double energy_pol = constant_pol*first_int;
+  //
+  //coulombic energy
+
+  // if (rank == 0) {
+  //   for (const NS::Atom& i : atoms){
+  //     if ( std::fabs(i.charge) > 0.0){
+  //       for (const NS::Atom& j : atoms){
+  //         if ( std::fabs(j.charge) > 0.0){ 
+  //           if(j_atom > i_atom ){
+  //             distance = std::hypot((i.pos[0] - j.pos[0]), 
+  //                                 (i.pos[1] - j.pos[1]), 
+  //                                 (i.pos[2] - j.pos[2]));
+  //             coul_energy += i.charge*j.charge/distance;                           
+  //           }
+  //         }
+  //         j_atom ++;
+  //       }
+  //     }
+  //     i_atom ++;
+  //     j_atom = 0;
+  //   }
+    
+  //   coul_energy = coul_energy*den_in;
+  // }  
+    
+
+  if (rank == 0) {
+  MPI_Reduce(MPI_IN_PLACE, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+             mpicomm);
+  MPI_Reduce(MPI_IN_PLACE, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+             mpicomm);
+  } else {
+  MPI_Reduce(&charge_pol, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+             mpicomm);
+  MPI_Reduce(&energy_pol, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+             mpicomm);
+  }
+              
+  // Print the result
+  if (rank == 0) {
+    std::cout << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
+    std::cout << "Net charge: "
+              << std::setprecision(16)<<net_charge
+              << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << std::endl;
+
+    std::cout << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
+    std::cout << "Polarization charge: "
+              << std::setprecision(16)<<charge_pol/(4.0*pi)
+              << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << std::endl;
+
+    std::cout << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
+    std::cout << "Polarization energy: "
+              << std::setprecision(16)<<energy_pol
+              << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << std::endl;
+
+  }
+}
+
 
 void 
 poisson_boltzmann::surface_integrals_energy()

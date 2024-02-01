@@ -95,6 +95,7 @@ main (int argc, char **argv)
     }
   TOC ("compute electric potential");
   
+  pb.energy(ray_cache);
   
   // TIC ();
   // pb.refine_only_surface (ray_cache);
@@ -123,9 +124,9 @@ main (int argc, char **argv)
             nlohmann::json j;
             save_ray_cache (j, ray_cache.rays[i]);
             
-            std::cout << "Count cached rays: " << ray_cache.count_cache_dir[i] << std::endl;
-            std::cout << "Count new rays: " << ray_cache.count_new_dir[i] << std::endl;
-            std::cout << std::endl;
+            // std::cout << "Count cached rays: " << ray_cache.count_cache_dir[i] << std::endl;
+            // std::cout << "Count new rays: " << ray_cache.count_new_dir[i] << std::endl;
+            // std::cout << std::endl;
             std::ofstream ray_cached_file;
             std::string filename = "ray_cache_";
             std::string extension = ".json";
@@ -183,14 +184,14 @@ save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2> , crossi
     
     j += nlohmann::json{{"ray", it.first}, {"inters", (it.second.inters)}, {"normals", (it.second.normals)}};
     
-    if (it.second.inters.size()>0)
-    {
-      for (int i = 0; i < it.second.inters.size(); ++i)
-      {
-        std::cout<< std::hypot(it.first[0],it.first[1], it.second.inters[i]) << "  ";
-      }
-      std::cout<<std::endl;
-    }
+    // if (it.second.inters.size()>0)
+    // {
+    //   for (int i = 0; i < it.second.inters.size(); ++i)
+    //   {
+    //     std::cout<< std::hypot(it.first[0],it.first[1], it.second.inters[i]) << "  ";
+    //   }
+    //   std::cout<<std::endl;
+    // }
   }
 }
 

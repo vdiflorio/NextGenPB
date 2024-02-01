@@ -193,6 +193,8 @@ poisson_boltzmann
   void
   lis_compute_electric_potential (ray_cache_t & ray_cache);
   
+  void 
+  energy(ray_cache_t & ray_cache);
   
   void 
   surface_integrals_energy();
