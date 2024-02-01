@@ -2254,10 +2254,8 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
           distance = std::hypot(i.pos[0]-V[0], i.pos[1]-V[1], i.pos[2]-V[2]);
           first_int +=  i.charge*tmp_flux/distance;
         }
-      }
-        
+      }        
     }
-
   }
   flux.assemble(replace_op);
   
@@ -2266,30 +2264,35 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
                                       flux.get_owned_data ().end (),
                                       0.0);
   double energy_pol = constant_pol*first_int;
+  
   //
   //coulombic energy
-
-  // if (rank == 0) {
-  //   for (const NS::Atom& i : atoms){
-  //     if ( std::fabs(i.charge) > 0.0){
-  //       for (const NS::Atom& j : atoms){
-  //         if ( std::fabs(j.charge) > 0.0){ 
-  //           if(j_atom > i_atom ){
-  //             distance = std::hypot((i.pos[0] - j.pos[0]), 
-  //                                 (i.pos[1] - j.pos[1]), 
-  //                                 (i.pos[2] - j.pos[2]));
-  //             coul_energy += i.charge*j.charge/distance;                           
-  //           }
-  //         }
-  //         j_atom ++;
-  //       }
-  //     }
-  //     i_atom ++;
-  //     j_atom = 0;
-  //   }
+  double coul_energy   = 0.0;
+  double den_in        = 1.0/(eps_in);
+  int i_atom = 0;
+  int j_atom = 0;
+  if (rank == 0) 
+  {
+    for (const NS::Atom& i : atoms){
+      if ( std::fabs(i.charge) > 0.0){
+        for (const NS::Atom& j : atoms){
+          if ( std::fabs(j.charge) > 0.0){ 
+            if(j_atom > i_atom ){
+              distance = std::hypot((i.pos[0] - j.pos[0]), 
+                                  (i.pos[1] - j.pos[1]), 
+                                  (i.pos[2] - j.pos[2]));
+              coul_energy += i.charge*j.charge/distance;                           
+            }
+          }
+          j_atom ++;
+        }
+      }
+      i_atom ++;
+      j_atom = 0;
+    }
     
-  //   coul_energy = coul_energy*den_in;
-  // }  
+    coul_energy = coul_energy*den_in;
+  }  
     
 
   if (rank == 0) {
@@ -2305,7 +2308,8 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   }
               
   // Print the result
-  if (rank == 0) {
+  if (rank == 0) 
+  {
     std::cout << std::endl;
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
     std::cout << "Net charge: "
@@ -2330,6 +2334,13 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << std::endl;
 
+    std::cout << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
+    std::cout << "Coulumbic energy value: "
+              << std::setprecision(16)<<coul_energy
+              << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << std::endl;
   }
 }
 
@@ -2514,10 +2525,8 @@ poisson_boltzmann::surface_integrals_energy()
 
     }
   }
-  std::cout<<second_int << std::endl;
   energy_pol = constant*first_int;
   energy_react = second_int - constant_react*first_int;
-  coul_energy = coul_energy*den_in;
   ///////////////////////////////////////////////////////// 
   
   /////////////////////////////////////////////////////////
@@ -2760,50 +2769,6 @@ poisson_boltzmann::analitic_potential()
   field_an.assemble (replace_op);
   tmsh.octbin_export ("field_an_0", field_an);
 }
-
-
-void 
-poisson_boltzmann::abs_value_field(distributed_vector &phi)
-{
-  distributed_vector abs_field (tmsh.num_owned_nodes (), mpicomm);
-  bim3a_solution_with_ghosts (tmsh, abs_field, replace_op); 
-  
-  
-  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-           quadrant != this->tmsh.end_quadrant_sweep ();
-           ++quadrant){
-    double
-      x[2] = {quadrant->p (0,0), quadrant->p (0,7)},
-      y[2] = {quadrant->p (1,0), quadrant->p (1,7)},
-      z[2] = {quadrant->p (2,0), quadrant->p (2,7)}; 
-      double phi_loc[8] = {0,0,0,0,0,0,0,0};
-    for(int ii=0; ii<8 ; ++ii){
-      if (! quadrant->is_hanging (ii)){
-			  phi_loc[ii] = phi[quadrant ->gt(ii)];
-      }
-			else{
-			  int np = quadrant->num_parents(ii);
-				for (int pp = 0; pp < np; ++pp)
-				{
-					phi_loc[ii] += phi[quadrant ->gparent (pp, ii)];
-	   		}
-		  	phi_loc[ii] /= np;
-		  }
-      abs_field[quadrant ->gt(ii)] = 
-        std::hypot(dudx(x[0], y[0], z[0], x, y, z, phi_loc),
-                   dudy(x[0], y[0], z[0], x, y, z, phi_loc),
-                   dudz(x[0], y[0], z[0], x, y, z, phi_loc));
-    }
-    
-    
-  
-  }
-  abs_field.assemble (replace_op);
-  tmsh.octbin_export ("field_0", abs_field);
-  
-  
-}
-
 
 
 
