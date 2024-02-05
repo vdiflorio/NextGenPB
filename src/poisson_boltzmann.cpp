@@ -75,17 +75,17 @@ main (int argc, char **argv)
   pb.create_markers (ray_cache);
   TOC ("create element markers");
 
-  TIC ();
-  pb.export_tmesh (ray_cache);
-  TOC ("export tmesh");
+  // TIC ();
+  // pb.export_tmesh (ray_cache);
+  // TOC ("export tmesh");
 
-  TIC ();
-  pb.export_marked_tmesh ();
-  TOC ("export marked tmesh");
+  // TIC ();
+  // pb.export_marked_tmesh ();
+  // TOC ("export marked tmesh");
   
   TIC ();
   if (pb.linear_solver_name == "mumps")
-     pb.mumps_compute_electric_potential ();
+     pb.mumps_compute_electric_potential (ray_cache);
   else if (pb.linear_solver_name == "lis")
      pb.lis_compute_electric_potential (ray_cache);
   else 
@@ -95,8 +95,9 @@ main (int argc, char **argv)
     }
   TOC ("compute electric potential");
   
-  pb.energy(ray_cache);
-  
+  TIC ();
+    pb.energy(ray_cache);
+  TOC ("compute energy:")
   // TIC ();
   // pb.refine_only_surface (ray_cache);
   // TOC ("refine only surface");
@@ -118,8 +119,8 @@ main (int argc, char **argv)
           //Save ray_cache:
           for (int i = 0; i < 3; ++i)
           { 
-            std::cout << "Direzione: "<< i <<std::endl;
-            std::cout << std::endl;
+            // std::cout << "Direzione: "<< i <<std::endl;
+            // std::cout << std::endl;
             
             nlohmann::json j;
             save_ray_cache (j, ray_cache.rays[i]);

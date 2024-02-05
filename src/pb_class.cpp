@@ -190,49 +190,6 @@ poisson_boltzmann::levelsetfun (double x, double y, double z)
   return dist;
 }
 
-/* versione backup
-double
-poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z)
-{ 
-  int rank;
-  MPI_Comm_rank (mpicomm, &rank);  
-  
-  crossings_t & cty = ray_cache (x, z, 1); //check if the ray parallel to y-axis is in the cache
-  crossings_t & ctx = ray_cache (y, z, 0); //check if the ray parallel to x-axis is in the cache
-  crossings_t & ctz = ray_cache (x, y, 2);
-
-  if (!cty.init && rank != 0)
-    {
-      std::array<double, 2> ray = {x, z};
-      ray_cache.rays[1].erase (ray);
-      return -1.;
-    }
-  
-  if (!ctx.init && rank != 0)
-    {
-      std::array<double, 2> ray = {y, z};
-      ray_cache.rays[0].erase (ray);
-      return -1.;
-    }
-
-  if (!ctz.init && rank != 0)
-    {
-      std::array<double, 2> ray = {x, y};
-      ray_cache.rays[2].erase (ray);
-      return -1.;
-    }
-
-  int i = 0;
-  if (cty.inters.size () == 0 || y < cty.inters[i])
-   return 0; //if there are no inters or y_the coord is before the first intersection, the point is outside.
-    
-  while (i < cty.inters.size () && y > cty.inters[i]) //go on until the inters is passed
-   i++;
-
-  return (i % 2);
-}
-*/
-
 double
 poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir)
 { 
@@ -573,236 +530,6 @@ poisson_boltzmann::is_in (const NS::Atom& i,
 
   return retval;
 }
-
-/* versione backup
-void
-poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
-{
-  int rank, size;
-  MPI_Comm_size (mpicomm, &size);
-  MPI_Comm_rank (mpicomm, &rank);
-  
-  int num_cycles = 2;
-  if (size == 0 || surf_type == 2)
-    num_cycles = 1;
-  
-  int coars_ref_cycles = (maxlevel - unilevel) > (unilevel - minlevel) ? (maxlevel - unilevel) : (unilevel - minlevel);
-  for (int kk = 0; kk < coars_ref_cycles; ++kk)
-    {
-      // REFINEMENT
-      {
-	      distributed_vector rcoeff (tmsh.num_owned_nodes ());	
-		
-      	for (int jj = 0; jj < num_cycles; jj++)
-      	  {        
-            ray_cache.num_req_rays = 0; //zero at each ref/coarsen cycle
-            ray_cache.rays_list[1].clear (); 
-
-            if (rank == 0 && jj == 0)
-              std::cout << "Refinement: " << kk << std::endl;
-
-            for (auto quadrant = tmsh.begin_quadrant_sweep ();
-                 quadrant != tmsh.end_quadrant_sweep ();
-                 ++quadrant)
-              {
-
-                for (int ii = 0; ii < 8; ++ii)
-                  {
-                            
-                    if (! quadrant->is_hanging (ii))
-                      {
-                        if (surf_type == 2)
-                          rcoeff[quadrant->gt (ii)] = levelsetfun (quadrant->p (0, ii),
-                                                                   quadrant->p (1, ii),
-                                   				                         quadrant->p (2, ii));
-                        else
-                          {
-                            rcoeff[quadrant->gt (ii)] = is_in_ns_surf (ray_cache,
-                                                                       quadrant->p (0, ii),
-                  		            		                                 quadrant->p (1, ii),
-                                                                       quadrant->p (2, ii));
-                    
-                           if (rcoeff[quadrant->gt (ii)] < -0.5)
-                             {
-                               ray_cache.num_req_rays++;
-      			        
-      			                   std::array<double, 2> ray;
-                               ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
-                               ray_cache.rays_list[1].insert(ray);
-      			                 }
-                         }
-                       }
-                  else
-                    for (int jj = 0; jj < quadrant->num_parents (ii); ++jj)
-                      rcoeff[quadrant->gparent (jj, ii)] += 0.;
-                  }
-              }
-            MPI_Barrier(mpicomm);  
-            ray_cache.fill_cache();
-          }
-            
-        auto refinement = [&rcoeff,this]
-          (tmesh_3d::quadrant_iterator q) -> int
-          {
-            int currentlevel = static_cast<int> (q->the_quadrant->level);
-            int retval = 0;
-            double min = 2.0; 
-            double max = 0.0;
-            double tmp = 0.0;
-
-            if (currentlevel >= this->maxlevel)
-              retval = 0;
-            else
-              {
-                for (int ii = 0; ii < 8; ++ii)
-                  {
-
-                    if (! q->is_hanging (ii))
-                      {
-                        tmp = rcoeff[q->gt (ii)];
-
-                        if (tmp > max) max = tmp;
-                        if (tmp < min) min = tmp;
-                      }
-
-                  }
-                if (this->surf_type == 2)
-                  {
-                    if (max > 1 && min < 1)
-                      retval = this->maxlevel - currentlevel;
-                    else
-                      for (const NS::Atom& i : atoms) 
-                        if (is_in (i, q))
-                          {
-                            retval = this->maxlevel - currentlevel;
-                            break;
-                          }
-                   }
-                else 
-                  {
-                    if (max > 0.5 && min < 0.5)
-                      retval = this->maxlevel - currentlevel;
-                    else
-                      for (const NS::Atom& i : atoms) 
-                        if (is_in (i, q))
-                          {
-                            retval = this->maxlevel - currentlevel;
-                            break;
-                          }
-                  }
-              }
-	    
-            return (retval);
-          };
-
-        tmsh.set_refine_marker (refinement);
-        tmsh.refine (0, 1);
-      }
-      
-      // COARSENING
-      {
-        distributed_vector rcoeff (tmsh.num_owned_nodes ());
-        
-        for (int jj = 0; jj < num_cycles; jj++) {
-            ray_cache.num_req_rays = 0; //zero at each ref/coars cycle
-            ray_cache.rays_list[1].clear (); 
-
-            if (rank == 0 && jj == 0)
-              std::cout << "Coarsening: " << kk << std::endl;
-
-            for (auto quadrant = tmsh.begin_quadrant_sweep ();
-                 quadrant != tmsh.end_quadrant_sweep ();
-                 ++quadrant) {
-
-                for (int ii = 0; ii < 8; ++ii)
-                  {
-                            
-                    if (! quadrant->is_hanging (ii))
-                      {
-                        if (surf_type == 2)
-                          rcoeff[quadrant->gt (ii)] = levelsetfun (quadrant->p (0, ii),
-                                                                   quadrant->p (1, ii),
-                                                                   quadrant->p (2, ii));
-                       else
-                         {
-                           rcoeff[quadrant->gt (ii)] = is_in_ns_surf (ray_cache,
-                                                                      quadrant->p (0, ii),
-                                                                      quadrant->p (1, ii),
-                                                                      quadrant->p (2, ii));
-                    
-                           if (rcoeff[quadrant->gt (ii)] < -0.5)
-                             {
-                               ray_cache.num_req_rays++;
-      			        
-      			        std::array<double, 2> ray;
-                    ray = {quadrant->p (0, ii), quadrant->p (2, ii)};
-      			        ray_cache.rays_list[1].insert(ray);
-      			      }
-                         }
-                       }
-                  else
-                    for (int jj = 0; jj < quadrant->num_parents (ii); ++jj)
-                      rcoeff[quadrant->gparent (jj, ii)] += 0.;
-                  }
-              }
-            MPI_Barrier(mpicomm);   
-            ray_cache.fill_cache();
-          }
-          
-        auto coarsening = [&rcoeff,this]
-          (tmesh_3d::quadrant_iterator q) -> int
-          {
-            int currentlevel = static_cast<int> (q->the_quadrant->level);
-            int retval = 0;
-            double min = 2.0;
-            double max = 0.0;
-            double tmp = 0.0;
-
-            if (currentlevel <= this->minlevel)
-              retval = 0;
-            else
-              {
-                for (int ii = 0; ii < 8; ++ii)
-                  {
-
-                    if (! q->is_hanging (ii))
-                      {
-                        tmp = rcoeff[q->gt (ii)];
-
-                        if (tmp > max) max = tmp;
-                        if (tmp < min) min = tmp;
-                      }
-
-                   }
-                 if (this->surf_type == 2)
-                   {
-                     if (min > 1 || max < 1)
-                       retval = currentlevel - this->minlevel;  
-                   }
-                 else
-                   {
-                     if (min > 0.5 || max < 0.5)
-                       retval = currentlevel - this->minlevel;
-                   }
-
-                 for (const NS::Atom& i : atoms) 
-                   if (is_in (i, q))
-                     {
-                       retval = 0;
-                       break;
-                     }
-               }
-               
-             return (retval);
-          };
-
-        tmsh.set_coarsen_marker (coarsening);
-        tmsh.coarsen (0, 1);
-      }
-    }
-}
-*/
-
 
 void
 poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
@@ -1545,7 +1272,7 @@ q1 (double X, double Y, double Z, const double *x,
 
 
 void
-poisson_boltzmann::mumps_compute_electric_potential ()
+poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
 {
   int rank;
   MPI_Comm_rank (mpicomm, &rank);
@@ -1556,14 +1283,7 @@ poisson_boltzmann::mumps_compute_electric_potential ()
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/(e*e);   //adim e_in
   double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/(e*e); //adim e_out
   epsilon.assign (tmsh.num_local_quadrants (), eps_in); //e_in
-  epsilon_in.assign (tmsh.num_local_quadrants (), 0.0); 
-  epsilon_out = epsilon_in;
-  
-  distributed_vector  psi (tmsh.num_owned_nodes ());
-  psi.get_owned_data ().assign (psi.get_owned_data ().size (), 0.0);
-  
-  std::vector<double> ones_in (tmsh.num_local_quadrants (), 0.0);
-  
+   
   for (auto epsp = epsilon.begin (), mp = marker.begin ();
        epsp != epsilon.end () || mp != marker.end ();
        ++epsp, ++mp) 
@@ -1571,90 +1291,104 @@ poisson_boltzmann::mumps_compute_electric_potential ()
       (*epsp) = eps_in; 
     else  
       (*epsp) = eps_out;
+        
 
-  for (auto epsp_in = epsilon_in.begin (), 
-            epsp_out = epsilon_out.begin (), 
-            onesp_in = ones_in.begin (), 
-            mp = marker.begin ();
-       epsp_in != epsilon_in.end () 
-       || epsp_out != epsilon_out.end () 
-       || onesp_in != ones_in.end ()
-       || mp != marker.end ();
-       ++epsp_in, ++epsp_out, ++onesp_in, ++mp) 
-    if ((*mp) < 0.6){
-      (*epsp_in) = eps_in;
-      (*onesp_in) = 1.0; 
-      }
-    else  
-      (*epsp_out) = eps_out;
-  
-  //reaction 
+  /////////////////////////////////////////////////////////           
+  //reactions
   double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
   double k2 = 2.0*C_0*Angs*Angs*e*e/(e_0*e_out*kb*T);  
   reaction.assign (tmsh.num_local_quadrants (), 0.0);
-  
-  distributed_vector ones (tmsh.num_owned_nodes ()); 
-  ones.get_owned_data ().assign (ones.get_owned_data ().size (), 1.0); 
   
   for (auto rp = reaction.begin (), mp = marker.begin ();
        rp != reaction.end () || mp != marker.end ();
        ++rp, ++mp)
     if ((*mp) > 0.6) 
-      (*rp) = eps_out*k2; 
-
-  tmsh.octbin_export_quadrant ("epsilon_0", epsilon);
-  tmsh.octbin_export_quadrant ("reaction_0", reaction);
+      (*rp) = eps_out*k2;
+      
   
-  distributed_vector rho_fixed (tmsh.num_owned_nodes ()); 
-  rho_fixed.get_owned_data ().assign (rho_fixed.get_owned_data ().size (), 0.0); 
+  epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ()); 
+  epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out);
+
+  distributed_vector ones (tmsh.num_owned_nodes ()); 
+  ones.get_owned_data ().assign (ones.get_owned_data ().size (), 1.0); 
+
+  distributed_vector reaction_nodes (tmsh.num_owned_nodes ()); 
+  reaction_nodes.get_owned_data ().assign (ones.get_owned_data ().size (), eps_out*k2);
+
+  for (auto ii = 0; ii< tmsh.num_owned_nodes (); ++ii){
+    if ((*markn).get_owned_data ()[ii]>0.5){
+      (*epsilon_nodes).get_owned_data ()[ii] = eps_in;
+      reaction_nodes.get_owned_data ()[ii] = 0.0;
+    }
+  }
+  bim3a_solution_with_ghosts (tmsh, *epsilon_nodes, replace_op);
+  bim3a_solution_with_ghosts (tmsh, reaction_nodes, replace_op);
+
+
+  //////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////
+
+  rho_fixed = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ()); 
+  rho_fixed->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0); 
   std::vector<double> const_ones (tmsh.num_local_quadrants (), 1.0);
   
   distributed_vector  vol_patch (tmsh.num_owned_nodes (), mpicomm); 
   bim3a_solution_with_ghosts (tmsh, ones, replace_op);
   bim3a_rhs (tmsh, const_ones, ones, vol_patch);
-  vol_patch.assemble ();
+  vol_patch.assemble (); 
   
+
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
            quadrant != this->tmsh.end_quadrant_sweep ();
            ++quadrant)
-    {
+  {
+    if (marker[quadrant->get_forest_quad_idx()] < 0.6)
+    {  // only inside the molecule                                  
       for (const NS::Atom& i : atoms) 
         if (is_in (i, quadrant)) 
+        {
+          //linear approx:
+          double volume = (quadrant->p(0, 7) - quadrant->p(0, 0)) *
+                          (quadrant->p(1, 7) - quadrant->p(1, 0)) *
+                          (quadrant->p(2, 7) - quadrant->p(2, 0)); //volume
+          for (int ii = 0; ii < 8; ++ii)
           {
-            //linear approx:
-            double volume = (quadrant->p(0, 7) - quadrant->p(0, 0)) *
-                            (quadrant->p(1, 7) - quadrant->p(1, 0)) *
-                            (quadrant->p(2, 7) - quadrant->p(2, 0)); //volume
-            for (int ii = 0; ii < 8; ++ii)
-              {
-                double weigth = std::abs ((i.pos[0] - quadrant->p(0, 7-ii))*
-                                          (i.pos[1] - quadrant->p(1, 7-ii))*
-                                          (i.pos[2] - quadrant->p(2, 7-ii))) / volume;
-                    				
-                if (! quadrant->is_hanging (ii))
-                  rho_fixed[quadrant->gt (ii)] += i.charge*4.0*pi*weigth / vol_patch[quadrant->gt (ii)];
-                else
-                  for (int jj = 0; jj < quadrant->num_parents (ii); ++jj)
-                    rho_fixed[quadrant->gparent (jj, ii)] += i.charge*4.0*pi*weigth / 
-                                                               (quadrant->num_parents (ii) * vol_patch[quadrant->gt (ii)]);
-              }
-            //break;
-            }
-      }
-  
+            double weigth = std::abs ((i.pos[0] - quadrant->p(0, 7-ii))*
+                                      (i.pos[1] - quadrant->p(1, 7-ii))*
+                                      (i.pos[2] - quadrant->p(2, 7-ii))) / volume;
+                        
+            if (! quadrant->is_hanging (ii))
+              (*rho_fixed)[quadrant->gt (ii)] += i.charge*4.0*pi*weigth / vol_patch[quadrant->gt (ii)];
+            else
+              for (int jj = 0; jj < quadrant->num_parents (ii); ++jj)
+                (*rho_fixed)[quadrant->gparent (jj, ii)] += i.charge*4.0*pi*weigth / 
+                                                           (quadrant->num_parents (ii) * vol_patch[quadrant->gt (ii)]);
+            
+          }
+          //break;
+        }
+    }   
+  }
+  auto func_frac = [&] (tmesh_3d::quadrant_iterator& quadrant) 
+                        {return cube_fraction_intersection(quadrant,ray_cache);};
+
   distributed_sparse_matrix A; 
   A.set_ranges (tmsh.num_owned_nodes ());
   
   distributed_vector  rhs (tmsh.num_owned_nodes (), mpicomm);
   
-  bim3a_solution_with_ghosts (tmsh, psi);
-  bim3a_advection_diffusion (tmsh, epsilon, psi, A);
+  bim3a_laplacian_frac (tmsh, (*epsilon_nodes), A, func_frac);
+  // bim3a_laplacian_eafe (tmsh, (*epsilon_nodes), A);
+  // bim3a_laplacian (tmsh, epsilon, A);
   
+  // std::cout << "Fin qui tutto bene!"<<std::endl;
+  // std::cout<<std::endl;
   bim3a_solution_with_ghosts (tmsh, ones, replace_op);
-  bim3a_reaction (tmsh, reaction, ones, A); 
-    
-  bim3a_solution_with_ghosts (tmsh, rho_fixed);
-  bim3a_rhs (tmsh, const_ones, rho_fixed, rhs);
+  // bim3a_reaction (tmsh, reaction, ones, A); 
+  bim3a_reaction_frac (tmsh, reaction_nodes, ones, A, func_frac); 
+  
+  bim3a_solution_with_ghosts (tmsh, *rho_fixed);
+  bim3a_rhs (tmsh, const_ones, *rho_fixed, rhs);
     
   
   // Set boundary conditions.
@@ -1685,8 +1419,8 @@ poisson_boltzmann::mumps_compute_electric_potential ()
   A.assemble ();
   rhs.assemble();
   
-  tmsh.octbin_export ("rho_0", rho_fixed);
-  tmsh.octbin_export ("rhs_0", rhs); 
+  // tmsh.octbin_export ("rho_0", rho_fixed);
+  // tmsh.octbin_export ("rhs_0", rhs); 
   
   mumps mumps_solver;
   
@@ -1710,11 +1444,12 @@ poisson_boltzmann::mumps_compute_electric_potential ()
             << mumps_solver.solve ()
             << std::endl;         
   
-  distributed_vector phi  = mumps_solver.get_distributed_solution ();
-  
-  bim3a_solution_with_ghosts (tmsh, phi, replace_op);
+  // distributed_vector phi  = mumps_solver.get_distributed_solution ();
+  phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
+  (*phi) = mumps_solver.get_distributed_solution ();
+  bim3a_solution_with_ghosts (tmsh, (*phi), replace_op);
 
-  tmsh.octbin_export ("phi_0", phi);
+  // tmsh.octbin_export ("phi_0", phi);
   
   ///////
   
@@ -1775,6 +1510,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   }
   bim3a_solution_with_ghosts (tmsh, *epsilon_nodes, replace_op);
   bim3a_solution_with_ghosts (tmsh, reaction_nodes, replace_op);
+
+
   //////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////
 
@@ -1830,10 +1567,12 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   
   distributed_vector  rhs (tmsh.num_owned_nodes (), mpicomm);
   
-  bim3a_laplacian_frac (tmsh, (*epsilon_nodes), A, func_frac);
+  // bim3a_laplacian_frac (tmsh, (*epsilon_nodes), A, func_frac);
   // bim3a_laplacian_eafe (tmsh, (*epsilon_nodes), A);
-  // bim3a_laplacian (tmsh, epsilon, A);
+  bim3a_laplacian (tmsh, epsilon, A);
   
+  // std::cout << "Fin qui tutto bene!"<<std::endl;
+  // std::cout<<std::endl;
   bim3a_solution_with_ghosts (tmsh, ones, replace_op);
   // bim3a_reaction (tmsh, reaction, ones, A); 
   bim3a_reaction_frac (tmsh, reaction_nodes, ones, A, func_frac); 
@@ -1936,6 +1675,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   lis_solver_set_option(&opts[0], solver);
   
   lis_solve(A_lis, rhs_lis, phi_lis, solver);
+  
   phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
 
   lis_vector_get_values(phi_lis, is, ln, phi->get_owned_data ().data());
@@ -1973,10 +1713,10 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   
 	/////////////////////////////////////////////////////////
    
-  tmsh.octbin_export_quadrant ("react_0", reaction);
-  tmsh.octbin_export ("phi_0", *phi);
-  tmsh.octbin_export ("rho_0", *rho_fixed);
-  tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
+  // tmsh.octbin_export_quadrant ("react_0", reaction);
+  // tmsh.octbin_export ("phi_0", *phi);
+  // tmsh.octbin_export ("rho_0", *rho_fixed);
+  // tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
   
    
 }
@@ -1986,7 +1726,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
 std::array<double,12>
 poisson_boltzmann::cube_fraction_intersection(tmesh_3d::quadrant_iterator& quadrant, 
-                                              ray_cache_t & ray_cache)
+                                              const ray_cache_t & ray_cache)
  
 
   //            v6_________e7_________v7
@@ -2151,34 +1891,118 @@ poisson_boltzmann::cube_fraction_intersection(tmesh_3d::quadrant_iterator& quadr
   return fraction;
 }
 
-
-double wha( double alfa1, double alfa2, double frac)
+void
+poisson_boltzmann::normal_intersection(tmesh_3d::quadrant_iterator& quadrant,
+                                       const ray_cache_t & ray_cache,
+                                       int edge, std::array<double,3> &norm)
 {
-  return 1.0/(frac/alfa1 + (1-frac)/alfa2);
+  int dir = edge_axis[edge];
+  int i1 = edge2nodes[edge][0];
+  int i2 = edge2nodes[edge][1];
+  double x1 = quadrant->p(dir, i1),
+         x2 = quadrant->p(dir, i2);
+
+  std::array<double,2> ray;
+  std::vector<int> direzioni ={0,1,2};
+  direzioni.erase(direzioni.begin()+dir);
+  for (unsigned i = 0; i < direzioni.size(); ++i)
+  {
+    ray[i] = quadrant->p(direzioni[i], i1);
+  }
+  
+  auto it0 = ray_cache.rays[dir].find (ray);
+  auto normali = it0->second.normals;
+  auto inters = it0->second.inters;
+
+
+  for (int ii =0; ii<inters.size (); ii++)
+  {
+    if (inters[ii]>= x1 && inters[ii] <=x2)
+    {
+      norm[0] = normali[0 + 3*ii];
+      norm[1] = normali[1 + 3*ii];
+      norm[2] = normali[2 + 3*ii];
+    }
+  }
+} 
+
+int
+poisson_boltzmann::classifyCube(tmesh_3d::quadrant_iterator& quadrant,
+                                double isolevel)
+{
+  int cubeindex = 0;
+
+  if ((*epsilon_nodes)[quadrant->gt (0)] < isolevel) cubeindex |= 1;
+  if ((*epsilon_nodes)[quadrant->gt (1)] < isolevel) cubeindex |= 2;
+  if ((*epsilon_nodes)[quadrant->gt (3)] < isolevel) cubeindex |= 4;
+  if ((*epsilon_nodes)[quadrant->gt (2)] < isolevel) cubeindex |= 8;
+  if ((*epsilon_nodes)[quadrant->gt (4)] < isolevel) cubeindex |= 16;
+  if ((*epsilon_nodes)[quadrant->gt (5)] < isolevel) cubeindex |= 32;
+  if ((*epsilon_nodes)[quadrant->gt (7)] < isolevel) cubeindex |= 64;
+  if ((*epsilon_nodes)[quadrant->gt (6)] < isolevel) cubeindex |= 128;
+
+  // Cube is entirely in/out of the surface 
+  if (edgeTable[cubeindex] == 0)
+    return -1;
+  
+  return cubeindex;
 }
 
-double flux_dix( double alfa1, double alfa2)
+double wha( double eps1, double eps2, double frac)
 {
-  return alfa1 < alfa2 ? 1 : -1;
+  return 1.0/(frac/eps1 + (1-frac)/eps2);
 }
-static constexpr
-std::array<int, 12> edge_axis = {0,1,0,1,0,1,0,1,2,2,2,2};
 
-static constexpr 
-std::array<std::array<int, 2>, 12> edge2nodes = {{
-                                                  {0, 1},
-                                                  {1, 3},
-                                                  {2, 3},
-                                                  {0, 2},
-                                                  {4, 5},
-                                                  {5, 7},
-                                                  {6, 7},
-                                                  {4, 6},
-                                                  {0, 4},
-                                                  {1, 5},
-                                                  {3, 7},
-                                                  {2, 6}
-                                                }};
+double flux_dix( double eps1, double eps2)
+{
+  return eps1 < eps2 ? 1 : -1;
+}
+
+double phi0( double eps1, double eps2, 
+             double phi1, double phi2, double frac)
+{
+  return phi1 + frac*eps2*(phi2-phi1)/(eps2*frac + eps1*(1-frac));
+}
+
+double areaTriangle(const std::array<std::array<double,3>,3> &triangle)
+{
+  
+  double area;
+  std::array<double,3> ab;
+  std::array<double,3> ac;
+
+  for (int i = 0; i < 3; ++i)
+  {
+    ab[i] = triangle[0][i] - triangle[1][i];
+    ac[i] = triangle[0][i] - triangle[2][i];
+  }
+
+  area = 0.5* std::hypot(ab[1]*ac[2] - ab[2]*ac[1],
+                         ab[0]*ac[2] - ab[2]*ac[0],
+                         ab[1]*ac[0] - ab[0]*ac[1]);
+  return area;
+}
+
+int 
+poisson_boltzmann::getTriangles(int cubeindex, 
+                                std::array<std::array<int,3>,5> &triangles)
+{
+  int ntriang = 0;
+  int i;
+  triangles.fill({}); //set matrix to zero
+  for (i=0;triTable[cubeindex][i]!=-1;i+=3) 
+  {
+     // save all the assigned indexes
+    triangles[ntriang][0] = triTable[cubeindex][i  ];
+    triangles[ntriang][1] = triTable[cubeindex][i+1];
+    triangles[ntriang][2] = triTable[cubeindex][i+2];     
+    ntriang++;
+  }
+
+  return ntriang;
+}
+
+
 void 
 poisson_boltzmann::energy(ray_cache_t & ray_cache)
 {
@@ -2201,20 +2025,28 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   double hx, hy, hz;
   std::array<double,12> frac;
   std::array<double,3> V;
+  std::array<double,3> N;
+  std::array<double,3> dist_vert;
   std::array<double,3> h;
   std::array<double,3> area_h;
-
   
+  // distributed_vector flux (tmsh.num_owned_nodes (), mpicomm);         
+  // flux.get_owned_data ().assign (flux.get_owned_data ().size (), 0.0);
 
-  distributed_vector flux (tmsh.num_owned_nodes (), mpicomm);         
-  flux.get_owned_data ().assign (flux.get_owned_data ().size (), 0.0);
+  double charge_pol = 0.0;
 
   double constant_pol = 0.5*(1.0/eps_out - 1.0/eps_in)/(4.0*pi);
   double constant_react = 1.0/(8*pi*eps_out);
-  double distance = 0;
+  double distance = 0.0;
+  double product = 0.0;
   double first_int = 0.0;
+  double second_int = 0.0;
   double tmp_flux;
+  int i1 = 0, i2 = 0;
 
+  // std::cout << "Fin qui tutto bene!"<<std::endl;
+  // std::cout<<std::endl;
+  // flux and polarization energy calculation
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
            quadrant != this->tmsh.end_quadrant_sweep ();
            ++quadrant)
@@ -2224,11 +2056,12 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     h[2] = quadrant->p(2, 7) - quadrant->p(2, 0);
     
     frac = cube_fraction_intersection(quadrant, ray_cache);
+    
     area_h[0] = h[1]*h[2]/h[0] * 0.25;
     area_h[1] = h[0]*h[2]/h[1] * 0.25;
     area_h[2] = h[0]*h[1]/h[2] * 0.25;
 
-    int i1 = 0, i2 = 0;
+    
     for (int kk = 0; kk < 12; ++kk)
     {
       tmp_flux = 0.0;
@@ -2248,8 +2081,8 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
                       flux_dix((*epsilon_nodes)[quadrant->gt (i1)],
                               (*epsilon_nodes)[quadrant->gt (i2)])*
                       area_h[edge_axis[kk]];
+        charge_pol += tmp_flux;
 
-        flux[quadrant->gt (i1)] += tmp_flux;
         for (const NS::Atom& i : atoms){
           distance = std::hypot(i.pos[0]-V[0], i.pos[1]-V[1], i.pos[2]-V[2]);
           first_int +=  i.charge*tmp_flux/distance;
@@ -2257,15 +2090,77 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
       }        
     }
   }
-  flux.assemble(replace_op);
+  // flux.assemble(replace_op);
   
   
-  double charge_pol = std::accumulate(flux.get_owned_data ().begin (), 
-                                      flux.get_owned_data ().end (),
-                                      0.0);
+  // double charge_pol = std::accumulate(flux.get_owned_data ().begin (), 
+  //                                     flux.get_owned_data ().end (),
+  //                                     0.0);
   double energy_pol = constant_pol*first_int;
   
-  //
+  //direct reaction energy
+  int ntriang = 0;
+  int edge;
+  int cubeindex;
+  std::array<std::array<double,3>,3> vert_triangles;
+  std::array<std::array<double,3>,3> norms_vert;
+  std::array<double,3> phi_sup;
+  double area = 0.0;
+
+  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
+           quadrant != this->tmsh.end_quadrant_sweep ();
+           ++quadrant)
+  {
+    h[0] = quadrant->p(0, 7) - quadrant->p(0, 0);
+    h[1] = quadrant->p(1, 7) - quadrant->p(1, 0);
+    h[2] = quadrant->p(2, 7) - quadrant->p(2, 0);
+    
+    cubeindex = classifyCube(quadrant, eps_out);
+    if (cubeindex > -1)
+    {
+      ntriang = getTriangles(cubeindex, triangles);
+      frac = cube_fraction_intersection(quadrant, ray_cache); 
+      for (int ii = 0; ii < ntriang; ++ii)
+      {
+        for (int jj = 0; jj < 3; ++jj)
+        {
+          edge = triangles[ii][jj];
+          i1 = edge2nodes[edge][0];
+          i2 = edge2nodes[edge][1];
+          V[0] = quadrant->p(0, i1);
+          V[1] = quadrant->p(1, i1);
+          V[2] = quadrant->p(2, i1);
+          V[edge_axis[edge]] += frac[edge]*h[edge_axis[edge]];
+          normal_intersection(quadrant, ray_cache, edge, N);
+          vert_triangles[jj] = V;
+          norms_vert[jj] = N;
+          phi_sup[jj]= phi0((*epsilon_nodes)[quadrant->gt (i1)],
+                            (*epsilon_nodes)[quadrant->gt (i2)],
+                            (*phi)[quadrant->gt (i1)],
+                            (*phi)[quadrant->gt (i2)], frac[edge]);
+        
+        }
+        area = areaTriangle(vert_triangles);
+        for (const NS::Atom& i : atoms){
+          for (int kk = 0; kk < 3; ++kk)
+          {
+            dist_vert[0] = -i.pos[0]+vert_triangles[kk][0];
+            dist_vert[1] = -i.pos[1]+vert_triangles[kk][1];
+            dist_vert[2] = -i.pos[2]+vert_triangles[kk][2];
+            distance = std::hypot(dist_vert[0], dist_vert[1], dist_vert[2]);
+            product = dist_vert[0]*norms_vert[kk][0] +
+                      dist_vert[1]*norms_vert[kk][1] +
+                      dist_vert[2]*norms_vert[kk][2];
+            second_int += i.charge*phi_sup[kk]*product/(4.0*pi*distance*distance*distance)*area/3;
+          }
+        }
+      }
+    }
+
+  }
+
+  double energy_react = 0.5*second_int - first_int*constant_react;
+
   //coulombic energy
   double coul_energy   = 0.0;
   double den_in        = 1.0/(eps_in);
@@ -2300,10 +2195,14 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
              mpicomm);
   MPI_Reduce(MPI_IN_PLACE, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
              mpicomm);
+  MPI_Reduce(MPI_IN_PLACE, &energy_react, 1, MPI_DOUBLE, MPI_SUM, 0,
+             mpicomm);
   } else {
   MPI_Reduce(&charge_pol, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
              mpicomm);
   MPI_Reduce(&energy_pol, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+             mpicomm);
+  MPI_Reduce(&energy_react, &energy_react, 1, MPI_DOUBLE, MPI_SUM, 0,
              mpicomm);
   }
               
@@ -2318,7 +2217,7 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << std::endl;
 
-    std::cout << std::endl;
+ 
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
     std::cout << "Polarization charge: "
               << std::setprecision(16)<<charge_pol/(4.0*pi)
@@ -2326,7 +2225,6 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << std::endl;
 
-    std::cout << std::endl;
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
     std::cout << "Polarization energy: "
               << std::setprecision(16)<<energy_pol
@@ -2334,13 +2232,26 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << std::endl;
 
-    std::cout << std::endl;
+    
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
-    std::cout << "Coulumbic energy value: "
+    std::cout << "Direct ionic energy: "
+              << std::setprecision(16)<<energy_react
+              << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << std::endl;
+
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
+    std::cout << "Coulumbic energy: "
               << std::setprecision(16)<<coul_energy
               << std::endl;
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << std::endl;
+
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
+    std::cout << "Total energy: "
+              << std::setprecision(16)<<energy_pol + energy_react + coul_energy
+              << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
   }
 }
 
