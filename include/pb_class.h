@@ -538,7 +538,7 @@ poisson_boltzmann
   void
   normal_intersection(tmesh_3d::quadrant_iterator& quadrant,
                       const ray_cache_t & ray_cache,
-                      int edge, std::array<double,3> &norm);
+                      int edge, std::array<double,3> &norm,double &frac);
 
   int 
   getTriangles(int cubeindex, 

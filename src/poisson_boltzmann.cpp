@@ -55,14 +55,14 @@ main (int argc, char **argv)
   pb.create_mesh ();
   TOC ("create_mesh");
   
-  // TIC ();
-  // pb.init_tmesh ();
-  // TOC ("init_tmesh");
-  
-  
   TIC ();
-  pb.init_tmesh_with_refine_box ();
+  pb.init_tmesh ();
   TOC ("init_tmesh");
+  
+  
+  // TIC ();
+  // pb.init_tmesh_with_refine_box ();
+  // TOC ("init_tmesh");
   
   if (pb.surf_type != 2 && rank == 0)
     ray_cache.init_analytical_surf (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads);
@@ -74,14 +74,6 @@ main (int argc, char **argv)
   TIC ();
   pb.create_markers (ray_cache);
   TOC ("create element markers");
-
-  // TIC ();
-  // pb.export_tmesh (ray_cache);
-  // TOC ("export tmesh");
-
-  // TIC ();
-  // pb.export_marked_tmesh ();
-  // TOC ("export marked tmesh");
   
   TIC ();
   if (pb.linear_solver_name == "mumps")
@@ -98,17 +90,16 @@ main (int argc, char **argv)
   TIC ();
     pb.energy(ray_cache);
   TOC ("compute energy:")
-  // TIC ();
-  // pb.refine_only_surface (ray_cache);
-  // TOC ("refine only surface");
+  
+  TIC ();
+  pb.export_tmesh (ray_cache);
+  TOC ("export tmesh");
 
-  // TIC ();
-  // pb.create_markers (ray_cache);
-  // TOC ("create element markers");
+  TIC ();
+  pb.export_marked_tmesh ();
+  TOC ("export marked tmesh");
 
-  // TIC ();
-  // pb.surface_integrals_energy ();
-  // TOC ("compute energy");
+  pb.analitic_potential();
 
   if (rank == 0) 
     { 

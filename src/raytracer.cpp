@@ -26,8 +26,6 @@ ray_cache_t::operator() (double x0, double x1, unsigned direct)
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 
   static crossings_t cr_t;  
-  // static crossings_t dummy;
-  // crossings_t & cr_t = dummy;
   
   static std::array<double, 2> start_point;
   start_point = {x0, x1};
