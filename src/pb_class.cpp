@@ -2021,7 +2021,17 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   std::array<std::array<double,3>,3> vert_triangles;
   std::array<std::array<double,3>,3> norms_vert;
   std::array<double,3> phi_sup;
+  double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
+         tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
   double area = 0.0, area_tot = 0.0;
+
+  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  double k2 = 2.0*C_0*Angs*Angs*e*e/(e_0*e_out*kb*T);    
+  double k    = std::sqrt(k2);
+  double rs = 2.0;
+  double phi_sup_an = 1.0/(eps_out*(1.0+k*rs)*rs);
+  std::ofstream phi_sup_file;
+  phi_sup_file.open ("phi_sup.txt");
 
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
            quadrant != this->tmsh.end_quadrant_sweep ();
@@ -2035,11 +2045,14 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     if (cubeindex > -1)
     {
       ntriang = getTriangles(cubeindex, triangles);
-      // frac = cube_fraction_intersection(quadrant, ray_cache); 
       for (int ii = 0; ii < ntriang; ++ii)
       {
         for (int jj = 0; jj < 3; ++jj)
         {
+          tmp_eps_1 = 0.0;
+          tmp_eps_2 = 0.0;
+          tmp_phi_1 = 0.0;
+          tmp_phi_2 = 0.0;
           edge = triangles[ii][jj];
           i1 = edge2nodes[edge][0];
           i2 = edge2nodes[edge][1];
@@ -2052,10 +2065,40 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
           
           vert_triangles[jj] = V;
           norms_vert[jj] = N;
-          phi_sup[jj]= phi0((*epsilon_nodes)[quadrant->gt (i1)],
-                            (*epsilon_nodes)[quadrant->gt (i2)],
-                            (*phi)[quadrant->gt (i1)],
-                            (*phi)[quadrant->gt (i2)], fract);
+
+          if (! quadrant->is_hanging (i1))
+          {
+            tmp_phi_1 = (*phi)[quadrant->gt (i1)];
+            tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
+          }
+          else
+            for (int jj = 0; jj < quadrant->num_parents (i1); ++jj)
+            {
+              tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
+              tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
+            }
+
+          if (! quadrant->is_hanging (i2))
+          {
+            tmp_phi_2 = (*phi)[quadrant->gt (i2)];
+            tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
+          }
+          else
+            for (int jj = 0; jj < quadrant->num_parents (i2); ++jj)
+            {
+              tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
+              tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
+            }
+          phi_sup[jj]= phi0(tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
+          
+          // phi_sup[jj]= phi0((*epsilon_nodes)[quadrant->gt (i1)],
+          //                   (*epsilon_nodes)[quadrant->gt (i2)],
+          //                   (*phi)[quadrant->gt (i1)],
+          //                   (*phi)[quadrant->gt (i2)], fract);
+          
+          phi_sup_file << phi_sup[jj] << "  " 
+                       << phi_sup_an << "  " 
+                       << (phi_sup[jj] - phi_sup_an)/phi_sup_an*100 <<std::endl;
         
         }
         area = areaTriangle(vert_triangles);
@@ -2077,8 +2120,9 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     }
 
   }
+  phi_sup_file.close ();
   std::cout << "Integrale di phi*E: "<<0.5*second_int <<std::endl;
-  std::cout << "Errore area: "<<(area_tot-4*pi*4)/(4*pi*4)*100 <<" % " <<std::endl;
+  // std::cout << "Errore area: "<<(area_tot-4*pi*4)/(4*pi*4)*100 <<" % " <<std::endl;
   double energy_react = 0.5*second_int - first_int*constant_react;
 
   //coulombic energy
