@@ -1770,43 +1770,90 @@ poisson_boltzmann::cube_fraction_intersection(tmesh_3d::quadrant_iterator& quadr
   //       v0/_________e1________/v1
 {
   std::array<double,12> fraction = {-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5};
-  // double x1 =quadrant->p(0, 0), x2 = quadrant->p(0, 7),
-  //        y1 =quadrant->p(1, 0), y2 = quadrant->p(1, 7),
-  //        z1 =quadrant->p(2, 0), z2 = quadrant->p(2, 7);
 
   int dir;
   int i1, i2;
   double x1, x2;
   std::array<double,2> ray;
-  // for(int i:{1,3,5,7})
-  for (int edge = 0; edge < 12; ++edge)
+  
+  for(int j:{0,2,4,6})
+  //x-axis edge
   {
-    dir = edge_axis[edge];
-    i1 = edge2nodes[edge][0];
-    i2 = edge2nodes[edge][1];
+    dir = 0;
+    i1 = edge2nodes[j][0];
+    i2 = edge2nodes[j][1];
     x1 = quadrant->p(dir, i1);
     x2 = quadrant->p(dir, i2);
     std::vector<int> direzioni {0,1,2};
-    direzioni.erase(direzioni.begin()+dir);
-    
-    // if (! quadrant->is_hanging (i1))
-    { 
-      for (unsigned i = 0; i < direzioni.size(); ++i)
-      {
-        ray[i] = quadrant->p(direzioni[i], i1);
-      }
-      auto it0 = ray_cache.rays[dir].find (ray);
-      auto inters = it0->second.inters;
+    direzioni.erase(direzioni.begin()+dir);    
+    for (unsigned i = 0; i < direzioni.size(); ++i)
+    {
+      ray[i] = quadrant->p(direzioni[i], i1);
+    }
+    auto it0 = ray_cache.rays[dir].find (ray);
+    auto inters = it0->second.inters;
 
-      for (int ii =0; ii<inters.size (); ii++)
+    for (int ii =0; ii<inters.size (); ii++)
+    {
+      if (inters[ii]>= x1 && inters[ii] <=x2)
       {
-        if (inters[ii]>= x1 && inters[ii] <=x2)
-        {
-          fraction[edge] = (inters[ii]  - x1)/(x2 - x1);
-        }
+        fraction[j] = (inters[ii]  - x1)/(x2 - x1);
       }
-    }     
-  }    
+    }
+  }
+  
+  for(int j:{1,3,5,7})
+  //y-axis edge
+  {
+    dir = 1;
+    i1 = edge2nodes[j][0];
+    i2 = edge2nodes[j][1];
+    x1 = quadrant->p(dir, i1);
+    x2 = quadrant->p(dir, i2);
+    std::vector<int> direzioni {0,1,2};
+    direzioni.erase(direzioni.begin()+dir);    
+    for (unsigned i = 0; i < direzioni.size(); ++i)
+    {
+      ray[i] = quadrant->p(direzioni[i], i1);
+    }
+    auto it0 = ray_cache.rays[dir].find (ray);
+    auto inters = it0->second.inters;
+
+    for (int ii =0; ii<inters.size (); ii++)
+    {
+      if (inters[ii]>= x1 && inters[ii] <=x2)
+      {
+        fraction[j] = (inters[ii]  - x1)/(x2 - x1);
+      }
+    }
+  }
+
+  for(int j:{8,9,10,11})
+  //z-axis edge
+  {
+    dir = 2;
+    i1 = edge2nodes[j][0];
+    i2 = edge2nodes[j][1];
+    x1 = quadrant->p(dir, i1);
+    x2 = quadrant->p(dir, i2);
+    std::vector<int> direzioni {0,1,2};
+    direzioni.erase(direzioni.begin()+dir);    
+    for (unsigned i = 0; i < direzioni.size(); ++i)
+    {
+      ray[i] = quadrant->p(direzioni[i], i1);
+    }
+    auto it0 = ray_cache.rays[dir].find (ray);
+    auto inters = it0->second.inters;
+
+    for (int ii =0; ii<inters.size (); ii++)
+    {
+      if (inters[ii]>= x1 && inters[ii] <=x2)
+      {
+        fraction[j] = (inters[ii]  - x1)/(x2 - x1);
+      }
+    }
+  }
+ 
   return fraction;
 }
 
@@ -2091,10 +2138,6 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
             }
           phi_sup[jj]= phi0(tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
           
-          // phi_sup[jj]= phi0((*epsilon_nodes)[quadrant->gt (i1)],
-          //                   (*epsilon_nodes)[quadrant->gt (i2)],
-          //                   (*phi)[quadrant->gt (i1)],
-          //                   (*phi)[quadrant->gt (i2)], fract);
           
           phi_sup_file << phi_sup[jj] << "  " 
                        << phi_sup_an << "  " 
