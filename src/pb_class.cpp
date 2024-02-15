@@ -23,7 +23,6 @@ poisson_boltzmann::create_mesh ()
   auto comp = [] (const NS::Atom &a1, const NS::Atom &a2) -> bool { return a1.radius < a2.radius; }; 
   double maxradius = std::max_element (atoms.begin (), atoms.end (), comp)->radius; 
   
-  //if (mesh_shape != 2 && mesh_shape != 3)
   if (mesh_shape < 2)  
     {
       ll = atoms.begin ()->pos[0]; rr = atoms.begin ()->pos[0]; 
@@ -1431,7 +1430,7 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
     }
     bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
   }
-   if (bc == 2) //coulombic Dir bc 
+  if (bc == 2) //coulombic Dir bc 
   {
     MPI_Barrier(mpicomm);
     auto start = std::chrono::steady_clock::now();
@@ -1440,6 +1439,18 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
       auto lato = ibc.second;
       bcs.push_back (std::make_tuple (cella, lato, 
                      [&] (double x, double y, double z) {return coulomb_boundary_conditions (x,y,z);}));
+    }
+    bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
+  }
+  if (bc == 3) //analytic Dir bc 
+  {
+    MPI_Barrier(mpicomm);
+    auto start = std::chrono::steady_clock::now();
+    for (auto const & ibc : bcells){
+      auto cella = ibc.first;
+      auto lato = ibc.second;
+      bcs.push_back (std::make_tuple (cella, lato, 
+                     [&] (double x, double y, double z) {return analytic_boundary_conditions (x,y,z);}));
     }
     bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
   }
@@ -1621,7 +1632,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
     }
     bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
   }
-   if (bc == 2) //coulombic Dir bc 
+  
+  if (bc == 2) //coulombic Dir bc 
   {
     MPI_Barrier(mpicomm);
     auto start = std::chrono::steady_clock::now();
@@ -1630,6 +1642,19 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
       auto lato = ibc.second;
       bcs.push_back (std::make_tuple (cella, lato, 
                      [&] (double x, double y, double z) {return coulomb_boundary_conditions (x,y,z);}));
+    }
+    bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
+  }
+
+  if (bc == 3) //coulombic Dir bc 
+  {
+    MPI_Barrier(mpicomm);
+    auto start = std::chrono::steady_clock::now();
+    for (auto const & ibc : bcells){
+      auto cella = ibc.first;
+      auto lato = ibc.second;
+      bcs.push_back (std::make_tuple (cella, lato, 
+                     [&] (double x, double y, double z) {return analytic_boundary_conditions (x,y,z);}));
     }
     bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
   }
@@ -1740,9 +1765,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   
 	/////////////////////////////////////////////////////////
    
-  tmsh.octbin_export ("phi_0", *phi);
-  tmsh.octbin_export ("rho_0", *rho_fixed);
-  tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
+  // tmsh.octbin_export ("phi_0", *phi);
+  // tmsh.octbin_export ("rho_0", *rho_fixed);
+  // tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
   
    
 }
@@ -1951,6 +1976,50 @@ double areaTriangle(const std::array<std::array<double,3>,3> &triangle)
   return area;
 }
 
+double SphercalAreaTriangle(const std::array<std::array<double,3>,3> &triangle)
+{
+  
+  double area;
+  double rs =2;
+  double a,b,c, aa, bb, cc, E;
+  double nA,nB,nC;
+  std::array<double,3> A = triangle[0];
+  std::array<double,3> B = triangle[1];
+  std::array<double,3> C = triangle[2];
+
+  nA = std::hypot(A[0], A[1], A[2]);
+  nB = std::hypot(B[0], B[1], B[2]);
+  nC = std::hypot(C[0], C[1], C[2]);
+
+  a = std::inner_product(std::begin(A), std::end(A), std::begin(B), 0.0);
+  b = std::inner_product(std::begin(A), std::end(A), std::begin(C), 0.0);
+  c = std::inner_product(std::begin(B), std::end(B), std::begin(C), 0.0);
+
+  a = a/(nA*nB);
+  b = b/(nA*nC);
+  c = c/(nC*nB);
+
+  a = std::acos(a);
+  b = std::acos(b);
+  c = std::acos(c);
+  if(a>pi/2.0)
+    a = pi - a;
+  if(b>pi/2.0)
+    b = pi - b;
+  if(c>pi/2.0)
+    c = pi - c;
+
+  aa = std::acos((cos(a)-cos(b)*cos(c))/(sin(b)*sin(c)));
+  bb = std::acos((cos(b)-cos(c)*cos(a))/(sin(a)*sin(c)));
+  cc = std::acos((cos(c)-cos(b)*cos(a))/(sin(b)*sin(a)));
+
+  E = aa + bb + cc - pi;
+
+  area = rs*rs * E;
+
+  return area;
+}
+
 int 
 poisson_boltzmann::getTriangles(int cubeindex, 
                                 std::array<std::array<int,3>,5> &triangles)
@@ -1999,8 +2068,6 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   std::array<double,3> h;
   std::array<double,3> area_h;
   
-  // distributed_vector flux (tmsh.num_owned_nodes (), mpicomm);         
-  // flux.get_owned_data ().assign (flux.get_owned_data ().size (), 0.0);
 
   double charge_pol = 0.0;
 
@@ -2070,15 +2137,15 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   std::array<double,3> phi_sup;
   double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
          tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
-  double area = 0.0, area_tot = 0.0;
+  double area = 0.0;
 
-  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
-  double k2 = 2.0*C_0*Angs*Angs*e*e/(e_0*e_out*kb*T);    
-  double k    = std::sqrt(k2);
-  double rs = 2.0;
-  double phi_sup_an = 1.0/(eps_out*(1.0+k*rs)*rs);
-  std::ofstream phi_sup_file;
-  phi_sup_file.open ("phi_sup.txt");
+  // double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  // double k2 = 2.0*C_0*Angs*Angs*e*e/(e_0*e_out*kb*T);    
+  // double k    = std::sqrt(k2);
+  // double rs = 2.0;
+  // double phi_sup_an = 1.0/(eps_out*(1.0+k*rs)*rs);
+  // std::ofstream phi_sup_file;
+  // phi_sup_file.open ("field_sup.txt");
 
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
            quadrant != this->tmsh.end_quadrant_sweep ();
@@ -2138,20 +2205,20 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
             }
           phi_sup[jj]= phi0(tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
           
-          
-          phi_sup_file << phi_sup[jj] << "  " 
-                       << phi_sup_an << "  " 
-                       << (phi_sup[jj] - phi_sup_an)/phi_sup_an*100 <<std::endl;
+          // phi_sup_file << phi_sup[jj] << "  " 
+          //              << phi_sup_an << "  " 
+          //              << (phi_sup[jj] - phi_sup_an)/phi_sup_an*100 <<std::endl;
         
         }
-        area = areaTriangle(vert_triangles);
-        area_tot += area;
+        // area = areaTriangle(vert_triangles);
+        area = SphercalAreaTriangle(vert_triangles);
+
         for (const NS::Atom& i : atoms){
           for (int kk = 0; kk < 3; ++kk)
           {
-            dist_vert[0] = -i.pos[0]+vert_triangles[kk][0];
-            dist_vert[1] = -i.pos[1]+vert_triangles[kk][1];
-            dist_vert[2] = -i.pos[2]+vert_triangles[kk][2];
+            dist_vert[0] = vert_triangles[kk][0]-i.pos[0];
+            dist_vert[1] = vert_triangles[kk][1]-i.pos[1];
+            dist_vert[2] = vert_triangles[kk][2]-i.pos[2];
             distance = std::hypot(dist_vert[0], dist_vert[1], dist_vert[2]);
             product = dist_vert[0]*norms_vert[kk][0] +
                       dist_vert[1]*norms_vert[kk][1] +
@@ -2163,9 +2230,8 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     }
 
   }
-  phi_sup_file.close ();
-  std::cout << "Integrale di phi*E: "<<0.5*second_int <<std::endl;
-  // std::cout << "Errore area: "<<(area_tot-4*pi*4)/(4*pi*4)*100 <<" % " <<std::endl;
+  // phi_sup_file.close ();
+  
   double energy_react = 0.5*second_int - first_int*constant_react;
 
   //coulombic energy
@@ -2228,6 +2294,7 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
     std::cout << "Polarization charge: "
               << std::setprecision(16)<<charge_pol/(4.0*pi)
+              << "  Errore %:" << (charge_pol/(4.0*pi) - net_charge)/net_charge*100
               << std::endl;
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << std::endl;
@@ -2235,6 +2302,7 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
     std::cout << "Polarization energy: "
               << std::setprecision(16)<<energy_pol
+              << "  Errore %:" << (energy_pol - (-6.830597984954669e+01))/6.830597984954669e+01 * 100
               << std::endl;
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << std::endl;
@@ -2243,6 +2311,7 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
     std::cout << "Direct ionic energy: "
               << std::setprecision(16)<<energy_react
+              << "  Errore %:" << (energy_react - (-3.480285956688043e-01))/3.480285956688043e-01 * 100
               << std::endl;
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << std::endl;
@@ -2453,16 +2522,12 @@ poisson_boltzmann::surface_integrals_energy()
 
   if (rank == 0) {
     for (const NS::Atom& i : atoms){
-      if ( std::fabs(i.charge) > 0.0){
-        for (const NS::Atom& j : atoms){
-          if ( std::fabs(j.charge) > 0.0){ 
-            if(j_atom > i_atom ){
-              distance = std::hypot((i.pos[0] - j.pos[0]), 
-                                  (i.pos[1] - j.pos[1]), 
-                                  (i.pos[2] - j.pos[2]));
-              coul_energy += i.charge*j.charge/distance;                           
-            }
-          }
+      for (const NS::Atom& j : atoms){
+        if(j_atom > i_atom ){
+          distance = std::hypot((i.pos[0] - j.pos[0]), 
+                              (i.pos[1] - j.pos[1]), 
+                              (i.pos[2] - j.pos[2]));
+          coul_energy += i.charge*j.charge/distance;                          
           j_atom ++;
         }
       }
@@ -2472,7 +2537,18 @@ poisson_boltzmann::surface_integrals_energy()
     
     coul_energy = coul_energy*den_in;
   }  
-    
+  
+  // if (rank == 0) {
+  //   for (const NS::Atom& i : atoms){
+  //     for (const NS::Atom& j : atoms.erase(*i)){
+  //       distance = std::hypot((i.pos[0] - j.pos[0]), 
+  //                           (i.pos[1] - j.pos[1]), 
+  //                           (i.pos[2] - j.pos[2]));
+  //       coul_energy += i.charge*j.charge/distance;                          
+  //     }
+  //   }
+  //   coul_energy = coul_energy*den_in;
+  // } 
 
   if (rank == 0) {
   MPI_Reduce(MPI_IN_PLACE, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
@@ -2560,6 +2636,29 @@ poisson_boltzmann::coulomb_boundary_conditions(double x, double y, double z)
   return pot;
 }
 
+double
+poisson_boltzmann::analytic_boundary_conditions(double x, double y, double z)
+{
+  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/(e*e); //adim e_out
+  double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/(e*e);  //adim e_in
+  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  double k2 = 2.0*C_0*Angs*Angs*e*e/(e_0*e_out*kb*T);    
+  double k    = std::sqrt(k2);
+  double rs = 2.0;
+  double pippo_out = eps_out*(1.0+k*rs);
+  double pippo_in  = eps_in*rs; 
+  double dist= 0.0;
+  double pot = 0.0;
+  
+  dist = std::hypot ((i.pos[0] - x), (i.pos[1] - y), (i.pos[2] - z));
+
+  if(dist <= rs)
+    pot = 1.0/(pippo_out*rs) + (rs-dist)/(pippo_in*dist);
+  else
+    pot = exp(k*(rs-dist))/(dist*pippo_out);
+  
+  return pot;
+}
 
 void 
 poisson_boltzmann::grid_energy_electric_field(distributed_vector &phi, std::vector<double> &epsilon, std::string int_rule, double &energy)
