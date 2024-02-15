@@ -1354,7 +1354,6 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
   bim3a_solution_with_ghosts (tmsh, *epsilon_nodes, replace_op);
   bim3a_solution_with_ghosts (tmsh, reaction_nodes, replace_op);
 
-
   //////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////
 
@@ -1442,18 +1441,18 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
     }
     bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
   }
-  if (bc == 3) //analytic Dir bc 
-  {
-    MPI_Barrier(mpicomm);
-    auto start = std::chrono::steady_clock::now();
-    for (auto const & ibc : bcells){
-      auto cella = ibc.first;
-      auto lato = ibc.second;
-      bcs.push_back (std::make_tuple (cella, lato, 
-                     [&] (double x, double y, double z) {return analytic_boundary_conditions (x,y,z);}));
-    }
-    bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
-  }
+  // if (bc == 3) //analytic Dir bc 
+  // {
+  //   MPI_Barrier(mpicomm);
+  //   auto start = std::chrono::steady_clock::now();
+  //   for (auto const & ibc : bcells){
+  //     auto cella = ibc.first;
+  //     auto lato = ibc.second;
+  //     bcs.push_back (std::make_tuple (cella, lato, 
+  //                    [&] (double x, double y, double z) {return analytic_boundary_conditions (x,y,z);}));
+  //   }
+  //   bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
+  // }
   
   A.assemble ();
   rhs.assemble();
@@ -2650,7 +2649,7 @@ poisson_boltzmann::analytic_boundary_conditions(double x, double y, double z)
   double dist= 0.0;
   double pot = 0.0;
   
-  dist = std::hypot ((i.pos[0] - x), (i.pos[1] - y), (i.pos[2] - z));
+  dist = std::hypot (x, y, z);
 
   if(dist <= rs)
     pot = 1.0/(pippo_out*rs) + (rs-dist)/(pippo_in*dist);

@@ -515,7 +515,6 @@ poisson_boltzmann
   void 
   surface_integrals_energy();
   
-  
   void
   grid_energy(distributed_vector &phi, distributed_vector &rho_fixed, std::string int_rule, double &energy);
   
@@ -524,6 +523,9 @@ poisson_boltzmann
   
   double
   coulomb_boundary_conditions(double x, double y, double z);
+
+  double
+  analytic_boundary_conditions(double x, double y, double z);
   
   void
   analitic_potential();

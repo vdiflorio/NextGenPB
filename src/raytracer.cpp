@@ -85,18 +85,36 @@ ray_cache_t::fill_cache ()
     int ser_rays_len = local_ser_rays_vec.size (); //length of each vect of char
     int global_ser_rays_len; //variable with total number of rays (sum all the proc rays)
   
-    int proc_ser_rays_len[size] = {}; //array that contains in pos i the leng of char req rays from rank i
-    int proc_num_req_rays[size] = {}; //array that contains in pos i the numb of req rays from rank i
-    int displ_ser_rays_vec[size] = {}; //displacement for sending the vector list
-    int cum_rays_vec[size] = {}; //cumulative sum of the requested rays
-     
+    // int proc_ser_rays_len[size]  = {}; //array that contains in pos i the leng of char req rays from rank i
+    // int proc_num_req_rays[size]  = {}; //array that contains in pos i the numb of req rays from rank i
+    // int displ_ser_rays_vec[size] = {}; //displacement for sending the vector list
+    // int cum_rays_vec[size]       = {}; //cumulative sum of the requested rays
+    
+    int* proc_ser_rays_len  = new int[size]{}; //array that contains in pos i the leng of char req rays from rank i
+    int* proc_num_req_rays  = new int[size]{}; //array that contains in pos i the numb of req rays from rank i
+    int* displ_ser_rays_vec = new int[size]{}; //displacement for sending the vector list
+    int* cum_rays_vec       = new int[size]{}; //cumulative sum of the requested rays
+    
+    // auto proc_ser_rays_len  = std::unique_ptr<int>( new int[size]{});
+    // auto proc_num_req_rays  = std::unique_ptr<int>( new int[size]{});
+    // auto displ_ser_rays_vec = std::unique_ptr<int>( new int[size]{});
+    // auto cum_rays_vec       = std::unique_ptr<int>( new int[size]{});
+
+
     std::vector<unsigned char> global_ser_map; //vector of char for the map of rank 0
     std::vector<unsigned char> local_ser_map; //vector of char for the local map to send to each rank
   
     int global_ser_map_len;
     int local_ser_map_len;
-    int proc_ser_map_len[size] = {};
-    int displ_ser_map[size] = {};
+    // int proc_ser_map_len[size] = {};
+    // int displ_ser_map[size]    = {};
+
+    int* proc_ser_map_len = new int[size]{};
+    int* displ_ser_map    = new int[size]{};
+
+    // auto proc_ser_map_len = std::unique_ptr<int>( new int[size]{});
+    // auto displ_ser_map    = std::unique_ptr<int>( new int[size]{});
+
   
     MPI_Reduce (&ser_rays_len, &global_ser_rays_len, 1, MPI_INT, MPI_SUM, 0, mpicomm); //fill global_ser_rays_len
    
@@ -152,14 +170,20 @@ ray_cache_t::fill_cache ()
     MPI_Scatterv (&global_ser_map[0], proc_ser_map_len, displ_ser_map, MPI_CHAR, 
                   &local_ser_map[0], local_ser_map_len, MPI_CHAR, 0, mpicomm);
   
-  if (rank != 0) {
-    local_req_rays_map.clear ();
-    read_map (local_ser_map, local_req_rays_map);
-    (this->rays)[idir].insert (local_req_rays_map.begin (), local_req_rays_map.end ());
-  }
-  
-  //MPI_Barrier (mpicomm);
-  std::cout << "Rays created in rank " << rank << std::endl;
+    if (rank != 0) {
+      local_req_rays_map.clear ();
+      read_map (local_ser_map, local_req_rays_map);
+      (this->rays)[idir].insert (local_req_rays_map.begin (), local_req_rays_map.end ());
+    }
+    
+    //MPI_Barrier (mpicomm);
+    std::cout << "Rays created in rank " << rank << std::endl;
+    delete[] proc_ser_rays_len ; //array that contains in pos i the leng of char req rays from rank i
+    delete[] proc_num_req_rays ; //array that contains in pos i the numb of req rays from rank i
+    delete[] displ_ser_rays_vec; //displacement for sending the vector list
+    delete[] cum_rays_vec      ;
+    delete[] proc_ser_map_len ;
+    delete[] displ_ser_map    ;
   }
 }
 
