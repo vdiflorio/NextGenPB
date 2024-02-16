@@ -26,32 +26,54 @@ poisson_boltzmann::create_mesh ()
   if (mesh_shape < 2)  
     {
       ll = atoms.begin ()->pos[0]; rr = atoms.begin ()->pos[0]; 
-      l_c[0] = atoms.begin ()->pos[0]; l_c[1] = atoms.begin ()->pos[1]; l_c[2] = atoms.begin ()->pos[2]; 
-      r_c[0] = atoms.begin ()->pos[0]; r_c[1] = atoms.begin ()->pos[1]; r_c[1] = atoms.begin ()->pos[2];
+      l_c[0] = atoms.begin ()->pos[0] - atoms.begin ()->radius; 
+      l_c[1] = atoms.begin ()->pos[1] - atoms.begin ()->radius; 
+      l_c[2] = atoms.begin ()->pos[2] - atoms.begin ()->radius; 
+      r_c[0] = atoms.begin ()->pos[0] + atoms.begin ()->radius; 
+      r_c[1] = atoms.begin ()->pos[1] + atoms.begin ()->radius; 
+      r_c[2] = atoms.begin ()->pos[2] + atoms.begin ()->radius;
       auto it = [this] (const NS::Atom &a1)
         {
           for (int kk = 0; kk < 3; ++kk)
             {
-              if (a1.pos[kk] > this->r_c[kk])
-                this->r_c[kk] = a1.pos[kk]; 
-              else if (a1.pos[kk] < this->l_c[kk])
-                this->l_c[kk] = a1.pos[kk]; 
+              if ((a1.pos[kk] + a1.radius) > this->r_c[kk])
+                this->r_c[kk] = a1.pos[kk]+ a1.radius; 
+              else if ((a1.pos[kk] - a1.radius) < this->l_c[kk])
+                this->l_c[kk] = a1.pos[kk]- a1.radius; 
             }
         };
       std::for_each (atoms.begin (), atoms.end (), it);
     
+      // for (int kk = 0; kk < 3; ++kk)
+      //   {
+      //     if (this->rr < this->r_c[kk])
+      //       this->rr = this->r_c[kk];
+      //     else if (this->ll > this->l_c[kk])
+      //       this->ll = this->l_c[kk];
+      //   }
+      double min = l_c[0],
+             max = r_c[0];
       for (int kk = 0; kk < 3; ++kk)
-        {
-          if (this->rr < this->r_c[kk])
-            this->rr = this->r_c[kk];
-          else if (this->ll > this->l_c[kk])
-            this->ll = this->l_c[kk];
-        }
-    
-      l_c[0] -= 4*maxradius; l_c[1] -= 4*maxradius; l_c[2] -= 4*maxradius;
-      r_c[0] += 4*maxradius; r_c[1] += 4*maxradius; r_c[2] += 4*maxradius;
-      ll -= 4*maxradius;
-      rr += 4*maxradius;
+      {
+        min = l_c[kk] < min ? l_c[kk] : min;
+        max = r_c[kk] > max ? r_c[kk] : max;
+      }
+      rr = max;
+      ll = min;
+      double dd, dx, dy, dz;
+      dd = (rr-ll)/8.0;
+      dx = (r_c[0] - l_c[0])/8.0;
+      dy = (r_c[1] - l_c[1])/8.0;
+      dz = (r_c[2] - l_c[2])/8.0;
+      
+      l_c[0] -= dx; l_c[1] -= dy; l_c[2] -= dz;
+      r_c[0] += dx; r_c[1] += dy; r_c[2] += dz;
+      
+      // ll -= 4*maxradius;
+      // rr += 4*maxradius;
+
+      ll -= dd;
+      rr += dd;
     }
   
   if (mesh_shape == 0)
@@ -1441,18 +1463,18 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
     }
     bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
   }
-  // if (bc == 3) //analytic Dir bc 
-  // {
-  //   MPI_Barrier(mpicomm);
-  //   auto start = std::chrono::steady_clock::now();
-  //   for (auto const & ibc : bcells){
-  //     auto cella = ibc.first;
-  //     auto lato = ibc.second;
-  //     bcs.push_back (std::make_tuple (cella, lato, 
-  //                    [&] (double x, double y, double z) {return analytic_boundary_conditions (x,y,z);}));
-  //   }
-  //   bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
-  // }
+  if (bc == 3) //analytic Dir bc 
+  {
+    MPI_Barrier(mpicomm);
+    auto start = std::chrono::steady_clock::now();
+    for (auto const & ibc : bcells){
+      auto cella = ibc.first;
+      auto lato = ibc.second;
+      bcs.push_back (std::make_tuple (cella, lato, 
+                     [&] (double x, double y, double z) {return analytic_boundary_conditions (x,y,z);}));
+    }
+    bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
+  }
   
   A.assemble ();
   rhs.assemble();
@@ -1945,7 +1967,7 @@ double wha( double eps1, double eps2, double frac)
   return 1.0/(frac/eps1 + (1-frac)/eps2);
 }
 
-double flux_dix( double eps1, double eps2)
+double flux_dir( double eps1, double eps2)
 {
   return eps1 < eps2 ? 1 : -1;
 }
@@ -2111,7 +2133,7 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
         tmp_flux = -((*phi)[quadrant->gt (i2)] - (*phi)[quadrant->gt (i1)])*
                       wha((*epsilon_nodes)[quadrant->gt (i1)],
                           (*epsilon_nodes)[quadrant->gt (i2)], frac[kk])*
-                      flux_dix((*epsilon_nodes)[quadrant->gt (i1)],
+                      flux_dir((*epsilon_nodes)[quadrant->gt (i1)],
                               (*epsilon_nodes)[quadrant->gt (i2)])*
                       area_h[edge_axis[kk]];
         charge_pol += tmp_flux;
@@ -2209,8 +2231,8 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
           //              << (phi_sup[jj] - phi_sup_an)/phi_sup_an*100 <<std::endl;
         
         }
-        // area = areaTriangle(vert_triangles);
-        area = SphercalAreaTriangle(vert_triangles);
+        area = areaTriangle(vert_triangles);
+        // area = SphercalAreaTriangle(vert_triangles);
 
         for (const NS::Atom& i : atoms){
           for (int kk = 0; kk < 3; ++kk)
