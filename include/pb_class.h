@@ -512,8 +512,11 @@ poisson_boltzmann
   void 
   energy(ray_cache_t & ray_cache);
   
+  // void 
+  // surface_integrals_energy();
+
   void 
-  surface_integrals_energy();
+  surface_integrals_energy(ray_cache_t & ray_cache);
   
   void
   grid_energy(distributed_vector &phi, distributed_vector &rho_fixed, std::string int_rule, double &energy);

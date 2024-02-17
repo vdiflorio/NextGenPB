@@ -469,22 +469,67 @@ poisson_boltzmann::init_tmesh ()
     }
 }
 
+// void
+// poisson_boltzmann::init_tmesh_with_refine_box ()
+// {
+//   for (auto i = 0; i < outlevel; ++i)
+//     {
+//       tmsh.set_refine_marker (uniform_refinement);
+//       tmsh.refine (0, 1);
+//     }
+	
+//    auto refinement = [this]
+//         (tmesh_3d::quadrant_iterator q) -> int
+//           {
+//             int currentlevel = static_cast<int> (q->the_quadrant->level);
+//             int retval = 0;
+            
+//             if (currentlevel >= this->unilevel)
+//               retval = 0;
+//             else
+//               {
+//                 for (int ii = 0; ii < 8; ++ii)
+//                   {
+//                     if (! q->is_hanging (ii))
+//                       {
+//                         if ((q -> p(0, ii) > this->l_cr[0]) && (q -> p(0, ii) < this->r_cr[0])
+// 			                       && (q -> p(1, ii) > this->l_cr[1]) && (q -> p(1, ii) < this->r_cr[1])
+// 			                       && (q -> p(2, ii) > this->l_cr[2]) && (q -> p(2, ii) < this->r_cr[2]))
+// 			                         {
+// 			                            retval = 1;
+// 		                              break;
+// 			                         }
+//                       }
+//                   }
+//                 }
+//                 return (retval);
+//               };	
+	
+//     for (auto i = 0; i < unilevel; ++i)
+//       {
+//         tmsh.set_refine_marker (refinement);
+//         tmsh.refine (0, 1);
+//       }
+      
+// }
+
+
 void
 poisson_boltzmann::init_tmesh_with_refine_box ()
 {
-  for (auto i = 0; i < outlevel; ++i)
+  for (auto i = 0; i < unilevel; ++i)
     {
       tmsh.set_refine_marker (uniform_refinement);
       tmsh.refine (0, 1);
     }
-	
-   auto refinement = [this]
+  
+   auto coarsening = [this]
         (tmesh_3d::quadrant_iterator q) -> int
           {
             int currentlevel = static_cast<int> (q->the_quadrant->level);
             int retval = 0;
             
-            if (currentlevel >= this->unilevel)
+            if (currentlevel <= this->outlevel)
               retval = 0;
             else
               {
@@ -493,25 +538,26 @@ poisson_boltzmann::init_tmesh_with_refine_box ()
                     if (! q->is_hanging (ii))
                       {
                         if ((q -> p(0, ii) > this->l_cr[0]) && (q -> p(0, ii) < this->r_cr[0])
-			                       && (q -> p(1, ii) > this->l_cr[1]) && (q -> p(1, ii) < this->r_cr[1])
-			                       && (q -> p(2, ii) > this->l_cr[2]) && (q -> p(2, ii) < this->r_cr[2]))
-			                         {
-			                            retval = 1;
-		                              break;
-			                         }
+                             && (q -> p(1, ii) > this->l_cr[1]) && (q -> p(1, ii) < this->r_cr[1])
+                             && (q -> p(2, ii) > this->l_cr[2]) && (q -> p(2, ii) < this->r_cr[2]))
+                               {
+                                  retval = 1;
+                                  break;
+                               }
                       }
                   }
                 }
                 return (retval);
-              };	
-	
-    for (auto i = 0; i < unilevel; ++i)
+              };  
+  
+    for (auto i = 0; i < outlevel; ++i)
       {
-        tmsh.set_refine_marker (refinement);
-        tmsh.refine (0, 1);
+        tmsh.set_coarsen_marker (coarsening);
+        tmsh.coarsen (0, 1);
       }
       
 }
+
 
 bool
 poisson_boltzmann::is_in (const NS::Atom& i,
@@ -1786,9 +1832,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   
 	/////////////////////////////////////////////////////////
    
-  // tmsh.octbin_export ("phi_0", *phi);
-  // tmsh.octbin_export ("rho_0", *rho_fixed);
-  // tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
+  tmsh.octbin_export ("phi_0", *phi);
+  tmsh.octbin_export ("rho_0", *rho_fixed);
+  tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
   
    
 }
@@ -2102,6 +2148,9 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   int i1 = 0, i2 = 0;
 
    // flux and polarization energy calculation
+  distributed_vector flux (tmsh.num_owned_nodes (), mpicomm);         
+  flux.get_owned_data ().assign (flux.get_owned_data ().size (), 0.0);
+  
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
            quadrant != this->tmsh.end_quadrant_sweep ();
            ++quadrant)
@@ -2136,6 +2185,7 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
                       flux_dir((*epsilon_nodes)[quadrant->gt (i1)],
                               (*epsilon_nodes)[quadrant->gt (i2)])*
                       area_h[edge_axis[kk]];
+        flux[quadrant->gt (i1)] += tmp_flux;
         charge_pol += tmp_flux;
 
         for (const NS::Atom& i : atoms){
@@ -2146,6 +2196,8 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     }
 
   }
+   bim3a_solution_with_ghosts (tmsh, flux, replace_op);
+   tmsh.octbin_export ("flux_0", flux);
 
   double energy_pol = constant_pol*first_int;
   
@@ -2353,8 +2405,295 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
 }
 
 
+// void 
+// poisson_boltzmann::surface_integrals_energy()
+// {
+//   int rank;
+//   MPI_Comm_rank (mpicomm, &rank);
+//   if (rank == 0)
+//      std::cout << "\nStarting energy calculation with surface integrals" << std::endl;
+  
+  
+//   double net_charge = 0.0;
+//   for (const NS::Atom& i : atoms){
+//     net_charge += i.charge;
+//   }
+
+//   ////////////////////////////////////////////////////////
+//   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/(e*e);   //adim e_in
+//   double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/(e*e); //adim e_out
+//   epsilon_in.assign (tmsh.num_local_quadrants (), 0.0);
+//   ones_in.assign (tmsh.num_local_quadrants (), 0.0); 
+
+    
+//   for (auto epsp_in = epsilon_in.begin (),  
+//             onesp_in = ones_in.begin (), 
+//             mp = marker.begin ();
+//        epsp_in != epsilon_in.end () 
+//        || onesp_in != ones_in.end ()
+//        || mp != marker.end ();
+//        ++epsp_in, ++onesp_in, ++mp) 
+//     if ((*mp) < 0.6)
+//     {
+//       (*epsp_in) = eps_in;
+//       (*onesp_in) = 1.0; 
+//     }
+    
+
+//   distributed_vector tmp_sf    (tmsh.num_owned_nodes (), mpicomm); 
+//   distributed_vector sf_nodes  (tmsh.num_owned_nodes (), mpicomm); // surface nodes
+//   distributed_vector coord_X   (tmsh.num_owned_nodes (), mpicomm);
+//   distributed_vector coord_Y   (tmsh.num_owned_nodes (), mpicomm);
+//   distributed_vector coord_Z   (tmsh.num_owned_nodes (), mpicomm);
+
+//   tmp_sf.get_owned_data ().assign (tmp_sf.get_owned_data ().size (), 0.0);
+//   sf_nodes.get_owned_data ().assign (sf_nodes.get_owned_data ().size (), 0.0);
+
+//   coord_X.get_owned_data ().assign (coord_X.get_owned_data ().size (), 0.0);
+//   coord_Y.get_owned_data ().assign (coord_Y.get_owned_data ().size (), 0.0);
+//   coord_Z.get_owned_data ().assign (coord_Z.get_owned_data ().size (), 0.0);
+  
+
+//   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
+//            quadrant != this->tmsh.end_quadrant_sweep ();
+//            ++quadrant)
+//   {
+//     for (int kk = 0; kk < 8; ++kk)
+//     {
+//       if (! quadrant->is_hanging (kk))
+//       {
+//         coord_X[quadrant->gt (kk)] = quadrant->p(0,kk);
+//         coord_Y[quadrant->gt (kk)] = quadrant->p(1,kk);
+//         coord_Z[quadrant->gt (kk)] = quadrant->p(2,kk);
+//       }
+//     }
+    
+
+//     if (marker[quadrant->get_forest_quad_idx()] < 0.6)
+//     {  // only inside the molecule                         
+//       for (int kk = 0; kk < 8; ++kk)
+//       {
+//         if (! quadrant->is_hanging (kk))
+//         {
+//           tmp_sf[quadrant->gt (kk)] += 1;
+//         }
+//       }
+//     }
+//   }
+//   tmp_sf.assemble();
+//   coord_X.assemble(replace_op);
+//   coord_Y.assemble(replace_op);
+//   coord_Z.assemble(replace_op);
+
+//   for (auto jj = 0; jj< tmsh.num_owned_nodes (); ++jj){
+//     if (tmp_sf.get_owned_data ()[jj]==0 || tmp_sf.get_owned_data ()[jj] == 8)
+//     {
+//       sf_nodes.get_owned_data ()[jj] = 0.0;
+//     } else {
+//       sf_nodes.get_owned_data ()[jj] = 1.0;
+//     }
+//   }
+//   // sf_nodes.assemble(replace_op);
+  
+//   bim3a_solution_with_ghosts (tmsh, sf_nodes, replace_op);
+//   tmsh.octbin_export ("sf_nodes_0", sf_nodes);
+
+
+//   bim3a_solution_with_ghosts (tmsh, *phi,replace_op);
+//   bim3a_solution_with_ghosts (tmsh, *rho_fixed, replace_op);
+//   distributed_sparse_matrix A_in; 
+//   A_in.set_ranges (tmsh.num_owned_nodes ());
+//   bim3a_laplacian (tmsh, epsilon_in, A_in);
+//   A_in.assemble ();
+  
+//   distributed_vector  sigma_free_in (tmsh.num_owned_nodes (), mpicomm); 
+//   sigma_free_in.get_owned_data().assign(tmsh.num_owned_nodes (), 0.0);
+//   bim3a_rhs (tmsh, ones_in, *rho_fixed, sigma_free_in);
+//   sigma_free_in.assemble();
+
+//   distributed_vector tmp_vec (tmsh.num_owned_nodes (), mpicomm);
+
+//   tmp_vec = A_in*(*phi);
+//   tmp_vec.assemble ();
+//   ////////////////////////////////////////////////////////////////////////////
+
+             
+//   std::transform(sigma_free_in.get_owned_data ().begin (), 
+//                  sigma_free_in.get_owned_data ().end (),
+//                  tmp_vec.get_owned_data ().begin (), 
+//                  sigma_free_in.get_owned_data ().begin (),
+//                  [] (double a, double b) {return a-b;});
+
+//   // sigma_free_in.assemble(replace_op);
+
+//   bim3a_solution_with_ghosts (tmsh, sigma_free_in, replace_op);
+  
+//   double charge_pol = std::accumulate(sigma_free_in.get_owned_data ().begin (), 
+//                                       sigma_free_in.get_owned_data ().end (),
+//                                       0.0);
+
+//   double energy_pol    = 0.0;
+//   double energy_react1 = 0.0;
+//   double energy_react  = 0.0;
+//   double distance      = 0.0;
+//   double first_int     = 0.0;
+//   double second_int    = 0.0;
+
+//   double coul_energy   = 0.0;
+//   double den_in        = 1.0/(eps_in);
+//   int i_atom = 0;
+//   int j_atom = 0;
+
+  
+//   distributed_vector u_i (tmsh.num_owned_nodes (), mpicomm);
+//   distributed_vector v_i (tmsh.num_owned_nodes (), mpicomm);
+//   bim3a_solution_with_ghosts (tmsh, u_i, replace_op); 
+
+//   const double constant = 0.5*(1.0/eps_out - 1.0/eps_in)/(4.0*pi);
+//   const double constant_react = 0.5/(4.0*pi*eps_out);
+
+
+//   for (const NS::Atom& i : atoms){
+//     if ( std::fabs(i.charge) > 0.0){
+//       u_i.get_owned_data ().assign (u_i.get_owned_data ().size (), 0.0); 
+      
+//       for (auto jj = 0; jj< tmsh.num_owned_nodes (); ++jj){
+//         distance = std::hypot ((i.pos[0] - coord_X.get_owned_data ()[jj]), 
+//                                (i.pos[1] - coord_Y.get_owned_data ()[jj]), 
+//                                (i.pos[2] - coord_Z.get_owned_data ()[jj])); 
+//         u_i.get_owned_data ()[jj] = - 1.0/(eps_in*distance);
+//         if(sf_nodes.get_owned_data ()[jj] == 1.0)
+//         { 
+//           first_int +=  i.charge*sigma_free_in.get_owned_data ()[jj]/distance; 
+//         }      
+//       }
+//       u_i.assemble (replace_op);  
+
+//       ///////////////////////////////////////////
+      
+//       v_i=A_in*u_i;  
+//       v_i.assemble ();
+
+  
+      
+//       for (auto jj = 0; jj< tmsh.num_owned_nodes (); ++jj){
+//         if(sf_nodes.get_owned_data ()[jj] == 1.0){
+//           second_int += 0.5*i.charge*(*phi).get_owned_data ()[jj]*
+//                           v_i.get_owned_data ()[jj]/(4.0*pi);                
+//         }       
+//       }
+
+//     }
+//   }
+//   energy_pol = constant*first_int;
+//   energy_react = second_int - constant_react*first_int;
+//   ///////////////////////////////////////////////////////// 
+  
+//   /////////////////////////////////////////////////////////
+//   //
+//   //coulombic energy
+
+//   if (rank == 0) {
+//     for (const NS::Atom& i : atoms){
+//       for (const NS::Atom& j : atoms){
+//         if(j_atom > i_atom ){
+//           distance = std::hypot((i.pos[0] - j.pos[0]), 
+//                               (i.pos[1] - j.pos[1]), 
+//                               (i.pos[2] - j.pos[2]));
+//           coul_energy += i.charge*j.charge/distance;                          
+//           j_atom ++;
+//         }
+//       }
+//       i_atom ++;
+//       j_atom = 0;
+//     }
+    
+//     coul_energy = coul_energy*den_in;
+//   }  
+  
+//   // if (rank == 0) {
+//   //   for (const NS::Atom& i : atoms){
+//   //     for (const NS::Atom& j : atoms.erase(*i)){
+//   //       distance = std::hypot((i.pos[0] - j.pos[0]), 
+//   //                           (i.pos[1] - j.pos[1]), 
+//   //                           (i.pos[2] - j.pos[2]));
+//   //       coul_energy += i.charge*j.charge/distance;                          
+//   //     }
+//   //   }
+//   //   coul_energy = coul_energy*den_in;
+//   // } 
+
+//   if (rank == 0) {
+//   MPI_Reduce(MPI_IN_PLACE, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+//              mpicomm);
+//   MPI_Reduce(MPI_IN_PLACE, &energy_react, 1, MPI_DOUBLE, MPI_SUM, 0,
+//              mpicomm);
+//   MPI_Reduce(MPI_IN_PLACE, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+//              mpicomm);
+//   } else {
+//   MPI_Reduce(&energy_pol, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+//              mpicomm);
+//   MPI_Reduce(&energy_react, &energy_react, 1, MPI_DOUBLE, MPI_SUM, 0,
+//              mpicomm);
+//   MPI_Reduce(&charge_pol, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+//              mpicomm);
+//   }
+              
+//   // Print the result
+//   if (rank == 0) {
+//     std::cout << std::endl;
+//     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
+//     std::cout << "Net charge: "
+//               << std::setprecision(16)<<net_charge
+//               << std::endl;
+//     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+//     std::cout << std::endl;
+
+//     std::cout << std::endl;
+//     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
+//     std::cout << "Polarization charge: "
+//               << std::setprecision(16)<<charge_pol/(4.0*pi)
+//               << std::endl;
+//     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+//     std::cout << std::endl;
+
+//     std::cout << std::endl;
+//     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
+//     std::cout << "Polarization energy value: "
+//               << std::setprecision(16)<<energy_pol
+//               << std::endl;
+//     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+//     std::cout << std::endl;
+  
+//     std::cout << std::endl;
+//     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
+//     std::cout << "Reaction energy value: "
+//               << std::setprecision(16)<<energy_react 
+//               << std::endl;
+//     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+//     std::cout << std::endl;
+
+//     std::cout << std::endl;
+//     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
+//     std::cout << "Coulumbic energy value: "
+//               << std::setprecision(16)<<coul_energy
+//               << std::endl;
+//     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+//     std::cout << std::endl;
+
+//     std::cout << std::endl;
+//     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
+//     std::cout << "Total energy value: "
+//               << std::setprecision(16)<<energy_react + coul_energy + energy_pol
+//               << std::endl;
+//     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+//     std::cout << std::endl;
+//   }
+// }
+
+
 void 
-poisson_boltzmann::surface_integrals_energy()
+poisson_boltzmann::surface_integrals_energy(ray_cache_t & ray_cache)
 {
   int rank;
   MPI_Comm_rank (mpicomm, &rank);
@@ -2559,17 +2898,6 @@ poisson_boltzmann::surface_integrals_energy()
     coul_energy = coul_energy*den_in;
   }  
   
-  // if (rank == 0) {
-  //   for (const NS::Atom& i : atoms){
-  //     for (const NS::Atom& j : atoms.erase(*i)){
-  //       distance = std::hypot((i.pos[0] - j.pos[0]), 
-  //                           (i.pos[1] - j.pos[1]), 
-  //                           (i.pos[2] - j.pos[2]));
-  //       coul_energy += i.charge*j.charge/distance;                          
-  //     }
-  //   }
-  //   coul_energy = coul_energy*den_in;
-  // } 
 
   if (rank == 0) {
   MPI_Reduce(MPI_IN_PLACE, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
@@ -2638,6 +2966,7 @@ poisson_boltzmann::surface_integrals_energy()
     std::cout << std::endl;
   }
 }
+
 
 double
 poisson_boltzmann::coulomb_boundary_conditions(double x, double y, double z)
