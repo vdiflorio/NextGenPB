@@ -193,7 +193,7 @@ ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS
 {
   NS::NanoShaper ns0 (atoms, surf_type, surf_param, stern_layer, num_threads);
   ns = ns0;
-  ns.setConfig<double>("Grid_scale", 1.0);
+  ns.setConfig<double>("Grid_scale", 2.0);
   ns.setConfig<double>("Self_Intersections_Grid_Coefficient", 1.5);
   ns.buildAnalyticalSurface();
   std::cout << "\n" << std::endl;
@@ -208,9 +208,7 @@ ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS
    
   // left-bottom corner
   ns.getGridPointCoordinates(0, 0, 0, coords);
-  std::copy(coords.cbegin(), coords.cend(), crossings_t::start);
-
-  
+  std::copy(coords.cbegin(), coords.cend(), crossings_t::start);  
 }
 
 

@@ -232,11 +232,11 @@ poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, d
   crossings_t & ct = ray_cache (x1, x2, dir); 
 
   if (!ct.init && rank != 0)
-    {
-      std::array<double, 2> ray = {x1, x2};
-      ray_cache.rays[dir].erase (ray);
-      return -1.;
-    }
+  {
+    std::array<double, 2> ray = {x1, x2};
+    ray_cache.rays[dir].erase (ray);
+    return -1.;
+  }
   
 
   int i = 0;
@@ -1150,77 +1150,84 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
     ray_cache.rays_list[0].clear (); 
     ray_cache.rays_list[1].clear (); 
     ray_cache.rays_list[2].clear (); 
-
+    
+    
     for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
          quadrant != this->tmsh.end_quadrant_sweep ();
          ++quadrant)
-      {            
-        int num_int_nodes[3] = {0, 0, 0};
-        int num_hanging[3] = {0, 0, 0};
-  
-        for (int ii = 0; ii < 8; ++ii){         
-          if (! quadrant->is_hanging (ii)){
-            if (surf_type == 2){
-              if (this->levelsetfun (quadrant->p (0, ii),
-                                     quadrant->p (1, ii),
-                                     quadrant->p (2, ii)) > 1.0)
-                ++num_int_nodes[1];
-            }
-                
+    {            
+      int num_int_nodes[3] = {0, 0, 0};
+      int num_hanging[3] = {0, 0, 0};
+
       
-            else
+      for (int ii = 0; ii < 8; ++ii)
+      {         
+        if (! quadrant->is_hanging (ii))
+        {
+          if (surf_type == 2){
+            if (this->levelsetfun (quadrant->p (0, ii),
+                                   quadrant->p (1, ii),
+                                   quadrant->p (2, ii)) > 1.0)
+              ++num_int_nodes[1];
+          }
+              
+    
+          else
+          {
+            for (int idir = 0; idir < 3; ++idir)
             {
-              for (int idir = 0; idir < 3; ++idir)
+              if (this->is_in_ns_surf (ray_cache,
+                              quadrant->p (0, ii),
+                              quadrant->p (1, ii),
+                              quadrant->p (2, ii),idir) > 0.5) //inside the molecule
               {
-                if (this->is_in_ns_surf (ray_cache,
-                                quadrant->p (0, ii),
-                                quadrant->p (1, ii),
-                                quadrant->p (2, ii),idir) > 0.5) //inside the molecule
-                  {
-                    ++num_int_nodes[idir];
-                    (*markn)[quadrant->gt (ii)] =1;
-                  }
-                  
+                ++num_int_nodes[idir];
+                (*markn)[quadrant->gt (ii)] =1;
+              }
+                
 
-                else if (this->is_in_ns_surf (ray_cache,
-                                     quadrant->p (0, ii),
-                                     quadrant->p (1, ii),
-                                     quadrant->p (2, ii),idir) < -0.5 )
-                  {
-                    ray_cache.num_req_rays[idir]++;
-                    std::array<double, 2> ray;
+              else if (this->is_in_ns_surf (ray_cache,
+                                   quadrant->p (0, ii),
+                                   quadrant->p (1, ii),
+                                   quadrant->p (2, ii),idir) < -0.5 )
+              {
+                ray_cache.num_req_rays[idir]++;
+                std::array<double, 2> ray;
 
-                    std::vector<int> direzioni ={0,1,2};
-                    direzioni.erase(direzioni.begin()+idir);
-                    for (unsigned i = 0; i < direzioni.size(); ++i)
-                    {
-                      ray[i] = quadrant->p(direzioni[i], ii);
-                    }
-                    // ray_cache.rays[idir].erase(ray);
-                    ray_cache.rays_list[idir].insert(ray);
+                std::vector<int> direzioni {0,1,2};
+                direzioni.erase(direzioni.begin()+idir);
+                for (unsigned i = 0; i < direzioni.size(); ++i)
+                {
+                  ray[i] = quadrant->p(direzioni[i], ii);
+                }
+                // ray_cache.rays[idir].erase(ray);
+                ray_cache.rays_list[idir].insert(ray);
 
-                  }
               }
             }
           }
-          else
-            for (int idir = 0; idir < 3; ++idir)
-              ++num_hanging[idir]; 
         }
-    
-        if (jj != 0 || num_cycles == 1)
-        {
-          if (num_int_nodes[1] == 0)  //if there's no node inside the molecule
-            this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out 
-          else if (num_int_nodes[1] < (8 - num_hanging[1])) //if the non hanging nodes are not all inside
-            this->marker[quadrant->get_forest_quad_idx ()] = 1.0/2.0; //"border"
-          //else: all the nodes are inside: the quadrant is inside and the marker value is 0
-        }
+        else
+          for (int idir = 0; idir < 3; ++idir)
+            ++num_hanging[idir]; 
       }
       
+                
+      if (jj != 0 || num_cycles == 1)
+      {
+        if (num_int_nodes[1] == 0)  //if there's no node inside the molecule
+          this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out 
+        else if (num_int_nodes[1] < (8 - num_hanging[1])) //if the non hanging nodes are not all inside
+          this->marker[quadrant->get_forest_quad_idx ()] = 1.0/2.0; //"border"
+        //else: all the nodes are inside: the quadrant is inside and the marker value is 0
+      }
+
+    }
+    
     
     MPI_Barrier(mpicomm);     
     ray_cache.fill_cache();
+    auto end = std::chrono::steady_clock::now();
     
   }          
 }
@@ -1644,19 +1651,34 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
           double volume = (quadrant->p(0, 7) - quadrant->p(0, 0)) *
                           (quadrant->p(1, 7) - quadrant->p(1, 0)) *
                           (quadrant->p(2, 7) - quadrant->p(2, 0)); //volume
-          for (int ii = 0; ii < 8; ++ii)
+          if (marker[quadrant->get_forest_quad_idx()] == 0.5)
           {
-            double weigth = std::abs ((i.pos[0] - quadrant->p(0, 7-ii))*
-                                      (i.pos[1] - quadrant->p(1, 7-ii))*
-                                      (i.pos[2] - quadrant->p(2, 7-ii))) / volume;
-                				
-            if (! quadrant->is_hanging (ii))
-              (*rho_fixed)[quadrant->gt (ii)] += i.charge*4.0*pi*weigth / vol_patch[quadrant->gt (ii)];
-            else
-              for (int jj = 0; jj < quadrant->num_parents (ii); ++jj)
-                (*rho_fixed)[quadrant->gparent (jj, ii)] += i.charge*4.0*pi*weigth / 
-                                                           (quadrant->num_parents (ii) * vol_patch[quadrant->gt (ii)]);
-            
+            std::array<double,8> weigth;
+            for (int ii = 0; ii < 8; ++ii)
+            {
+              weigth[ii] = std::abs ((i.pos[0] - quadrant->p(0, 7-ii))*
+                                        (i.pos[1] - quadrant->p(1, 7-ii))*
+                                        (i.pos[2] - quadrant->p(2, 7-ii))) / volume;
+            }
+            int kk = std::distance(weigth.begin(), std::max_element(weigth.begin(), weigth.end()));
+            (*rho_fixed)[quadrant->gt (kk)] += i.charge*4.0*pi / vol_patch[quadrant->gt (kk)];
+          }
+          else
+          {
+            for (int ii = 0; ii < 8; ++ii)
+            {
+              double weigth = std::abs ((i.pos[0] - quadrant->p(0, 7-ii))*
+                                        (i.pos[1] - quadrant->p(1, 7-ii))*
+                                        (i.pos[2] - quadrant->p(2, 7-ii))) / volume;
+                  				
+              if (! quadrant->is_hanging (ii))
+                (*rho_fixed)[quadrant->gt (ii)] += i.charge*4.0*pi*weigth / vol_patch[quadrant->gt (ii)];
+              else
+                for (int jj = 0; jj < quadrant->num_parents (ii); ++jj)
+                  (*rho_fixed)[quadrant->gparent (jj, ii)] += i.charge*4.0*pi*weigth / 
+                                                             (quadrant->num_parents (ii) * vol_patch[quadrant->gt (ii)]);
+              
+            }
           }
           //break;
         }
@@ -1703,8 +1725,6 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   
   if (bc == 2) //coulombic Dir bc 
   {
-    MPI_Barrier(mpicomm);
-    auto start = std::chrono::steady_clock::now();
     for (auto const & ibc : bcells){
       auto cella = ibc.first;
       auto lato = ibc.second;
@@ -1716,8 +1736,6 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   if (bc == 3) //coulombic Dir bc 
   {
-    MPI_Barrier(mpicomm);
-    auto start = std::chrono::steady_clock::now();
     for (auto const & ibc : bcells){
       auto cella = ibc.first;
       auto lato = ibc.second;
@@ -2213,6 +2231,7 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
 
     if (cubeindex > -1)
     {
+      std::set<int> ed;
       for (int ii=0;triTable[cubeindex][ii]!=-1;ii+=3) 
       {
          // save all the assigned indexes

@@ -64,9 +64,10 @@ main (int argc, char **argv)
   // pb.init_tmesh_with_refine_box ();
   // TOC ("init_tmesh");
   
+  TIC ();
   if (pb.surf_type != 2 && rank == 0)
     ray_cache.init_analytical_surf (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads);
-  
+  TOC ("init analytucal surf");
   TIC ();
   pb.refine_surface (ray_cache);
   TOC ("refine the box");
@@ -95,13 +96,13 @@ main (int argc, char **argv)
   //   pb.surface_integrals_energy(ray_cache);
   // TOC ("compute old energy:")
   
-  // TIC ();
-  // pb.export_tmesh (ray_cache);
-  // TOC ("export tmesh");
+  TIC ();
+  pb.export_tmesh (ray_cache);
+  TOC ("export tmesh");
 
-  // TIC ();
-  // pb.export_marked_tmesh ();
-  // TOC ("export marked tmesh");
+  TIC ();
+  pb.export_marked_tmesh ();
+  TOC ("export marked tmesh");
 
   // pb.analitic_potential();
 
