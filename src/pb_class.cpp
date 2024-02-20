@@ -1671,7 +1671,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   distributed_sparse_matrix A; 
   A.set_ranges (tmsh.num_owned_nodes ());
   
-  distributed_vector  rhs (tmsh.num_owned_nodes (), mpicomm);
+  // distributed_vector  rhs (tmsh.num_owned_nodes (), mpicomm);
+  rhs = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
   
   bim3a_laplacian_frac (tmsh, (*epsilon_nodes), A, func_frac);
   // bim3a_laplacian_eafe (tmsh, (*epsilon_nodes), A);
@@ -1683,7 +1684,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   bim3a_reaction_frac (tmsh, reaction_nodes, ones, A, func_frac); 
   
   bim3a_solution_with_ghosts (tmsh, *rho_fixed);
-  bim3a_rhs (tmsh, const_ones, *rho_fixed, rhs);
+  bim3a_rhs (tmsh, const_ones, *rho_fixed, *rhs);
 
 
  
@@ -1697,7 +1698,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
       bcs.push_back (std::make_tuple (cella, lato, 
                [] (double x, double y, double z) {return 0;}));
     }
-    bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
+    bim3a_dirichlet_bc (tmsh, bcs, A, *rhs);
   }
   
   if (bc == 2) //coulombic Dir bc 
@@ -1710,7 +1711,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
       bcs.push_back (std::make_tuple (cella, lato, 
                      [&] (double x, double y, double z) {return coulomb_boundary_conditions (x,y,z);}));
     }
-    bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
+    bim3a_dirichlet_bc (tmsh, bcs, A, *rhs);
   }
 
   if (bc == 3) //coulombic Dir bc 
@@ -1723,11 +1724,11 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
       bcs.push_back (std::make_tuple (cella, lato, 
                      [&] (double x, double y, double z) {return analytic_boundary_conditions (x,y,z);}));
     }
-    bim3a_dirichlet_bc (tmsh, bcs, A, rhs);
+    bim3a_dirichlet_bc (tmsh, bcs, A, *rhs);
   }
   
   A.assemble ();
-  rhs.assemble();
+  rhs->assemble();
 
     
   
@@ -1746,14 +1747,14 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   LIS_INT i, is, ie, n_rhs, ln; 
   LIS_VECTOR rhs_lis;
   //n_rhs = tmsh.num_global_nodes();
-  ln = rhs.get_owned_data().size(); 
+  ln = rhs->get_owned_data().size(); 
   
   lis_vector_create(mpicomm, &rhs_lis);
   lis_vector_set_size(rhs_lis, ln, 0);
   lis_vector_get_range(rhs_lis, &is, &ie);
   
   for (i=is; i<ie; i++)
-    lis_vector_set_value (LIS_INS_VALUE, i, rhs.get_owned_data()[i-is], rhs_lis); 
+    lis_vector_set_value (LIS_INS_VALUE, i, rhs->get_owned_data()[i-is], rhs_lis); 
   //lis_vector_print(rhs_lis);
   // lis PHI
   LIS_VECTOR phi_lis;
@@ -2150,7 +2151,7 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
    // flux and polarization energy calculation
   distributed_vector flux (tmsh.num_owned_nodes (), mpicomm);         
   flux.get_owned_data ().assign (flux.get_owned_data ().size (), 0.0);
-  
+/*  
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
            quadrant != this->tmsh.end_quadrant_sweep ();
            ++quadrant)
@@ -2196,8 +2197,60 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     }
 
   }
-   bim3a_solution_with_ghosts (tmsh, flux, replace_op);
-   tmsh.octbin_export ("flux_0", flux);
+*/
+  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
+           quadrant != this->tmsh.end_quadrant_sweep ();
+           ++quadrant)
+  {
+    h[0] = quadrant->p(0, 7) - quadrant->p(0, 0);
+    h[1] = quadrant->p(1, 7) - quadrant->p(1, 0);
+    h[2] = quadrant->p(2, 7) - quadrant->p(2, 0);
+    int cubeindex = classifyCube(quadrant, eps_out);
+        
+    area_h[0] = h[1]*h[2]/h[0] * 0.25;
+    area_h[1] = h[0]*h[2]/h[1] * 0.25;
+    area_h[2] = h[0]*h[1]/h[2] * 0.25;
+
+    if (cubeindex > -1)
+    {
+      for (int ii=0;triTable[cubeindex][ii]!=-1;ii+=3) 
+      {
+         // save all the assigned indexes
+        ed.insert(triTable[cubeindex][ii  ]);
+        ed.insert(triTable[cubeindex][ii+1]);
+        ed.insert(triTable[cubeindex][ii+2]);     
+      }
+
+      for (auto ip = ed.begin(); ip != ed.end(); ++ip) 
+      {
+        tmp_flux = 0.0;
+        i1 = edge2nodes[*ip][0];
+        i2 = edge2nodes[*ip][1];
+        double fract;
+        normal_intersection(quadrant, ray_cache, *ip, N,fract);
+        V[0] = quadrant->p(0, i1);
+        V[1] = quadrant->p(1, i1);
+        V[2] = quadrant->p(2, i1);
+        V[edge_axis[*ip]] += fract*h[edge_axis[*ip]];
+              
+        tmp_flux = -((*phi)[quadrant->gt (i2)] - (*phi)[quadrant->gt (i1)])*
+                      wha((*epsilon_nodes)[quadrant->gt (i1)],
+                          (*epsilon_nodes)[quadrant->gt (i2)], fract)*
+                      flux_dir((*epsilon_nodes)[quadrant->gt (i1)],
+                              (*epsilon_nodes)[quadrant->gt (i2)])*
+                      area_h[edge_axis[*ip]];
+        charge_pol += tmp_flux;
+
+
+        for (const NS::Atom& i : atoms){
+          distance = std::hypot(i.pos[0]-V[0], i.pos[1]-V[1], i.pos[2]-V[2]);
+          first_int +=  i.charge*tmp_flux/distance;
+        }
+        
+      }
+
+    }
+  }
 
   double energy_pol = constant_pol*first_int;
   
