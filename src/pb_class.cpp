@@ -469,51 +469,51 @@ poisson_boltzmann::init_tmesh ()
     }
 }
 
-// void
-// poisson_boltzmann::init_tmesh_with_refine_box ()
-// {
-//   for (auto i = 0; i < outlevel; ++i)
-//     {
-//       tmsh.set_refine_marker (uniform_refinement);
-//       tmsh.refine (0, 1);
-//     }
+void
+poisson_boltzmann::init_tmesh_with_refine_box ()
+{
+  for (auto i = 0; i < outlevel; ++i)
+    {
+      tmsh.set_refine_marker (uniform_refinement);
+      tmsh.refine (0, 1);
+    }
 	
-//    auto refinement = [this]
-//         (tmesh_3d::quadrant_iterator q) -> int
-//           {
-//             int currentlevel = static_cast<int> (q->the_quadrant->level);
-//             int retval = 0;
+   auto refinement = [this]
+        (tmesh_3d::quadrant_iterator q) -> int
+          {
+            int currentlevel = static_cast<int> (q->the_quadrant->level);
+            int retval = 0;
             
-//             if (currentlevel >= this->unilevel)
-//               retval = 0;
-//             else
-//               {
-//                 for (int ii = 0; ii < 8; ++ii)
-//                   {
-//                     if (! q->is_hanging (ii))
-//                       {
-//                         if ((q -> p(0, ii) > this->l_cr[0]) && (q -> p(0, ii) < this->r_cr[0])
-// 			                       && (q -> p(1, ii) > this->l_cr[1]) && (q -> p(1, ii) < this->r_cr[1])
-// 			                       && (q -> p(2, ii) > this->l_cr[2]) && (q -> p(2, ii) < this->r_cr[2]))
-// 			                         {
-// 			                            retval = 1;
-// 		                              break;
-// 			                         }
-//                       }
-//                   }
-//                 }
-//                 return (retval);
-//               };	
+            if (currentlevel >= this->unilevel)
+              retval = 0;
+            else
+              {
+                for (int ii = 0; ii < 8; ++ii)
+                  {
+                    if (! q->is_hanging (ii))
+                      {
+                        if ((q -> p(0, ii) > this->l_cr[0]) && (q -> p(0, ii) < this->r_cr[0])
+			                       && (q -> p(1, ii) > this->l_cr[1]) && (q -> p(1, ii) < this->r_cr[1])
+			                       && (q -> p(2, ii) > this->l_cr[2]) && (q -> p(2, ii) < this->r_cr[2]))
+			                         {
+			                            retval = 1;
+		                              break;
+			                         }
+                      }
+                  }
+                }
+                return (retval);
+              };	
 	
-//     for (auto i = 0; i < unilevel; ++i)
-//       {
-//         tmsh.set_refine_marker (refinement);
-//         tmsh.refine (0, 1);
-//       }
+    for (auto i = 0; i < unilevel; ++i)
+      {
+        tmsh.set_refine_marker (refinement);
+        tmsh.refine (0, 1);
+      }
       
-// }
+}
 
-
+/*
 void
 poisson_boltzmann::init_tmesh_with_refine_box ()
 {
@@ -537,9 +537,9 @@ poisson_boltzmann::init_tmesh_with_refine_box ()
                   {
                     if (! q->is_hanging (ii))
                       {
-                        if ((q -> p(0, ii) > this->l_cr[0]) && (q -> p(0, ii) < this->r_cr[0])
-                             && (q -> p(1, ii) > this->l_cr[1]) && (q -> p(1, ii) < this->r_cr[1])
-                             && (q -> p(2, ii) > this->l_cr[2]) && (q -> p(2, ii) < this->r_cr[2]))
+                        if ((q -> p(0, ii) <= this->l_cr[0]) || (q -> p(0, ii) >= this->r_cr[0])
+                             && (q -> p(1, ii) <= this->l_cr[1]) || (q -> p(1, ii) >= this->r_cr[1])
+                             && (q -> p(2, ii) <= this->l_cr[2]) || (q -> p(2, ii) >= this->r_cr[2]))
                                {
                                   retval = 1;
                                   break;
@@ -557,7 +557,7 @@ poisson_boltzmann::init_tmesh_with_refine_box ()
       }
       
 }
-
+*/
 
 bool
 poisson_boltzmann::is_in (const NS::Atom& i,
@@ -1200,7 +1200,6 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
                 {
                   ray[i] = quadrant->p(direzioni[i], ii);
                 }
-                // ray_cache.rays[idir].erase(ray);
                 ray_cache.rays_list[idir].insert(ray);
 
               }
@@ -1209,7 +1208,26 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
         }
         else
           for (int idir = 0; idir < 3; ++idir)
+          {
             ++num_hanging[idir]; 
+            if (this->is_in_ns_surf (ray_cache,
+                                   quadrant->p (0, ii),
+                                   quadrant->p (1, ii),
+                                   quadrant->p (2, ii),idir) < -0.5 )
+            {
+              ray_cache.num_req_rays[idir]++;
+              std::array<double, 2> ray;
+
+              std::vector<int> direzioni {0,1,2};
+              direzioni.erase(direzioni.begin()+idir);
+              for (unsigned i = 0; i < direzioni.size(); ++i)
+              {
+                ray[i] = quadrant->p(direzioni[i], ii);
+              }
+              ray_cache.rays_list[idir].insert(ray);
+
+            }
+          }
       }
       
                 
@@ -1657,8 +1675,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
             for (int ii = 0; ii < 8; ++ii)
             {
               weigth[ii] = std::abs ((i.pos[0] - quadrant->p(0, 7-ii))*
-                                        (i.pos[1] - quadrant->p(1, 7-ii))*
-                                        (i.pos[2] - quadrant->p(2, 7-ii))) / volume;
+                                      (i.pos[1] - quadrant->p(1, 7-ii))*
+                                      (i.pos[2] - quadrant->p(2, 7-ii))) / volume* (*markn)[quadrant->gt (ii)];
             }
             int kk = std::distance(weigth.begin(), std::max_element(weigth.begin(), weigth.end()));
             (*rho_fixed)[quadrant->gt (kk)] += i.charge*4.0*pi / vol_patch[quadrant->gt (kk)];

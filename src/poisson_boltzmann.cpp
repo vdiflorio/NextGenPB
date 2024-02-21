@@ -55,14 +55,14 @@ main (int argc, char **argv)
   pb.create_mesh ();
   TOC ("create_mesh");
   
-  TIC ();
-  pb.init_tmesh ();
-  TOC ("init_tmesh");
-  
-  
   // TIC ();
-  // pb.init_tmesh_with_refine_box ();
+  // pb.init_tmesh ();
   // TOC ("init_tmesh");
+  
+  
+  TIC ();
+  pb.init_tmesh_with_refine_box ();
+  TOC ("init_tmesh");
   
   TIC ();
   if (pb.surf_type != 2 && rank == 0)
@@ -91,10 +91,6 @@ main (int argc, char **argv)
   TIC ();
     pb.energy(ray_cache);
   TOC ("compute energy")
-
-  // TIC ();
-  //   pb.surface_integrals_energy(ray_cache);
-  // TOC ("compute old energy:")
   
   TIC ();
   pb.export_tmesh (ray_cache);
