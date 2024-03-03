@@ -1648,9 +1648,10 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
               if (! quadrant->is_hanging (ii))
                 (*rho_fixed)[quadrant->gt (ii)] += i.charge*4.0*pi*weigth / vol_patch[quadrant->gt (ii)];
               else
-                for (int jj = 0; jj < quadrant->num_parents (ii); ++jj)
-                  (*rho_fixed)[quadrant->gparent (jj, ii)] += i.charge*4.0*pi*weigth / 
-                                                             (quadrant->num_parents (ii) * vol_patch[quadrant->gt (ii)]);
+                for (int jj = 0; jj < quadrant->num_parents (ii); ++jj) {
+		  double denom = quadrant->num_parents (ii) * vol_patch[quadrant->gparent (jj, ii)];
+                  (*rho_fixed)[quadrant->gparent (jj, ii)] += i.charge*4.0*pi*weigth / denom;
+		}
               
             }
           }
