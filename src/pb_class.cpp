@@ -145,10 +145,9 @@ poisson_boltzmann::create_mesh ()
       									bound_z/num_trees[2]};
       
       double bound[3] ={bound_x, bound_y, bound_z};
-      										
-    	make_connectivity_3d (num_trees, step, simple_conn_p, 
-    												simple_conn_num_vertices, simple_conn_t,
-    												simple_conn_num_trees, bcells);
+			make_connectivity_3d (num_trees, step, simple_conn_p, 
+        simple_conn_num_vertices, simple_conn_t,
+        simple_conn_num_trees, bcells);
     	
     	
     	for(p4est_topidx_t i =0; i < simple_conn_num_vertices; ++i)  
@@ -157,7 +156,6 @@ poisson_boltzmann::create_mesh ()
 		  		simple_conn_p[3*i + j++] += l_c[0];  
 		  		simple_conn_p[3*i + j++] += l_c[1];
 		  		simple_conn_p[3*i + j] += l_c[2];  
-		  		
     		}
     	   		 
 		}
