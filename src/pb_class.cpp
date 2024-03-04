@@ -148,6 +148,12 @@ poisson_boltzmann::create_mesh ()
 			make_connectivity_3d (num_trees, step, simple_conn_p, 
         simple_conn_num_vertices, simple_conn_t,
         simple_conn_num_trees, bcells);
+
+      for (auto const & ibcells : bcells) {
+        std::cout << "tree number " << std::get<0> (ibcells) 
+          << " face number " << << std::get<1> (ibcells) 
+          << std::endl;
+      }
     	
     	
     	for(p4est_topidx_t i =0; i < simple_conn_num_vertices; ++i)  
