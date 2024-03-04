@@ -148,13 +148,6 @@ poisson_boltzmann::create_mesh ()
 			make_connectivity_3d (num_trees, step, simple_conn_p, 
         simple_conn_num_vertices, simple_conn_t,
         simple_conn_num_trees, bcells);
-
-      for (auto const & ibcells : bcells) {
-        std::cout << "tree number " << std::get<0> (ibcells) 
-          << " face number " << << std::get<1> (ibcells) 
-          << std::endl;
-      }
-    	
     	
     	for(p4est_topidx_t i =0; i < simple_conn_num_vertices; ++i)  
     		{
@@ -1686,21 +1679,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   
   bim3a_solution_with_ghosts (tmsh, *rho_fixed);
   bim3a_rhs (tmsh, const_ones, *rho_fixed, *rhs);
-  int count = 0;
-  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-           quadrant != this->tmsh.end_quadrant_sweep ();
-           ++quadrant)
-  {
-    
-    std::cout << quadrant->get_forest_quad_idx() << " :  ";
-    for (int ii = 0; ii < 8; ++ii)
-    {
-      int boundary_idx = quadrant->e (ii);
-       std::cout<< boundary_idx << "  ";
-    }
-    std::cout<<std::endl;
-  }
-  std::cout << count << std::endl;
+
+
   // Set boundary conditions.
   dirichlet_bcs3 bcs;
   if (bc == 1) //hom Dir bc
@@ -1839,10 +1819,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   }
 
   bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
-  double charg = std::accumulate((*rhs).get_owned_data ().begin(),
-                                 (*rhs).get_owned_data ().end(), 0.0);
-  std::cout << charg/(4*pi) << std::endl;
-  ///////
+
   
 	/////////////////////////////////////////////////////////
    
