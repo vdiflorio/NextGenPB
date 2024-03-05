@@ -1553,38 +1553,18 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   // diffusion
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/(e*e);   //adim e_in
   double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/(e*e); //adim e_out
-  epsilon.assign (tmsh.num_local_quadrants (), eps_in); //e_in
-   
-  for (auto epsp = epsilon.begin (), mp = marker.begin ();
-       epsp != epsilon.end () || mp != marker.end ();
-       ++epsp, ++mp) 
-    if ((*mp) < 0.6)
-      (*epsp) = eps_in; 
-    else  
-      (*epsp) = eps_out;
-        
 
   /////////////////////////////////////////////////////////           
   //reactions
   double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
   double k2 = 2.0*C_0*Angs*Angs*e*e/(e_0*e_out*kb*T);  
-  reaction.assign (tmsh.num_local_quadrants (), 0.0);
-  
-  for (auto rp = reaction.begin (), mp = marker.begin ();
-       rp != reaction.end () || mp != marker.end ();
-       ++rp, ++mp)
-    if ((*mp) > 0.6) 
-      (*rp) = eps_out*k2;
       
   
   epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ()); 
-  epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out);
-
-  distributed_vector ones (tmsh.num_owned_nodes ()); 
-  ones.get_owned_data ().assign (ones.get_owned_data ().size (), 1.0); 
+  epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out); 
 
   distributed_vector reaction_nodes (tmsh.num_owned_nodes ()); 
-  reaction_nodes.get_owned_data ().assign (ones.get_owned_data ().size (), eps_out*k2);
+  reaction_nodes.get_owned_data ().assign (reaction_nodes.get_owned_data ().size (), eps_out*k2);
 
   for (auto ii = 0; ii< tmsh.num_owned_nodes (); ++ii){
     if ((*markn).get_owned_data ()[ii]>0.5){
@@ -1600,7 +1580,10 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   //////////////////////////////////////////////////////////
 
   rho_fixed = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ()); 
-  rho_fixed->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0); 
+  rho_fixed->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0);
+  
+  distributed_vector ones (tmsh.num_owned_nodes ()); 
+  ones.get_owned_data ().assign (ones.get_owned_data ().size (), 1.0); 
   std::vector<double> const_ones (tmsh.num_local_quadrants (), 1.0);
   
   distributed_vector  vol_patch (tmsh.num_owned_nodes (), mpicomm); 
@@ -1646,9 +1629,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
                 (*rho_fixed)[quadrant->gt (ii)] += i.charge*4.0*pi*weigth / vol_patch[quadrant->gt (ii)];
               else
                 for (int jj = 0; jj < quadrant->num_parents (ii); ++jj) {
-		  double denom = quadrant->num_parents (ii) * vol_patch[quadrant->gparent (jj, ii)];
+                  double denom = quadrant->num_parents (ii) * vol_patch[quadrant->gparent (jj, ii)];
                   (*rho_fixed)[quadrant->gparent (jj, ii)] += i.charge*4.0*pi*weigth / denom;
-		}
+                }
               
             }
           }
@@ -1657,24 +1640,18 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 		}   
   }
 
-  
   //////////////////////////////////////////////////////////////////
   auto func_frac = [&] (tmesh_3d::quadrant_iterator& quadrant) 
                         {return cube_fraction_intersection(quadrant,ray_cache);};
 
   distributed_sparse_matrix A; 
   A.set_ranges (tmsh.num_owned_nodes ());
-  
-  // distributed_vector  rhs (tmsh.num_owned_nodes (), mpicomm);
   rhs = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
   
   bim3a_laplacian_frac (tmsh, (*epsilon_nodes), A, func_frac);
-  // bim3a_laplacian_eafe (tmsh, (*epsilon_nodes), A);
-  // bim3a_laplacian (tmsh, epsilon, A);
   
   
   bim3a_solution_with_ghosts (tmsh, ones, replace_op);
-  // bim3a_reaction (tmsh, reaction, ones, A); 
   bim3a_reaction_frac (tmsh, reaction_nodes, ones, A, func_frac); 
   
   bim3a_solution_with_ghosts (tmsh, *rho_fixed);
@@ -1719,7 +1696,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   }
   A.assemble ();
   rhs->assemble();
-
+  std::cout << std::accumulate((*rhs).get_owned_data().begin(),(*rhs).get_owned_data().end(),0.0)/(4*pi) << std::endl;
     
   
   MPI_Barrier(mpicomm);
@@ -2137,55 +2114,10 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   double second_int = 0.0;
   double tmp_flux;
   int i1 = 0, i2 = 0;
-
+  double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
+         tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
    // flux and polarization energy calculation
   
-/*  
-  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-           quadrant != this->tmsh.end_quadrant_sweep ();
-           ++quadrant)
-  {
-    h[0] = quadrant->p(0, 7) - quadrant->p(0, 0);
-    h[1] = quadrant->p(1, 7) - quadrant->p(1, 0);
-    h[2] = quadrant->p(2, 7) - quadrant->p(2, 0);
-    
-    frac = cube_fraction_intersection(quadrant, ray_cache);
-    
-    area_h[0] = h[1]*h[2]/h[0] * 0.25;
-    area_h[1] = h[0]*h[2]/h[1] * 0.25;
-    area_h[2] = h[0]*h[1]/h[2] * 0.25;
-
-
-    for (int kk = 0; kk < 12; ++kk)
-    {
-      tmp_flux = 0.0;
-      i1 = edge2nodes[kk][0];
-      i2 = edge2nodes[kk][1];
-      V[0] = quadrant->p(0, i1);
-      V[1] = quadrant->p(1, i1);
-      V[2] = quadrant->p(2, i1);
-      if (frac[kk] > -0.5)
-      {
-
-        V[edge_axis[kk]] += frac[kk]*h[edge_axis[kk]];
-
-        tmp_flux = -((*phi)[quadrant->gt (i2)] - (*phi)[quadrant->gt (i1)])*
-                      wha((*epsilon_nodes)[quadrant->gt (i1)],
-                          (*epsilon_nodes)[quadrant->gt (i2)], frac[kk])*
-                      flux_dir((*epsilon_nodes)[quadrant->gt (i1)],
-                              (*epsilon_nodes)[quadrant->gt (i2)])*
-                      area_h[edge_axis[kk]];
-        charge_pol += tmp_flux;
-
-        for (const NS::Atom& i : atoms){
-          distance = std::hypot(i.pos[0]-V[0], i.pos[1]-V[1], i.pos[2]-V[2]);
-          first_int +=  i.charge*tmp_flux/distance;
-        }
-      }        
-    }
-
-  }
-*/
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
            quadrant != this->tmsh.end_quadrant_sweep ();
            ++quadrant)
@@ -2213,6 +2145,10 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
       for (auto ip = ed.begin(); ip != ed.end(); ++ip) 
       {
         tmp_flux = 0.0;
+        tmp_eps_1 = 0.0;
+        tmp_eps_2 = 0.0;
+        tmp_phi_1 = 0.0;
+        tmp_phi_2 = 0.0;
         i1 = edge2nodes[*ip][0];
         i2 = edge2nodes[*ip][1];
         double fract;
@@ -2221,13 +2157,39 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
         V[1] = quadrant->p(1, i1);
         V[2] = quadrant->p(2, i1);
         V[edge_axis[*ip]] += fract*h[edge_axis[*ip]];
-              
-        tmp_flux = -((*phi)[quadrant->gt (i2)] - (*phi)[quadrant->gt (i1)])*
-                      wha((*epsilon_nodes)[quadrant->gt (i1)],
-                          (*epsilon_nodes)[quadrant->gt (i2)], fract)*
-                      flux_dir((*epsilon_nodes)[quadrant->gt (i1)],
-                              (*epsilon_nodes)[quadrant->gt (i2)])*
-                      area_h[edge_axis[*ip]];
+
+        if (! quadrant->is_hanging (i1))
+        {
+          tmp_phi_1 = (*phi)[quadrant->gt (i1)];
+          tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
+        }
+        else
+          for (int jj = 0; jj < quadrant->num_parents (i1); ++jj)
+          {
+            tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
+            tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
+          }
+
+        if (! quadrant->is_hanging (i2))
+        {
+          tmp_phi_2 = (*phi)[quadrant->gt (i2)];
+          tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
+        }
+        else
+          for (int jj = 0; jj < quadrant->num_parents (i2); ++jj)
+          {
+            tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
+            tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
+          }
+
+        // tmp_flux = -((*phi)[quadrant->gt (i2)] - (*phi)[quadrant->gt (i1)])*
+        //               wha((*epsilon_nodes)[quadrant->gt (i1)],
+        //                   (*epsilon_nodes)[quadrant->gt (i2)], fract)*
+        //               flux_dir((*epsilon_nodes)[quadrant->gt (i1)],
+        //                       (*epsilon_nodes)[quadrant->gt (i2)])*
+        //               area_h[edge_axis[*ip]];
+        tmp_flux = -(tmp_phi_2 - tmp_phi_1) * wha(tmp_eps_1,tmp_eps_2, fract)*
+                      flux_dir(tmp_eps_1, tmp_eps_2)* area_h[edge_axis[*ip]];
         charge_pol += tmp_flux;
 
 
@@ -2250,8 +2212,7 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   std::array<std::array<double,3>,3> vert_triangles;
   std::array<std::array<double,3>,3> norms_vert;
   std::array<double,3> phi_sup;
-  double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
-         tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
+  
   double area = 0.0;
 
   double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
@@ -2325,8 +2286,7 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
                        << (phi_sup[jj] - phi_sup_an)/phi_sup_an*100 <<std::endl;
         
         }
-        // area = areaTriangle(vert_triangles);
-        area = SphercalAreaTriangle(vert_triangles);
+        area = areaTriangle(vert_triangles);
 
         for (const NS::Atom& i : atoms){
           for (int kk = 0; kk < 3; ++kk)
@@ -2417,7 +2377,6 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
     std::cout << "Polarization energy: "
               << std::setprecision(16)<<energy_pol
-              << "  Errore %:" << (energy_pol - (-6.830597984954669e+01))/6.830597984954669e+01 * 100
               << std::endl;
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << std::endl;
@@ -2426,7 +2385,6 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;   
     std::cout << "Direct ionic energy: "
               << std::setprecision(16)<<energy_react
-              << "  Errore %:" << (energy_react - (-3.480285956688043e-01))/3.480285956688043e-01 * 100
               << std::endl;
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
     std::cout << std::endl;
