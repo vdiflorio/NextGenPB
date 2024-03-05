@@ -173,7 +173,7 @@ ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS
 {
   NS::NanoShaper ns0 (atoms, surf_type, surf_param, stern_layer, num_threads);
   ns = ns0;
-  ns.setConfig<double>("Grid_scale", 2.0);
+  ns.setConfig<double>("Grid_scale", 3.0);
   ns.setConfig<double>("Self_Intersections_Grid_Coefficient", 1.5);
   ns.buildAnalyticalSurface();
   std::cout << "\n" << std::endl;

@@ -43,16 +43,8 @@ poisson_boltzmann::create_mesh ()
             }
         };
       std::for_each (atoms.begin (), atoms.end (), it);
-    
-      // for (int kk = 0; kk < 3; ++kk)
-      //   {
-      //     if (this->rr < this->r_c[kk])
-      //       this->rr = this->r_c[kk];
-      //     else if (this->ll > this->l_c[kk])
-      //       this->ll = this->l_c[kk];
-      //   }
-      double min = l_c[0],
-             max = r_c[0];
+
+      double min = l_c[0], max = r_c[0];
       for (int kk = 0; kk < 3; ++kk)
       {
         min = l_c[kk] < min ? l_c[kk] : min;
@@ -61,19 +53,38 @@ poisson_boltzmann::create_mesh ()
       rr = max;
       ll = min;
       double dd, dx, dy, dz;
-      dd = (rr-ll)/8.0;
-      dx = (r_c[0] - l_c[0])/8.0;
-      dy = (r_c[1] - l_c[1])/8.0;
-      dz = (r_c[2] - l_c[2])/8.0;
-      
-      l_c[0] -= dx; l_c[1] -= dy; l_c[2] -= dz;
-      r_c[0] += dx; r_c[1] += dy; r_c[2] += dz;
-      
-      // ll -= 4*maxradius;
-      // rr += 4*maxradius;
+      dd = (rr-ll);
+      dx = (r_c[0] - l_c[0]);
+      dy = (r_c[1] - l_c[1]);
+      dz = (r_c[2] - l_c[2]);
 
-      ll -= dd;
-      rr += dd;
+      if (refine_box == 1)
+      {
+        l_cr[0] = l_c[0];
+        r_cr[0] = r_c[0];
+        l_cr[1] = l_c[1];
+        r_cr[1] = r_c[1];
+        l_cr[2] = l_c[2];
+        r_cr[2] = r_c[2];
+        //box al 20% perfil
+        l_c[0] -= dx*2; l_c[1] -= dy*2; l_c[2] -= dz*2;
+        r_c[0] += dx*2; r_c[1] += dy*2; r_c[2] += dz*2;
+
+        ll -= dd*2;
+        rr += dd*2;
+
+        l_cr[0] -= dx/8.0; l_cr[1] -= dy/8.0; l_cr[2] -= dz/8.0;
+        r_cr[0] += dx/8.0; r_cr[1] += dy/8.0; r_cr[2] += dz/8.0;
+
+      }else {
+
+        l_c[0] -= dx/8.0; l_c[1] -= dy/8.0; l_c[2] -= dz/8.0;
+        r_c[0] += dx/8.0; r_c[1] += dy/8.0; r_c[2] += dz/8.0;
+
+        ll -= dd/8;
+        rr += dd/8;
+      }
+      
     }
   
   if (mesh_shape == 0)
@@ -309,6 +320,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   unilevel = g2 ((mesh_options + "unilevel").c_str (),  5);
   outlevel = g2 ((mesh_options + "outlevel").c_str (),  minlevel);	
   mesh_shape = g2 ((mesh_options + "mesh_shape").c_str (),  1);
+  refine_box = g2 ((mesh_options + "refine_box").c_str (),  0);
   if (mesh_shape == 2)
     {
       l_c[0] = g2 ((mesh_options + "x1").c_str (),  -128.0);
@@ -332,10 +344,17 @@ poisson_boltzmann::parse_options (int argc, char **argv)
       r_c[1] = g2 ((mesh_options + "y2").c_str (),  128.0);
       l_c[2] = g2 ((mesh_options + "z1").c_str (),  -128.0);
       r_c[2] = g2 ((mesh_options + "z2").c_str (),  128.0);
+      l_cr[0] = g2 ((mesh_options + "refine_x1").c_str (),  -64.0);
+      r_cr[0] = g2 ((mesh_options + "refine_x2").c_str (),  64.0);
+      l_cr[1] = g2 ((mesh_options + "refine_y1").c_str (),  -64.0);
+      r_cr[1] = g2 ((mesh_options + "refine_y2").c_str (),  64.0);
+      l_cr[2] = g2 ((mesh_options + "refine_z1").c_str (),  -64.0);
+      r_cr[2] = g2 ((mesh_options + "refine_z2").c_str (),  64.0);
       num_trees [0] = g2 ((mesh_options + "num_trees_x").c_str (),  1);
       num_trees [1] = g2 ((mesh_options + "num_trees_y").c_str (),  1);
       num_trees [2] = g2 ((mesh_options + "num_trees_z").c_str (),  1);
     }
+
 	
   const std::string model_options = "model/";
   linearized = g2 ((model_options + "linearized").c_str (),  1);
@@ -470,43 +489,44 @@ void
 poisson_boltzmann::init_tmesh_with_refine_box ()
 {
   for (auto i = 0; i < outlevel; ++i)
+  {
+    tmsh.set_refine_marker (uniform_refinement);
+    tmsh.refine (0, 1);
+  }
+	
+  auto refinement = [this]
+    (tmesh_3d::quadrant_iterator q) -> int
+      {
+        int currentlevel = static_cast<int> (q->the_quadrant->level);
+        int retval = 0;
+        
+        if (currentlevel >= this->unilevel)
+          retval = 0;
+        else
+          {
+            for (int ii = 0; ii < 8; ++ii)
+              {
+                if (! q->is_hanging (ii))
+                  {
+                    if ((q -> p(0, ii) > this->l_cr[0]) && (q -> p(0, ii) < this->r_cr[0])
+                         && (q -> p(1, ii) > this->l_cr[1]) && (q -> p(1, ii) < this->r_cr[1])
+                         && (q -> p(2, ii) > this->l_cr[2]) && (q -> p(2, ii) < this->r_cr[2]))
+                           {
+                              retval = 1;
+                              break;
+                           }
+                  }
+              }
+            }
+            return (retval);
+      };
+  for (auto i = 0; i < unilevel; ++i)
     {
-      tmsh.set_refine_marker (uniform_refinement);
+      tmsh.set_refine_marker (refinement);
       tmsh.refine (0, 1);
     }
-	
-   auto refinement = [this]
-        (tmesh_3d::quadrant_iterator q) -> int
-          {
-            int currentlevel = static_cast<int> (q->the_quadrant->level);
-            int retval = 0;
-            
-            if (currentlevel >= this->unilevel)
-              retval = 0;
-            else
-              {
-                for (int ii = 0; ii < 8; ++ii)
-                  {
-                    if (! q->is_hanging (ii))
-                      {
-                        if ((q -> p(0, ii) > this->l_cr[0]) && (q -> p(0, ii) < this->r_cr[0])
-			                       && (q -> p(1, ii) > this->l_cr[1]) && (q -> p(1, ii) < this->r_cr[1])
-			                       && (q -> p(2, ii) > this->l_cr[2]) && (q -> p(2, ii) < this->r_cr[2]))
-			                         {
-			                            retval = 1;
-		                              break;
-			                         }
-                      }
-                  }
-                }
-                return (retval);
-              };	
-	
-    for (auto i = 0; i < unilevel; ++i)
-      {
-        tmsh.set_refine_marker (refinement);
-        tmsh.refine (0, 1);
-      }
+  
+
       
 }
 
@@ -1696,7 +1716,6 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   }
   A.assemble ();
   rhs->assemble();
-  std::cout << std::accumulate((*rhs).get_owned_data().begin(),(*rhs).get_owned_data().end(),0.0)/(4*pi) << std::endl;
     
   
   MPI_Barrier(mpicomm);
@@ -1800,9 +1819,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   
 	/////////////////////////////////////////////////////////
    
-  tmsh.octbin_export ("phi_0", *phi);
-  tmsh.octbin_export ("rho_0", *rho_fixed);
-  tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
+  // tmsh.octbin_export ("phi_0", *phi);
+  // tmsh.octbin_export ("rho_0", *rho_fixed);
+  // tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
   
    
 }

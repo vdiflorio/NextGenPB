@@ -65,6 +65,7 @@ poisson_boltzmann
   int unilevel;
   int outlevel;
   int mesh_shape;
+  int refine_box;
 
   int maxlevel1 = 10, minlevel1 = 1;
   
