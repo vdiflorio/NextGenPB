@@ -47,8 +47,8 @@ poisson_boltzmann
   std::vector<NS::Atom> atoms;
 
   //Cubic mesh:
-  double ll; //min value between all the coordinates 
-  double rr; //max value between all the coordinates
+  double ll[3]; //min value between all the coordinates 
+  double rr[3]; //max value between all the coordinates
   
   //Stretched mesh:
   double l_c[3]; //min x, y, z value

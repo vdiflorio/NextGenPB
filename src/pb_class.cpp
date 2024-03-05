@@ -25,7 +25,6 @@ poisson_boltzmann::create_mesh ()
   
   if (mesh_shape < 2)  
     {
-      ll = atoms.begin ()->pos[0]; rr = atoms.begin ()->pos[0]; 
       l_c[0] = atoms.begin ()->pos[0] - atoms.begin ()->radius; 
       l_c[1] = atoms.begin ()->pos[1] - atoms.begin ()->radius; 
       l_c[2] = atoms.begin ()->pos[2] - atoms.begin ()->radius; 
@@ -44,19 +43,24 @@ poisson_boltzmann::create_mesh ()
         };
       std::for_each (atoms.begin (), atoms.end (), it);
 
-      double min = l_c[0], max = r_c[0];
+      
+      double lmax = 0; 
+      double l[3];
+      double c[3];
+      
       for (int kk = 0; kk < 3; ++kk)
       {
-        min = l_c[kk] < min ? l_c[kk] : min;
-        max = r_c[kk] > max ? r_c[kk] : max;
+        l[kk] = (r_c[kk] - l_c[kk]);
+        c[kk] = (r_c[kk] + l_c[kk])*0.5;
+        lmax = l[kk] > lmax ? l[kk] : lmax;
       }
-      rr = max;
-      ll = min;
-      double dd, dx, dy, dz;
-      dd = (rr-ll);
-      dx = (r_c[0] - l_c[0]);
-      dy = (r_c[1] - l_c[1]);
-      dz = (r_c[2] - l_c[2]);
+  
+      for (int kk = 0; kk < 3; ++kk)
+      {
+        ll[kk] = c[kk] - lmax*0.5;
+        rr[kk] = c[kk] + lmax*0.5;
+      }
+      
 
       if (refine_box == 1)
       {
@@ -67,22 +71,22 @@ poisson_boltzmann::create_mesh ()
         l_cr[2] = l_c[2];
         r_cr[2] = r_c[2];
         //box al 20% perfil
-        l_c[0] -= dx*2; l_c[1] -= dy*2; l_c[2] -= dz*2;
-        r_c[0] += dx*2; r_c[1] += dy*2; r_c[2] += dz*2;
+        l_c[0] -= l[0]*2; l_c[1] -= l[1]*2; l_c[2] -= l[2]*2;
+        r_c[0] += l[0]*2; r_c[1] += l[1]*2; r_c[2] += l[2]*2;
 
-        ll -= dd*2;
-        rr += dd*2;
+        ll[0] -= lmax*2; ll[1] -= lmax*2; ll[2] -= lmax*2;
+        rr[0] += lmax*2; rr[1] += lmax*2; rr[2] += lmax*2;
 
-        l_cr[0] -= dx/8.0; l_cr[1] -= dy/8.0; l_cr[2] -= dz/8.0;
-        r_cr[0] += dx/8.0; r_cr[1] += dy/8.0; r_cr[2] += dz/8.0;
+        l_cr[0] -= l[0]/8.0; l_cr[1] -= l[1]/8.0; l_cr[2] -= l[2]/8.0;
+        r_cr[0] += l[0]/8.0; r_cr[1] += l[1]/8.0; r_cr[2] += l[2]/8.0;
 
       }else {
 
-        l_c[0] -= dx/8.0; l_c[1] -= dy/8.0; l_c[2] -= dz/8.0;
-        r_c[0] += dx/8.0; r_c[1] += dy/8.0; r_c[2] += dz/8.0;
+        l_c[0] -= l[0]/8.0; l_c[1] -= l[1]/8.0; l_c[2] -= l[2]/8.0;
+        r_c[0] += l[0]/8.0; r_c[1] += l[1]/8.0; r_c[2] += l[2]/8.0;
 
-        ll -= dd/8;
-        rr += dd/8;
+        ll[0] -= lmax/8.0; ll[1] -= lmax/8.0; ll[2] -= lmax/8.0;
+        rr[0] += lmax/8.0; rr[1] += lmax/8.0; rr[2] += lmax/8.0;
       }
       
     }
@@ -91,17 +95,23 @@ poisson_boltzmann::create_mesh ()
     {
       if (rank == 0)
         {
-          std::cout << "x: " << ll << ", " << rr << std::endl;
-          std::cout << "y: " << ll << ", " << rr << std::endl;
-          std::cout << "z: " << ll << ", " << rr << "\n" << std::endl;
+          std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+          std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+          std::cout << "z: " << ll[2] << ", " << rr[2] << "\n" << std::endl;
         }
       simple_conn_num_vertices = 8;
       simple_conn_num_trees = 1;
       simple_conn_p = new double[simple_conn_num_vertices*3];
       simple_conn_t = new p4est_topidx_t[simple_conn_num_vertices];
       
-      auto tmp_p = {ll, ll, ll, rr, ll, ll, ll, rr, ll, rr, rr, ll,
-                   ll, ll, rr, rr, ll, rr, ll, rr, rr, rr, rr, rr};
+      auto tmp_p = {ll[0], ll[1], ll[2], 
+                    rr[0], ll[1], ll[2], 
+                    ll[0], rr[1], ll[2], 
+                    rr[0], rr[1], ll[2],
+                    ll[0], ll[1], rr[2], 
+                    rr[0], ll[1], rr[2], 
+                    ll[0], rr[1], rr[2], 
+                    rr[0], rr[1], rr[2]};
       auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
       
       std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
@@ -171,28 +181,32 @@ poisson_boltzmann::create_mesh ()
 		}
 	else
 		{
-			std::cout << "Error during the creation of the mesh! It will be produced a cubic mesh!"<< "\n" << std::endl;
-			
-			if (rank == 0)
+      if (rank == 0)
         {
-					std::cout << "x: " << ll << ", " << rr << std::endl;
-          std::cout << "y: " << ll << ", " << rr << std::endl;
-          std::cout << "z: " << ll << ", " << rr << "\n" << std::endl;
+          std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+          std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+          std::cout << "z: " << ll[2] << ", " << rr[2] << "\n" << std::endl;
         }
       simple_conn_num_vertices = 8;
       simple_conn_num_trees = 1;
       simple_conn_p = new double[simple_conn_num_vertices*3];
       simple_conn_t = new p4est_topidx_t[simple_conn_num_vertices];
       
-      auto tmp_p = {ll, ll, ll, rr, ll, ll, ll, rr, ll, rr, rr, ll,
-                   ll, ll, rr, rr, ll, rr, ll, rr, rr, rr, rr, rr};
+      auto tmp_p = {ll[0], ll[1], ll[2], 
+                    rr[0], ll[1], ll[2], 
+                    ll[0], rr[1], ll[2], 
+                    rr[0], rr[1], ll[2],
+                    ll[0], ll[1], rr[2], 
+                    rr[0], ll[1], rr[2], 
+                    ll[0], rr[1], rr[2], 
+                    rr[0], rr[1], rr[2]};
       auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
       
       std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
       std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t); 
       for (int i = 0; i<6;i++)
-        bcells.push_back(std::make_pair(0, i));  
-		}
+        bcells.push_back(std::make_pair(0, i));                  
+    }
   
 	tmsh.read_connectivity (simple_conn_p, simple_conn_num_vertices,
                           simple_conn_t, simple_conn_num_trees);
