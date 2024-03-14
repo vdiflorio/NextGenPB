@@ -38,10 +38,10 @@ poisson_boltzmann
 
   p4est_topidx_t simple_conn_num_vertices;
   p4est_topidx_t simple_conn_num_trees;
-  //std::unique_ptr<double> simple_conn_p;
-  //std::unique_ptr<double> simple_conn_p;
-  double *simple_conn_p;
-  p4est_topidx_t *simple_conn_t;
+  std::unique_ptr<double[]> simple_conn_p;
+  std::unique_ptr<p4est_topidx_t[]> simple_conn_t;
+  // double *simple_conn_p;
+  // p4est_topidx_t *simple_conn_t;
   std::vector<std::pair<p4est_topidx_t, p4est_topidx_t>> bcells;
   
   std::vector<NS::Atom> atoms;
@@ -530,7 +530,7 @@ poisson_boltzmann
   coulomb_boundary_conditions(double x, double y, double z);
 
   double
-  analytic_boundary_conditions(double x, double y, double z);
+  analytic_solution(double x, double y, double z);
   
   void
   analitic_potential();
