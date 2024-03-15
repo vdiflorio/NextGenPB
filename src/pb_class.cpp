@@ -1912,15 +1912,13 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
 
   ////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////
-  double hx, hy, hz;
-  std::array<double,12> frac;
   double fract;
   std::array<double,3> V;
   std::array<double,3> N;
   std::array<double,3> dist_vert;
   std::array<double,3> h;
   std::array<double,3> area_h;
-  
+  int cubeindex = -1;
 
   double charge_pol = 0.0;
 
@@ -1934,23 +1932,30 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   int i1 = 0, i2 = 0;
   double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
          tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
-   // flux and polarization energy calculation
+  
+  std::ofstream phi_node_file;
+  std::ofstream phi_hang_node_file;
+  phi_node_file.open ("phi_nodes.txt");
+  phi_hang_node_file.open ("phi_hang_nodes.txt"); 
+  
+  // flux and polarization energy calculation
   
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
            quadrant != this->tmsh.end_quadrant_sweep ();
            ++quadrant)
   {
-    h[0] = quadrant->p(0, 7) - quadrant->p(0, 0);
-    h[1] = quadrant->p(1, 7) - quadrant->p(1, 0);
-    h[2] = quadrant->p(2, 7) - quadrant->p(2, 0);
-    int cubeindex = classifyCube(quadrant, eps_out);
-        
-    area_h[0] = h[1]*h[2]/h[0] * 0.25;
-    area_h[1] = h[0]*h[2]/h[1] * 0.25;
-    area_h[2] = h[0]*h[1]/h[2] * 0.25;
+    
+    cubeindex = classifyCube(quadrant, eps_out);
 
     if (cubeindex > -1)
     {
+      h[0] = quadrant->p(0, 7) - quadrant->p(0, 0);
+      h[1] = quadrant->p(1, 7) - quadrant->p(1, 0);
+      h[2] = quadrant->p(2, 7) - quadrant->p(2, 0);
+      area_h[0] = h[1]*h[2]/h[0] * 0.25;
+      area_h[1] = h[0]*h[2]/h[1] * 0.25;
+      area_h[2] = h[0]*h[1]/h[2] * 0.25;
+      
       std::set<int> ed;
       for (int ii=0;triTable[cubeindex][ii]!=-1;ii+=3) 
       {
@@ -1980,35 +1985,43 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
         {
           tmp_phi_1 = (*phi)[quadrant->gt (i1)];
           tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
+          phi_node_file << quadrant->p(0, i1) << "  "
+                          << quadrant->p(1, i1) << "  "
+                          << quadrant->p(2, i1) << "  "
+                          << tmp_phi_1 << "  " << analytic_solution(quadrant->p(0, i1),quadrant->p(1, i1),quadrant->p(2, i1)) << std::endl;
         }
-        else
+        else {
           for (int jj = 0; jj < quadrant->num_parents (i1); ++jj)
           {
             tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
             tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
           }
+          phi_hang_node_file << quadrant->p(0, i1) << "  "
+                               << quadrant->p(1, i1) << "  "
+                               << quadrant->p(2, i1) << "  "
+                               << tmp_phi_1 << "  " << analytic_solution(quadrant->p(0, i1),quadrant->p(1, i1),quadrant->p(2, i1)) << std::endl;
+        }
 
         if (! quadrant->is_hanging (i2))
         {
           tmp_phi_2 = (*phi)[quadrant->gt (i2)];
           tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
+          phi_node_file << quadrant->p(0, i2) << "  "
+                          << quadrant->p(1, i2) << "  "
+                          << quadrant->p(2, i2) << "  "
+                          << tmp_phi_2 << "  " << analytic_solution(quadrant->p(0, i2),quadrant->p(1, i2),quadrant->p(2, i2)) << std::endl;
         }
-        else
+        else {
           for (int jj = 0; jj < quadrant->num_parents (i2); ++jj)
           {
             tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
             tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
           }
-        if (tmp_eps_2 != eps_out && tmp_eps_2 != eps_in)
-        {
-          std::cout << "PDDDDD"<<std::endl;
+          phi_hang_node_file << quadrant->p(0, i2) << "  "
+                               << quadrant->p(1, i2) << "  "
+                               << quadrant->p(2, i2) << "  "
+                               << tmp_phi_2 << "  " << analytic_solution(quadrant->p(0, i2),quadrant->p(1, i2),quadrant->p(2, i2)) << std::endl;
         }
-        // tmp_flux = -((*phi)[quadrant->gt (i2)] - (*phi)[quadrant->gt (i1)])*
-        //               wha((*epsilon_nodes)[quadrant->gt (i1)],
-        //                   (*epsilon_nodes)[quadrant->gt (i2)], fract)*
-        //               flux_dir((*epsilon_nodes)[quadrant->gt (i1)],
-        //                       (*epsilon_nodes)[quadrant->gt (i2)])*
-        //               area_h[edge_axis[*ip]];
         tmp_flux = -(tmp_phi_2 - tmp_phi_1) * wha(tmp_eps_1,tmp_eps_2, fract)*
                       flux_dir(tmp_eps_1, tmp_eps_2)* area_h[edge_axis[*ip]];
         charge_pol += tmp_flux;
@@ -2029,7 +2042,6 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   //direct reaction energy
   int ntriang = 0;
   int edge;
-  int cubeindex;
   std::array<std::array<double,3>,3> vert_triangles;
   std::array<std::array<double,3>,3> norms_vert;
   std::array<double,3> phi_sup;
@@ -2039,23 +2051,18 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
   double k2 = 2.0*C_0*Angs*Angs*e*e/(e_0*e_out*kb*T);    
   double k    = std::sqrt(k2);
-  double rs = 2.0;
-  std::ofstream phi_node_file;
-  std::ofstream phi_hang_node_file;
-  phi_node_file.open ("phi_nodes.txt");
-  phi_hang_node_file.open ("phi_hang_nodes.txt");
 
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
            quadrant != this->tmsh.end_quadrant_sweep ();
            ++quadrant)
   {
-    h[0] = quadrant->p(0, 7) - quadrant->p(0, 0);
-    h[1] = quadrant->p(1, 7) - quadrant->p(1, 0);
-    h[2] = quadrant->p(2, 7) - quadrant->p(2, 0);
-    
     cubeindex = classifyCube(quadrant, eps_out);
     if (cubeindex > -1)
     {
+      h[0] = quadrant->p(0, 7) - quadrant->p(0, 0);
+      h[1] = quadrant->p(1, 7) - quadrant->p(1, 0);
+      h[2] = quadrant->p(2, 7) - quadrant->p(2, 0);
+
       ntriang = getTriangles(cubeindex, triangles);
       for (int ii = 0; ii < ntriang; ++ii)
       {
@@ -2082,10 +2089,6 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
           {
             tmp_phi_1 = (*phi)[quadrant->gt (i1)];
             tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
-            phi_node_file << quadrant->p(0, i1) << "  "
-                          << quadrant->p(1, i1) << "  "
-                          << quadrant->p(2, i1) << "  "
-                          << tmp_phi_1 << "  " << analytic_solution(quadrant->p(0, i1),quadrant->p(1, i1),quadrant->p(2, i1)) << std::endl;
           }
           else
           {
@@ -2094,19 +2097,11 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
               tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
               tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
             }
-            phi_hang_node_file << quadrant->p(0, i1) << "  "
-                               << quadrant->p(1, i1) << "  "
-                               << quadrant->p(2, i1) << "  "
-                               << tmp_phi_1 << "  " << analytic_solution(quadrant->p(0, i1),quadrant->p(1, i1),quadrant->p(2, i1)) << std::endl;
           }
           if (! quadrant->is_hanging (i2))
           {
             tmp_phi_2 = (*phi)[quadrant->gt (i2)];
             tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
-            phi_node_file << quadrant->p(0, i2) << "  "
-                          << quadrant->p(1, i2) << "  "
-                          << quadrant->p(2, i2) << "  "
-                          << tmp_phi_2 << "  " << analytic_solution(quadrant->p(0, i2),quadrant->p(1, i2),quadrant->p(2, i2)) << std::endl;
           }
           else
           {
@@ -2115,10 +2110,6 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
               tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
               tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
             }
-            phi_hang_node_file << quadrant->p(0, i2) << "  "
-                               << quadrant->p(1, i2) << "  "
-                               << quadrant->p(2, i2) << "  "
-                               << tmp_phi_2 << "  " << analytic_solution(quadrant->p(0, i2),quadrant->p(1, i2),quadrant->p(2, i2)) << std::endl;
           }
 
           phi_sup[jj]= phi0(tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
