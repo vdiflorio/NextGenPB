@@ -567,7 +567,7 @@ bool
 poisson_boltzmann::is_in (const NS::Atom& i,
                           tmesh_3d::quadrant_iterator q) 
 { 
-  double tol =  p4esttol * (rr-ll);
+  double tol =  p4esttol * (rr[0]-ll[0]);
   if (mesh_shape == 2)
     tol = p4esttol * (r_c[0]-l_c[0]);
   bool retval = false;
@@ -597,6 +597,42 @@ poisson_boltzmann::is_in (const NS::Atom& i,
   retval =           (i.pos[0] > l - tol) && (i.pos[0] <= r  - tol); //make sure that the charge is assigned only once
   retval = retval && (i.pos[1] > f - tol) && (i.pos[1] <= bk - tol);
   retval = retval && (i.pos[2] > b - tol) && (i.pos[2] <= t  - tol);
+
+  return retval;
+}
+
+bool
+poisson_boltzmann::is_in_ref (const NS::Atom& i,
+                              tmesh_3d::quadrant_iterator q) 
+{ 
+
+  bool retval = false;
+  double l, r, t, b, f, bk;
+
+  l = q->p (0, 0);
+  r = q->p (0, 0);
+
+  f  = q->p (1, 0);
+  bk = q->p (1, 0);
+
+  b = q->p (2, 0);
+  t = q->p (2, 0);
+
+
+  for (int ii = 1; ii < 8; ++ii)
+  {
+    l  = q->p (0, ii)  < l  ? q->p (0, ii) : l;
+    r  = q->p (0, ii)  > r  ? q->p (0, ii) : r;
+    f  = q->p (1, ii)  < f  ? q->p (1, ii) : f;
+    bk = q->p (1, ii)  > bk ? q->p (1, ii) : bk;
+    b  = q->p (2, ii)  < b  ? q->p (2, ii) : b;
+    t  = q->p (2, ii)  > t  ? q->p (2, ii) : t;
+
+  }
+
+  retval =           (i.pos[0] >= l) && (i.pos[0] <= r);
+  retval = retval && (i.pos[1] >= f ) && (i.pos[1] <= bk);
+  retval = retval && (i.pos[2] >= b ) && (i.pos[2] <= t );
 
   return retval;
 }
@@ -731,7 +767,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
                       retval = this->maxlevel - currentlevel;
                     else
                       for (const NS::Atom& i : atoms) 
-                        if (is_in (i, q))
+                        if (is_in_ref (i, q))
                           {
                             retval = this->maxlevel - currentlevel;
                             break;
@@ -743,7 +779,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
                       retval = this->maxlevel - currentlevel;
                     else
                       for (const NS::Atom& i : atoms) 
-                        if (is_in (i, q))
+                        if (is_in_ref (i, q))
                           {
                             retval = this->maxlevel - currentlevel;
                             break;
@@ -879,7 +915,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
                    }
 
                  for (const NS::Atom& i : atoms) 
-                   if (is_in (i, q))
+                   if (is_in_ref (i, q))
                      {
                        retval = 0;
                        break;
@@ -1939,35 +1975,7 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   phi_hang_node_file.open ("phi_hang_nodes.txt"); 
 
   // flux and polarization energy calculation
-  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-           quadrant != this->tmsh.end_quadrant_sweep ();
-           ++quadrant)
-  {
-    cubeindex = classifyCube(quadrant, eps_out);
-    std::set<int> edi;
-    for (int ii=0;triTable[cubeindex][ii]!=-1;ii+=3) 
-      {
-         // save all the assigned indexes
-        edi.insert(triTable[cubeindex][ii  ]);
-        edi.insert(triTable[cubeindex][ii+1]);
-        edi.insert(triTable[cubeindex][ii+2]);     
-      }
-    if (quadrant->get_forest_quad_idx ()== 22799 || quadrant->get_forest_quad_idx ()== 15962)
-      {
-        
-        std::array<double,12> fra = cube_fraction_intersection(quadrant,ray_cache);
-        std::array<double,12> fra_flux = {-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5};
-        for (auto ipd = edi.begin(); ipd != edi.end(); ++ipd){
-          normal_intersection(quadrant, ray_cache, *ipd, N,fract);
-          fra_flux[*ipd] = fract;
-        }
-        for(int ii = 0; ii<12; ++ii)
-        { 
-          std::cout << quadrant->get_forest_quad_idx () << "  "<< ii <<  "frac A:  " << fra[ii] << "  frac flux: " << fra_flux[ii]<<std::endl;
-        }
-        std::cout<<std::endl;
-      }
-  }
+
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
            quadrant != this->tmsh.end_quadrant_sweep ();
            ++quadrant)

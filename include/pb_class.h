@@ -484,6 +484,9 @@ poisson_boltzmann
   bool
   is_in (const NS::Atom& i, tmesh_3d::quadrant_iterator q); 
   
+  bool
+  is_in_ref (const NS::Atom& i, tmesh_3d::quadrant_iterator q);
+  
   void
   refine_surface (ray_cache_t & ray_cache);
 
