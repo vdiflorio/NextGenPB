@@ -93,13 +93,13 @@ main (int argc, char **argv)
     pb.energy(ray_cache);
   TOC ("compute energy")
   
-  // TIC ();
-  // pb.export_tmesh (ray_cache);
-  // TOC ("export tmesh");
+  TIC ();
+  pb.export_tmesh (ray_cache);
+  TOC ("export tmesh");
 
-  // TIC ();
-  // pb.export_marked_tmesh ();
-  // TOC ("export marked tmesh");
+  TIC ();
+  pb.export_marked_tmesh ();
+  TOC ("export marked tmesh");
 
   // pb.analitic_potential();
 
@@ -107,36 +107,36 @@ main (int argc, char **argv)
     { 
       print_timing_report(); 
       
-      // if (pb.surf_type != 2)
-      //   {
-      //     //Save ray_cache:
-      //     for (int i = 0; i < 3; ++i)
-      //     { 
-      //       // std::cout << "Direzione: "<< i <<std::endl;
-      //       // std::cout << std::endl;
+      if (pb.surf_type != 2)
+        {
+          //Save ray_cache:
+          for (int i = 0; i < 3; ++i)
+          { 
+            // std::cout << "Direzione: "<< i <<std::endl;
+            // std::cout << std::endl;
             
-      //       nlohmann::json j;
-      //       save_ray_cache (j, ray_cache.rays[i]);
+            nlohmann::json j;
+            save_ray_cache (j, ray_cache.rays[i]);
             
-      //       // std::cout << "Count cached rays: " << ray_cache.count_cache_dir[i] << std::endl;
-      //       // std::cout << "Count new rays: " << ray_cache.count_new_dir[i] << std::endl;
-      //       // std::cout << std::endl;
-      //       std::ofstream ray_cached_file;
-      //       std::string filename = "ray_cache_";
-      //       std::string extension = ".json";
-      //       filename += std::to_string(i);
-      //       filename += extension;
-      //       ray_cached_file.open (filename.c_str ());
+            // std::cout << "Count cached rays: " << ray_cache.count_cache_dir[i] << std::endl;
+            // std::cout << "Count new rays: " << ray_cache.count_new_dir[i] << std::endl;
+            // std::cout << std::endl;
+            std::ofstream ray_cached_file;
+            std::string filename = "ray_cache_";
+            std::string extension = ".json";
+            filename += std::to_string(i);
+            filename += extension;
+            ray_cached_file.open (filename.c_str ());
     
-      //       if (ray_cached_file.is_open ())
-      //         ray_cached_file << j;
+            if (ray_cached_file.is_open ())
+              ray_cached_file << j;
       
-      //       ray_cached_file.close ();
+            ray_cached_file.close ();
             
-      //       //Alternative way to save results:
-      //       //print_map (ray_cache.rays); 
-      //     }
-      //   }
+            //Alternative way to save results:
+            //print_map (ray_cache.rays); 
+          }
+        }
     }
   
   MPI_Barrier (mpicomm);

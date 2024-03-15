@@ -1618,9 +1618,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   
 	/////////////////////////////////////////////////////////
    
-  // tmsh.octbin_export ("phi_0", *phi);
-  // tmsh.octbin_export ("rho_0", *rho_fixed);
-  // tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
+  tmsh.octbin_export ("phi_0", *phi);
+  tmsh.octbin_export ("rho_0", *rho_fixed);
+  tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
   
    
 }
@@ -1759,7 +1759,7 @@ poisson_boltzmann::normal_intersection(tmesh_3d::quadrant_iterator& quadrant,
   auto normali = it0->second.normals;
   auto inters = it0->second.inters;
 
-
+  frac = 0.5;
   for (int ii =0; ii<inters.size (); ii++)
   {
     if (inters[ii]>= x1 && inters[ii] <=x2)
@@ -1937,9 +1937,37 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
   std::ofstream phi_hang_node_file;
   phi_node_file.open ("phi_nodes.txt");
   phi_hang_node_file.open ("phi_hang_nodes.txt"); 
-  
+
   // flux and polarization energy calculation
-  
+  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
+           quadrant != this->tmsh.end_quadrant_sweep ();
+           ++quadrant)
+  {
+    cubeindex = classifyCube(quadrant, eps_out);
+    std::set<int> edi;
+    for (int ii=0;triTable[cubeindex][ii]!=-1;ii+=3) 
+      {
+         // save all the assigned indexes
+        edi.insert(triTable[cubeindex][ii  ]);
+        edi.insert(triTable[cubeindex][ii+1]);
+        edi.insert(triTable[cubeindex][ii+2]);     
+      }
+    if (quadrant->get_forest_quad_idx ()== 22799 || quadrant->get_forest_quad_idx ()== 15962)
+      {
+        
+        std::array<double,12> fra = cube_fraction_intersection(quadrant,ray_cache);
+        std::array<double,12> fra_flux = {-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5};
+        for (auto ipd = edi.begin(); ipd != edi.end(); ++ipd){
+          normal_intersection(quadrant, ray_cache, *ipd, N,fract);
+          fra_flux[*ipd] = fract;
+        }
+        for(int ii = 0; ii<12; ++ii)
+        { 
+          std::cout << quadrant->get_forest_quad_idx () << "  "<< ii <<  "frac A:  " << fra[ii] << "  frac flux: " << fra_flux[ii]<<std::endl;
+        }
+        std::cout<<std::endl;
+      }
+  }
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
            quadrant != this->tmsh.end_quadrant_sweep ();
            ++quadrant)
@@ -1964,9 +1992,12 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
         ed.insert(triTable[cubeindex][ii+1]);
         ed.insert(triTable[cubeindex][ii+2]);     
       }
-
+      
+      
       for (auto ip = ed.begin(); ip != ed.end(); ++ip) 
       {
+        
+        
         tmp_flux = 0.0;
         tmp_eps_1 = 0.0;
         tmp_eps_2 = 0.0;
@@ -1974,12 +2005,13 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
         tmp_phi_2 = 0.0;
         i1 = edge2nodes[*ip][0];
         i2 = edge2nodes[*ip][1];
-        double fract;
+        
         normal_intersection(quadrant, ray_cache, *ip, N,fract);
         V[0] = quadrant->p(0, i1);
         V[1] = quadrant->p(1, i1);
         V[2] = quadrant->p(2, i1);
         V[edge_axis[*ip]] += fract*h[edge_axis[*ip]];
+        
 
         if (! quadrant->is_hanging (i1))
         {
@@ -2022,6 +2054,8 @@ poisson_boltzmann::energy(ray_cache_t & ray_cache)
                                << quadrant->p(2, i2) << "  "
                                << tmp_phi_2 << "  " << analytic_solution(quadrant->p(0, i2),quadrant->p(1, i2),quadrant->p(2, i2)) << std::endl;
         }
+        
+
         tmp_flux = -(tmp_phi_2 - tmp_phi_1) * wha(tmp_eps_1,tmp_eps_2, fract)*
                       flux_dir(tmp_eps_1, tmp_eps_2)* area_h[edge_axis[*ip]];
         charge_pol += tmp_flux;
