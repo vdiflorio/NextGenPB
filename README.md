@@ -1,3 +1,7 @@
+#intentation style 
+
+```astyle --style=kr --indent=spaces=2 --break-blocks --pad-first-paren-out --convert-tabs --squeeze-ws```
+
 # easy_pbe 
 
 Poisson Boltzmann solver on Octree mesh.
