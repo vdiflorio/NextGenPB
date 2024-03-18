@@ -1683,7 +1683,8 @@ poisson_boltzmann::cube_fraction_intersection(tmesh_3d::quadrant_iterator& quadr
   //         |/                  |/
   //       v0/_________e1________/v1
 {
-  std::array<double,12> fraction = {-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5};
+  // std::array<double,12> fraction = {-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5};
+  std::array<double,12> fraction = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
 
   int dir;
   int i1, i2;
