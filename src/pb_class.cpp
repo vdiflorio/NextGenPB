@@ -1654,9 +1654,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   
 	/////////////////////////////////////////////////////////
    
-  tmsh.octbin_export ("phi_0", *phi);
-  tmsh.octbin_export ("rho_0", *rho_fixed);
-  tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
+  // tmsh.octbin_export ("phi_0", *phi);
+  // tmsh.octbin_export ("rho_0", *rho_fixed);
+  // tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
   
    
 }
