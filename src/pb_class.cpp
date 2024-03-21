@@ -1696,7 +1696,6 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
 // |/                  |/
 // v0/_________e1________/v1
 {
-  // std::array<double,12> fraction = {-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5,-0.5};
   std::array<double,12> fraction = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
 
   int dir;
@@ -1710,8 +1709,8 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
     //x-axis edge
   {
     dir = 0;
-    i1 = edge2nodes[j][0];
-    i2 = edge2nodes[j][1];
+    i1 = edge2nodes[2 * j    ];
+    i2 = edge2nodes[2 * j + 1];
     x1 = quadrant->p (dir, i1);
     x2 = quadrant->p (dir, i2);
     std::vector<int> direzioni {0,1,2};
@@ -1737,8 +1736,8 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
     //y-axis edge
   {
     dir = 1;
-    i1 = edge2nodes[j][0];
-    i2 = edge2nodes[j][1];
+    i1 = edge2nodes[2 * j    ];
+    i2 = edge2nodes[2 * j + 1];
     x1 = quadrant->p (dir, i1);
     x2 = quadrant->p (dir, i2);
     std::vector<int> direzioni {0,1,2};
@@ -1764,8 +1763,8 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
     //z-axis edge
   {
     dir = 2;
-    i1 = edge2nodes[j][0];
-    i2 = edge2nodes[j][1];
+    i1 = edge2nodes[2 * j    ];
+    i2 = edge2nodes[2 * j + 1];
     x1 = quadrant->p (dir, i1);
     x2 = quadrant->p (dir, i2);
     std::vector<int> direzioni {0,1,2};
@@ -1795,8 +1794,8 @@ poisson_boltzmann::normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
                                         double &frac)
 {
   int dir = edge_axis[edge];
-  int i1 = edge2nodes[edge][0];
-  int i2 = edge2nodes[edge][1];
+  int i1 = edge2nodes[2*edge    ];
+  int i2 = edge2nodes[2*edge + 1];
   double x1 = quadrant->p (dir, i1),
          x2 = quadrant->p (dir, i2);
 
@@ -2035,8 +2034,8 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
         tmp_eps_2 = 0.0;
         tmp_phi_1 = 0.0;
         tmp_phi_2 = 0.0;
-        i1 = edge2nodes[*ip][0];
-        i2 = edge2nodes[*ip][1];
+        i1 = edge2nodes[2 * (*ip)    ];
+        i2 = edge2nodes[2 * (*ip) + 1];
 
         normal_intersection (quadrant, ray_cache, *ip, N,fract);
         V[0] = quadrant->p (0, i1);
@@ -2133,8 +2132,8 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
           tmp_phi_1 = 0.0;
           tmp_phi_2 = 0.0;
           edge = triangles[ii][jj];
-          i1 = edge2nodes[edge][0];
-          i2 = edge2nodes[edge][1];
+          i1 = edge2nodes[2 * (*ip)    ];
+          i2 = edge2nodes[2 * (*ip) + 1];
           V[0] = quadrant->p (0, i1);
           V[1] = quadrant->p (1, i1);
           V[2] = quadrant->p (2, i1);
