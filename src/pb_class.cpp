@@ -1828,22 +1828,23 @@ poisson_boltzmann::classifyCube (tmesh_3d::quadrant_iterator& quadrant,
                                  double isolevel)
 {
   int cubeindex = 0;
-
-  if ((*epsilon_nodes)[quadrant->gt (0)] < isolevel) cubeindex |= 1;
-
-  if ((*epsilon_nodes)[quadrant->gt (1)] < isolevel) cubeindex |= 2;
-
-  if ((*epsilon_nodes)[quadrant->gt (3)] < isolevel) cubeindex |= 4;
-
-  if ((*epsilon_nodes)[quadrant->gt (2)] < isolevel) cubeindex |= 8;
-
-  if ((*epsilon_nodes)[quadrant->gt (4)] < isolevel) cubeindex |= 16;
-
-  if ((*epsilon_nodes)[quadrant->gt (5)] < isolevel) cubeindex |= 32;
-
-  if ((*epsilon_nodes)[quadrant->gt (7)] < isolevel) cubeindex |= 64;
-
-  if ((*epsilon_nodes)[quadrant->gt (6)] < isolevel) cubeindex |= 128;
+  int index = 1;
+  double tmp = 0;
+  // for (int ii = 0; ii < 8; ++ii)
+  for (int ii : {0,1,3,2,4,5,7,6})
+  {
+    if (! quadrant->is_hanging (ii)){
+      if ((*epsilon_nodes)[quadrant->gt (ii)] < isolevel) cubeindex |= index;
+    }
+    else {
+      for (int jj = 0; jj < quadrant->num_parents (ii); ++jj) {
+        tmp += (*epsilon_nodes)[quadrant->gparent (jj, ii)] / quadrant->num_parents (ii);
+      }
+      if (tmp < isolevel) cubeindex |= index;
+    }
+    tmp = 0;
+    index *= 2;
+  }
 
   // Cube is entirely in/out of the surface
   if (edgeTable[cubeindex] == 0)
@@ -1952,7 +1953,6 @@ poisson_boltzmann::getTriangles (int cubeindex,
   return ntriang;
 }
 
-
 void
 poisson_boltzmann::energy (ray_cache_t & ray_cache)
 {
@@ -2006,16 +2006,16 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
        quadrant != this->tmsh.end_quadrant_sweep ();
        ++quadrant) {
 
-    cubeindex = classifyCube (quadrant, eps_out);
+    if (marker[quadrant->get_forest_quad_idx()] == 0.5) {
 
-    if (cubeindex > -1) {
       h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
       h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
       h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
       area_h[0] = h[1]*h[2]/h[0] * 0.25;
       area_h[1] = h[0]*h[2]/h[1] * 0.25;
       area_h[2] = h[0]*h[1]/h[2] * 0.25;
-
+        
+      cubeindex = classifyCube (quadrant, eps_out);
       std::set<int> ed;
 
       for (int ii=0; triTable[cubeindex][ii]!=-1; ii+=3) {
@@ -2024,6 +2024,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
         ed.insert (triTable[cubeindex][ii+1]);
         ed.insert (triTable[cubeindex][ii+2]);
       }
+
 
 
       for (auto ip = ed.begin(); ip != ed.end(); ++ip) {
@@ -2132,8 +2133,8 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
           tmp_phi_1 = 0.0;
           tmp_phi_2 = 0.0;
           edge = triangles[ii][jj];
-          i1 = edge2nodes[2 * (*ip)    ];
-          i2 = edge2nodes[2 * (*ip) + 1];
+          i1 = edge2nodes[2 * edge    ];
+          i2 = edge2nodes[2 * edge + 1];
           V[0] = quadrant->p (0, i1);
           V[1] = quadrant->p (1, i1);
           V[2] = quadrant->p (2, i1);
