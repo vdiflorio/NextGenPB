@@ -1830,7 +1830,6 @@ poisson_boltzmann::classifyCube (tmesh_3d::quadrant_iterator& quadrant,
   int cubeindex = 0;
   int index = 1;
   double tmp = 0;
-  // for (int ii = 0; ii < 8; ++ii)
   for (int ii : {0,1,3,2,4,5,7,6})
   {
     if (! quadrant->is_hanging (ii)){
@@ -1851,6 +1850,40 @@ poisson_boltzmann::classifyCube (tmesh_3d::quadrant_iterator& quadrant,
     return -1;
 
   return cubeindex;
+}
+
+std::tuple<std::array<double,8>, std::array<double,8>, std::vector<double>,std::vector<int> >
+poisson_boltzmann::classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant)
+{
+  std::vector<double> edges {};
+  std::vector<int> flux {};
+  std::array<double,8> tmp_eps;
+  std::array<double,8> tmp_phi;
+  for (int ii = 0; ii < 8; ++ii)
+  {
+    if (! quadrant->is_hanging (ii)){
+      tmp_eps[ii]=(*epsilon_nodes)[quadrant->gt (ii)];
+      tmp_phi[ii]=(*phi)[quadrant->gt (ii)];
+    }
+    else {
+      for (int jj = 0; jj < quadrant->num_parents (ii); ++jj) {
+        tmp_eps[ii] += (*epsilon_nodes)[quadrant->gparent (jj, ii)] / quadrant->num_parents (ii);
+        tmp_phi[ii] += (*phi)[quadrant->gparent (jj, ii)] / quadrant->num_parents (ii);
+      }
+    }
+  }
+  for (int ii = 0; ii < 12; ++ii)
+  {
+    if(tmp_eps[edge2nodes[2*ii]] < tmp_eps[edge2nodes[2*ii +1]]){
+      flux.push_back (1);
+      edges.push_back(ii);
+    } else if (tmp_eps[edge2nodes[2*ii]] > tmp_eps[edge2nodes[2*ii +1]]){
+      flux.push_back (-1);
+      edges.push_back(ii);
+    }
+  }
+  
+  return make_tuple (tmp_phi, tmp_eps, edges, flux);
 }
 
 double wha ( double eps1, double eps2, double frac)
@@ -1980,6 +2013,12 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   std::array<double,3> dist_vert;
   std::array<double,3> h;
   std::array<double,3> area_h;
+  
+  std::array<double,8> tmp_eps; 
+  std::array<double,8> tmp_phi;
+  std::vector<double> edg;
+  std::vector<int> fl_dir;
+
   int cubeindex = -1;
 
   double charge_pol = 0.0;
@@ -2014,78 +2053,24 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
       area_h[0] = h[1]*h[2]/h[0] * 0.25;
       area_h[1] = h[0]*h[2]/h[1] * 0.25;
       area_h[2] = h[0]*h[1]/h[2] * 0.25;
-        
-      cubeindex = classifyCube (quadrant, eps_out);
-      std::set<int> ed;
 
-      for (int ii=0; triTable[cubeindex][ii]!=-1; ii+=3) {
-        // save all the assigned indexes
-        ed.insert (triTable[cubeindex][ii ]);
-        ed.insert (triTable[cubeindex][ii+1]);
-        ed.insert (triTable[cubeindex][ii+2]);
-      }
-
-
-
-      for (auto ip = ed.begin(); ip != ed.end(); ++ip) {
-
+      std::tie(tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux(quadrant);
+      for (int ip = 0; ip < edg.size (); ++ip) {
 
         tmp_flux = 0.0;
-        tmp_eps_1 = 0.0;
-        tmp_eps_2 = 0.0;
-        tmp_phi_1 = 0.0;
-        tmp_phi_2 = 0.0;
-        i1 = edge2nodes[2 * (*ip)    ];
-        i2 = edge2nodes[2 * (*ip) + 1];
 
-        normal_intersection (quadrant, ray_cache, *ip, N,fract);
+        i1 = edge2nodes[2 * edg[ip]    ];
+        i2 = edge2nodes[2 * edg[ip] + 1];
+
+        normal_intersection (quadrant, ray_cache, edg[ip], N,fract);
         V[0] = quadrant->p (0, i1);
         V[1] = quadrant->p (1, i1);
         V[2] = quadrant->p (2, i1);
-        V[edge_axis[*ip]] += fract*h[edge_axis[*ip]];
+        V[edge_axis[edg[ip]]] += fract*h[edge_axis[edg[ip]]];
 
 
-        if (! quadrant->is_hanging (i1)) {
-          tmp_phi_1 = (*phi)[quadrant->gt (i1)];
-          tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
-          phi_node_file << quadrant->p (0, i1) << "  "
-                        << quadrant->p (1, i1) << "  "
-                        << quadrant->p (2, i1) << "  "
-                        << tmp_phi_1 << "  " << analytic_solution (quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1)) << std::endl;
-        } else {
-          for (int jj = 0; jj < quadrant->num_parents (i1); ++jj) {
-            tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
-            tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
-          }
-
-          phi_hang_node_file << quadrant->p (0, i1) << "  "
-                             << quadrant->p (1, i1) << "  "
-                             << quadrant->p (2, i1) << "  "
-                             << tmp_phi_1 << "  " << analytic_solution (quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1)) << std::endl;
-        }
-
-        if (! quadrant->is_hanging (i2)) {
-          tmp_phi_2 = (*phi)[quadrant->gt (i2)];
-          tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
-          phi_node_file << quadrant->p (0, i2) << "  "
-                        << quadrant->p (1, i2) << "  "
-                        << quadrant->p (2, i2) << "  "
-                        << tmp_phi_2 << "  " << analytic_solution (quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2)) << std::endl;
-        } else {
-          for (int jj = 0; jj < quadrant->num_parents (i2); ++jj) {
-            tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
-            tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
-          }
-
-          phi_hang_node_file << quadrant->p (0, i2) << "  "
-                             << quadrant->p (1, i2) << "  "
-                             << quadrant->p (2, i2) << "  "
-                             << tmp_phi_2 << "  " << analytic_solution (quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2)) << std::endl;
-        }
-
-
-        tmp_flux = - (tmp_phi_2 - tmp_phi_1) * wha (tmp_eps_1,tmp_eps_2, fract)*
-                   flux_dir (tmp_eps_1, tmp_eps_2)* area_h[edge_axis[*ip]];
+        tmp_flux = - (tmp_phi[i2] - tmp_phi[i1]) * wha (tmp_eps[i1],tmp_eps[i2], fract)*
+                   fl_dir[ip] * area_h[edge_axis[edg[ip]]];
         charge_pol += tmp_flux;
 
 
@@ -2093,9 +2078,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
           distance = std::hypot (i.pos[0]-V[0], i.pos[1]-V[1], i.pos[2]-V[2]);
           first_int += i.charge*tmp_flux/distance;
         }
-
       }
-
     }
   }
 

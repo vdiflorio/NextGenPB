@@ -126,21 +126,7 @@ struct
     3, 7,
     2, 6  
   };
-  // std::array<std::array<int, 2>, 12> edge2nodes = {{
-  //     {0, 1},
-  //     {1, 3},
-  //     {2, 3},
-  //     {0, 2},
-  //     {4, 5},
-  //     {5, 7},
-  //     {6, 7},
-  //     {4, 6},
-  //     {0, 4},
-  //     {1, 5},
-  //     {3, 7},
-  //     {2, 6}
-  //   }
-  // };
+ 
 
 
   int edgeTable[256]= {
@@ -531,20 +517,11 @@ struct
   int
   classifyCube (tmesh_3d::quadrant_iterator& quadrant,double isolevel);
 
+  std::tuple<std::array<double,8>, std::array<double,8>, std::vector<double>,std::vector<int>>
+  classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant);
+
   void
   energy (ray_cache_t & ray_cache);
-
-  // void
-  // surface_integrals_energy();
-
-  void
-  surface_integrals_energy (ray_cache_t & ray_cache);
-
-  void
-  grid_energy (distributed_vector &phi, distributed_vector &rho_fixed, std::string int_rule, double &energy);
-
-  void
-  grid_energy_electric_field (distributed_vector &phi, std::vector<double> &epsilon, std::string int_rule, double &energy);
 
   double
   coulomb_boundary_conditions (double x, double y, double z);
