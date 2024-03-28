@@ -44,7 +44,8 @@ struct
   std::vector<std::pair<p4est_topidx_t, p4est_topidx_t>> bcells;
 
   std::vector<NS::Atom> atoms;
-
+  // Center of the system
+  double cc[3];
   //Cubic mesh:
   double ll[3]; //min value between all the coordinates
   double rr[3]; //max value between all the coordinates
@@ -65,6 +66,7 @@ struct
   int outlevel;
   int mesh_shape;
   int refine_box;
+  int scale_level;
 
   int maxlevel1 = 10, minlevel1 = 1;
 
@@ -463,6 +465,9 @@ struct
   void
   create_mesh ();
 
+  void
+  create_mesh_scale ();
+
   int
   parse_options (int argc, char **argv);
 
@@ -483,6 +488,9 @@ struct
 
   void
   init_tmesh_with_refine_box ();
+
+  void
+  init_tmesh_with_refine_box_scale ();
 
   bool
   is_in (const NS::Atom& i, tmesh_3d::quadrant_iterator q);

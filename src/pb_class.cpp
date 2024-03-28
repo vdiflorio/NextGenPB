@@ -242,6 +242,200 @@ poisson_boltzmann::create_mesh ()
 
 }
 
+void
+poisson_boltzmann::create_mesh_scale ()
+{
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
+
+  auto comp = [] (const NS::Atom &a1, const NS::Atom &a2) -> bool { return a1.radius < a2.radius; };
+  double maxradius = std::max_element (atoms.begin (), atoms.end (), comp)->radius;
+
+  
+  l_c[0] = atoms.begin ()->pos[0] - atoms.begin ()->radius;
+  l_c[1] = atoms.begin ()->pos[1] - atoms.begin ()->radius;
+  l_c[2] = atoms.begin ()->pos[2] - atoms.begin ()->radius;
+  r_c[0] = atoms.begin ()->pos[0] + atoms.begin ()->radius;
+  r_c[1] = atoms.begin ()->pos[1] + atoms.begin ()->radius;
+  r_c[2] = atoms.begin ()->pos[2] + atoms.begin ()->radius;
+  auto it = [this] (const NS::Atom &a1) {
+    for (int kk = 0; kk < 3; ++kk) {
+      if ((a1.pos[kk] + a1.radius) > this->r_c[kk])
+        this->r_c[kk] = a1.pos[kk]+ a1.radius;
+      else if ((a1.pos[kk] - a1.radius) < this->l_c[kk])
+        this->l_c[kk] = a1.pos[kk]- a1.radius;
+    }
+  };
+  std::for_each (atoms.begin (), atoms.end (), it);
+
+
+  double lmax = 0;
+  double l[3];
+
+  for (int kk = 0; kk < 3; ++kk) {
+    l[kk] = (r_c[kk] - l_c[kk]);
+    cc[kk] = (r_c[kk] + l_c[kk])*0.5;
+    lmax = l[kk] > lmax ? l[kk] : lmax;
+  }
+
+  for (int kk = 0; kk < 3; ++kk) {
+    ll[kk] = cc[kk] - lmax*0.5;
+    rr[kk] = cc[kk] + lmax*0.5;
+  }
+
+  double scale = 2.0;
+  double perfil1 = 0.8;
+  double perfil2 = 0.2;
+  
+  l_cr[0] = l_c[0];
+  r_cr[0] = r_c[0];
+  l_cr[1] = l_c[1];
+  r_cr[1] = r_c[1];
+  l_cr[2] = l_c[2];
+  r_cr[2] = r_c[2];
+  
+  //stretched box with perfil1
+  l_cr[0] -= l[0]*0.5*(1.0/perfil1 - 1);
+  l_cr[1] -= l[1]*0.5*(1.0/perfil1 - 1);
+  l_cr[2] -= l[2]*0.5*(1.0/perfil1 - 1);
+  r_cr[0] += l[0]*0.5*(1.0/perfil1 - 1);
+  r_cr[1] += l[1]*0.5*(1.0/perfil1 - 1);
+  r_cr[2] += l[2]*0.5*(1.0/perfil1 - 1);
+
+  //cubic box with max perfil2 
+  double size = 1.0/scale;
+  scale_level = 0;
+  for(int ii = 0; ii<20; ++ii){
+    std::cout << "lmax: " << lmax 
+              << " size: " << size 
+              << " scale_level: " << scale_level 
+              << " perfil: " << lmax/size << std::endl;
+    size *= 2;
+    scale_level ++; 
+    if (lmax/size < 0.2)
+      break;
+  }
+  std::cout << "lmax: " << lmax 
+            << " size: " << size 
+            << " scale_level: " << scale_level 
+            << "  outside perfil: " << lmax/size << std::endl;
+
+  ll[0] = cc[0] - size/2; 
+  ll[1] = cc[1] - size/2; 
+  ll[2] = cc[2] - size/2; 
+  rr[0] = cc[0] + size/2; 
+  rr[1] = cc[1] + size/2; 
+  rr[2] = cc[2] + size/2; 
+     
+
+  if (mesh_shape == 0) {
+    if (rank == 0) {
+      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+      std::cout << "z: " << ll[2] << ", " << rr[2] << "\n" << std::endl;
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+    // simple_conn_p = new double[simple_conn_num_vertices*3];
+    // simple_conn_t = new p4est_topidx_t[simple_conn_num_vertices];
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {ll[0], ll[1], ll[2],
+                  rr[0], ll[1], ll[2],
+                  ll[0], rr[1], ll[2],
+                  rr[0], rr[1], ll[2],
+                  ll[0], ll[1], rr[2],
+                  rr[0], ll[1], rr[2],
+                  ll[0], rr[1], rr[2],
+                  rr[0], rr[1], rr[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+
+    // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
+    // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  } else if (mesh_shape == 1) {
+    if (rank == 0) {
+      std::cout << "x: " << l_c[0] << ", " << r_c[0] << std::endl;
+      std::cout << "y: " << l_c[1] << ", " << r_c[1] << std::endl;
+      std::cout << "z: " << l_c[2] << ", " << r_c[2] << "\n" << std::endl;
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+    // simple_conn_p = new double[simple_conn_num_vertices*3];
+    // simple_conn_t = new p4est_topidx_t[simple_conn_num_vertices];
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {l_c[0], l_c[1], l_c[2],
+                  r_c[0], l_c[1], l_c[2],
+                  l_c[0], r_c[1], l_c[2],
+                  r_c[0], r_c[1], l_c[2],
+                  l_c[0], l_c[1], r_c[2],
+                  r_c[0], l_c[1], r_c[2],
+                  l_c[0], r_c[1], r_c[2],
+                  r_c[0], r_c[1], r_c[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+
+    // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
+    // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  }  else {
+    if (rank == 0) {
+      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+      std::cout << "z: " << ll[2] << ", " << rr[2] << "\n" << std::endl;
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+    // simple_conn_p = new double[simple_conn_num_vertices*3];
+    // simple_conn_t = new p4est_topidx_t[simple_conn_num_vertices];
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+
+
+    auto tmp_p = {ll[0], ll[1], ll[2],
+                  rr[0], ll[1], ll[2],
+                  ll[0], rr[1], ll[2],
+                  rr[0], rr[1], ll[2],
+                  ll[0], ll[1], rr[2],
+                  rr[0], ll[1], rr[2],
+                  ll[0], rr[1], rr[2],
+                  rr[0], rr[1], rr[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+
+    // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
+    // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  }
+
+  // tmsh.read_connectivity (simple_conn_p, simple_conn_num_vertices,
+  // simple_conn_t, simple_conn_num_trees);
+  tmsh.read_connectivity (simple_conn_p.get(), simple_conn_num_vertices,
+                          simple_conn_t.get(), simple_conn_num_trees);
+
+}
+
+
 double
 poisson_boltzmann::levelsetfun (double x, double y, double z)
 {
@@ -561,11 +755,44 @@ poisson_boltzmann::init_tmesh_with_refine_box ()
     tmsh.set_refine_marker (refinement);
     tmsh.refine (0, 1);
   }
-
-
-
 }
 
+void
+poisson_boltzmann::init_tmesh_with_refine_box_scale ()
+{
+  for (auto i = 0; i < outlevel; ++i) {
+    tmsh.set_refine_marker (uniform_refinement);
+    tmsh.refine (0, 1);
+  }
+  
+  auto refinement = [this]
+  (tmesh_3d::quadrant_iterator q) -> int {
+    int currentlevel = static_cast<int> (q->the_quadrant->level);
+    int retval = 0;
+
+    if (currentlevel >= this->scale_level)
+      retval = 0;
+    else {
+      for (int ii = 0; ii < 8; ++ii) {
+        if (! q->is_hanging (ii)) {
+          if ((q -> p (0, ii) > this->l_cr[0]) && (q -> p (0, ii) < this->r_cr[0])
+              && (q -> p (1, ii) > this->l_cr[1]) && (q -> p (1, ii) < this->r_cr[1])
+              && (q -> p (2, ii) > this->l_cr[2]) && (q -> p (2, ii) < this->r_cr[2])) {
+            retval = 1;
+            break;
+          }
+        }
+      }
+    }
+
+    return (retval);
+  };
+
+  for (auto i = 0; i < scale_level; ++i) {
+    tmsh.set_refine_marker (refinement);
+    tmsh.refine (0, 1);
+  }
+}
 
 
 bool
