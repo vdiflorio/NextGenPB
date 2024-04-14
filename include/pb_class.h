@@ -53,8 +53,8 @@ struct
   //Stretched mesh:
   double l_c[3]; //min x, y, z value
   double r_c[3]; //max x, y, z value
-  double l_cr[3]; //refine box min x, y, z value
-  double r_cr[3]; //refine box max x, y, z value
+  double l_cr[3]; //refined box min x, y, z value
+  double r_cr[3]; //refined box max x, y, z value
 
   //number of trees
   p4est_topidx_t num_trees[3];
@@ -67,6 +67,8 @@ struct
   int mesh_shape;
   int refine_box;
   int scale_level;
+  double scale;
+  double perfil1, perfil2;
 
   int maxlevel1 = 10, minlevel1 = 1;
 
@@ -467,6 +469,9 @@ struct
 
   void
   create_mesh_scale ();
+
+  void
+  create_mesh_prova ();
 
   int
   parse_options (int argc, char **argv);

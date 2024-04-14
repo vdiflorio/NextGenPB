@@ -52,14 +52,14 @@ main (int argc, char **argv)
 
   TIC ();
   // pb.create_mesh ();
-  pb.create_mesh_scale ();
+  // pb.create_mesh_scale ();
+  pb.create_mesh_prova ();
   TOC ("create_mesh");
 
 
   TIC ();
 
-  if (pb.refine_box == 1)
-    // pb.init_tmesh_with_refine_box ();
+  if ( pb.mesh_shape == 0 || pb.refine_box == 1)
     pb.init_tmesh_with_refine_box_scale ();
   else
     pb.init_tmesh ();

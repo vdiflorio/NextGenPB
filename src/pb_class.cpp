@@ -283,7 +283,7 @@ poisson_boltzmann::create_mesh_scale ()
     rr[kk] = cc[kk] + lmax*0.5;
   }
 
-  double scale = 2.0;
+  double scale = 2.5;
   double perfil1 = 0.8;
   double perfil2 = 0.2;
   
@@ -294,13 +294,7 @@ poisson_boltzmann::create_mesh_scale ()
   l_cr[2] = l_c[2];
   r_cr[2] = r_c[2];
   
-  //stretched box with perfil1
-  l_cr[0] -= l[0]*0.5*(1.0/perfil1 - 1);
-  l_cr[1] -= l[1]*0.5*(1.0/perfil1 - 1);
-  l_cr[2] -= l[2]*0.5*(1.0/perfil1 - 1);
-  r_cr[0] += l[0]*0.5*(1.0/perfil1 - 1);
-  r_cr[1] += l[1]*0.5*(1.0/perfil1 - 1);
-  r_cr[2] += l[2]*0.5*(1.0/perfil1 - 1);
+  
 
   //cubic box with max perfil2 
   double size = 1.0/scale;
@@ -326,13 +320,45 @@ poisson_boltzmann::create_mesh_scale ()
   rr[0] = cc[0] + size/2; 
   rr[1] = cc[1] + size/2; 
   rr[2] = cc[2] + size/2; 
-     
+  
+  //stretched box with perfil1
+  l_cr[0] -= l[0]*0.5*(1.0/perfil1 - 1);
+  l_cr[1] -= l[1]*0.5*(1.0/perfil1 - 1);
+  l_cr[2] -= l[2]*0.5*(1.0/perfil1 - 1);
+  r_cr[0] += l[0]*0.5*(1.0/perfil1 - 1);
+  r_cr[1] += l[1]*0.5*(1.0/perfil1 - 1);
+  r_cr[2] += l[2]*0.5*(1.0/perfil1 - 1);  
+
+  int nx, ny, nz;
+
+  nx = (int) ((r_cr[0] - cc[0])*scale + 0.5);
+  ny = (int) ((r_cr[1] - cc[1])*scale + 0.5);
+  nz = (int) ((r_cr[2] - cc[2])*scale + 0.5);
+
+  l_cr[0] = cc[0] - nx*1.0/scale; 
+  l_cr[1] = cc[1] - ny*1.0/scale; 
+  l_cr[2] = cc[2] - nz*1.0/scale; 
+  r_cr[0] = cc[0] + nx*1.0/scale; 
+  r_cr[1] = cc[1] + ny*1.0/scale; 
+  r_cr[2] = cc[2] + nz*1.0/scale;
+
+
 
   if (mesh_shape == 0) {
     if (rank == 0) {
       std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
       std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
       std::cout << "z: " << ll[2] << ", " << rr[2] << "\n" << std::endl;
+
+      std::cout << "xb: " << l_cr[0] << ", " << r_cr[0] << std::endl;
+      std::cout << "yb: " << l_cr[1] << ", " << r_cr[1] << std::endl;
+      std::cout << "zb: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+
+      std::cout << "cx: " << cc[0] << std::endl;
+      std::cout << "cy: " << cc[1] << std::endl;
+      std::cout << "cz: " << cc[2] << "\n" << std::endl;
+
+      std::cout << "nx: " << nx << "  ny: " << ny << " nz: " << nz << std::endl;
     }
 
     simple_conn_num_vertices = 8;
@@ -393,6 +419,398 @@ poisson_boltzmann::create_mesh_scale ()
     for (int i = 0; i<6; i++)
       bcells.push_back (std::make_pair (0, i));
   }  else {
+    if (rank == 0) {
+      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+      std::cout << "z: " << ll[2] << ", " << rr[2] << "\n" << std::endl;
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+    // simple_conn_p = new double[simple_conn_num_vertices*3];
+    // simple_conn_t = new p4est_topidx_t[simple_conn_num_vertices];
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+
+
+    auto tmp_p = {ll[0], ll[1], ll[2],
+                  rr[0], ll[1], ll[2],
+                  ll[0], rr[1], ll[2],
+                  rr[0], rr[1], ll[2],
+                  ll[0], ll[1], rr[2],
+                  rr[0], ll[1], rr[2],
+                  ll[0], rr[1], rr[2],
+                  rr[0], rr[1], rr[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+
+    // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
+    // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  }
+
+  // tmsh.read_connectivity (simple_conn_p, simple_conn_num_vertices,
+  // simple_conn_t, simple_conn_num_trees);
+  tmsh.read_connectivity (simple_conn_p.get(), simple_conn_num_vertices,
+                          simple_conn_t.get(), simple_conn_num_trees);
+
+}
+
+
+void
+poisson_boltzmann::create_mesh_prova ()
+{
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
+
+  int nx, ny, nz;
+  double scale_tmp, scale_x, scale_y, scale_z;
+  scale_level = unilevel;
+  if (mesh_shape < 3) {
+    auto comp = [] (const NS::Atom &a1, const NS::Atom &a2) -> bool { return a1.radius < a2.radius; };
+    double maxradius = std::max_element (atoms.begin (), atoms.end (), comp)->radius;
+    l_c[0] = atoms.begin ()->pos[0] - atoms.begin ()->radius;
+    l_c[1] = atoms.begin ()->pos[1] - atoms.begin ()->radius;
+    l_c[2] = atoms.begin ()->pos[2] - atoms.begin ()->radius;
+    r_c[0] = atoms.begin ()->pos[0] + atoms.begin ()->radius;
+    r_c[1] = atoms.begin ()->pos[1] + atoms.begin ()->radius;
+    r_c[2] = atoms.begin ()->pos[2] + atoms.begin ()->radius;
+    auto it = [this] (const NS::Atom &a1) {
+      for (int kk = 0; kk < 3; ++kk) {
+        if ((a1.pos[kk] + a1.radius) > this->r_c[kk])
+          this->r_c[kk] = a1.pos[kk]+ a1.radius;
+        else if ((a1.pos[kk] - a1.radius) < this->l_c[kk])
+          this->l_c[kk] = a1.pos[kk]- a1.radius;
+      }
+    };
+    std::for_each (atoms.begin (), atoms.end (), it);
+
+
+    double lmax = 0;
+    double l[3];
+
+    for (int kk = 0; kk < 3; ++kk) {
+      l[kk] = (r_c[kk] - l_c[kk]);
+      cc[kk] = (r_c[kk] + l_c[kk])*0.5;
+      lmax = l[kk] > lmax ? l[kk] : lmax;
+    }
+
+    for (int kk = 0; kk < 3; ++kk) {
+      ll[kk] = cc[kk] - lmax*0.5;
+      rr[kk] = cc[kk] + lmax*0.5;
+    }
+      
+    //stretched box with perfil1
+    l_c[0] -= l[0]*0.5*(1.0/perfil1 - 1);
+    l_c[1] -= l[1]*0.5*(1.0/perfil1 - 1);
+    l_c[2] -= l[2]*0.5*(1.0/perfil1 - 1);
+    r_c[0] += l[0]*0.5*(1.0/perfil1 - 1);
+    r_c[1] += l[1]*0.5*(1.0/perfil1 - 1);
+    r_c[2] += l[2]*0.5*(1.0/perfil1 - 1); 
+    
+    //cubic box with perfil1
+    ll[0] -= lmax*0.5*(1.0/perfil1 - 1);
+    ll[1] -= lmax*0.5*(1.0/perfil1 - 1);
+    ll[2] -= lmax*0.5*(1.0/perfil1 - 1);
+    rr[0] += lmax*0.5*(1.0/perfil1 - 1);
+    rr[1] += lmax*0.5*(1.0/perfil1 - 1);
+    rr[2] += lmax*0.5*(1.0/perfil1 - 1);
+
+    l_cr[0] = l_c[0];
+    r_cr[0] = r_c[0];
+    l_cr[1] = l_c[1];
+    r_cr[1] = r_c[1];
+    l_cr[2] = l_c[2];
+    r_cr[2] = r_c[2];
+    
+    if (mesh_shape == 0) {
+      //cubic box with max perfil2 
+      double size = 1.0/scale;
+      scale_level = 0;
+      for(int ii = 0; ii<20; ++ii){
+        std::cout << "lmax: " << lmax 
+                  << " box size: " << size 
+                  << " scale level: " << scale_level 
+                  << " perfil: " << lmax/size << std::endl;
+        size *= 2;
+        scale_level ++; 
+        if (lmax/size < 0.2)
+          break;
+      }
+      std::cout << "lmax: " << lmax 
+                << " bix size: " << size 
+                << " scale level: " << scale_level 
+                << "  outside perfil: " << lmax/size << "\n" << std::endl;
+
+      ll[0] = cc[0] - size/2; 
+      ll[1] = cc[1] - size/2; 
+      ll[2] = cc[2] - size/2; 
+      rr[0] = cc[0] + size/2; 
+      rr[1] = cc[1] + size/2; 
+      rr[2] = cc[2] + size/2;  
+
+      
+      nx = (int) ((r_cr[0] - cc[0])*scale + 0.5);
+      ny = (int) ((r_cr[1] - cc[1])*scale + 0.5);
+      nz = (int) ((r_cr[2] - cc[2])*scale + 0.5);
+
+      //refined box
+      l_cr[0] = cc[0] - nx*1.0/scale; 
+      l_cr[1] = cc[1] - ny*1.0/scale; 
+      l_cr[2] = cc[2] - nz*1.0/scale; 
+      r_cr[0] = cc[0] + nx*1.0/scale; 
+      r_cr[1] = cc[1] + ny*1.0/scale; 
+      r_cr[2] = cc[2] + nz*1.0/scale;
+    }
+    if (mesh_shape == 1 && refine_box == 1) {
+      //cubic box with perfil2
+      ll[0] = cc[0] - lmax*0.5*1.0/perfil2;
+      ll[1] = cc[1] - lmax*0.5*1.0/perfil2;
+      ll[2] = cc[2] - lmax*0.5*1.0/perfil2;
+      rr[0] = cc[0] + lmax*0.5*1.0/perfil2;
+      rr[1] = cc[1] + lmax*0.5*1.0/perfil2;
+      rr[2] = cc[2] + lmax*0.5*1.0/perfil2;
+      scale_tmp = (1<<unilevel)/(rr[0]-ll[0]);
+      
+      nx = (int) ((r_cr[0] - cc[0])*scale_tmp + 0.5);
+      ny = (int) ((r_cr[1] - cc[1])*scale_tmp + 0.5);
+      nz = (int) ((r_cr[2] - cc[2])*scale_tmp + 0.5);
+
+      //refined stretched box
+      l_cr[0] = cc[0] - nx*1.0/scale_tmp; 
+      l_cr[1] = cc[1] - ny*1.0/scale_tmp; 
+      l_cr[2] = cc[2] - nz*1.0/scale_tmp; 
+      r_cr[0] = cc[0] + nx*1.0/scale_tmp; 
+      r_cr[1] = cc[1] + ny*1.0/scale_tmp; 
+      r_cr[2] = cc[2] + nz*1.0/scale_tmp;
+    } 
+
+    if (mesh_shape == 2 && refine_box == 1) {
+      //stretched box with perfil2
+      l_c[0] = cc[0] - l[0]*0.5*1.0/perfil2;
+      l_c[1] = cc[1] - l[1]*0.5*1.0/perfil2;
+      l_c[2] = cc[2] - l[2]*0.5*1.0/perfil2;
+      r_c[0] = cc[0] + l[0]*0.5*1.0/perfil2;
+      r_c[1] = cc[1] + l[1]*0.5*1.0/perfil2;
+      r_c[2] = cc[2] + l[2]*0.5*1.0/perfil2;
+
+      scale_x = (1<<unilevel)/(r_c[0]-l_c[0]);
+      scale_y = (1<<unilevel)/(r_c[1]-l_c[1]);
+      scale_z = (1<<unilevel)/(r_c[2]-l_c[2]);
+      
+      nx = (int) ((r_cr[0] - cc[0])*scale_x + 0.5);
+      ny = (int) ((r_cr[1] - cc[1])*scale_y + 0.5);
+      nz = (int) ((r_cr[2] - cc[2])*scale_z + 0.5);
+
+      //refined stretched box
+      l_cr[0] = cc[0] - nx*1.0/scale_x; 
+      l_cr[1] = cc[1] - ny*1.0/scale_y; 
+      l_cr[2] = cc[2] - nz*1.0/scale_z; 
+      r_cr[0] = cc[0] + nx*1.0/scale_x; 
+      r_cr[1] = cc[1] + ny*1.0/scale_y; 
+      r_cr[2] = cc[2] + nz*1.0/scale_z;
+    }   
+  }
+
+  if (mesh_shape == 0) {
+    if (rank == 0) {
+      std::cout << "cx: "    << cc[0] 
+                << " , cy: " << cc[1] 
+                << " , cz: " << cc[2] << std::endl;
+
+      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+      std::cout << "z: " << ll[2] << ", " << rr[2] << std::endl;
+
+      std::cout << "xb: " << l_cr[0] << ", " << r_cr[0] << std::endl;
+      std::cout << "yb: " << l_cr[1] << ", " << r_cr[1] << std::endl;
+      std::cout << "zb: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+
+      std::cout << "nx: " << nx*2 << "  ny: " << ny*2 << " nz: " << nz*2 << std::endl;
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+    // simple_conn_p = new double[simple_conn_num_vertices*3];
+    // simple_conn_t = new p4est_topidx_t[simple_conn_num_vertices];
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {ll[0], ll[1], ll[2],
+                  rr[0], ll[1], ll[2],
+                  ll[0], rr[1], ll[2],
+                  rr[0], rr[1], ll[2],
+                  ll[0], ll[1], rr[2],
+                  rr[0], ll[1], rr[2],
+                  ll[0], rr[1], rr[2],
+                  rr[0], rr[1], rr[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+
+    // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
+    // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  } else if (mesh_shape == 1) {
+    if (rank == 0) {
+      std::cout << "cx: "    << cc[0] 
+                << " , cy: " << cc[1] 
+                << " , cz: " << cc[2] << "\n" << std::endl;
+
+      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+      std::cout << "z: " << ll[2] << ", " << rr[2] << "\n" << std::endl;
+
+      if (refine_box == 1) {
+        std::cout << "xb: " << l_cr[0] << ", " << r_cr[0] << std::endl;
+        std::cout << "yb: " << l_cr[1] << ", " << r_cr[1] << std::endl;
+        std::cout << "zb: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+      }
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+    // simple_conn_p = new double[simple_conn_num_vertices*3];
+    // simple_conn_t = new p4est_topidx_t[simple_conn_num_vertices];
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {ll[0], ll[1], ll[2],
+                  rr[0], ll[1], ll[2],
+                  ll[0], rr[1], ll[2],
+                  rr[0], rr[1], ll[2],
+                  ll[0], ll[1], rr[2],
+                  rr[0], ll[1], rr[2],
+                  ll[0], rr[1], rr[2],
+                  rr[0], rr[1], rr[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+
+    // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
+    // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  } else if (mesh_shape == 2 || mesh_shape == 3) {
+    if (rank == 0) {
+      std::cout << "x: " << l_c[0] << ", " << r_c[0] << std::endl;
+      std::cout << "y: " << l_c[1] << ", " << r_c[1] << std::endl;
+      std::cout << "z: " << l_c[2] << ", " << r_c[2] << "\n" << std::endl;
+
+      if (refine_box == 1) {
+        std::cout << "xb: " << l_cr[0] << ", " << r_cr[0] << std::endl;
+        std::cout << "yb: " << l_cr[1] << ", " << r_cr[1] << std::endl;
+        std::cout << "zb: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+      }
+    }
+    if (mesh_shape == 3 && refine_box == 1) {    
+      double nx_tmp, ny_tmp, nz_tmp;
+      double cc_tmp[3];
+
+      scale_x = (1<<unilevel)/(r_c[0]-l_c[0]);
+      scale_y = (1<<unilevel)/(r_c[1]-l_c[1]);
+      scale_z = (1<<unilevel)/(r_c[2]-l_c[2]);
+
+      cc[0] = (r_c[0]+l_c[0])*0.5;
+      cc[1] = (r_c[1]+l_c[1])*0.5;
+      cc[2] = (r_c[2]+l_c[2])*0.5;   
+
+      cc_tmp[0] = (r_cr[0]+l_cr[0])*0.5;
+      cc_tmp[1] = (r_cr[1]+l_cr[1])*0.5;
+      cc_tmp[2] = (r_cr[2]+l_cr[2])*0.5;   
+
+      nx_tmp = (int) ((cc[0] - cc_tmp[0])*scale_x + 0.5);
+      ny_tmp = (int) ((cc[1] - cc_tmp[1])*scale_y + 0.5);
+      nz_tmp = (int) ((cc[2] - cc_tmp[2])*scale_z + 0.5);
+
+      cc_tmp[0] = cc[0] + nx_tmp*1.0/scale_x; 
+      cc_tmp[1] = cc[1] + ny_tmp*1.0/scale_y; 
+      cc_tmp[2] = cc[2] + nz_tmp*1.0/scale_z; 
+
+      nx = (int) ((r_cr[0] - cc_tmp[0])*scale_x + 0.5);
+      ny = (int) ((r_cr[1] - cc_tmp[1])*scale_y + 0.5);
+      nz = (int) ((r_cr[2] - cc_tmp[2])*scale_z + 0.5);
+      //refined stretched box
+      l_cr[0] = cc_tmp[0] - nx*1.0/scale_x; 
+      l_cr[1] = cc_tmp[1] - ny*1.0/scale_y; 
+      l_cr[2] = cc_tmp[2] - nz*1.0/scale_z; 
+      r_cr[0] = cc_tmp[0] + nx*1.0/scale_x; 
+      r_cr[1] = cc_tmp[1] + ny*1.0/scale_y; 
+      r_cr[2] = cc_tmp[2] + nz*1.0/scale_z;
+
+      std::cout << "xbPD: " << l_cr[0] << ", " << r_cr[0] << std::endl;
+      std::cout << "ybPD: " << l_cr[1] << ", " << r_cr[1] << std::endl;
+      std::cout << "zbPD: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+    }   
+  
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+    // simple_conn_p = new double[simple_conn_num_vertices*3];
+    // simple_conn_t = new p4est_topidx_t[simple_conn_num_vertices];
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {l_c[0], l_c[1], l_c[2],
+                  r_c[0], l_c[1], l_c[2],
+                  l_c[0], r_c[1], l_c[2],
+                  r_c[0], r_c[1], l_c[2],
+                  l_c[0], l_c[1], r_c[2],
+                  r_c[0], l_c[1], r_c[2],
+                  l_c[0], r_c[1], r_c[2],
+                  r_c[0], r_c[1], r_c[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+
+    // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
+    // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  } else if (mesh_shape == 4) {
+    if (rank == 0) {
+     
+      std::cout << "x: " << l_c[0] << ", " << r_c[0] << std::endl;
+      std::cout << "y: " << l_c[1] << ", " << r_c[1] << std::endl;
+      std::cout << "z: " << l_c[2] << ", " << r_c[2] << "\n" << std::endl;
+
+      std::cout << "Number of trees on x: " << num_trees[0] << std::endl;
+      std::cout << "Number of trees on y: " << num_trees[1] << std::endl;
+      std::cout << "Number of trees on z: " << num_trees[2] << "\n" << std::endl;
+    }
+
+    double bound_x = std::abs (r_c[0]-l_c[0]);
+    double bound_y = std::abs (r_c[1]-l_c[1]);
+    double bound_z = std::abs (r_c[2]-l_c[2]);
+    double step[3] = { bound_x/num_trees[0],
+                       bound_y/num_trees[1],
+                       bound_z/num_trees[2]
+                     };
+
+    double bound[3] = {bound_x, bound_y, bound_z};
+    make_connectivity_3d (num_trees, step, simple_conn_p,
+                          simple_conn_num_vertices, simple_conn_t,
+                          simple_conn_num_trees, bcells);
+
+    for (p4est_topidx_t i =0; i < simple_conn_num_vertices; ++i) {
+      p4est_topidx_t j = 0;
+      simple_conn_p[3*i + j++] += l_c[0];
+      simple_conn_p[3*i + j++] += l_c[1];
+      simple_conn_p[3*i + j] += l_c[2];
+    }
+
+  } else {
     if (rank == 0) {
       std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
       std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
@@ -557,8 +975,12 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   outlevel = g2 ((mesh_options + "outlevel").c_str (), minlevel);
   mesh_shape = g2 ((mesh_options + "mesh_shape").c_str (), 1);
   refine_box = g2 ((mesh_options + "refine_box").c_str (), 0);
-
-  if (mesh_shape == 2) {
+  if (mesh_shape < 3) {
+    perfil1 = g2 ((mesh_options + "perfil1").c_str (), 0.8);
+    perfil2 = g2 ((mesh_options + "perfil2").c_str (), 0.2);
+    scale = g2 ((mesh_options + "scale").c_str (), 2.0);
+  }
+  if (mesh_shape == 3) {
     l_c[0] = g2 ((mesh_options + "x1").c_str (), -128.0);
     r_c[0] = g2 ((mesh_options + "x2").c_str (), 128.0);
     l_c[1] = g2 ((mesh_options + "y1").c_str (), -128.0);
@@ -573,7 +995,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     r_cr[2] = g2 ((mesh_options + "refine_z2").c_str (), 64.0);
   }
 
-  if (mesh_shape == 3) {
+  if (mesh_shape == 4) {
     l_c[0] = g2 ((mesh_options + "x1").c_str (), -128.0);
     r_c[0] = g2 ((mesh_options + "x2").c_str (), 128.0);
     l_c[1] = g2 ((mesh_options + "y1").c_str (), -128.0);
@@ -627,13 +1049,20 @@ void
 poisson_boltzmann::print_options ()
 {
   std::cout << "\nChosen options: " << std::endl;
-  std::cout << "minlevel = " << minlevel << "\nmaxlevel = " << maxlevel << std::endl;
-  std::cout << "unilevel = " << unilevel << std::endl;
+  if (mesh_shape == 0)
+  {
+    std::cout << "scale: " << scale << std::endl; 
+  } else {
+    std::cout << "minlevel = " << minlevel << "\nmaxlevel = " << maxlevel << std::endl;
+    std::cout << "unilevel = " << unilevel << std::endl;
+  }
 
   std::cout << "Linearized model = " << linearized << std::endl;
 
   if (bc == 1)
     std::cout << "Dirichlet boundary conditions" << std::endl;
+  else if (bc == 2)
+    std::cout << "Coulombic boundary conditions" << std::endl;
   else
     std::cout << "Neumann boundary conditions" << std::endl;
 
@@ -649,10 +1078,13 @@ poisson_boltzmann::print_options ()
   std::cout << "Number of threads for nanoshaper: " << num_threads << std::endl;
 
   if (mesh_shape == 1) {
-    std::cout << "Mesh shape = stretched" << std::endl;
+    std::cout << "Mesh shape = cubic at "<< perfil1 << " perfil" << std::endl;
     std::cout << "with the following domain vertices: " << std::endl;
-  } else if (mesh_shape == 0) {
-    std::cout << "Mesh shape = cubic" << std::endl;
+  } else if (mesh_shape == 2) {
+    std::cout << "Mesh shape = stretched at "<< perfil1 << " perfil" << std::endl;
+    std::cout << "with the following domain vertices: " << std::endl;
+  }else if (mesh_shape == 0) {
+    std::cout << "Mesh shape = cubic at max " << perfil2 << " perfil" << " and refined box at "<< perfil1 << " perfil" << std::endl;
     std::cout << "with the following domain vertices: " << std::endl;
   } else
     std::cout << "Manual setting of the mesh vertices:" << std::endl;
