@@ -52,7 +52,6 @@ main (int argc, char **argv)
 
   TIC ();
   // pb.create_mesh ();
-  // pb.create_mesh_scale ();
   pb.create_mesh_prova ();
   TOC ("create_mesh");
 
@@ -63,7 +62,6 @@ main (int argc, char **argv)
     pb.init_tmesh_with_refine_box_scale ();
   else
     pb.init_tmesh ();
-
   TOC ("init_tmesh");
 
   TIC ();
@@ -72,12 +70,17 @@ main (int argc, char **argv)
     ray_cache.init_analytical_surf (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads);
 
   TOC ("init analytical surf");
+  /*
   TIC ();
   pb.refine_surface (ray_cache);
   TOC ("refine the box");
-
+  */
+  
   TIC ();
   pb.create_markers (ray_cache);
+  if(true) {
+    pb.create_markers_k (ray_cache);
+  }
   TOC ("create element markers");
 
   TIC ();

@@ -97,6 +97,7 @@ struct
   std::string markerfilename;
 
   std::vector<double> marker;
+  std::vector<double> marker_k;
   std::vector<double> epsilon;
   std::vector<double> epsilon_in;
   std::vector<double> epsilon_out;
@@ -451,11 +452,11 @@ struct
   double
   levelsetfun (double x, double y, double z);
 
-  // double
-  // is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z);
-
   double
   is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir);
+
+  double
+  is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, double y, double z, int dir);
 
   static int
   uniform_refinement (tmesh_3d::quadrant_iterator quadrant)
@@ -511,6 +512,9 @@ struct
 
   void
   create_markers (ray_cache_t & ray_cache);
+
+  void
+  create_markers_k (ray_cache_t & ray_cache);
 
   void
   export_tmesh (ray_cache_t & ray_cache);
