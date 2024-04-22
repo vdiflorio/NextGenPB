@@ -69,6 +69,7 @@ struct
   int scale_level;
   double scale;
   double perfil1, perfil2;
+  int stern_layer_surf = 1;
 
   int maxlevel1 = 10, minlevel1 = 1;
 
@@ -515,6 +516,9 @@ struct
 
   void
   create_markers_k (ray_cache_t & ray_cache);
+
+  void
+  create_markers_prova (ray_cache_t & ray_cache);
 
   void
   export_tmesh (ray_cache_t & ray_cache);

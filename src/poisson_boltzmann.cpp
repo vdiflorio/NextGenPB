@@ -77,10 +77,8 @@ main (int argc, char **argv)
   */
   
   TIC ();
-  pb.create_markers (ray_cache);
-  if(true) {
-    pb.create_markers_k (ray_cache);
-  }
+  // pb.create_markers (ray_cache);
+  pb.create_markers_prova (ray_cache);
   TOC ("create element markers");
 
   TIC ();
