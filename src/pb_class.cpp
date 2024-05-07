@@ -128,7 +128,7 @@ poisson_boltzmann::create_mesh ()
                   ll[0], rr[1], rr[2],
                   rr[0], rr[1], rr[2]
                  };
-    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
 
     // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
     // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
@@ -160,7 +160,7 @@ poisson_boltzmann::create_mesh ()
                   l_c[0], r_c[1], r_c[2],
                   r_c[0], r_c[1], r_c[2]
                  };
-    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
 
     // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
     // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
@@ -224,7 +224,7 @@ poisson_boltzmann::create_mesh ()
                   ll[0], rr[1], rr[2],
                   rr[0], rr[1], rr[2]
                  };
-    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
 
     // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
     // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
@@ -427,7 +427,7 @@ poisson_boltzmann::create_mesh_prova ()
                   ll[0], rr[1], rr[2],
                   rr[0], rr[1], rr[2]
                  };
-    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
 
     // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
     // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
@@ -469,7 +469,7 @@ poisson_boltzmann::create_mesh_prova ()
                   ll[0], rr[1], rr[2],
                   rr[0], rr[1], rr[2]
                  };
-    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
 
     // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
     // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
@@ -525,9 +525,9 @@ poisson_boltzmann::create_mesh_prova ()
       r_cr[1] = cc_tmp[1] + ny*1.0/scale_y; 
       r_cr[2] = cc_tmp[2] + nz*1.0/scale_z;
 
-      std::cout << "xbPD: " << l_cr[0] << ", " << r_cr[0] << std::endl;
-      std::cout << "ybPD: " << l_cr[1] << ", " << r_cr[1] << std::endl;
-      std::cout << "zbPD: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+      std::cout << "xb: " << l_cr[0] << ", " << r_cr[0] << std::endl;
+      std::cout << "yb: " << l_cr[1] << ", " << r_cr[1] << std::endl;
+      std::cout << "zb: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
     }   
   
     simple_conn_num_vertices = 8;
@@ -546,7 +546,7 @@ poisson_boltzmann::create_mesh_prova ()
                   l_c[0], r_c[1], r_c[2],
                   r_c[0], r_c[1], r_c[2]
                  };
-    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
 
     // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
     // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
@@ -612,7 +612,7 @@ poisson_boltzmann::create_mesh_prova ()
                   ll[0], rr[1], rr[2],
                   rr[0], rr[1], rr[2]
                  };
-    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8, 1};
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
 
     // std::copy(tmp_p.begin(), tmp_p.end(), simple_conn_p);
     // std::copy(tmp_t.begin(), tmp_t.end(), simple_conn_t);
@@ -1499,7 +1499,11 @@ poisson_boltzmann::is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, doubl
   }
 
   crossings_t & ct = ray_cache (x1, x2, dir);
-
+  if (!ct.init && rank != 0) {
+    std::array<double, 2> ray = {x1, x2};
+    ray_cache.rays[dir].erase (ray);
+    return -1.;
+  }
   int i = 0;
   int sign = 1;
   if (ct.inters.size () == 0 || x3 < (ct.inters[i]- stern_layer))
@@ -2055,6 +2059,10 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   if (rank == 0)
     std::cout << "\nStarting LIS solution" << std::endl;
 
+  for (int i = 0; i < 3; ++i)
+  {
+    std::cout<<ray_cache.rays[i].size() << std::endl;
+  }
   // diffusion
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
   double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
@@ -2153,7 +2161,6 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
 
   bim3a_solution_with_ghosts (tmsh, ones, replace_op);
-  
   if (stern_layer_surf == 1) //se c'è lo stern leyer 
   {
     bim3a_reaction (tmsh, reaction, ones, A);
@@ -2684,10 +2691,8 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
          tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
 
-  std::ofstream phi_node_file;
-  std::ofstream phi_hang_node_file;
-  phi_node_file.open ("phi_nodes.txt");
-  phi_hang_node_file.open ("phi_hang_nodes.txt");
+  
+
 
   // flux and polarization energy calculation
 
@@ -2696,7 +2701,6 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
        ++quadrant) {
 
     if (marker[quadrant->get_forest_quad_idx()] == 0.5) {
-
       h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
       h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
       h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
@@ -2824,9 +2828,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
     }
 
   }
-
-  phi_node_file.close ();
-  phi_hang_node_file.close ();
+ 
 
   double energy_react = 0.5*second_int - first_int*constant_react;
 

@@ -7,38 +7,37 @@
 #include <array>
 #include <mpi.h>
 #include <nanoshaper.h>
+#include <raytracer_datatype.h>
 
 #include "json.hpp"
 #include "serialize.h"
 
 using int_coord_t = unsigned long long int;
 
-struct
-  crossings_t {
+// struct
+//   crossings_t {
 
-  static double start[3], end[3];
+//   static double start[3], end[3];
 
-  unsigned dir;
-  bool init = 0; //1 when the ray is initilized
-  double point[2]; //point x and z coords: the ones that prescribe the ray
+//   unsigned dir;
+//   bool init = 0; //1 when the ray is initilized
+//   double point[2]; //point x and z coords: the ones that prescribe the ray
 
-  std::vector<double> inters; //intersections
-  std::vector<double> normals; //normals
+//   std::vector<double> inters; //intersections
+//   std::vector<double> normals; //normals
 
-};
+// };
 
-struct
-  map_compare {
-  bool
-  operator () (const std::array<double, 2> & arr1, const std::array<double, 2> & arr2) const;
-};
+// struct
+//   map_compare {
+//   bool
+//   operator () (const std::array<double, 2> & arr1, const std::array<double, 2> & arr2) const;
+// };
 
 struct
   ray_cache_t {
 
-  std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3> rays; //y-coord and z-coord, correspondent ray
-  //x-coord and z-coord, correspondent ray
-  //x-coord and y-coord, correspondent ray
+  std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3> rays; //map that contains all the rays in the 3 direction
 
   static int_coord_t count_cache;
   static int_coord_t count_new;
@@ -59,7 +58,11 @@ struct
 
   void
   init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
-                        const double & surf_param, const double & stern_layer, const unsigned & num_threads);
+                        const double & surf_param, const double & stern_layer, const unsigned & num_threads,const std::string* configFile=nullptr);
+
+  void
+  init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
+                          const double & surf_param, const double & stern_layer, const unsigned & num_threads,const std::string* configFile=nullptr);
   void
   compute_ns_inters (crossings_t & ct);
 

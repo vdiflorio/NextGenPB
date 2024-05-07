@@ -1,21 +1,21 @@
 #include "raytracer.h"
 
-bool
-map_compare::operator () (const std::array<double, 2> & arr1, const std::array<double, 2> & arr2) const
-{
-  if (arr1.at (0) < arr2.at (0))
-    return 1;
+// bool
+// map_compare::operator () (const std::array<double, 2> & arr1, const std::array<double, 2> & arr2) const
+// {
+//   if (arr1.at (0) < arr2.at (0))
+//     return 1;
 
-  else if (arr1.at (0) == arr2.at (0)) {
-    if (arr1.at (1) < arr2.at (1))
-      return 1;
-    else
-      return 0;
-  }
+//   else if (arr1.at (0) == arr2.at (0)) {
+//     if (arr1.at (1) < arr2.at (1))
+//       return 1;
+//     else
+//       return 0;
+//   }
 
-  else
-    return 0;
-}
+//   else
+//     return 0;
+// }
 
 crossings_t &
 ray_cache_t::operator() (double x0, double x1, unsigned direct)
@@ -168,11 +168,13 @@ ray_cache_t::fill_cache ()
 
 void
 ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
-                                   const double & surf_param, const double & stern_layer, const unsigned & num_threads)
+                                   const double & surf_param, const double & stern_layer, const unsigned & num_threads, const std::string* configFile)
 {
-  NS::NanoShaper ns0 (atoms, surf_type, surf_param, stern_layer, num_threads);
-  ns = ns0;
-  ns.setConfig<double> ("Grid_scale", 3.0);
+  // NS::NanoShaper ns0 (atoms, surf_type, surf_param, stern_layer, num_threads);
+  // ns = ns0;
+  ns.initConstructor (atoms, surf_type, surf_param, stern_layer, num_threads,configFile);
+  
+  ns.setConfig<double> ("Grid_scale", 2.0);
   ns.setConfig<double> ("Self_Intersections_Grid_Coefficient", 1.5);
   ns.buildAnalyticalSurface();
   std::cout << "\n" << std::endl;
@@ -188,6 +190,41 @@ ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS
   // left-bottom corner
   ns.getGridPointCoordinates (0, 0, 0, coords);
   std::copy (coords.cbegin(), coords.cend(), crossings_t::start);
+}
+
+
+void
+ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
+                                   const double & surf_param, const double & stern_layer, const unsigned & num_threads, const std::string* configFile)
+{
+  
+  
+  ns.initConstructor (atoms, surf_type, surf_param, stern_layer, num_threads,configFile);
+    // set here a consistent grid scale
+  double scale = 16.0/8.0;
+  ns.setConfig<double>("Grid_scale", scale );    
+  ns.setConfig<bool>("Accurate_Triangulation",true); 
+  ns.setConfig<bool>("Build_epsilon_maps",false); 
+ 
+  // build the grid in the new mode   
+  ns.setConfig<bool>("PB_grid_mode",true);
+
+  // impose here the min and max of the cube
+  ns.setConfig<double>("xmin",-4.0);  
+  ns.setConfig<double>("ymin",-4.0);
+  ns.setConfig<double>("zmin",-4.0);
+         
+  ns.setConfig<double>("xmax",4.0);
+  ns.setConfig<double>("ymax",4.0);
+  ns.setConfig<double>("zmax",4.0);   
+  ns.buildAnalyticalSurface();
+
+  // remember to set this to true in order to collect rays intersections data
+  ns.setCollectGridRays(true);
+  ns.colourGrid();
+  // retrieve intersections data from the map
+  rays = ns.getRaysMap();
+ 
 }
 
 

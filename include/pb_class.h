@@ -69,7 +69,7 @@ struct
   int scale_level;
   double scale;
   double perfil1, perfil2;
-  int stern_layer_surf = 1;
+  int stern_layer_surf = 0;
 
   int maxlevel1 = 10, minlevel1 = 1;
 
