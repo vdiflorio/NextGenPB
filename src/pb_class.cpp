@@ -667,12 +667,12 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   outlevel = g2 ((mesh_options + "outlevel").c_str (), minlevel);
   mesh_shape = g2 ((mesh_options + "mesh_shape").c_str (), 1);
   refine_box = g2 ((mesh_options + "refine_box").c_str (), 0);
-  if (mesh_shape < 3) {
+  if (mesh_shape == 0) {
     perfil1 = g2 ((mesh_options + "perfil1").c_str (), 0.8);
     perfil2 = g2 ((mesh_options + "perfil2").c_str (), 0.2);
     scale = g2 ((mesh_options + "scale").c_str (), 2.0);
   }
-  if (mesh_shape == 3) {
+  if (mesh_shape > 0) {
     l_c[0] = g2 ((mesh_options + "x1").c_str (), -128.0);
     r_c[0] = g2 ((mesh_options + "x2").c_str (), 128.0);
     l_c[1] = g2 ((mesh_options + "y1").c_str (), -128.0);
@@ -687,23 +687,23 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     r_cr[2] = g2 ((mesh_options + "refine_z2").c_str (), 64.0);
   }
 
-  if (mesh_shape == 4) {
-    l_c[0] = g2 ((mesh_options + "x1").c_str (), -128.0);
-    r_c[0] = g2 ((mesh_options + "x2").c_str (), 128.0);
-    l_c[1] = g2 ((mesh_options + "y1").c_str (), -128.0);
-    r_c[1] = g2 ((mesh_options + "y2").c_str (), 128.0);
-    l_c[2] = g2 ((mesh_options + "z1").c_str (), -128.0);
-    r_c[2] = g2 ((mesh_options + "z2").c_str (), 128.0);
-    l_cr[0] = g2 ((mesh_options + "refine_x1").c_str (), -64.0);
-    r_cr[0] = g2 ((mesh_options + "refine_x2").c_str (), 64.0);
-    l_cr[1] = g2 ((mesh_options + "refine_y1").c_str (), -64.0);
-    r_cr[1] = g2 ((mesh_options + "refine_y2").c_str (), 64.0);
-    l_cr[2] = g2 ((mesh_options + "refine_z1").c_str (), -64.0);
-    r_cr[2] = g2 ((mesh_options + "refine_z2").c_str (), 64.0);
-    num_trees [0] = g2 ((mesh_options + "num_trees_x").c_str (), 1);
-    num_trees [1] = g2 ((mesh_options + "num_trees_y").c_str (), 1);
-    num_trees [2] = g2 ((mesh_options + "num_trees_z").c_str (), 1);
-  }
+  // if (mesh_shape == 4) {
+  //   l_c[0] = g2 ((mesh_options + "x1").c_str (), -128.0);
+  //   r_c[0] = g2 ((mesh_options + "x2").c_str (), 128.0);
+  //   l_c[1] = g2 ((mesh_options + "y1").c_str (), -128.0);
+  //   r_c[1] = g2 ((mesh_options + "y2").c_str (), 128.0);
+  //   l_c[2] = g2 ((mesh_options + "z1").c_str (), -128.0);
+  //   r_c[2] = g2 ((mesh_options + "z2").c_str (), 128.0);
+  //   l_cr[0] = g2 ((mesh_options + "refine_x1").c_str (), -64.0);
+  //   r_cr[0] = g2 ((mesh_options + "refine_x2").c_str (), 64.0);
+  //   l_cr[1] = g2 ((mesh_options + "refine_y1").c_str (), -64.0);
+  //   r_cr[1] = g2 ((mesh_options + "refine_y2").c_str (), 64.0);
+  //   l_cr[2] = g2 ((mesh_options + "refine_z1").c_str (), -64.0);
+  //   r_cr[2] = g2 ((mesh_options + "refine_z2").c_str (), 64.0);
+  //   num_trees [0] = g2 ((mesh_options + "num_trees_x").c_str (), 1);
+  //   num_trees [1] = g2 ((mesh_options + "num_trees_y").c_str (), 1);
+  //   num_trees [2] = g2 ((mesh_options + "num_trees_z").c_str (), 1);
+  // }
 
 
   const std::string model_options = "model/";
@@ -719,14 +719,15 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   if (surf_type_num == 1) surf_type = NS::skin;
   else if (surf_type_num == 0) surf_type = NS::ses;
   else if (surf_type_num == 2) surf_type = NS::blobby;
-  else surf_type;
+  else surf_type = NS::ses;
 
   surf_param = g2 ((surf_options + "surface_parameter").c_str (), 0.45);
+  stern_layer = g2 ((surf_options + "stern_layer_surf").c_str (), 0);
   stern_layer = g2 ((surf_options + "stern_layer_thickness").c_str (), 2.);
   num_threads = g2 ((surf_options + "number_of_threads").c_str (), 1);
 
   const std::string alg_options = "algorithm/";
-  linear_solver_name = g2 ((alg_options + "linear_solver").c_str (), "mumps");
+  linear_solver_name = g2 ((alg_options + "linear_solver").c_str (), "lis");
   linear_solver_options = g2 ((alg_options + "solver_options").c_str (), "-i cg -p ilu [0] -tol 1.e-12");
 
   const std::string out_options = "output/";
