@@ -12,8 +12,10 @@ int_coord_t ray_cache_t::count_new = 0;
 
 
 void
-print_map (const std::map<std::array<double, 2>, crossings_t, map_compare>& r);
+print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3>& r);
 
+void
+print_point (const std::array<std::vector<std::array<double, 2>>,3>& r);
 void
 save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2>, crossings_t, map_compare>& r);
 
@@ -52,7 +54,7 @@ main (int argc, char **argv)
 
   TIC ();
   // pb.create_mesh ();
-  pb.create_mesh_prova ();
+  pb.create_mesh_ns ();
   TOC ("create_mesh");
 
 
@@ -65,14 +67,12 @@ main (int argc, char **argv)
   TOC ("init_tmesh");
 
   TIC ();
-
   if (pb.surf_type != 2 && rank == 0){
-    // ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads);
-    ray_cache.init_analytical_surf (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads);
+    ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+    // ray_cache.init_analytical_surf (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads);
   }
   TOC ("init analytical surf");
-  // print_map (ray_cache.rays[0]);
-
+  print_map (ray_cache.rays);
   /*
   TIC ();
   pb.refine_surface (ray_cache);
@@ -85,6 +85,7 @@ main (int argc, char **argv)
   TOC ("create element markers");
 
   TIC ();
+
 
   if (pb.linear_solver_name == "mumps")
     pb.mumps_compute_electric_potential (ray_cache);
@@ -109,6 +110,7 @@ main (int argc, char **argv)
   // pb.export_marked_tmesh ();
   // TOC ("export marked tmesh");
 
+  std::cout << ray_cache.count << std::endl;
   
   if (rank == 0) {
     print_timing_report();
@@ -155,30 +157,64 @@ main (int argc, char **argv)
 
 
 void
-print_map(const std::map<std::array<double, 2> , crossings_t, map_compare>& r)
+print_point(const std::array<std::vector<std::array<double, 2>>,3>& r)
 {
   std::ofstream ray_cached_file;
-  ray_cached_file.open ("ray_cache_ns.txt");
-  if (ray_cached_file.is_open ())
+  // ray_cached_file.open ("ray_cache_ns.txt");
+  for (int i = 0; i < 3; ++i)
   {
-    ray_cached_file << "Count cached rays: " << ray_cache_t::count_cache << std::endl;
-    ray_cached_file << "Count new rays: " << ray_cache_t::count_new << std::endl;
-    int count = 0;
-    for (auto it : r)
+    std::string filename = "ray_point_ns_";
+    std::string extension = ".txt";
+    filename += std::to_string(i);
+    filename += extension;
+    ray_cached_file.open (filename.c_str ());
+    if (ray_cached_file.is_open ())
     {
-      ray_cached_file << "[[" << it.first.at(0) << ", " << it.first.at(1) << "]";
-      if (it.second.inters.size ()>0)
+      for (auto it = r[i].begin(); it !=r[i].end(); ++it)
       {
-        count++;
+        ray_cached_file <<std::setprecision(9)<< "[[" << (*it)[0] << ", " << (*it)[1] << "]" << std::endl;
       }
-      for (int i = 0; i < it.second.inters.size (); i++)
-        ray_cached_file << ", " << it.second.inters[i];
-      ray_cached_file << "]" << std::endl;
     }
-    ray_cached_file << std::endl;
-    ray_cached_file << "num raggi inters: " << count << std::endl;
+    ray_cached_file.close ();
   }
-  ray_cached_file.close ();
+    
+}
+
+
+void
+print_map(const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3>& r)
+{
+  std::ofstream ray_cached_file;
+  // ray_cached_file.open ("ray_cache_ns.txt");
+  for (int i = 0; i < 3; ++i)
+  {
+    std::string filename = "ray_cache_ns_";
+    std::string extension = ".txt";
+    filename += std::to_string(i);
+    filename += extension;
+    ray_cached_file.open (filename.c_str ());
+    if (ray_cached_file.is_open ())
+    {
+      ray_cached_file << "Count cached rays: " << ray_cache_t::count_cache << std::endl;
+      ray_cached_file << "Count new rays: " << ray_cache_t::count_new << std::endl;
+      int count = 0;
+      for (auto it : r[i])
+      {
+        ray_cached_file <<std::setprecision(9)<< "[[" << it.first.at(0) << ", " << it.first.at(1) << "]";
+        if (it.second.inters.size ()>0)
+        {
+          count++;
+        }
+        for (int i = 0; i < it.second.inters.size (); i++)
+          ray_cached_file << ", " << it.second.inters[i];
+        ray_cached_file << "]" << std::endl;
+      }
+      ray_cached_file << std::endl;
+      ray_cached_file << "num raggi inters: " << count << std::endl;
+    }
+    ray_cached_file.close ();
+  }
+    
 }
 
 void

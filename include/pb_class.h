@@ -473,7 +473,7 @@ struct
   create_mesh_scale ();
 
   void
-  create_mesh_prova ();
+  create_mesh_ns ();
 
   int
   parse_options (int argc, char **argv);
