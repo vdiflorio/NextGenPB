@@ -1626,8 +1626,10 @@ void
 poisson_boltzmann::export_marked_tmesh ()
 {
   tmsh.octbin_export_quadrant (markerfilename.c_str (), marker);
-  if (stern_layer_surf == 1)
+  if (stern_layer_surf == 1){
+    std::cout<< 11111111 << std::endl;
     tmsh.octbin_export_quadrant ("mark_stern_0", marker_k);
+  }
 }
 
 void

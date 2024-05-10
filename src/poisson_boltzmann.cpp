@@ -72,7 +72,6 @@ main (int argc, char **argv)
     // ray_cache.init_analytical_surf (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads);
   }
   TOC ("init analytical surf");
-  print_map (ray_cache.rays);
   /*
   TIC ();
   pb.refine_surface (ray_cache);
@@ -102,13 +101,13 @@ main (int argc, char **argv)
   pb.energy (ray_cache);
   TOC ("compute energy")
 
-  // TIC ();
-  // pb.export_tmesh (ray_cache);
-  // TOC ("export tmesh");
+  TIC ();
+  pb.export_tmesh (ray_cache);
+  TOC ("export tmesh");
 
-  // TIC ();
-  // pb.export_marked_tmesh ();
-  // TOC ("export marked tmesh");
+  TIC ();
+  pb.export_marked_tmesh ();
+  TOC ("export marked tmesh");
 
   std::cout << ray_cache.count << std::endl;
   
