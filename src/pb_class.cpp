@@ -1358,6 +1358,7 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
                                      quadrant->p (0, ii),
                                      quadrant->p (1, ii),
                                      quadrant->p (2, ii),idir) < -0.5 ) {
+              
               ray_cache.num_req_rays[idir]++;
               std::array<double, 2> ray;
 
@@ -1490,6 +1491,7 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
                                           quadrant->p (1, ii),
                                           quadrant->p (2, ii),idir) < -0.5 ) {
               ray_cache.num_req_rays[idir]++;
+              
               std::array<double, 2> ray;
 
               std::vector<int> direzioni {0,1,2};
@@ -1500,16 +1502,17 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
               }
 
               ray_cache.rays_list[idir].insert (ray);
-              if (stern_layer_surf == 1)
+            }
+
+            if (stern_layer_surf == 1)
               {
                 if (this->is_in_ns_surf_stern (ray_cache,
                                              quadrant->p (0, ii),
                                              quadrant->p (1, ii),
                                              quadrant->p (2, ii),idir) > 0.5) { //inside the stern layer
-                ++num_int_nodes_stern[idir];
-            }
+                  ++num_int_nodes_stern[idir];
+                }
               }
-            }
           }
           
         } else
@@ -1912,7 +1915,6 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   //reactions
   double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
   double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
-  std::cout << k2 << "  " << std::sqrt(k2)<< std::endl;
 
   epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
   epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out);

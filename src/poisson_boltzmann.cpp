@@ -101,13 +101,13 @@ main (int argc, char **argv)
   pb.energy (ray_cache);
   TOC ("compute energy")
 
-  TIC ();
-  pb.export_tmesh (ray_cache);
-  TOC ("export tmesh");
+  // TIC ();
+  // pb.export_tmesh (ray_cache);
+  // TOC ("export tmesh");
 
-  TIC ();
-  pb.export_marked_tmesh ();
-  TOC ("export marked tmesh");
+  // TIC ();
+  // pb.export_marked_tmesh ();
+  // TOC ("export marked tmesh");
 
   
   if (rank == 0) {
