@@ -723,7 +723,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   else surf_type = NS::ses;
 
   surf_param = g2 ((surf_options + "surface_parameter").c_str (), 0.45);
-  stern_layer = g2 ((surf_options + "stern_layer_surf").c_str (), 0);
+  stern_layer_surf = g2 ((surf_options + "stern_layer_surf").c_str (), 0);
   stern_layer = g2 ((surf_options + "stern_layer_thickness").c_str (), 2.);
   num_threads = g2 ((surf_options + "number_of_threads").c_str (), 1);
 
@@ -1403,7 +1403,6 @@ poisson_boltzmann::is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, doubl
   double x1 = x;
   double x2 = y;
   double x3 = z;
-
   if (dir == 0) {
     x1 = y;
     x2 = z;
@@ -1570,7 +1569,7 @@ poisson_boltzmann::export_tmesh (ray_cache_t & ray_cache)
   int size, rank;
   MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
-
+  bim3a_solution_with_ghosts (tmsh, (*markn), replace_op);
   tmsh.octbin_export (surffilename.c_str (), (*markn));
 }
 
@@ -1913,7 +1912,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   //reactions
   double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
   double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
-
+  std::cout << k2 << "  " << std::sqrt(k2)<< std::endl;
 
   epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
   epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out);
@@ -2001,7 +2000,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   bim3a_laplacian_frac (tmsh, (*epsilon_nodes), A, func_frac);
 
-
+  
   bim3a_solution_with_ghosts (tmsh, ones, replace_op);
   if (stern_layer_surf == 1) //se c'è lo stern leyer 
   {
