@@ -79,8 +79,8 @@ main (int argc, char **argv)
   */
   
   TIC ();
-  // pb.create_markers (ray_cache);
-  pb.create_markers_prova (ray_cache);
+  pb.create_markers (ray_cache);
+  // pb.create_markers_prova (ray_cache);
   TOC ("create element markers");
 
   TIC ();
@@ -109,7 +109,6 @@ main (int argc, char **argv)
   pb.export_marked_tmesh ();
   TOC ("export marked tmesh");
 
-  std::cout << ray_cache.count << std::endl;
   
   if (rank == 0) {
     print_timing_report();

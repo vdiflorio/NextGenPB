@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdio>
 #include <fstream>
+#include <stdio.h>
 
 #include <p8est.h>
 
@@ -306,7 +307,7 @@ poisson_boltzmann::create_mesh_ns ()
     for(int ii = 0; ii<20; ++ii){
       size *= 2;
       scale_level ++; 
-      if (lmax/size < 0.2)
+      if (lmax/size < perfil2)
         break;
     }
 
@@ -667,7 +668,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   outlevel = g2 ((mesh_options + "outlevel").c_str (), minlevel);
   mesh_shape = g2 ((mesh_options + "mesh_shape").c_str (), 1);
   refine_box = g2 ((mesh_options + "refine_box").c_str (), 0);
-  if (mesh_shape == 0) {
+  if (mesh_shape < 2) {
     perfil1 = g2 ((mesh_options + "perfil1").c_str (), 0.8);
     perfil2 = g2 ((mesh_options + "perfil2").c_str (), 0.2);
     scale = g2 ((mesh_options + "scale").c_str (), 2.0);
@@ -1434,55 +1435,6 @@ poisson_boltzmann::is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, doubl
 }
 
 void
-poisson_boltzmann::create_markers_k (ray_cache_t & ray_cache)
-{
-
-  int size, rank;
-  MPI_Comm_size (mpicomm, &size);
-  MPI_Comm_rank (mpicomm, &rank);
-
-  this->marker_k.assign (this->tmsh.num_local_quadrants (), 1.0); //marker = 1 -> out stern
-
-  
-  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-       quadrant != this->tmsh.end_quadrant_sweep ();
-       ++quadrant) {
-    int num_int_nodes[3] = {0, 0, 0};
-    int num_hanging[3] = {0, 0, 0};
-
-
-    for (int ii = 0; ii < 8; ++ii) {
-      if (! quadrant->is_hanging (ii)) {
-          for (int idir = 0; idir < 3; ++idir) {
-            if (this->is_in_ns_surf_stern (ray_cache,
-                                           quadrant->p (0, ii),
-                                           quadrant->p (1, ii),
-                                           quadrant->p (2, ii),idir) > 0.5) { //inside the stern layer
-              ++num_int_nodes[idir];
-            }
-          }
-        
-      } else
-        for (int idir = 0; idir < 3; ++idir) {
-          ++num_hanging[idir];
-        }
-    }
-
-
-      for (int idir = 0; idir < 3; ++idir) 
-        if (num_int_nodes[idir] != 0) //if there is at least on node inside the stern layer along idir-axis
-          this->marker_k[quadrant->get_forest_quad_idx ()] = 0.0; //quadrant is in
-
-  }
-
-
-  MPI_Barrier (mpicomm);
-  ray_cache.fill_cache();
-  auto end = std::chrono::steady_clock::now();
-
-  
-}
-void
 poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
 {
 
@@ -1491,8 +1443,9 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
   MPI_Comm_rank (mpicomm, &rank);
 
   this->marker.assign (this->tmsh.num_local_quadrants (), 0.0); //marker = 0 -> in
-  if (stern_layer_surf == 1)
+  if (stern_layer_surf == 1){
     this->marker_k.assign (this->tmsh.num_local_quadrants (), 1.0); //marker = 1 -> out stern
+  }
 
   markn = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
   markn->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0); //markn = 0 -> out
@@ -1611,7 +1564,6 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
   }
 }
 
-
 void
 poisson_boltzmann::export_tmesh (ray_cache_t & ray_cache)
 {
@@ -1627,7 +1579,6 @@ poisson_boltzmann::export_marked_tmesh ()
 {
   tmsh.octbin_export_quadrant (markerfilename.c_str (), marker);
   if (stern_layer_surf == 1){
-    std::cout<< 11111111 << std::endl;
     tmsh.octbin_export_quadrant ("mark_stern_0", marker_k);
   }
 }
@@ -2586,7 +2537,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
 
   // flux and polarization energy calculation
-
+  
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
        quadrant != this->tmsh.end_quadrant_sweep ();
        ++quadrant) {
@@ -2642,6 +2593,40 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
   double k = std::sqrt (k2);
 
+  std::ofstream phi_nodes_txt;
+  std::ofstream phi_surf_txt;
+  FILE* phi_nod_delphi;
+  FILE* phi_sup_delphi;
+
+  std::string filename_nodes = "phi_nodes_";
+  std::string filename_nodes_delphi = "phi_nodes_delphi_";
+  std::string filename_surf = "phi_surf_";
+  std::string filename_sup_delphi = "phi_sup_delphi_";
+  std::string extension = ".txt";
+  filename_nodes += std::to_string(bc);
+  filename_nodes += "_";
+  filename_surf += std::to_string(bc);
+  filename_surf += "_";
+  filename_nodes_delphi += std::to_string(bc);
+  filename_nodes_delphi += "_";
+  filename_sup_delphi += std::to_string(bc);
+  filename_sup_delphi += "_";
+  filename_nodes += pqrfilename;
+  filename_surf += pqrfilename;
+  filename_nodes += extension;
+  filename_surf += extension;
+  filename_nodes_delphi += pqrfilename;
+  filename_sup_delphi += pqrfilename;
+  filename_nodes_delphi += extension;
+  filename_sup_delphi += extension;
+
+  phi_nodes_txt.open (filename_nodes.c_str ());
+  phi_surf_txt.open (filename_surf.c_str ());
+
+
+  phi_sup_delphi = std::fopen("filename_sup_delphi.txt", "w");
+  phi_nod_delphi = std::fopen("filename_nodes_delphi.txt", "w");
+  
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
        quadrant != this->tmsh.end_quadrant_sweep ();
        ++quadrant) {
@@ -2695,9 +2680,23 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
           phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
 
-          // phi_sup_file << phi_sup[jj] << "  "
-          // << phi_sup_an << "  "
-          // << (phi_sup[jj] - phi_sup_an)/phi_sup_an*100 <<std::endl;
+          phi_nodes_txt << quadrant->p (0, i1) << "  "
+                        << quadrant->p (1, i1) << "  "
+                        << quadrant->p (2, i1) << "  "
+                        << tmp_phi_1 << std::endl;
+          phi_nodes_txt << quadrant->p (0, i2) << "  "
+                        << quadrant->p (1, i2) << "  "
+                        << quadrant->p (2, i2) << "  "
+                        << tmp_phi_2 << std::endl;
+
+          phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
+
+          std::fprintf(phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+                  quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
+          std::fprintf(phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+                  quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
+          std::fprintf(phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+                  V[0],V[1],V[2],phi_sup[jj],0.0);
 
         }
 
@@ -2719,7 +2718,10 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
     }
 
   }
- 
+  phi_nodes_txt.close ();
+  phi_surf_txt.close ();
+  fclose(phi_nod_delphi);
+  fclose(phi_sup_delphi);
 
   double energy_react = 0.5*second_int - first_int*constant_react;
 

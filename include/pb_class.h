@@ -69,7 +69,7 @@ struct
   int scale_level;
   double scale;
   double perfil1, perfil2;
-  int stern_layer_surf;
+  int loc_ref = 0;
 
   int maxlevel1 = 10, minlevel1 = 1;
 
@@ -81,6 +81,7 @@ struct
   //surface:
   NS::surface_type surf_type;
   double surf_param;
+  int stern_layer_surf;
   double stern_layer;
   unsigned num_threads;
 
