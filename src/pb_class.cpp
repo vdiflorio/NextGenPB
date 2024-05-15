@@ -666,6 +666,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   minlevel = g2 ((mesh_options + "minlevel").c_str (), 3);
   unilevel = g2 ((mesh_options + "unilevel").c_str (), 5);
   outlevel = g2 ((mesh_options + "outlevel").c_str (), minlevel);
+  loc_refinement = g2 ((mesh_options + "loc_refinement").c_str (), 0);
   mesh_shape = g2 ((mesh_options + "mesh_shape").c_str (), 1);
   refine_box = g2 ((mesh_options + "refine_box").c_str (), 0);
   if (mesh_shape < 2) {
@@ -673,7 +674,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     perfil2 = g2 ((mesh_options + "perfil2").c_str (), 0.2);
     scale = g2 ((mesh_options + "scale").c_str (), 2.0);
   }
-  if (mesh_shape > 0) {
+  if (mesh_shape == 2) {
     l_c[0] = g2 ((mesh_options + "x1").c_str (), -128.0);
     r_c[0] = g2 ((mesh_options + "x2").c_str (), 128.0);
     l_c[1] = g2 ((mesh_options + "y1").c_str (), -128.0);
@@ -2594,39 +2595,39 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
   double k = std::sqrt (k2);
 
-  std::ofstream phi_nodes_txt;
-  std::ofstream phi_surf_txt;
-  FILE* phi_nod_delphi;
-  FILE* phi_sup_delphi;
+  // std::ofstream phi_nodes_txt;
+  // std::ofstream phi_surf_txt;
+  // FILE* phi_nod_delphi;
+  // FILE* phi_sup_delphi;
 
-  std::string filename_nodes = "phi_nodes_";
-  std::string filename_nodes_delphi = "phi_nodes_delphi_";
-  std::string filename_surf = "phi_surf_";
-  std::string filename_sup_delphi = "phi_sup_delphi_";
-  std::string extension = ".txt";
-  filename_nodes += std::to_string(bc);
-  filename_nodes += "_";
-  filename_surf += std::to_string(bc);
-  filename_surf += "_";
-  filename_nodes_delphi += std::to_string(bc);
-  filename_nodes_delphi += "_";
-  filename_sup_delphi += std::to_string(bc);
-  filename_sup_delphi += "_";
-  filename_nodes += pqrfilename;
-  filename_surf += pqrfilename;
-  filename_nodes += extension;
-  filename_surf += extension;
-  filename_nodes_delphi += pqrfilename;
-  filename_sup_delphi += pqrfilename;
-  filename_nodes_delphi += extension;
-  filename_sup_delphi += extension;
+  // std::string filename_nodes = "phi_nodes_";
+  // std::string filename_nodes_delphi = "phi_nodes_delphi_";
+  // std::string filename_surf = "phi_surf_";
+  // std::string filename_sup_delphi = "phi_sup_delphi_";
+  // std::string extension = ".txt";
+  // filename_nodes += std::to_string(bc);
+  // filename_nodes += "_";
+  // filename_surf += std::to_string(bc);
+  // filename_surf += "_";
+  // filename_nodes_delphi += std::to_string(bc);
+  // filename_nodes_delphi += "_";
+  // filename_sup_delphi += std::to_string(bc);
+  // filename_sup_delphi += "_";
+  // filename_nodes += pqrfilename;
+  // filename_surf += pqrfilename;
+  // filename_nodes += extension;
+  // filename_surf += extension;
+  // filename_nodes_delphi += pqrfilename;
+  // filename_sup_delphi += pqrfilename;
+  // filename_nodes_delphi += extension;
+  // filename_sup_delphi += extension;
 
-  phi_nodes_txt.open (filename_nodes.c_str ());
-  phi_surf_txt.open (filename_surf.c_str ());
+  // phi_nodes_txt.open (filename_nodes.c_str ());
+  // phi_surf_txt.open (filename_surf.c_str ());
 
 
-  phi_sup_delphi = std::fopen("filename_sup_delphi.txt", "w");
-  phi_nod_delphi = std::fopen("filename_nodes_delphi.txt", "w");
+  // phi_sup_delphi = std::fopen("filename_sup_delphi.txt", "w");
+  // phi_nod_delphi = std::fopen("filename_nodes_delphi.txt", "w");
   
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
        quadrant != this->tmsh.end_quadrant_sweep ();
@@ -2679,29 +2680,31 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
             }
           }
 
-          phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
+          // phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
 
-          phi_nodes_txt << quadrant->p (0, i1) << "  "
-                        << quadrant->p (1, i1) << "  "
-                        << quadrant->p (2, i1) << "  "
-                        << tmp_phi_1 << std::endl;
-          phi_nodes_txt << quadrant->p (0, i2) << "  "
-                        << quadrant->p (1, i2) << "  "
-                        << quadrant->p (2, i2) << "  "
-                        << tmp_phi_2 << std::endl;
+          // phi_nodes_txt << quadrant->p (0, i1) << "  "
+          //               << quadrant->p (1, i1) << "  "
+          //               << quadrant->p (2, i1) << "  "
+          //               << tmp_phi_1 << std::endl;
+          // phi_nodes_txt << quadrant->p (0, i2) << "  "
+          //               << quadrant->p (1, i2) << "  "
+          //               << quadrant->p (2, i2) << "  "
+          //               << tmp_phi_2 << std::endl;
 
-          phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
+          // phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
 
-          std::fprintf(phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                  quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
-          std::fprintf(phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                  quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
-          std::fprintf(phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                  V[0],V[1],V[2],phi_sup[jj],0.0);
+          // std::fprintf(phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+          //         quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
+          // std::fprintf(phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+          //         quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
+          // std::fprintf(phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+          //         V[0],V[1],V[2],phi_sup[jj],0.0);
 
         }
 
         area = areaTriangle (vert_triangles);
+        // area = SphercalAreaTriangle (vert_triangles);
+
 
         for (const NS::Atom& i : atoms) {
           for (int kk = 0; kk < 3; ++kk) {
@@ -2719,10 +2722,10 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
     }
 
   }
-  phi_nodes_txt.close ();
-  phi_surf_txt.close ();
-  fclose(phi_nod_delphi);
-  fclose(phi_sup_delphi);
+  // phi_nodes_txt.close ();
+  // phi_surf_txt.close ();
+  // fclose(phi_nod_delphi);
+  // fclose(phi_sup_delphi);
 
   double energy_react = 0.5*second_int - first_int*constant_react;
 

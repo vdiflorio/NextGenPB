@@ -232,7 +232,7 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
       ct.init = 1;
       return;
     }
-    std::cout << "PROBLEMA" << std::endl;
+    std::cout << "Lancio nuovo Raggio" << std::endl;
     std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
     ns.castAxisOrientedRay (start_ray, crossings_t::end[ct.dir], ints_norms, ct.dir, compute_normals);
     if (ints_norms.size() != 0) {

@@ -72,11 +72,13 @@ main (int argc, char **argv)
     // ray_cache.init_analytical_surf (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads);
   }
   TOC ("init analytical surf");
-  /*
+  
   TIC ();
-  pb.refine_surface (ray_cache);
+  if (pb.loc_refinement == 1)
+    pb.refine_surface (ray_cache);
+
   TOC ("refine the box");
-  */
+  
   
   TIC ();
   // pb.create_markers (ray_cache);

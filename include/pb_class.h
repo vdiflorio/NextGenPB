@@ -26,7 +26,7 @@ const double p4esttol = 1 / std::pow (2, P8EST_QMAXLEVEL);
 constexpr double e_0 = 8.85418781762e-12; //Dielectric void const [F/m]
 constexpr double kb = 1.380649e-23; //Boltzmann constant [J/K]
 constexpr double T = 273.15 + 25; //Temperature [K]
-//constexpr double T = 297.33421190000001;
+// constexpr double T = 273.15 + 25.00005445539216;
 constexpr double e = 1.602176634e-19; //Charge of an electron [C]
 constexpr double N_av = 6.022e23; //Avogadro Number [mol^-1]
 constexpr double Angs = 1e-10; //Angstrom [m]
@@ -64,14 +64,13 @@ struct
   int minlevel;
   int unilevel;
   int outlevel;
+  int loc_refinement;
   int mesh_shape;
   int refine_box;
   int scale_level;
   double scale;
   double perfil1, perfil2;
   int loc_ref = 0;
-
-  int maxlevel1 = 10, minlevel1 = 1;
 
   //model:
   int linearized;
