@@ -53,14 +53,13 @@ main (int argc, char **argv)
   MPI_Barrier (mpicomm);
 
   TIC ();
-  // pb.create_mesh ();
   pb.create_mesh_ns ();
   TOC ("create_mesh");
 
 
   TIC ();
 
-  if ( pb.mesh_shape == 0 || pb.refine_box == 1)
+  if ( pb.mesh_shape == 0 || pb.refine_box == 1 || pb.mesh_shape ==3)
     pb.init_tmesh_with_refine_box_scale ();
   else
     pb.init_tmesh ();
@@ -103,13 +102,13 @@ main (int argc, char **argv)
   pb.energy (ray_cache);
   TOC ("compute energy")
 
-  // TIC ();
-  // pb.export_tmesh (ray_cache);
-  // TOC ("export tmesh");
+  TIC ();
+  pb.export_tmesh (ray_cache);
+  TOC ("export tmesh");
 
-  // TIC ();
-  // pb.export_marked_tmesh ();
-  // TOC ("export marked tmesh");
+  TIC ();
+  pb.export_marked_tmesh ();
+  TOC ("export marked tmesh");
 
   
   if (rank == 0) {

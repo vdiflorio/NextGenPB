@@ -55,7 +55,8 @@ struct
   double r_c[3]; //max x, y, z value
   double l_cr[3]; //refined box min x, y, z value
   double r_cr[3]; //refined box max x, y, z value
-
+  double l_box[3]; //refined box min x, y, z value focusing
+  double r_box[3]; //refined box max x, y, z value focusing
   //number of trees
   p4est_topidx_t num_trees[3];
 
