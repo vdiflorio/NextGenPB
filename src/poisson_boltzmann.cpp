@@ -95,20 +95,28 @@ main (int argc, char **argv)
     std::cerr << "Invalid linear solver selected" << std::endl;
     return 1;
   }
-
   TOC ("compute potential");
 
   TIC ();
   pb.energy (ray_cache);
   TOC ("compute energy")
 
-  TIC ();
-  pb.export_tmesh (ray_cache);
-  TOC ("export tmesh");
+  std::ifstream istrm(pb.pqrfilename_out, std::ios::binary);
+  if (istrm.is_open()){
+    TIC ();
+    pb.read_atoms_from_pqr (istrm);
+    istrm.close ();
+    pb.write_potential_on_atoms ();
+    TOC ("Write potential on atoms")
+  }
+  
+  // TIC ();
+  // pb.export_tmesh (ray_cache);
+  // TOC ("export tmesh");
 
-  TIC ();
-  pb.export_marked_tmesh ();
-  TOC ("export marked tmesh");
+  // TIC ();
+  // pb.export_marked_tmesh ();
+  // TOC ("export marked tmesh");
 
   
   if (rank == 0) {

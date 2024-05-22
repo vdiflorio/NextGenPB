@@ -2118,7 +2118,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   std::vector<double> const_ones (tmsh.num_local_quadrants (), 1.0);
 
   distributed_vector vol_patch (tmsh.num_owned_nodes (), mpicomm);
-  // bim3a_solution_with_ghosts (tmsh, ones, replace_op);
+  bim3a_solution_with_ghosts (tmsh, ones, replace_op);
   bim3a_rhs (tmsh, const_ones, ones, vol_patch);
 
   vol_patch.assemble ();
@@ -2337,6 +2337,59 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
 }
 
+void
+poisson_boltzmann::write_potential_on_atoms ()
+{
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
+
+  std::ofstream phi_atoms;
+
+  std::string filename = "phi_on_atoms_";
+  std::string extension = ".txt";
+  filename += std::to_string(rank);
+  filename += extension;
+  phi_atoms.open (filename.c_str ());
+  
+  double phi_on_atom;
+  int count = 0;
+  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
+       quadrant != this->tmsh.end_quadrant_sweep ();
+       ++quadrant) {
+    if (marker[quadrant->get_forest_quad_idx()] < 0.6) {
+      // only inside the molecule
+      for (const NS::Atom& i : atoms)
+        if (is_in (i, quadrant)) {
+          phi_on_atom = 0.0;
+          //linear approx:
+          double volume = (quadrant->p (0, 7) - quadrant->p (0, 0)) *
+                          (quadrant->p (1, 7) - quadrant->p (1, 0)) *
+                          (quadrant->p (2, 7) - quadrant->p (2, 0)); //volume
+          {
+            for (int ii = 0; ii < 8; ++ii) {
+              double weigth = std::abs ((i.pos[0] - quadrant->p (0, 7-ii))*
+                                        (i.pos[1] - quadrant->p (1, 7-ii))*
+                                        (i.pos[2] - quadrant->p (2, 7-ii))) / volume;
+
+              if (! quadrant->is_hanging (ii))
+                phi_on_atom += (*phi)[quadrant->gt (ii)]*weigth;
+              else {
+                double phi_hang_nodes = 0.0;
+                for (int jj = 0; jj < quadrant->num_parents (ii); ++jj) 
+                  phi_hang_nodes += (*phi)[quadrant->gparent (jj, ii)]/quadrant->num_parents (ii);
+                phi_on_atom += phi_hang_nodes*weigth;
+              }
+            }
+          }
+          phi_atoms << i.pos[0] << "  " 
+                    << i.pos[1] << "  " 
+                    << i.pos[2] << "  " 
+                    << phi_on_atom << std::endl;
+        }
+    }
+  }
+  phi_atoms.close ();
+}
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 

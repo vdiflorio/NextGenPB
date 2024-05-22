@@ -44,6 +44,7 @@ struct
   std::vector<std::pair<p4est_topidx_t, p4est_topidx_t>> bcells;
 
   std::vector<NS::Atom> atoms;
+  
   // Center of the system
   double cc[3];
   //Cubic mesh:
@@ -97,6 +98,13 @@ struct
   std::string p4estfilename;
   std::string surffilename;
   std::string markerfilename;
+
+  std::string pqr_atoms;
+  
+  //post_processing
+  std::vector<NS::Atom> atoms_write;
+  std::string pqrfilename_out = "FIVE_WR.pqr";
+
 
   std::vector<double> marker;
   std::vector<double> marker_k;
@@ -490,6 +498,9 @@ struct
 
   friend std::basic_istream<char>&
   operator>> (std::basic_istream<char>& inputfile, NS::Atom &a);
+
+  void
+  write_potential_on_atoms ();
 
   void
   init_tmesh ();
