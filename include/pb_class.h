@@ -25,8 +25,8 @@ const double p4esttol = 1 / std::pow (2, P8EST_QMAXLEVEL);
 // Problem parameters
 constexpr double e_0 = 8.85418781762e-12; //Dielectric void const [F/m]
 constexpr double kb = 1.380649e-23; //Boltzmann constant [J/K]
-constexpr double T = 273.15 + 25; //Temperature [K]
-//constexpr double T = 297.33421190000001;
+// constexpr double T = 273.15 + 25; //Temperature [K]
+// constexpr double T = 273.15 + 25.00005445539216;
 constexpr double e = 1.602176634e-19; //Charge of an electron [C]
 constexpr double N_av = 6.022e23; //Avogadro Number [mol^-1]
 constexpr double Angs = 1e-10; //Angstrom [m]
@@ -45,6 +45,9 @@ struct
 
   std::vector<NS::Atom> atoms;
 
+  // Center of the system
+  double cc[3];
+
   //Cubic mesh:
   double ll[3]; //min value between all the coordinates
   double rr[3]; //max value between all the coordinates
@@ -52,30 +55,41 @@ struct
   //Stretched mesh:
   double l_c[3]; //min x, y, z value
   double r_c[3]; //max x, y, z value
-  double l_cr[3]; //refine box min x, y, z value
-  double r_cr[3]; //refine box max x, y, z value
-
+  double l_cr[3]; //refined box min x, y, z value
+  double r_cr[3]; //refined box max x, y, z value
+  double l_box[3]; //refined box min x, y, z value focusing
+  double r_box[3]; //refined box max x, y, z value focusing
   //number of trees
   p4est_topidx_t num_trees[3];
+
+  //Focusing mesh:
+  double cc_focusing[3];
+  int n_grid;
 
   //mesh:
   int maxlevel;
   int minlevel;
   int unilevel;
   int outlevel;
+  int loc_refinement;
   int mesh_shape;
   int refine_box;
-
-  int maxlevel1 = 10, minlevel1 = 1;
+  int scale_level;
+  double scale;
+  double perfil1, perfil2;
+  int loc_ref = 0;
 
   //model:
   int linearized;
   int bc;
   double e_in, e_out, ionic_strength; //[M]
+  double T;
+  int calc_energy;
 
   //surface:
   NS::surface_type surf_type;
   double surf_param;
+  int stern_layer_surf;
   double stern_layer;
   unsigned num_threads;
 
@@ -92,7 +106,15 @@ struct
   std::string surffilename;
   std::string markerfilename;
 
+  std::string pqr_atoms;
+
+  //post_processing
+  std::vector<NS::Atom> atoms_write;
+  std::string pqrfilename_out = "FIVE_WR.pqr";
+
+
   std::vector<double> marker;
+  std::vector<double> marker_k;
   std::vector<double> epsilon;
   std::vector<double> epsilon_in;
   std::vector<double> epsilon_out;
@@ -124,9 +146,9 @@ struct
     0, 4,
     1, 5,
     3, 7,
-    2, 6  
+    2, 6
   };
- 
+
 
 
   int edgeTable[256]= {
@@ -447,11 +469,11 @@ struct
   double
   levelsetfun (double x, double y, double z);
 
-  // double
-  // is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z);
-
   double
   is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir);
+
+  double
+  is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, double y, double z, int dir);
 
   static int
   uniform_refinement (tmesh_3d::quadrant_iterator quadrant)
@@ -462,6 +484,12 @@ struct
 
   void
   create_mesh ();
+
+  void
+  create_mesh_scale ();
+
+  void
+  create_mesh_ns ();
 
   int
   parse_options (int argc, char **argv);
@@ -479,10 +507,16 @@ struct
   operator>> (std::basic_istream<char>& inputfile, NS::Atom &a);
 
   void
+  write_potential_on_atoms ();
+
+  void
   init_tmesh ();
 
   void
   init_tmesh_with_refine_box ();
+
+  void
+  init_tmesh_with_refine_box_scale ();
 
   bool
   is_in (const NS::Atom& i, tmesh_3d::quadrant_iterator q);
@@ -498,6 +532,12 @@ struct
 
   void
   create_markers (ray_cache_t & ray_cache);
+
+  void
+  create_markers_k (ray_cache_t & ray_cache);
+
+  void
+  create_markers_prova (ray_cache_t & ray_cache);
 
   void
   export_tmesh (ray_cache_t & ray_cache);

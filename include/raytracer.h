@@ -7,44 +7,24 @@
 #include <array>
 #include <mpi.h>
 #include <nanoshaper.h>
+// #include <raytracer_datatype.h>
 
 #include "json.hpp"
 #include "serialize.h"
 
 using int_coord_t = unsigned long long int;
 
-struct
-  crossings_t {
-
-  static double start[3], end[3];
-
-  unsigned dir;
-  bool init = 0; //1 when the ray is initilized
-  double point[2]; //point x and z coords: the ones that prescribe the ray
-
-  //std::vector<bool> flags; //in or out (in=1, out=0) ex: if flags[1]==1 -> [inters[1].first ; inters[2].first] is IN
-  std::vector<double> inters; //intersections
-  std::vector<double> normals; //normals
-
-};
-
-struct
-  map_compare {
-  bool
-  operator () (const std::array<double, 2> & arr1, const std::array<double, 2> & arr2) const;
-};
 
 struct
   ray_cache_t {
 
-  std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3> rays; //y-coord and z-coord, correspondent ray
-  //x-coord and z-coord, correspondent ray
-  //x-coord and y-coord, correspondent ray
+  rays_t rays; //map that contains all the rays in the 3 direction
 
   static int_coord_t count_cache;
   static int_coord_t count_new;
   int count_new_dir[3] = {0, 0, 0};
   int count_cache_dir[3] = {0, 0, 0};
+  int count = 0;
   // unsigned dir; //direction of the ray
   NS::NanoShaper ns;
 
@@ -60,7 +40,12 @@ struct
 
   void
   init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
-                        const double & surf_param, const double & stern_layer, const unsigned & num_threads);
+                        const double & surf_param, const double & stern_layer, const unsigned & num_threads,const std::string* configFile=nullptr);
+
+  void
+  init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
+                           const double & surf_param, const double & stern_layer, const unsigned & num_threads,
+                           double* l_cr, double* r_cr, double scale,const std::string* configFile=nullptr);
   void
   compute_ns_inters (crossings_t & ct);
 
