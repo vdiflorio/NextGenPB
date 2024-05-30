@@ -7,7 +7,7 @@
 #include <array>
 #include <mpi.h>
 #include <nanoshaper.h>
-#include <raytracer_datatype.h>
+// #include <raytracer_datatype.h>
 
 #include "json.hpp"
 #include "serialize.h"

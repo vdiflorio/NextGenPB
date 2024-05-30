@@ -514,7 +514,7 @@ poisson_boltzmann::create_mesh_ns ()
     //cubic box with max perfil2 
     double size = 1.0/scale;
     scale_level = 0;
-    for(int ii = 0; ii<20; ++ii){
+    for(int ii = 0; ii<28; ++ii){
       size *= 2;
       scale_level ++; 
       if (lmax/size < perfil2)
@@ -541,15 +541,14 @@ poisson_boltzmann::create_mesh_ns ()
     r_cr[2] = cc[2] + nz*1.0/scale;
     
     //refined box FOCUS
-    double xc= 1, yc=1, zc= 1;
-    int n_grid = 8;
+    
     double err_l;
-    l_box[0] = xc - n_grid*1.0/scale; 
-    l_box[1] = yc - n_grid*1.0/scale; 
-    l_box[2] = zc - n_grid*1.0/scale; 
-    r_box[0] = xc + n_grid*1.0/scale; 
-    r_box[1] = yc + n_grid*1.0/scale; 
-    r_box[2] = zc + n_grid*1.0/scale;
+    l_box[0] = cc_focusing[0] - n_grid*1.0/scale; 
+    l_box[1] = cc_focusing[1] - n_grid*1.0/scale; 
+    l_box[2] = cc_focusing[2] - n_grid*1.0/scale; 
+    r_box[0] = cc_focusing[0] + n_grid*1.0/scale; 
+    r_box[1] = cc_focusing[1] + n_grid*1.0/scale; 
+    r_box[2] = cc_focusing[2] + n_grid*1.0/scale;
 
     if (l_box[0] <= ll[0]){
       err_l = ll[0]-l_box[0] + 3*size;
@@ -798,32 +797,25 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     l_cr[2] = g2 ((mesh_options + "refine_z1").c_str (), -64.0);
     r_cr[2] = g2 ((mesh_options + "refine_z2").c_str (), 64.0);
   }
-
-  // if (mesh_shape == 4) {
-  //   l_c[0] = g2 ((mesh_options + "x1").c_str (), -128.0);
-  //   r_c[0] = g2 ((mesh_options + "x2").c_str (), 128.0);
-  //   l_c[1] = g2 ((mesh_options + "y1").c_str (), -128.0);
-  //   r_c[1] = g2 ((mesh_options + "y2").c_str (), 128.0);
-  //   l_c[2] = g2 ((mesh_options + "z1").c_str (), -128.0);
-  //   r_c[2] = g2 ((mesh_options + "z2").c_str (), 128.0);
-  //   l_cr[0] = g2 ((mesh_options + "refine_x1").c_str (), -64.0);
-  //   r_cr[0] = g2 ((mesh_options + "refine_x2").c_str (), 64.0);
-  //   l_cr[1] = g2 ((mesh_options + "refine_y1").c_str (), -64.0);
-  //   r_cr[1] = g2 ((mesh_options + "refine_y2").c_str (), 64.0);
-  //   l_cr[2] = g2 ((mesh_options + "refine_z1").c_str (), -64.0);
-  //   r_cr[2] = g2 ((mesh_options + "refine_z2").c_str (), 64.0);
-  //   num_trees [0] = g2 ((mesh_options + "num_trees_x").c_str (), 1);
-  //   num_trees [1] = g2 ((mesh_options + "num_trees_y").c_str (), 1);
-  //   num_trees [2] = g2 ((mesh_options + "num_trees_z").c_str (), 1);
-  // }
-
+  if (mesh_shape == 3)
+  {
+    perfil1 = g2 ((mesh_options + "perfil1").c_str (), 0.8);
+    perfil2 = g2 ((mesh_options + "perfil2").c_str (), 0.2);
+    scale = g2 ((mesh_options + "scale").c_str (), 2.0);
+    cc_focusing[0] = g2 ((mesh_options + "cx_foc").c_str (), 0.0);
+    cc_focusing[1] = g2 ((mesh_options + "cy_foc").c_str (), 0.0);
+    cc_focusing[2] = g2 ((mesh_options + "cz_foc").c_str (), 0.0);
+    n_grid = g2 ((mesh_options + "n_grig").c_str (), 8);
+  }
 
   const std::string model_options = "model/";
   linearized = g2 ((model_options + "linearized").c_str (), 1);
   bc = g2 ((model_options + "bc_type").c_str (), 1);
   ionic_strength = g2 ((model_options + "ionic_strength").c_str (), 0.145);
   e_in = g2 ((model_options + "molecular_dielectric_constant").c_str (), 2.);
-  e_out = g2 ((model_options + "solvent_dielectric_constant").c_str (), 78.54);
+  e_out = g2 ((model_options + "solvent_dielectric_constant").c_str (), 80.);
+  T = g2 ((model_options + "T").c_str (), 298.15);
+  calc_energy = g2 ((model_options + "calc_energy").c_str (), 2);
 
   const std::string surf_options = "surface/";
   int surf_type_num = g2 ((surf_options + "surface_type").c_str (), 1);
@@ -1614,7 +1606,7 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
 
   int num_cycles = 2;
 
-  if (size == 0 || surf_type == 2)
+  if (size == 0 )
     num_cycles = 1;
 
   for (int jj = 0; jj < num_cycles; jj++) {
@@ -2798,6 +2790,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   double energy_pol = constant_pol*first_int;
 
   //direct reaction energy
+  double energy_react = 0.0;
   int ntriang = 0;
   int edge;
   std::array<std::array<double,3>,3> vert_triangles;
@@ -2809,140 +2802,140 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
   double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
   double k = std::sqrt (k2);
-
-  // std::ofstream phi_nodes_txt;
-  // std::ofstream phi_surf_txt;
-  // FILE* phi_nod_delphi;
-  // FILE* phi_sup_delphi;
-
-  // std::string filename_nodes = "phi_nodes_";
-  // std::string filename_nodes_delphi = "phi_nodes_delphi_";
-  // std::string filename_surf = "phi_surf_";
-  // std::string filename_sup_delphi = "phi_sup_delphi_";
-  // std::string extension = ".txt";
-  // filename_nodes += std::to_string(bc);
-  // filename_nodes += "_";
-  // filename_surf += std::to_string(bc);
-  // filename_surf += "_";
-  // filename_nodes_delphi += std::to_string(bc);
-  // filename_nodes_delphi += "_";
-  // filename_sup_delphi += std::to_string(bc);
-  // filename_sup_delphi += "_";
-  // filename_nodes += pqrfilename;
-  // filename_surf += pqrfilename;
-  // filename_nodes += extension;
-  // filename_surf += extension;
-  // filename_nodes_delphi += pqrfilename;
-  // filename_sup_delphi += pqrfilename;
-  // filename_nodes_delphi += extension;
-  // filename_sup_delphi += extension;
-
-  // phi_nodes_txt.open (filename_nodes.c_str ());
-  // phi_surf_txt.open (filename_surf.c_str ());
-
-
-  // phi_sup_delphi = std::fopen("filename_sup_delphi.txt", "w");
-  // phi_nod_delphi = std::fopen("filename_nodes_delphi.txt", "w");
   
-  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-       quadrant != this->tmsh.end_quadrant_sweep ();
-       ++quadrant) {
-    cubeindex = classifyCube (quadrant, eps_out);
-
-    if (cubeindex > -1) {
-      h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
-      h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
-      h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
-
-      ntriang = getTriangles (cubeindex, triangles);
-
-      for (int ii = 0; ii < ntriang; ++ii) {
-        for (int jj = 0; jj < 3; ++jj) {
-          tmp_eps_1 = 0.0;
-          tmp_eps_2 = 0.0;
-          tmp_phi_1 = 0.0;
-          tmp_phi_2 = 0.0;
-          edge = triangles[ii][jj];
-          i1 = edge2nodes[2 * edge    ];
-          i2 = edge2nodes[2 * edge + 1];
-          V[0] = quadrant->p (0, i1);
-          V[1] = quadrant->p (1, i1);
-          V[2] = quadrant->p (2, i1);
-
-          normal_intersection (quadrant, ray_cache, edge, N,fract);
-          V[edge_axis[edge]] += fract*h[edge_axis[edge]];
-
-          vert_triangles[jj] = V;
-          norms_vert[jj] = N;
-
-          if (! quadrant->is_hanging (i1)) {
-            tmp_phi_1 = (*phi)[quadrant->gt (i1)];
-            tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
-          } else {
-            for (int jj = 0; jj < quadrant->num_parents (i1); ++jj) {
-              tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
-              tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
+  if(calc_energy==2){
+    // Open the write file
+    std::ofstream phi_nodes_txt;
+    std::ofstream phi_surf_txt;
+    FILE* phi_nod_delphi;
+    FILE* phi_sup_delphi;
+    std::string filename_nodes = "phi_nodes_";
+    std::string filename_nodes_delphi = "phi_nodes_delphi_";
+    std::string filename_surf = "phi_surf_";
+    std::string filename_sup_delphi = "phi_sup_delphi_";
+    std::string extension = ".txt";
+    filename_nodes += std::to_string(bc);
+    filename_nodes += "_";
+    filename_surf += std::to_string(bc);
+    filename_surf += "_";
+    filename_nodes_delphi += std::to_string(bc);
+    filename_nodes_delphi += "_";
+    filename_sup_delphi += std::to_string(bc);
+    filename_sup_delphi += "_";
+    filename_nodes += pqrfilename;
+    filename_surf += pqrfilename;
+    filename_nodes += extension;
+    filename_surf += extension;
+    filename_nodes_delphi += pqrfilename;
+    filename_sup_delphi += pqrfilename;
+    filename_nodes_delphi += extension;
+    filename_sup_delphi += extension;
+  
+    phi_nodes_txt.open (filename_nodes.c_str ());
+    phi_surf_txt.open (filename_surf.c_str ());
+  
+    phi_sup_delphi = std::fopen("filename_sup_delphi.txt", "w");
+    phi_nod_delphi = std::fopen("filename_nodes_delphi.txt", "w");
+    ///////////////////////////////////////////////// 
+    
+    for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
+         quadrant != this->tmsh.end_quadrant_sweep ();
+         ++quadrant) {
+      cubeindex = classifyCube (quadrant, eps_out);
+  
+      if (cubeindex > -1) {
+        h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
+        h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
+        h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
+  
+        ntriang = getTriangles (cubeindex, triangles);
+  
+        for (int ii = 0; ii < ntriang; ++ii) {
+          for (int jj = 0; jj < 3; ++jj) {
+            tmp_eps_1 = 0.0;
+            tmp_eps_2 = 0.0;
+            tmp_phi_1 = 0.0;
+            tmp_phi_2 = 0.0;
+            edge = triangles[ii][jj];
+            i1 = edge2nodes[2 * edge    ];
+            i2 = edge2nodes[2 * edge + 1];
+            V[0] = quadrant->p (0, i1);
+            V[1] = quadrant->p (1, i1);
+            V[2] = quadrant->p (2, i1);
+  
+            normal_intersection (quadrant, ray_cache, edge, N,fract);
+            V[edge_axis[edge]] += fract*h[edge_axis[edge]];
+  
+            vert_triangles[jj] = V;
+            norms_vert[jj] = N;
+  
+            if (! quadrant->is_hanging (i1)) {
+              tmp_phi_1 = (*phi)[quadrant->gt (i1)];
+              tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
+            } else {
+              for (int jj = 0; jj < quadrant->num_parents (i1); ++jj) {
+                tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
+                tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
+              }
             }
-          }
-
-          if (! quadrant->is_hanging (i2)) {
-            tmp_phi_2 = (*phi)[quadrant->gt (i2)];
-            tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
-          } else {
-            for (int jj = 0; jj < quadrant->num_parents (i2); ++jj) {
-              tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
-              tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
+  
+            if (! quadrant->is_hanging (i2)) {
+              tmp_phi_2 = (*phi)[quadrant->gt (i2)];
+              tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
+            } else {
+              for (int jj = 0; jj < quadrant->num_parents (i2); ++jj) {
+                tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
+                tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
+              }
             }
+            // writing potential on surf and nodes
+            phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
+  
+            phi_nodes_txt << quadrant->p (0, i1) << "  "
+                          << quadrant->p (1, i1) << "  "
+                          << quadrant->p (2, i1) << "  "
+                          << tmp_phi_1 << std::endl;
+            phi_nodes_txt << quadrant->p (0, i2) << "  "
+                          << quadrant->p (1, i2) << "  "
+                          << quadrant->p (2, i2) << "  "
+                          << tmp_phi_2 << std::endl;
+  
+            phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
+  
+            std::fprintf(phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+                    quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
+            std::fprintf(phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+                    quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
+            std::fprintf(phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+                    V[0],V[1],V[2],phi_sup[jj],0.0);
+            /////////////////////////////////////////////////
           }
-
-          phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
-
-          // phi_nodes_txt << quadrant->p (0, i1) << "  "
-          //               << quadrant->p (1, i1) << "  "
-          //               << quadrant->p (2, i1) << "  "
-          //               << tmp_phi_1 << std::endl;
-          // phi_nodes_txt << quadrant->p (0, i2) << "  "
-          //               << quadrant->p (1, i2) << "  "
-          //               << quadrant->p (2, i2) << "  "
-          //               << tmp_phi_2 << std::endl;
-
-          // phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
-
-          // std::fprintf(phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-          //         quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
-          // std::fprintf(phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-          //         quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
-          // std::fprintf(phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-          //         V[0],V[1],V[2],phi_sup[jj],0.0);
-
-        }
-
-        area = areaTriangle (vert_triangles);
-        // area = SphercalAreaTriangle (vert_triangles);
-
-
-        for (const NS::Atom& i : atoms) {
-          for (int kk = 0; kk < 3; ++kk) {
-            dist_vert[0] = vert_triangles[kk][0]-i.pos[0];
-            dist_vert[1] = vert_triangles[kk][1]-i.pos[1];
-            dist_vert[2] = vert_triangles[kk][2]-i.pos[2];
-            distance = std::hypot (dist_vert[0], dist_vert[1], dist_vert[2]);
-            product = dist_vert[0]*norms_vert[kk][0] +
-                      dist_vert[1]*norms_vert[kk][1] +
-                      dist_vert[2]*norms_vert[kk][2];
-            second_int += i.charge*phi_sup[kk]*product/ (4.0*pi*distance*distance*distance)*area/3;
+  
+          area = areaTriangle (vert_triangles);
+  
+          for (const NS::Atom& i : atoms) {
+            for (int kk = 0; kk < 3; ++kk) {
+              dist_vert[0] = vert_triangles[kk][0]-i.pos[0];
+              dist_vert[1] = vert_triangles[kk][1]-i.pos[1];
+              dist_vert[2] = vert_triangles[kk][2]-i.pos[2];
+              distance = std::hypot (dist_vert[0], dist_vert[1], dist_vert[2]);
+              product = dist_vert[0]*norms_vert[kk][0] +
+                        dist_vert[1]*norms_vert[kk][1] +
+                        dist_vert[2]*norms_vert[kk][2];
+              second_int += i.charge*phi_sup[kk]*product/ (4.0*pi*distance*distance*distance)*area/3;
+            }
           }
         }
       }
+  
     }
-
+    phi_nodes_txt.close ();
+    phi_surf_txt.close ();
+    fclose(phi_nod_delphi);
+    fclose(phi_sup_delphi);
+  
+    energy_react = 0.5*second_int - first_int*constant_react;
   }
-  // phi_nodes_txt.close ();
-  // phi_surf_txt.close ();
-  // fclose(phi_nod_delphi);
-  // fclose(phi_sup_delphi);
-
-  double energy_react = 0.5*second_int - first_int*constant_react;
 
   //coulombic energy
   double coul_energy = 0.0;

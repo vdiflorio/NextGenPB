@@ -96,10 +96,12 @@ main (int argc, char **argv)
     return 1;
   }
   TOC ("compute potential");
-
-  TIC ();
-  pb.energy (ray_cache);
-  TOC ("compute energy")
+  
+  if(pb.calc_energy > 0){
+    TIC ();
+    pb.energy (ray_cache);
+    TOC ("compute energy")
+  }
 
   std::ifstream istrm(pb.pqrfilename_out, std::ios::binary);
   if (istrm.is_open()){

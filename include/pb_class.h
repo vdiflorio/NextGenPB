@@ -25,7 +25,7 @@ const double p4esttol = 1 / std::pow (2, P8EST_QMAXLEVEL);
 // Problem parameters
 constexpr double e_0 = 8.85418781762e-12; //Dielectric void const [F/m]
 constexpr double kb = 1.380649e-23; //Boltzmann constant [J/K]
-constexpr double T = 273.15 + 25; //Temperature [K]
+// constexpr double T = 273.15 + 25; //Temperature [K]
 // constexpr double T = 273.15 + 25.00005445539216;
 constexpr double e = 1.602176634e-19; //Charge of an electron [C]
 constexpr double N_av = 6.022e23; //Avogadro Number [mol^-1]
@@ -47,6 +47,7 @@ struct
   
   // Center of the system
   double cc[3];
+  
   //Cubic mesh:
   double ll[3]; //min value between all the coordinates
   double rr[3]; //max value between all the coordinates
@@ -60,6 +61,10 @@ struct
   double r_box[3]; //refined box max x, y, z value focusing
   //number of trees
   p4est_topidx_t num_trees[3];
+  
+  //Focusing mesh:
+  double cc_focusing[3];
+  int n_grid;
 
   //mesh:
   int maxlevel;
@@ -78,6 +83,8 @@ struct
   int linearized;
   int bc;
   double e_in, e_out, ionic_strength; //[M]
+  double T;
+  int calc_energy;
 
   //surface:
   NS::surface_type surf_type;
