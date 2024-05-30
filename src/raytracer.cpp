@@ -151,13 +151,13 @@ ray_cache_t::fill_cache ()
 
 void
 ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
-                                   const double & surf_param, const double & stern_layer, const unsigned & num_threads, 
+                                   const double & surf_param, const double & stern_layer, const unsigned & num_threads,
                                    const std::string* configFile)
 {
   // NS::NanoShaper ns0 (atoms, surf_type, surf_param, stern_layer, num_threads);
   // ns = ns0;
   ns.initConstructor (atoms, surf_type, surf_param, stern_layer, num_threads,configFile);
-  
+
   ns.setConfig<double> ("Grid_scale", 2.0);
   ns.setConfig<double> ("Self_Intersections_Grid_Coefficient", 1.5);
   ns.buildAnalyticalSurface();
@@ -179,37 +179,37 @@ ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS
 
 void
 ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
-                                      const double & surf_param, const double & stern_layer, const unsigned & num_threads, 
+                                      const double & surf_param, const double & stern_layer, const unsigned & num_threads,
                                       double* l_cr, double* r_cr, double scale, const std::string* configFile)
 {
-  
+
   ns.initConstructor (atoms, surf_type, surf_param, stern_layer, num_threads,configFile);
-    // set here a consistent grid scale
-  ns.setConfig<double>("Grid_scale", scale );    
-  ns.setConfig<bool>("Accurate_Triangulation",true); 
+  // set here a consistent grid scale
+  ns.setConfig<double> ("Grid_scale", scale );
+  ns.setConfig<bool> ("Accurate_Triangulation",true);
   ns.setConfig<double> ("Self_Intersections_Grid_Coefficient", 1.5);
-  
-  ns.setConfig<bool>("Build_epsilon_maps",true); 
- 
-  // build the grid in the new mode   
-  ns.setConfig<bool>("PB_grid_mode",true);
+
+  ns.setConfig<bool> ("Build_epsilon_maps",true);
+
+  // build the grid in the new mode
+  ns.setConfig<bool> ("PB_grid_mode",true);
 
   // impose here the min and max of the cube
-  ns.setConfig<double>("xmin",l_cr[0]);  
-  ns.setConfig<double>("ymin",l_cr[1]);
-  ns.setConfig<double>("zmin",l_cr[2]);
-         
-  ns.setConfig<double>("xmax",r_cr[0]);
-  ns.setConfig<double>("ymax",r_cr[1]);
-  ns.setConfig<double>("zmax",r_cr[2]);   
+  ns.setConfig<double> ("xmin",l_cr[0]);
+  ns.setConfig<double> ("ymin",l_cr[1]);
+  ns.setConfig<double> ("zmin",l_cr[2]);
+
+  ns.setConfig<double> ("xmax",r_cr[0]);
+  ns.setConfig<double> ("ymax",r_cr[1]);
+  ns.setConfig<double> ("zmax",r_cr[2]);
   ns.buildAnalyticalSurface();
 
   // remember to set this to true in order to collect rays intersections data
-  ns.setCollectGridRays(true);
+  ns.setCollectGridRays (true);
   ns.colourGrid();
   // retrieve intersections data from the map
   rays = ns.getRaysMap();
-  
+
   crossings_t::start[0] = l_cr[0];
   crossings_t::start[1] = l_cr[1];
   crossings_t::start[2] = l_cr[2];
@@ -232,9 +232,11 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
       ct.init = 1;
       return;
     }
+
     std::cout << "Lancio nuovo Raggio" << std::endl;
     std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
     ns.castAxisOrientedRay (start_ray, crossings_t::end[ct.dir], ints_norms, ct.dir, compute_normals);
+
     if (ints_norms.size() != 0) {
       for (unsigned i = 0; i < ints_norms.size(); i++) {
         ct.inters.push_back (ints_norms[i].first);

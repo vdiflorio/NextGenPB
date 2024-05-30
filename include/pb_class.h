@@ -44,10 +44,10 @@ struct
   std::vector<std::pair<p4est_topidx_t, p4est_topidx_t>> bcells;
 
   std::vector<NS::Atom> atoms;
-  
+
   // Center of the system
   double cc[3];
-  
+
   //Cubic mesh:
   double ll[3]; //min value between all the coordinates
   double rr[3]; //max value between all the coordinates
@@ -61,7 +61,7 @@ struct
   double r_box[3]; //refined box max x, y, z value focusing
   //number of trees
   p4est_topidx_t num_trees[3];
-  
+
   //Focusing mesh:
   double cc_focusing[3];
   int n_grid;
@@ -107,7 +107,7 @@ struct
   std::string markerfilename;
 
   std::string pqr_atoms;
-  
+
   //post_processing
   std::vector<NS::Atom> atoms_write;
   std::string pqrfilename_out = "FIVE_WR.pqr";
@@ -146,9 +146,9 @@ struct
     0, 4,
     1, 5,
     3, 7,
-    2, 6  
+    2, 6
   };
- 
+
 
 
   int edgeTable[256]= {
