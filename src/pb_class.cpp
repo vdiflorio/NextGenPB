@@ -831,6 +831,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   e_out = g2 ((model_options + "solvent_dielectric_constant").c_str (), 80.);
   T = g2 ((model_options + "T").c_str (), 298.15);
   calc_energy = g2 ((model_options + "calc_energy").c_str (), 2);
+  pqrfilename_out = g2 ((model_options + "phi_on_points").c_str (), "");
 
   const std::string surf_options = "surface/";
   int surf_type_num = g2 ((surf_options + "surface_type").c_str (), 1);
@@ -2337,8 +2338,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
               <<std::endl;
   }
 
-  (*phi).assemble (replace_op);
-  // bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
+  bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
 
 
   /////////////////////////////////////////////////////////

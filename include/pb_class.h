@@ -110,7 +110,7 @@ struct
 
   //post_processing
   std::vector<NS::Atom> atoms_write;
-  std::string pqrfilename_out = "FIVE_WR.pqr";
+  std::string pqrfilename_out;
 
 
   std::vector<double> marker;
