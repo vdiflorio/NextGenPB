@@ -245,7 +245,7 @@ poisson_boltzmann::create_mesh_ns ()
   double l[3];
   scale_level = unilevel;
 
-  if (mesh_shape < 2 || mesh_shape == 3) {
+  if (mesh_shape < 2 || mesh_shape >= 3) {
     auto comp = [] (const NS::Atom &a1, const NS::Atom &a2) -> bool { return a1.radius < a2.radius; };
     double maxradius = std::max_element (atoms.begin (), atoms.end (), comp)->radius;
     l_c[0] = atoms.begin ()->pos[0] - atoms.begin ()->radius;
@@ -528,7 +528,6 @@ poisson_boltzmann::create_mesh_ns ()
       if (lmax/size < perfil2)
         break;
     }
-
     ll[0] = cc[0] - size/2;
     ll[1] = cc[1] - size/2;
     ll[2] = cc[2] - size/2;
@@ -551,49 +550,196 @@ poisson_boltzmann::create_mesh_ns ()
     //refined box FOCUS
 
     double err_l;
-    l_box[0] = cc_focusing[0] - n_grid*1.0/scale;
-    l_box[1] = cc_focusing[1] - n_grid*1.0/scale;
-    l_box[2] = cc_focusing[2] - n_grid*1.0/scale;
-    r_box[0] = cc_focusing[0] + n_grid*1.0/scale;
-    r_box[1] = cc_focusing[1] + n_grid*1.0/scale;
-    r_box[2] = cc_focusing[2] + n_grid*1.0/scale;
+    l_box[0] = cc_focusing[0] - std::round(n_grid/2.)/scale;
+    l_box[1] = cc_focusing[1] - std::round(n_grid/2.)/scale;
+    l_box[2] = cc_focusing[2] - std::round(n_grid/2.)/scale;
+    r_box[0] = cc_focusing[0] + std::round(n_grid/2.)/scale;
+    r_box[1] = cc_focusing[1] + std::round(n_grid/2.)/scale;
+    r_box[2] = cc_focusing[2] + std::round(n_grid/2.)/scale;
 
-    if (l_box[0] <= ll[0]) {
-      err_l = ll[0]-l_box[0] + 3*size;
-      l_box[0] = l_box[0] + err_l;
-      r_box[0] = r_box[0] + err_l;
+    if((r_box[0]- l_box[0])>= (r_cr[0] - l_cr[0])) {
+      r_box[0] = r_cr[0];
+      l_box[0] = l_cr[0];
+    } else {
+      if (l_box[0] <= l_cr[0]) {
+        err_l = l_cr[0]-l_box[0] + 3*1.0/scale;
+        l_box[0] = l_box[0] + err_l;
+        r_box[0] = r_box[0] + err_l;
+      }
+
+      if (r_box[0] >= r_cr[0]) {
+        err_l = r_cr[0]-r_box[0] + 3*1.0/scale;
+        l_box[0] = l_box[0] - err_l;
+        r_box[0] = r_box[0] - err_l;
+      }
     }
 
-    if (r_box[0] >= rr[0]) {
-      err_l = rr[0]-r_box[0] + 3*size;
-      l_box[0] = l_box[0] - err_l;
-      r_box[0] = r_box[0] - err_l;
+    if((r_box[1]- l_box[1])>= (r_cr[1] - l_cr[1])) {
+      r_box[1] = r_cr[1];
+      l_box[1] = l_cr[1];
+    } else {
+      if (l_box[1] <= l_cr[1]) {
+        err_l = l_cr[1]-l_box[1] + 3*1.0/scale;
+        l_box[1] = l_box[1] + err_l;
+        r_box[1] = r_box[1] + err_l;
+      }
+
+      if (r_box[1] >= r_cr[1]) {
+        err_l = r_cr[1]-r_box[1] + 3*1.0/scale;
+        l_box[1] = l_box[1] - err_l;
+        r_box[1] = r_box[1] - err_l;
+      }
     }
 
-    if (l_box[1] <= ll[1]) {
-      err_l = ll[1]-l_box[1] + 3*size;
-      l_box[1] = l_box[1] + err_l;
-      r_box[1] = r_box[1] + err_l;
+    if((r_box[2]- l_box[2])>= (r_cr[2] - l_cr[2])) {
+      r_box[2] = r_cr[2];
+      l_box[2] = l_cr[2];
+    } else {
+      if (l_box[2] <= l_cr[2]) {
+        err_l = l_cr[2]-l_box[2] + 3*1.0/scale;
+        l_box[2] = l_box[2] + err_l;
+        r_box[2] = r_box[2] + err_l;
+      }
+
+      if (r_box[2] >= r_cr[2]) {
+        err_l = r_cr[2]-r_box[2] + 3*1.0/scale;
+        l_box[2] = l_box[2] - err_l;
+        r_box[2] = r_box[2] - err_l;
+      }
+    }
+    if (rank == 0) {
+      std::cout << "cx: " << cc[0]
+                << " , cy: " << cc[1]
+                << " , cz: " << cc[2] << std::endl;
+
+      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+      std::cout << "z: " << ll[2] << ", " << rr[2] << std::endl;
+
+      std::cout << "xb: " << l_box[0] << ", " << r_box[0] << std::endl;
+      std::cout << "yb: " << l_box[1] << ", " << r_box[1] << std::endl;
+      std::cout << "zb: " << l_box[2] << ", " << r_box[2] << "\n" << std::endl;
+
+      std::cout << "nx: " << nx*2 << "  ny: " << ny*2 << " nz: " << nz*2 << std::endl;
     }
 
-    if (r_box[1] >= rr[1]) {
-      err_l = rr[1]-r_box[1] + 3*size;
-      l_box[1] = l_box[1] - err_l;
-      r_box[1] = r_box[1] - err_l;
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {ll[0], ll[1], ll[2],
+                  rr[0], ll[1], ll[2],
+                  ll[0], rr[1], ll[2],
+                  rr[0], rr[1], ll[2],
+                  ll[0], ll[1], rr[2],
+                  rr[0], ll[1], rr[2],
+                  ll[0], rr[1], rr[2],
+                  rr[0], rr[1], rr[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
+
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  } else if (mesh_shape == 4) {
+
+    //cubic box with max perfil2
+    double scale_max = 2;
+    double scale_min = 0.5;
+    double size = 1.0/scale_max;
+    maxlevel = 0;
+
+    for (int ii = 0; ii<28; ++ii) {
+      size *= 2;
+      maxlevel ++;
+
+      if (lmax/size < perfil2)
+        break;
+    }
+    unilevel = maxlevel-1
+    ll[0] = cc[0] - size/2;
+    ll[1] = cc[1] - size/2;
+    ll[2] = cc[2] - size/2;
+    rr[0] = cc[0] + size/2;
+    rr[1] = cc[1] + size/2;
+    rr[2] = cc[2] + size/2;
+
+    //refined box NS
+    nx = (int) ((r_cr[0] - cc[0])*scale + 0.5);
+    ny = (int) ((r_cr[1] - cc[1])*scale + 0.5);
+    nz = (int) ((r_cr[2] - cc[2])*scale + 0.5);
+
+    l_cr[0] = cc[0] - nx*1.0/scale;
+    l_cr[1] = cc[1] - ny*1.0/scale;
+    l_cr[2] = cc[2] - nz*1.0/scale;
+    r_cr[0] = cc[0] + nx*1.0/scale;
+    r_cr[1] = cc[1] + ny*1.0/scale;
+    r_cr[2] = cc[2] + nz*1.0/scale;
+
+    //refined box FOCUS
+
+    double err_l;
+    l_box[0] = cc_focusing[0] - std::round(n_grid/2.)/scale;
+    l_box[1] = cc_focusing[1] - std::round(n_grid/2.)/scale;
+    l_box[2] = cc_focusing[2] - std::round(n_grid/2.)/scale;
+    r_box[0] = cc_focusing[0] + std::round(n_grid/2.)/scale;
+    r_box[1] = cc_focusing[1] + std::round(n_grid/2.)/scale;
+    r_box[2] = cc_focusing[2] + std::round(n_grid/2.)/scale;
+
+    if((r_box[0]- l_box[0])>= (r_cr[0] - l_cr[0])) {
+      r_box[0] = r_cr[0];
+      l_box[0] = l_cr[0];
+    } else {
+      if (l_box[0] <= l_cr[0]) {
+        err_l = l_cr[0]-l_box[0] + 3*1.0/scale;
+        l_box[0] = l_box[0] + err_l;
+        r_box[0] = r_box[0] + err_l;
+      }
+
+      if (r_box[0] >= r_cr[0]) {
+        err_l = r_cr[0]-r_box[0] + 3*1.0/scale;
+        l_box[0] = l_box[0] - err_l;
+        r_box[0] = r_box[0] - err_l;
+      }
     }
 
-    if (l_box[2] <= ll[2]) {
-      err_l = ll[2]-l_box[2] + 3*size;
-      l_box[2] = l_box[2] + err_l;
-      r_box[2] = r_box[2] + err_l;
+    if((r_box[1]- l_box[1])>= (r_cr[1] - l_cr[1])) {
+      r_box[1] = r_cr[1];
+      l_box[1] = l_cr[1];
+    } else {
+      if (l_box[1] <= l_cr[1]) {
+        err_l = l_cr[1]-l_box[1] + 3*1.0/scale;
+        l_box[1] = l_box[1] + err_l;
+        r_box[1] = r_box[1] + err_l;
+      }
+
+      if (r_box[1] >= r_cr[1]) {
+        err_l = r_cr[1]-r_box[1] + 3*1.0/scale;
+        l_box[1] = l_box[1] - err_l;
+        r_box[1] = r_box[1] - err_l;
+      }
     }
 
-    if (r_box[2] >= rr[2]) {
-      err_l = rr[2]-r_box[2] + 3*size;
-      l_box[2] = l_box[2] - err_l;
-      r_box[2] = r_box[2] - err_l;
-    }
+    if((r_box[2]- l_box[2])>= (r_cr[2] - l_cr[2])) {
+      r_box[2] = r_cr[2];
+      l_box[2] = l_cr[2];
+    } else {
+      if (l_box[2] <= l_cr[2]) {
+        err_l = l_cr[2]-l_box[2] + 3*1.0/scale;
+        l_box[2] = l_box[2] + err_l;
+        r_box[2] = r_box[2] + err_l;
+      }
 
+      if (r_box[2] >= r_cr[2]) {
+        err_l = r_cr[2]-r_box[2] + 3*1.0/scale;
+        l_box[2] = l_box[2] - err_l;
+        r_box[2] = r_box[2] - err_l;
+      }
+    }
     if (rank == 0) {
       std::cout << "cx: " << cc[0]
                 << " , cy: " << cc[1]
@@ -1002,43 +1148,7 @@ poisson_boltzmann::init_tmesh_with_refine_box ()
   }
 }
 
-/*void
-poisson_boltzmann::init_tmesh_with_refine_box_scale ()
-{
-  for (auto i = 0; i < outlevel; ++i) {
-    tmsh.set_refine_marker (uniform_refinement);
-    tmsh.refine (0, 1);
-  }
 
-  auto refinement = [this]
-  (tmesh_3d::quadrant_iterator q) -> int {
-    int currentlevel = static_cast<int> (q->the_quadrant->level);
-    int retval = 0;
-
-    if (currentlevel >= this->scale_level)
-      retval = 0;
-    else {
-      for (int ii = 0; ii < 8; ++ii) {
-        if (! q->is_hanging (ii)) {
-          if ((q -> p (0, ii) > this->l_cr[0]) && (q -> p (0, ii) < this->r_cr[0])
-              && (q -> p (1, ii) > this->l_cr[1]) && (q -> p (1, ii) < this->r_cr[1])
-              && (q -> p (2, ii) > this->l_cr[2]) && (q -> p (2, ii) < this->r_cr[2])) {
-            retval = 1;
-            break;
-          }
-        }
-      }
-    }
-
-    return (retval);
-  };
-
-  for (auto i = 0; i < scale_level; ++i) {
-    tmsh.set_refine_marker (refinement);
-    tmsh.refine (0, 1);
-  }
-}
-*/
 void
 poisson_boltzmann::init_tmesh_with_refine_box_scale ()
 {
@@ -1057,7 +1167,7 @@ poisson_boltzmann::init_tmesh_with_refine_box_scale ()
     r_c[1] = r_cr[1];
     r_c[2] = r_cr[2];
   }
-
+      
   for (auto i = 0; i < outlevel; ++i) {
     tmsh.set_refine_marker (uniform_refinement);
     tmsh.refine (0, 1);
@@ -1073,9 +1183,9 @@ poisson_boltzmann::init_tmesh_with_refine_box_scale ()
     else {
       for (int ii = 0; ii < 8; ++ii) {
         if (! q->is_hanging (ii)) {
-          if ((q -> p (0, ii) > this->l_c[0]) && (q -> p (0, ii) < this->r_c[0])
-              && (q -> p (1, ii) > this->l_c[1]) && (q -> p (1, ii) < this->r_c[1])
-              && (q -> p (2, ii) > this->l_c[2]) && (q -> p (2, ii) < this->r_c[2])) {
+          if ((q -> p (0, ii) >= this->l_c[0]) && (q -> p (0, ii) <= this->r_c[0])
+              && (q -> p (1, ii) >= this->l_c[1]) && (q -> p (1, ii) <= this->r_c[1])
+              && (q -> p (2, ii) >= this->l_c[2]) && (q -> p (2, ii) <= this->r_c[2])) {
             retval = 1;
             break;
           }
@@ -2370,7 +2480,7 @@ poisson_boltzmann::write_potential_on_atoms ()
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
        quadrant != this->tmsh.end_quadrant_sweep ();
        ++quadrant) {
-    if (marker[quadrant->get_forest_quad_idx()] < 0.6) {
+    // if (marker[quadrant->get_forest_quad_idx()] < 0.6) {
       // only inside the molecule
       for (const NS::Atom& i : atoms)
         if (is_in (i, quadrant)) {
@@ -2402,7 +2512,7 @@ poisson_boltzmann::write_potential_on_atoms ()
                     << i.pos[2] << "  "
                     << phi_on_atom << std::endl;
         }
-    }
+    // }
   }
 
   phi_atoms.close ();
@@ -2601,6 +2711,8 @@ poisson_boltzmann::classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant)
       tmp_eps[ii]= (*epsilon_nodes)[quadrant->gt (ii)];
       tmp_phi[ii]= (*phi)[quadrant->gt (ii)];
     } else {
+      tmp_eps[ii] = 0.0;
+      tmp_phi[ii] = 0.0;
       for (int jj = 0; jj < quadrant->num_parents (ii); ++jj) {
         tmp_eps[ii] += (*epsilon_nodes)[quadrant->gparent (jj, ii)] / quadrant->num_parents (ii);
         tmp_phi[ii] += (*phi)[quadrant->gparent (jj, ii)] / quadrant->num_parents (ii);
@@ -2833,37 +2945,37 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
   if (calc_energy==2) {
     // Open the write file
-    std::ofstream phi_nodes_txt;
-    std::ofstream phi_surf_txt;
-    FILE* phi_nod_delphi;
-    FILE* phi_sup_delphi;
-    std::string filename_nodes = "phi_nodes_";
-    std::string filename_nodes_delphi = "phi_nodes_delphi_";
-    std::string filename_surf = "phi_surf_";
-    std::string filename_sup_delphi = "phi_sup_delphi_";
-    std::string extension = ".txt";
-    filename_nodes += std::to_string (bc);
-    filename_nodes += "_";
-    filename_surf += std::to_string (bc);
-    filename_surf += "_";
-    filename_nodes_delphi += std::to_string (bc);
-    filename_nodes_delphi += "_";
-    filename_sup_delphi += std::to_string (bc);
-    filename_sup_delphi += "_";
-    filename_nodes += pqrfilename;
-    filename_surf += pqrfilename;
-    filename_nodes += extension;
-    filename_surf += extension;
-    filename_nodes_delphi += pqrfilename;
-    filename_sup_delphi += pqrfilename;
-    filename_nodes_delphi += extension;
-    filename_sup_delphi += extension;
+    // std::ofstream phi_nodes_txt;
+    // std::ofstream phi_surf_txt;
+    // FILE* phi_nod_delphi;
+    // FILE* phi_sup_delphi;
+    // std::string filename_nodes = "phi_nodes_";
+    // std::string filename_nodes_delphi = "phi_nodes_delphi_";
+    // std::string filename_surf = "phi_surf_";
+    // std::string filename_sup_delphi = "phi_sup_delphi_";
+    // std::string extension = ".txt";
+    // filename_nodes += std::to_string (bc);
+    // filename_nodes += "_";
+    // filename_surf += std::to_string (bc);
+    // filename_surf += "_";
+    // filename_nodes_delphi += std::to_string (bc);
+    // filename_nodes_delphi += "_";
+    // filename_sup_delphi += std::to_string (bc);
+    // filename_sup_delphi += "_";
+    // filename_nodes += pqrfilename;
+    // filename_surf += pqrfilename;
+    // filename_nodes += extension;
+    // filename_surf += extension;
+    // filename_nodes_delphi += pqrfilename;
+    // filename_sup_delphi += pqrfilename;
+    // filename_nodes_delphi += extension;
+    // filename_sup_delphi += extension;
 
-    phi_nodes_txt.open (filename_nodes.c_str ());
-    phi_surf_txt.open (filename_surf.c_str ());
+    // phi_nodes_txt.open (filename_nodes.c_str ());
+    // phi_surf_txt.open (filename_surf.c_str ());
 
-    phi_sup_delphi = std::fopen ("filename_sup_delphi.txt", "w");
-    phi_nod_delphi = std::fopen ("filename_nodes_delphi.txt", "w");
+    // phi_sup_delphi = std::fopen ("filename_sup_delphi.txt", "w");
+    // phi_nod_delphi = std::fopen ("filename_nodes_delphi.txt", "w");
     /////////////////////////////////////////////////
 
     for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
@@ -2917,26 +3029,26 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
               }
             }
 
-            // writing potential on surf and nodes
             phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
 
-            phi_nodes_txt << quadrant->p (0, i1) << "  "
-                          << quadrant->p (1, i1) << "  "
-                          << quadrant->p (2, i1) << "  "
-                          << tmp_phi_1 << std::endl;
-            phi_nodes_txt << quadrant->p (0, i2) << "  "
-                          << quadrant->p (1, i2) << "  "
-                          << quadrant->p (2, i2) << "  "
-                          << tmp_phi_2 << std::endl;
+            // writing potential on surf and nodes
+            // phi_nodes_txt << quadrant->p (0, i1) << "  "
+            //               << quadrant->p (1, i1) << "  "
+            //               << quadrant->p (2, i1) << "  "
+            //               << tmp_phi_1 << std::endl;
+            // phi_nodes_txt << quadrant->p (0, i2) << "  "
+            //               << quadrant->p (1, i2) << "  "
+            //               << quadrant->p (2, i2) << "  "
+            //               << tmp_phi_2 << std::endl;
 
-            phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
+            // phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
 
-            std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                          quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
-            std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                          quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
-            std::fprintf (phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                          V[0],V[1],V[2],phi_sup[jj],0.0);
+            // std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+            //               quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
+            // std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+            //               quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
+            // std::fprintf (phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+            //               V[0],V[1],V[2],phi_sup[jj],0.0);
             /////////////////////////////////////////////////
           }
 
@@ -2959,10 +3071,10 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
     }
 
-    phi_nodes_txt.close ();
-    phi_surf_txt.close ();
-    fclose (phi_nod_delphi);
-    fclose (phi_sup_delphi);
+    // phi_nodes_txt.close ();
+    // phi_surf_txt.close ();
+    // fclose (phi_nod_delphi);
+    // fclose (phi_sup_delphi);
 
     energy_react = 0.5*second_int - first_int*constant_react;
   }
