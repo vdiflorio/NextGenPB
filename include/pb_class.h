@@ -75,9 +75,10 @@ struct
   int mesh_shape;
   int refine_box;
   int scale_level;
-  double scale;
+  double scale, scale_min, scale_max;
   double perfil1, perfil2;
   int loc_ref = 0;
+  double center_x, center_y, center_z; 
 
   //model:
   int linearized;

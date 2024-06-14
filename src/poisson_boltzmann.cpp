@@ -59,7 +59,7 @@ main (int argc, char **argv)
 
   TIC ();
 
-  if ( pb.mesh_shape == 0 || pb.refine_box == 1 || pb.mesh_shape ==3)
+  if ( pb.mesh_shape == 0 || pb.refine_box == 1 || pb.mesh_shape ==3 ||pb.mesh_shape ==4 )
     pb.init_tmesh_with_refine_box_scale ();
   else
     pb.init_tmesh ();
@@ -70,14 +70,13 @@ main (int argc, char **argv)
 
   if (pb.surf_type != 2 && rank == 0) {
     ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
-    // ray_cache.init_analytical_surf (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads);
   }
 
   TOC ("init analytical surf");
 
   TIC ();
 
-  if (pb.loc_refinement == 1)
+  if (pb.loc_refinement == 1 || pb.mesh_shape == 4)
     pb.refine_surface (ray_cache);
 
   TOC ("refine the box");
@@ -118,13 +117,13 @@ main (int argc, char **argv)
     TOC ("Write potential on atoms")
   }
 
-  // TIC ();
-  // pb.export_tmesh (ray_cache);
-  // TOC ("export tmesh");
+  TIC ();
+  pb.export_tmesh (ray_cache);
+  TOC ("export tmesh");
 
-  // TIC ();
-  // pb.export_marked_tmesh ();
-  // TOC ("export marked tmesh");
+  TIC ();
+  pb.export_marked_tmesh ();
+  TOC ("export marked tmesh");
 
 
   if (rank == 0) {
