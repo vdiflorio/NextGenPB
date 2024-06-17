@@ -13,6 +13,8 @@
 #include <stdio.h>
 
 #include <p8est.h>
+#include <random>
+
 
 
 void
@@ -52,6 +54,22 @@ poisson_boltzmann::create_mesh_ns ()
       lmax = l[kk] > lmax ? l[kk] : lmax;
     }
 
+    if (false)
+    {
+      std::random_device rd;  // Will be used to obtain a seed for the random number engine
+      std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+      std::uniform_real_distribution<> dis(-1./scale*0.5, 1./scale*0.5);
+      double tmp_cc[3];
+
+      for (int n = 0; n < 3; ++n) { 
+        tmp_cc[n] = cc[n];
+        cc[n] = tmp_cc[n] + dis(gen);
+      }
+      std::cout << tmp_cc[0] << "  " << cc[0] << "  " << std::abs(tmp_cc[0] -cc[0]) << std::endl;
+      std::cout << tmp_cc[1] << "  " << cc[1] << "  " << std::abs(tmp_cc[1] -cc[1]) << std::endl;
+      std::cout << tmp_cc[2] << "  " << cc[2] << "  " << std::abs(tmp_cc[2] -cc[2]) << std::endl;
+    }
+
     for (int kk = 0; kk < 3; ++kk) {
       ll[kk] = cc[kk] - lmax*0.5;
       rr[kk] = cc[kk] + lmax*0.5;
@@ -84,10 +102,11 @@ poisson_boltzmann::create_mesh_ns ()
   if (mesh_shape == 0) {
 
     //cubic box with max perfil2
+    scale_min = scale/4.0;
     double size = 1.0/scale;
     scale_level = 0;
 
-    for (int ii = 0; ii<20; ++ii) {
+    for (int ii = 0; ii<29; ++ii) {
       size *= 2;
       scale_level ++;
 
@@ -95,6 +114,7 @@ poisson_boltzmann::create_mesh_ns ()
         break;
     }
 
+    
     ll[0] = cc[0] - size/2;
     ll[1] = cc[1] - size/2;
     ll[2] = cc[2] - size/2;
@@ -703,10 +723,6 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     scale_max = g2 ((mesh_options + "scale_max").c_str (), 2.0);
   }
 
-  center_x = g2 ((mesh_options + "cx").c_str (), 0.0);
-  center_y = g2 ((mesh_options + "cy").c_str (), 0.0);
-  center_z = g2 ((mesh_options + "cz").c_str (), 0.0);
-
   const std::string model_options = "model/";
   linearized = g2 ((model_options + "linearized").c_str (), 1);
   bc = g2 ((model_options + "bc_type").c_str (), 1);
@@ -1292,45 +1308,36 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
 
 
       for (int ii = 0; ii < 8; ++ii) {
-        if (! quadrant->is_hanging (ii)) {
-          if (surf_type == 2) {
-            if (this->levelsetfun (quadrant->p (0, ii),
-                                   quadrant->p (1, ii),
-                                   quadrant->p (2, ii)) > 1.0)
-              ++num_int_nodes[1];
-          }
+        if (! quadrant->is_hanging (ii)) {    
+          for (int idir = 0; idir < 3; ++idir) {
+            if (this->is_in_ns_surf (ray_cache,
+                                     quadrant->p (0, ii),
+                                     quadrant->p (1, ii),
+                                     quadrant->p (2, ii),idir) > 0.5) { //inside the molecule
+              ++num_int_nodes[idir];
+              (*markn)[quadrant->gt (ii)] =1;
+            }
 
 
-          else {
-            for (int idir = 0; idir < 3; ++idir) {
-              if (this->is_in_ns_surf (ray_cache,
-                                       quadrant->p (0, ii),
-                                       quadrant->p (1, ii),
-                                       quadrant->p (2, ii),idir) > 0.5) { //inside the molecule
-                ++num_int_nodes[idir];
-                (*markn)[quadrant->gt (ii)] =1;
+            else if (this->is_in_ns_surf (ray_cache,
+                                          quadrant->p (0, ii),
+                                          quadrant->p (1, ii),
+                                          quadrant->p (2, ii),idir) < -0.5 ) {
+              ray_cache.num_req_rays[idir]++;
+              std::array<double, 2> ray;
+
+              std::vector<int> direzioni {0,1,2};
+              direzioni.erase (direzioni.begin()+idir);
+
+              for (unsigned i = 0; i < direzioni.size(); ++i) {
+                ray[i] = quadrant->p (direzioni[i], ii);
               }
 
+              ray_cache.rays_list[idir].insert (ray);
 
-              else if (this->is_in_ns_surf (ray_cache,
-                                            quadrant->p (0, ii),
-                                            quadrant->p (1, ii),
-                                            quadrant->p (2, ii),idir) < -0.5 ) {
-                ray_cache.num_req_rays[idir]++;
-                std::array<double, 2> ray;
-
-                std::vector<int> direzioni {0,1,2};
-                direzioni.erase (direzioni.begin()+idir);
-
-                for (unsigned i = 0; i < direzioni.size(); ++i) {
-                  ray[i] = quadrant->p (direzioni[i], ii);
-                }
-
-                ray_cache.rays_list[idir].insert (ray);
-
-              }
             }
           }
+          
         } else
           for (int idir = 0; idir < 3; ++idir) {
             ++num_hanging[idir];

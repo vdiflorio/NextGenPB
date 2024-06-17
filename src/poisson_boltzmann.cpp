@@ -2,7 +2,7 @@
 
 #include "pb_class.h"
 
-static char filename[255];
+// static char filename[255];
 
 double crossings_t::start[3] = {0., 0., 0.};
 double crossings_t::end[3] = {0., 0., 0.};
@@ -26,7 +26,7 @@ main (int argc, char **argv)
 
   MPI_Init (&argc, &argv);
 
-  int recursive, partforcoarsen, balance;
+  // int recursive, partforcoarsen, balance;
   MPI_Comm mpicomm = MPI_COMM_WORLD;
   int rank, size;
   tmesh_3d tmsh;
@@ -117,13 +117,13 @@ main (int argc, char **argv)
     TOC ("Write potential on atoms")
   }
 
-  TIC ();
-  pb.export_tmesh (ray_cache);
-  TOC ("export tmesh");
+  // TIC ();
+  // pb.export_tmesh (ray_cache);
+  // TOC ("export tmesh");
 
-  TIC ();
-  pb.export_marked_tmesh ();
-  TOC ("export marked tmesh");
+  // TIC ();
+  // pb.export_marked_tmesh ();
+  // TOC ("export marked tmesh");
 
 
   if (rank == 0) {
@@ -194,7 +194,7 @@ print_point (const std::array<std::vector<std::array<double, 2>>,3>& r)
 
 }
 
-
+/*
 void
 print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3>& r)
 {
@@ -256,3 +256,4 @@ save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2>, crossin
   }
 }
 
+*/
