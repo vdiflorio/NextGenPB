@@ -22,6 +22,7 @@ const double p4esttol = 1 / std::pow (2, P8EST_QMAXLEVEL);
 #include "raytracer.h"
 #include <nanoshaper.h>
 
+
 // Problem parameters
 constexpr double e_0 = 8.85418781762e-12; //Dielectric void const [F/m]
 constexpr double kb = 1.380649e-23; //Boltzmann constant [J/K]
@@ -31,6 +32,7 @@ constexpr double e = 1.602176634e-19; //Charge of an electron [C]
 constexpr double N_av = 6.022e23; //Avogadro Number [mol^-1]
 constexpr double Angs = 1e-10; //Angstrom [m]
 constexpr double pi = 3.14159265358979323846;
+
 
 struct
   poisson_boltzmann {
@@ -110,6 +112,7 @@ struct
 
   //post_processing
   std::vector<NS::Atom> atoms_write;
+  std::vector<std::pair<const NS::Atom &, tmesh_3d::quadrant_iterator >> look_at_table;
   std::string pqrfilename_out;
 
 
@@ -508,6 +511,9 @@ struct
 
   void
   write_potential_on_atoms ();
+
+  void
+  write_potential_on_atoms_fast ();
 
   void
   init_tmesh ();

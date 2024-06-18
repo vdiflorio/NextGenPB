@@ -1966,6 +1966,11 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
           double volume = (quadrant->p (0, 7) - quadrant->p (0, 0)) *
                           (quadrant->p (1, 7) - quadrant->p (1, 0)) *
                           (quadrant->p (2, 7) - quadrant->p (2, 0)); //volume
+
+          // look_at_table.push_back(std::make_pair(std::cref(i),std::ref(quadrant)));
+
+          
+          
           {
             for (int ii = 0; ii < 8; ++ii) {
               double weigth = std::abs ((i.pos[0] - quadrant->p (0, 7-ii))*
@@ -2220,6 +2225,59 @@ poisson_boltzmann::write_potential_on_atoms ()
                     << phi_on_atom << std::endl;
         }
     // }
+  }
+
+  phi_atoms.close ();
+}
+
+void
+poisson_boltzmann::write_potential_on_atoms_fast ()
+{
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
+
+  std::ofstream phi_atoms;
+
+  std::string filename = "phi_on_atoms_";
+  std::string extension = ".txt";
+  filename += std::to_string (rank);
+  filename += extension;
+  phi_atoms.open (filename.c_str ());
+
+  double phi_on_atom;
+  int count = 0;
+
+  for (auto ptr = look_at_table.begin(); ptr < look_at_table.end(); ptr++) {
+    
+          phi_on_atom = 0.0;
+          //linear approx:
+          double volume = (ptr->second->p (0, 7) - ptr->second->p (0, 0)) *
+                          (ptr->second->p (1, 7) - ptr->second->p (1, 0)) *
+                          (ptr->second->p (2, 7) - ptr->second->p (2, 0)); //volume
+          std::cout << ptr->second->get_forest_quad_idx() << std::endl;          
+          {
+            for (int ii = 0; ii < 8; ++ii) {
+              double weigth = std::abs ((ptr->first.pos[0] - ptr->second->p (0, 7-ii))*
+                                        (ptr->first.pos[1] - ptr->second->p (1, 7-ii))*
+                                        (ptr->first.pos[2] - ptr->second->p (2, 7-ii))) / volume;
+
+              if (! ptr->second->is_hanging (ii))
+                phi_on_atom += (*phi)[ptr->second->gt (ii)]*weigth;
+              else {
+                double phi_hang_nodes = 0.0;
+
+                for (int jj = 0; jj < ptr->second->num_parents (ii); ++jj)
+                  phi_hang_nodes += (*phi)[ptr->second->gparent (jj, ii)]/ptr->second->num_parents (ii);
+
+                phi_on_atom += phi_hang_nodes*weigth;
+              }
+            }
+          }
+          phi_atoms << ptr->first.pos[0] << "  "
+                    << ptr->first.pos[1] << "  "
+                    << ptr->first.pos[2] << "  "
+                    << phi_on_atom << std::endl;
+        
   }
 
   phi_atoms.close ();
@@ -2760,6 +2818,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
           }
 
           area = areaTriangle (vert_triangles);
+          // area = SphercalAreaTriangle (vert_triangles);
 
           for (const NS::Atom& i : atoms) {
             for (int kk = 0; kk < 3; ++kk) {

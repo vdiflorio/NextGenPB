@@ -118,6 +118,10 @@ main (int argc, char **argv)
   }
 
   // TIC ();
+  //   pb.write_potential_on_atoms_fast ();
+  // TOC ("Write potential on atoms")
+
+  // TIC ();
   // pb.export_tmesh (ray_cache);
   // TOC ("export tmesh");
 
