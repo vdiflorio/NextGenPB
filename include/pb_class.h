@@ -111,8 +111,8 @@ struct
   std::string pqr_atoms;
 
   //post_processing
-  std::vector<NS::Atom> atoms_write;
-  std::vector<std::pair<const NS::Atom &, tmesh_3d::quadrant_iterator >> look_at_table;
+  int atoms_write;
+  std::vector<std::pair<const NS::Atom &, tmesh_3d::quadrant_t>> look_at_table;
   std::string pqrfilename_out;
 
 

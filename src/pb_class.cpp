@@ -731,7 +731,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   e_out = g2 ((model_options + "solvent_dielectric_constant").c_str (), 80.);
   T = g2 ((model_options + "T").c_str (), 298.15);
   calc_energy = g2 ((model_options + "calc_energy").c_str (), 2);
-  pqrfilename_out = g2 ((model_options + "phi_on_points").c_str (), "");
+  atoms_write = g2 ((model_options + "atoms_write").c_str (), 0);
 
   const std::string surf_options = "surface/";
   int surf_type_num = g2 ((surf_options + "surface_type").c_str (), 1);
@@ -1967,10 +1967,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
                           (quadrant->p (1, 7) - quadrant->p (1, 0)) *
                           (quadrant->p (2, 7) - quadrant->p (2, 0)); //volume
 
-          // look_at_table.push_back(std::make_pair(std::cref(i),std::ref(quadrant)));
+          if (atoms_write == 1)
+            look_at_table.push_back(std::make_pair(std::cref(i), *quadrant));
 
-          
-          
           {
             for (int ii = 0; ii < 8; ++ii) {
               double weigth = std::abs ((i.pos[0] - quadrant->p (0, 7-ii))*
@@ -2172,63 +2171,6 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
 }
 
-void
-poisson_boltzmann::write_potential_on_atoms ()
-{
-  int rank;
-  MPI_Comm_rank (mpicomm, &rank);
-
-  std::ofstream phi_atoms;
-
-  std::string filename = "phi_on_atoms_";
-  std::string extension = ".txt";
-  filename += std::to_string (rank);
-  filename += extension;
-  phi_atoms.open (filename.c_str ());
-
-  double phi_on_atom;
-  int count = 0;
-
-  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-       quadrant != this->tmsh.end_quadrant_sweep ();
-       ++quadrant) {
-    // if (marker[quadrant->get_forest_quad_idx()] < 0.6) {
-      // only inside the molecule
-      for (const NS::Atom& i : atoms)
-        if (is_in (i, quadrant)) {
-          phi_on_atom = 0.0;
-          //linear approx:
-          double volume = (quadrant->p (0, 7) - quadrant->p (0, 0)) *
-                          (quadrant->p (1, 7) - quadrant->p (1, 0)) *
-                          (quadrant->p (2, 7) - quadrant->p (2, 0)); //volume
-          {
-            for (int ii = 0; ii < 8; ++ii) {
-              double weigth = std::abs ((i.pos[0] - quadrant->p (0, 7-ii))*
-                                        (i.pos[1] - quadrant->p (1, 7-ii))*
-                                        (i.pos[2] - quadrant->p (2, 7-ii))) / volume;
-
-              if (! quadrant->is_hanging (ii))
-                phi_on_atom += (*phi)[quadrant->gt (ii)]*weigth;
-              else {
-                double phi_hang_nodes = 0.0;
-
-                for (int jj = 0; jj < quadrant->num_parents (ii); ++jj)
-                  phi_hang_nodes += (*phi)[quadrant->gparent (jj, ii)]/quadrant->num_parents (ii);
-
-                phi_on_atom += phi_hang_nodes*weigth;
-              }
-            }
-          }
-          phi_atoms << i.pos[0] << "  "
-                    << i.pos[1] << "  "
-                    << i.pos[2] << "  "
-                    << phi_on_atom << std::endl;
-        }
-    // }
-  }
-
-  phi_atoms.close ();
-}
 
 void
 poisson_boltzmann::write_potential_on_atoms_fast ()
@@ -2236,14 +2178,16 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
   int rank;
   MPI_Comm_rank (mpicomm, &rank);
 
-  std::ofstream phi_atoms;
+  // std::ofstream phi_atoms;
 
   std::string filename = "phi_on_atoms_";
   std::string extension = ".txt";
   filename += std::to_string (rank);
   filename += extension;
-  phi_atoms.open (filename.c_str ());
+  // phi_atoms.open (filename.c_str ());
 
+  FILE* phi_atoms;
+  phi_atoms = std::fopen (filename.c_str (), "w");
   double phi_on_atom;
   int count = 0;
 
@@ -2251,36 +2195,38 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
     
           phi_on_atom = 0.0;
           //linear approx:
-          double volume = (ptr->second->p (0, 7) - ptr->second->p (0, 0)) *
-                          (ptr->second->p (1, 7) - ptr->second->p (1, 0)) *
-                          (ptr->second->p (2, 7) - ptr->second->p (2, 0)); //volume
-          std::cout << ptr->second->get_forest_quad_idx() << std::endl;          
+          double volume = (ptr->second.p (0, 7) - ptr->second.p (0, 0)) *
+                          (ptr->second.p (1, 7) - ptr->second.p (1, 0)) *
+                          (ptr->second.p (2, 7) - ptr->second.p (2, 0)); //volume
+          std::cout << ptr->second.get_forest_quad_idx() << std::endl;          
           {
             for (int ii = 0; ii < 8; ++ii) {
-              double weigth = std::abs ((ptr->first.pos[0] - ptr->second->p (0, 7-ii))*
-                                        (ptr->first.pos[1] - ptr->second->p (1, 7-ii))*
-                                        (ptr->first.pos[2] - ptr->second->p (2, 7-ii))) / volume;
+              double weigth = std::abs ((ptr->first.pos[0] - ptr->second.p (0, 7-ii))*
+                                        (ptr->first.pos[1] - ptr->second.p (1, 7-ii))*
+                                        (ptr->first.pos[2] - ptr->second.p (2, 7-ii))) / volume;
 
-              if (! ptr->second->is_hanging (ii))
-                phi_on_atom += (*phi)[ptr->second->gt (ii)]*weigth;
+              if (! ptr->second.is_hanging (ii))
+                phi_on_atom += (*phi)[ptr->second.gt (ii)]*weigth;
               else {
                 double phi_hang_nodes = 0.0;
 
-                for (int jj = 0; jj < ptr->second->num_parents (ii); ++jj)
-                  phi_hang_nodes += (*phi)[ptr->second->gparent (jj, ii)]/ptr->second->num_parents (ii);
+                for (int jj = 0; jj < ptr->second.num_parents (ii); ++jj)
+                  phi_hang_nodes += (*phi)[ptr->second.gparent (jj, ii)]/ptr->second.num_parents (ii);
 
                 phi_on_atom += phi_hang_nodes*weigth;
               }
             }
           }
-          phi_atoms << ptr->first.pos[0] << "  "
-                    << ptr->first.pos[1] << "  "
-                    << ptr->first.pos[2] << "  "
-                    << phi_on_atom << std::endl;
+          // phi_atoms << ptr->first.pos[0] << "  "
+          //           << ptr->first.pos[1] << "  "
+          //           << ptr->first.pos[2] << "  "
+          //           << phi_on_atom << std::endl;
+          std::fprintf (phi_atoms,"\n %8.3f%8.3f%8.3f  %.4f", ptr->first.pos[0],ptr->first.pos[1],ptr->first.pos[2],phi_on_atom);
         
   }
 
-  phi_atoms.close ();
+  // phi_atoms.close ();
+  fclose (phi_atoms);
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////

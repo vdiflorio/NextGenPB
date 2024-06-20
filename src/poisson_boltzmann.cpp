@@ -107,19 +107,11 @@ main (int argc, char **argv)
     TOC ("compute energy")
   }
 
-  std::ifstream istrm (pb.pqrfilename_out, std::ios::binary);
-
-  if (istrm.is_open()) {
+  if (pb.atoms_write == 1) {
     TIC ();
-    pb.read_atoms_from_pqr (istrm);
-    istrm.close ();
-    pb.write_potential_on_atoms ();
+      pb.write_potential_on_atoms_fast ();
     TOC ("Write potential on atoms")
   }
-
-  // TIC ();
-  //   pb.write_potential_on_atoms_fast ();
-  // TOC ("Write potential on atoms")
 
   // TIC ();
   // pb.export_tmesh (ray_cache);
