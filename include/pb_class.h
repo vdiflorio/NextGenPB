@@ -33,6 +33,14 @@ constexpr double N_av = 6.022e23; //Avogadro Number [mol^-1]
 constexpr double Angs = 1e-10; //Angstrom [m]
 constexpr double pi = 3.14159265358979323846;
 
+struct
+map_compare_atom
+{
+  bool 
+  operator ()(const int & Atom1, const int & Atom2) const {
+    return Atom1< Atom2;
+  }
+};
 
 struct
   poisson_boltzmann {
@@ -112,9 +120,8 @@ struct
 
   //post_processing
   int atoms_write;
-  std::vector<std::pair<const NS::Atom &, tmesh_3d::quadrant_t>> look_at_table;
-  std::string pqrfilename_out;
-
+  // std::vector<std::pair<const NS::Atom &, tmesh_3d::quadrant_t>> look_at_table;
+  std::map<int,std::pair<const NS::Atom &, tmesh_3d::quadrant_t>> look_at_table;
 
   std::vector<double> marker;
   std::vector<double> marker_k;
