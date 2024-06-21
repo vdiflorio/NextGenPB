@@ -33,14 +33,6 @@ constexpr double N_av = 6.022e23; //Avogadro Number [mol^-1]
 constexpr double Angs = 1e-10; //Angstrom [m]
 constexpr double pi = 3.14159265358979323846;
 
-struct
-map_compare_atom
-{
-  bool 
-  operator ()(const int & Atom1, const int & Atom2) const {
-    return Atom1< Atom2;
-  }
-};
 
 struct
   poisson_boltzmann {
