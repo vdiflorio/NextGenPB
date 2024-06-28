@@ -233,7 +233,7 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
       return;
     }
 
-    std::cout << "Sending new ray for NS!" << std::endl;
+    // std::cout << "Sending new ray for NS!" << std::endl;
     std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
     ns.castAxisOrientedRay (start_ray, crossings_t::end[ct.dir], ints_norms, ct.dir, compute_normals);
 

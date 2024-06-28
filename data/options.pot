@@ -50,7 +50,7 @@ molecular_dielectric_constant = 2     #molecular relative dielectric constant
 solvent_dielectric_constant = 80      #solvent relative dielectric constant
 ionic_strength = 0.145                #ionic strength expressend in molar concentration
 T = 298.15                            #temperature
-calc_energy = 2                       #0 no energy, 1 pol+coul, 2 pol+ion+coul
+calc_energy = 2                       #0 no energy, 1 pol, 2 pol+ion, 3 pol+ion+coul
 atoms_write = 0
 
 [../]

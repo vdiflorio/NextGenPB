@@ -41,9 +41,9 @@ poisson_boltzmann::create_mesh_ns ()
     auto it = [this] (const NS::Atom &a1) {
       for (int kk = 0; kk < 3; ++kk) {
         if ((a1.pos[kk] + a1.radius) > this->r_c[kk])
-          this->r_c[kk] = a1.pos[kk]+ a1.radius;
+          this->r_c[kk] = a1.pos[kk]+ a1.radius + 2*prb_radius;
         else if ((a1.pos[kk] - a1.radius) < this->l_c[kk])
-          this->l_c[kk] = a1.pos[kk]- a1.radius;
+          this->l_c[kk] = a1.pos[kk]- a1.radius - 2*prb_radius;
       }
     };
     std::for_each (atoms.begin (), atoms.end (), it);
@@ -2789,7 +2789,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
             phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
 
-            // writing potential on surf and nodes
+            // // writing potential on surf and nodes
             // phi_nodes_txt << quadrant->p (0, i1) << "  "
             //               << quadrant->p (1, i1) << "  "
             //               << quadrant->p (2, i1) << "  "
@@ -2840,32 +2840,35 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
   //coulombic energy
   double coul_energy = 0.0;
-  double den_in = 1.0/ (eps_in);
-  int i_atom = 0;
-  int j_atom = 0;
 
-  if (rank == 0) {
-    for (const NS::Atom& i : atoms) {
-      if ( std::fabs (i.charge) > 0.0) {
-        for (const NS::Atom& j : atoms) {
-          if ( std::fabs (j.charge) > 0.0) {
-            if (j_atom > i_atom ) {
-              distance = std::hypot ((i.pos[0] - j.pos[0]),
-                                     (i.pos[1] - j.pos[1]),
-                                     (i.pos[2] - j.pos[2]));
-              coul_energy += i.charge*j.charge/distance;
+  if (calc_energy==3) {
+    double den_in = 1.0/ (eps_in);
+    int i_atom = 0;
+    int j_atom = 0;
+
+    if (rank == 0) {
+      for (const NS::Atom& i : atoms) {
+        if ( std::fabs (i.charge) > 0.0) {
+          for (const NS::Atom& j : atoms) {
+            if ( std::fabs (j.charge) > 0.0) {
+              if (j_atom > i_atom ) {
+                distance = std::hypot ((i.pos[0] - j.pos[0]),
+                                       (i.pos[1] - j.pos[1]),
+                                       (i.pos[2] - j.pos[2]));
+                coul_energy += i.charge*j.charge/distance;
+              }
             }
-          }
 
-          j_atom ++;
+            j_atom ++;
+          }
         }
+
+        i_atom ++;
+        j_atom = 0;
       }
 
-      i_atom ++;
-      j_atom = 0;
+      coul_energy = coul_energy*den_in;
     }
-
-    coul_energy = coul_energy*den_in;
   }
 
 

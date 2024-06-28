@@ -91,6 +91,7 @@ struct
   //surface:
   NS::surface_type surf_type;
   double surf_param;
+  double prb_radius = 1.4;  //typical prob radious;
   int stern_layer_surf;
   double stern_layer;
   unsigned num_threads;
