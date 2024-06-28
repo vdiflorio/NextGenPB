@@ -1983,8 +1983,11 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   vol_patch.assemble ();
 
+  MPI_Barrier (mpicomm);
+  auto start_rho = std::chrono::steady_clock::now();
 
   int Atom_number = 0;
+  
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
        quadrant != this->tmsh.end_quadrant_sweep ();
        ++quadrant) {
@@ -2026,7 +2029,14 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
       }
     }
   }
-
+  MPI_Barrier (mpicomm);
+  auto end_rho = std::chrono::steady_clock::now();
+  if (rank==0) {
+    std::cout << "\nTime to calculate rho:  "
+              << std::chrono::duration_cast<std::chrono::milliseconds> (end_rho- start_rho).count ()
+              << " ms"
+              <<std::endl;
+  }
   //////////////////////////////////////////////////////////////////
   auto func_frac = [&] (tmesh_3d::quadrant_iterator& quadrant) {
     return cube_fraction_intersection (quadrant,ray_cache);
@@ -2226,41 +2236,6 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
   // phi_atoms = std::fopen (filename.c_str (), "w");
   double phi_on_atom;
 
-  // for (auto ptr = look_at_table.begin(); ptr < look_at_table.end(); ptr++) {
-    
-  //   phi_on_atom = 0.0;
-  //   //linear approx:
-  //   double volume = (ptr->second.p (0, 7) - ptr->second.p (0, 0)) *
-  //                   (ptr->second.p (1, 7) - ptr->second.p (1, 0)) *
-  //                   (ptr->second.p (2, 7) - ptr->second.p (2, 0)); //volume
-  //   {
-  //     for (int ii = 0; ii < 8; ++ii) {
-  //       double weigth = std::abs ((ptr->first.pos[0] - ptr->second.p (0, 7-ii))*
-  //                                 (ptr->first.pos[1] - ptr->second.p (1, 7-ii))*
-  //                                 (ptr->first.pos[2] - ptr->second.p (2, 7-ii))) / volume;
-
-  //       if (! ptr->second.is_hanging (ii))
-  //         phi_on_atom += (*phi)[ptr->second.gt (ii)]*weigth;
-  //       else {
-  //         double phi_hang_nodes = 0.0;
-
-  //         for (int jj = 0; jj < ptr->second.num_parents (ii); ++jj)
-  //           phi_hang_nodes += (*phi)[ptr->second.gparent (jj, ii)]/ptr->second.num_parents (ii);
-
-  //         phi_on_atom += phi_hang_nodes*weigth;
-  //       }
-  //     }
-  //   }
-
-  //   phi_atoms << std::fixed << std::setprecision(3)
-  //            << std::setw(8) << ptr->first.pos[0]
-  //             << std::setw(8) << ptr->first.pos[1]
-  //             << std::setw(8) << ptr->first.pos[2]
-  //             << std::fixed << std::setprecision(4)
-  //             << "  " << phi_on_atom << std::endl;
-  //         // std::fprintf (phi_atoms,"\n %8.3f%8.3f%8.3f  %.4f", ptr->first.pos[0],ptr->first.pos[1],ptr->first.pos[2],phi_on_atom);
-        
-  // }
 
   for (auto it = look_at_table.begin(); it!=look_at_table.end(); ++it) {
     phi_on_atom = 0.0;
@@ -2723,7 +2698,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
   double k = std::sqrt (k2);
 
-  if (calc_energy==2) {
+  if (calc_energy>=2) {
     // Open the write file
     // std::ofstream phi_nodes_txt;
     // std::ofstream phi_surf_txt;
