@@ -136,18 +136,22 @@ poisson_boltzmann::create_mesh_ns ()
     r_cr[2] = cc[2] + nz*1.0/scale;
 
     if (rank == 0) {
+      std::cout << "\n Center of the system:" <<std::endl;
       std::cout << "cx: " << cc[0]
                 << " , cy: " << cc[1]
                 << " , cz: " << cc[2] << std::endl;
 
+      std::cout << "\n Complete domain box size:" <<std::endl;
       std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
       std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
       std::cout << "z: " << ll[2] << ", " << rr[2] << std::endl;
 
+      std::cout << "\n Refined box size:" <<std::endl;
       std::cout << "xb: " << l_cr[0] << ", " << r_cr[0] << std::endl;
       std::cout << "yb: " << l_cr[1] << ", " << r_cr[1] << std::endl;
       std::cout << "zb: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
 
+      std::cout << "\n number of subdivision of the refined box:" <<std::endl;
       std::cout << "nx: " << nx*2 << "  ny: " << ny*2 << " nz: " << nz*2 << std::endl;
     }
 
@@ -206,9 +210,15 @@ poisson_boltzmann::create_mesh_ns ()
     }
 
     if (rank == 0) {
+      std::cout << "\n Center of the system:" <<std::endl;
+      std::cout << "cx: " << cc[0]
+                << " , cy: " << cc[1]
+                << " , cz: " << cc[2] << std::endl;
+
+      std::cout << "\n Complete domain box size:" <<std::endl;
       std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
       std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
-      std::cout << "z: " << ll[2] << ", " << rr[2] << "\n" << std::endl;
+      std::cout << "z: " << ll[2] << ", " << rr[2] << std::endl;
     }
 
     simple_conn_num_vertices = 8;
@@ -235,6 +245,12 @@ poisson_boltzmann::create_mesh_ns ()
       bcells.push_back (std::make_pair (0, i));
   } else if (mesh_shape == 2) {
     if (rank == 0) {
+      std::cout << "\n Center of the system:" <<std::endl;
+      std::cout << "cx: "    << (r_c[0] + l_c[0])*0.5
+                << " , cy: " << (r_c[1] + l_c[1])*0.5
+                << " , cz: " << (r_c[2] + l_c[2])*0.5 << std::endl;
+
+      std::cout << "\n Complete domain box size:" <<std::endl;
       std::cout << "x: " << l_c[0] << ", " << r_c[0] << std::endl;
       std::cout << "y: " << l_c[1] << ", " << r_c[1] << std::endl;
       std::cout << "z: " << l_c[2] << ", " << r_c[2] << "\n" << std::endl;
@@ -764,11 +780,26 @@ poisson_boltzmann::print_options ()
   std::cout << "\nChosen options: " << std::endl;
 
   if (mesh_shape == 0) {
+    std::cout << "Mesh shape = cubic at max " << perfil2 << " perfil" << " and refined box at "<< perfil1 << " perfil" << std::endl;
     std::cout << "scale: " << scale << std::endl;
-  } else {
+    std::cout << "with the following domain vertices: " << std::endl;
+  } else if (mesh_shape == 1) {
+    std::cout << "Mesh shape = cubic at "<< perfil1 << "perfil" << std::endl;
     std::cout << "minlevel = " << minlevel << "\nmaxlevel = " << maxlevel << std::endl;
     std::cout << "unilevel = " << unilevel << std::endl;
-  }
+    std::cout << "with the following domain vertices: " << std::endl;
+  } else if (mesh_shape == 2) {
+    std::cout << "Manual setting of the mesh vertices:: " << std::endl;
+    std::cout << "minlevel = " << minlevel << "\nmaxlevel = " << maxlevel << std::endl;
+    std::cout << "unilevel = " << unilevel << std::endl;
+    std::cout << "with the following domain vertices: " << std::endl;
+  } else if (mesh_shape == 3) {
+    std::cout << "Focusing centered at:" << "\n x = " << cc_focusing[0]
+              << "\n y = " << cc_focusing[1] << "\n z = " << cc_focusing[2] << std::endl;
+    std::cout << "scale: " << scale << std::endl;
+  } else
+    std::cout << "Manual setting of the mesh vertices:" << std::endl;
+
 
   std::cout << "Linearized model = " << linearized << std::endl;
 
@@ -787,19 +818,10 @@ poisson_boltzmann::print_options ()
 
   std::cout << "Chosen surface: " << surf_type << std::endl;
   std::cout << "Surface parameter: " << surf_param << std::endl;
-  std::cout << "Stern layer thickness: " << stern_layer << std::endl;
+  if (stern_layer_surf == 1)
+    std::cout << "Stern layer thickness: " << stern_layer << std::endl;
   std::cout << "Number of threads for nanoshaper: " << num_threads << std::endl;
 
-  if (mesh_shape == 1) {
-    std::cout << "Mesh shape = cubic at "<< perfil1 << " perfil" << std::endl;
-    std::cout << "with the following domain vertices: " << std::endl;
-  } else if (mesh_shape == 2) {
-    std::cout << "Manual setting of the mesh vertices:: " << std::endl;
-  } else if (mesh_shape == 0) {
-    std::cout << "Mesh shape = cubic at max " << perfil2 << " perfil" << " and refined box at "<< perfil1 << " perfil" << std::endl;
-    std::cout << "with the following domain vertices: " << std::endl;
-  } else
-    std::cout << "Manual setting of the mesh vertices:" << std::endl;
 
 }
 
@@ -2870,6 +2892,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
       coul_energy = coul_energy*den_in;
     }
   }
+
 
 
   if (rank == 0) {

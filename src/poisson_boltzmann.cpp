@@ -46,7 +46,7 @@ main (int argc, char **argv)
 
   if (rank == 0) {
     std::cout << "Atom : " << std::endl;
-    pb.write_atoms_to_pqr (std::cout);
+    // pb.write_atoms_to_pqr (std::cout);
     pb.print_options ();
   }
 
