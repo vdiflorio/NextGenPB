@@ -1295,115 +1295,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
 
 
-void
-poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
-{
 
-  int size, rank;
-  MPI_Comm_size (mpicomm, &size);
-  MPI_Comm_rank (mpicomm, &rank);
-
-  this->marker.assign (this->tmsh.num_local_quadrants (), 0.0); //marker = 0 -> in
-
-  markn = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
-  markn->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0); //markn = 0 -> out
-
-  int num_cycles = 2;
-
-  if (size == 0 || surf_type == 2)
-    num_cycles = 1;
-
-  for (int jj = 0; jj < num_cycles; jj++) {
-    ray_cache.num_req_rays[0] = 0; //zero at each ref/coarsen cycle
-    ray_cache.num_req_rays[1] = 0; //zero at each ref/coarsen cycle
-    ray_cache.num_req_rays[2] = 0; //zero at each ref/coarsen cycle
-    ray_cache.rays_list[0].clear ();
-    ray_cache.rays_list[1].clear ();
-    ray_cache.rays_list[2].clear ();
-
-
-    for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-         quadrant != this->tmsh.end_quadrant_sweep ();
-         ++quadrant) {
-      int num_int_nodes[3] = {0, 0, 0};
-      int num_hanging[3] = {0, 0, 0};
-
-
-      for (int ii = 0; ii < 8; ++ii) {
-        if (! quadrant->is_hanging (ii)) {    
-          for (int idir = 0; idir < 3; ++idir) {
-            if (this->is_in_ns_surf (ray_cache,
-                                     quadrant->p (0, ii),
-                                     quadrant->p (1, ii),
-                                     quadrant->p (2, ii),idir) > 0.5) { //inside the molecule
-              ++num_int_nodes[idir];
-              (*markn)[quadrant->gt (ii)] =1;
-            }
-
-
-            else if (this->is_in_ns_surf (ray_cache,
-                                          quadrant->p (0, ii),
-                                          quadrant->p (1, ii),
-                                          quadrant->p (2, ii),idir) < -0.5 ) {
-              ray_cache.num_req_rays[idir]++;
-              std::array<double, 2> ray;
-
-              std::vector<int> direzioni {0,1,2};
-              direzioni.erase (direzioni.begin()+idir);
-
-              for (unsigned i = 0; i < direzioni.size(); ++i) {
-                ray[i] = quadrant->p (direzioni[i], ii);
-              }
-
-              ray_cache.rays_list[idir].insert (ray);
-
-            }
-          }
-          
-        } else
-          for (int idir = 0; idir < 3; ++idir) {
-            ++num_hanging[idir];
-
-            if (this->is_in_ns_surf (ray_cache,
-                                     quadrant->p (0, ii),
-                                     quadrant->p (1, ii),
-                                     quadrant->p (2, ii),idir) < -0.5 ) {
-
-              ray_cache.num_req_rays[idir]++;
-              std::array<double, 2> ray;
-
-              std::vector<int> direzioni {0,1,2};
-              direzioni.erase (direzioni.begin()+idir);
-
-              for (unsigned i = 0; i < direzioni.size(); ++i) {
-                ray[i] = quadrant->p (direzioni[i], ii);
-              }
-
-              ray_cache.rays_list[idir].insert (ray);
-
-            }
-          }
-      }
-
-
-      if (jj != 0 || num_cycles == 1) {
-        if (num_int_nodes[1] == 0) //if there's no node inside the molecule
-          this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out
-        else if (num_int_nodes[1] < (8 - num_hanging[1])) //if the non hanging nodes are not all inside
-          this->marker[quadrant->get_forest_quad_idx ()] = 1.0/2.0; //"border"
-
-        //else: all the nodes are inside: the quadrant is inside and the marker value is 0
-      }
-
-    }
-
-
-    MPI_Barrier (mpicomm);
-    ray_cache.fill_cache();
-    auto end = std::chrono::steady_clock::now();
-
-  }
-}
 // modifiche per nuovo NS
 
 double
@@ -1466,11 +1358,11 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
   markn->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0); //markn = 0 -> out
 
   int num_cycles = 2;
-
-  if (size == 0 )
+  if (size == 1 ){
     num_cycles = 1;
+  }
 
-  for (int jj = 0; jj < num_cycles; jj++) {
+  for (int jj = 0; jj < num_cycles; ++jj) {
     ray_cache.num_req_rays[0] = 0; //zero at each ref/coarsen cycle
     ray_cache.num_req_rays[1] = 0; //zero at each ref/coarsen cycle
     ray_cache.num_req_rays[2] = 0; //zero at each ref/coarsen cycle
@@ -1553,7 +1445,6 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
           }
       }
 
-
       if (jj != 0 || num_cycles == 1) {
         if (num_int_nodes[1] == 0) { //if there's no node inside the molecule
           this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out
@@ -1574,8 +1465,6 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
 
     MPI_Barrier (mpicomm);
     ray_cache.fill_cache();
-    auto end = std::chrono::steady_clock::now();
-
   }
 }
 
