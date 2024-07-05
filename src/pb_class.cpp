@@ -40,9 +40,9 @@ poisson_boltzmann::create_mesh_ns ()
     r_c[2] = atoms.begin ()->pos[2] + atoms.begin ()->radius;
     auto it = [this] (const NS::Atom &a1) {
       for (int kk = 0; kk < 3; ++kk) {
-        if ((a1.pos[kk] + a1.radius) > this->r_c[kk])
+        if ((a1.pos[kk] + a1.radius+ 2*prb_radius) > this->r_c[kk])
           this->r_c[kk] = a1.pos[kk]+ a1.radius + 2*prb_radius;
-        else if ((a1.pos[kk] - a1.radius) < this->l_c[kk])
+        else if ((a1.pos[kk] - a1.radius- 2*prb_radius) < this->l_c[kk])
           this->l_c[kk] = a1.pos[kk]- a1.radius - 2*prb_radius;
       }
     };
