@@ -952,24 +952,24 @@ poisson_boltzmann::is_in (const NS::Atom& i,
   double l, r, t, b, f, bk;
 
   l = q->p (0, 0);
-  r = q->p (0, 0);
+  r = q->p (0, 7);
 
   f = q->p (1, 0);
-  bk = q->p (1, 0);
+  bk = q->p (1, 7);
 
   b = q->p (2, 0);
-  t = q->p (2, 0);
+  t = q->p (2, 7);
 
 
-  for (int ii = 1; ii < 8; ++ii) {
-    l = q->p (0, ii) < l ? q->p (0, ii) : l;
-    r = q->p (0, ii) > r ? q->p (0, ii) : r;
-    f = q->p (1, ii) < f ? q->p (1, ii) : f;
-    bk = q->p (1, ii) > bk ? q->p (1, ii) : bk;
-    b = q->p (2, ii) < b ? q->p (2, ii) : b;
-    t = q->p (2, ii) > t ? q->p (2, ii) : t;
+  // for (int ii = 1; ii < 8; ++ii) {
+  //   l = q->p (0, ii) < l ? q->p (0, ii) : l;
+  //   r = q->p (0, ii) > r ? q->p (0, ii) : r;
+  //   f = q->p (1, ii) < f ? q->p (1, ii) : f;
+  //   bk = q->p (1, ii) > bk ? q->p (1, ii) : bk;
+  //   b = q->p (2, ii) < b ? q->p (2, ii) : b;
+  //   t = q->p (2, ii) > t ? q->p (2, ii) : t;
 
-  }
+  // }
 
   retval = (i.pos[0] > l - tol) && (i.pos[0] <= r - tol); //make sure that the charge is assigned only once
   retval = retval && (i.pos[1] > f - tol) && (i.pos[1] <= bk - tol);
@@ -987,24 +987,24 @@ poisson_boltzmann::is_in_ref (const NS::Atom& i,
   double l, r, t, b, f, bk;
 
   l = q->p (0, 0);
-  r = q->p (0, 0);
+  r = q->p (0, 7);
 
   f = q->p (1, 0);
-  bk = q->p (1, 0);
+  bk = q->p (1, 7);
 
   b = q->p (2, 0);
-  t = q->p (2, 0);
+  t = q->p (2, 7);
 
 
-  for (int ii = 1; ii < 8; ++ii) {
-    l = q->p (0, ii) < l ? q->p (0, ii) : l;
-    r = q->p (0, ii) > r ? q->p (0, ii) : r;
-    f = q->p (1, ii) < f ? q->p (1, ii) : f;
-    bk = q->p (1, ii) > bk ? q->p (1, ii) : bk;
-    b = q->p (2, ii) < b ? q->p (2, ii) : b;
-    t = q->p (2, ii) > t ? q->p (2, ii) : t;
+  // for (int ii = 1; ii < 8; ++ii) {
+  //   l = q->p (0, ii) < l ? q->p (0, ii) : l;
+  //   r = q->p (0, ii) > r ? q->p (0, ii) : r;
+  //   f = q->p (1, ii) < f ? q->p (1, ii) : f;
+  //   bk = q->p (1, ii) > bk ? q->p (1, ii) : bk;
+  //   b = q->p (2, ii) < b ? q->p (2, ii) : b;
+  //   t = q->p (2, ii) > t ? q->p (2, ii) : t;
 
-  }
+  // }
 
   retval = (i.pos[0] >= l) && (i.pos[0] <= r);
   retval = retval && (i.pos[1] >= f ) && (i.pos[1] <= bk);
@@ -1877,6 +1877,13 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   int Atom_number = 0;
   
+  std::ofstream atoms_num;
+  std::string filename = "atom_number";
+  std::string extension = ".txt";
+  filename += std::to_string (rank);
+  filename += extension;
+  atoms_num.open (filename.c_str ());
+
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
        quadrant != this->tmsh.end_quadrant_sweep ();
        ++quadrant) {
@@ -1886,15 +1893,14 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
       for (const NS::Atom& i : atoms) {
         ++Atom_number; 
         if (is_in (i, quadrant)) {
+          atoms_num<<Atom_number<<std::endl;
           //linear approx:
           double volume = (quadrant->p (0, 7) - quadrant->p (0, 0)) *
                           (quadrant->p (1, 7) - quadrant->p (1, 0)) *
                           (quadrant->p (2, 7) - quadrant->p (2, 0)); //volume
 
-          if (atoms_write == 1){
+          if (atoms_write == 1)
             look_at_table.emplace(Atom_number, std::make_pair(std::cref(i), *quadrant));
-            // look_at_table.push_back(std::make_pair(std::cref(i), *quadrant));                    
-          }
             
 
           {
@@ -1918,6 +1924,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
       }
     }
   }
+  atoms_num.close ();
   MPI_Barrier (mpicomm);
   auto end_rho = std::chrono::steady_clock::now();
   if (rank==0) {
