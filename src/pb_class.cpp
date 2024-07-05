@@ -1022,7 +1022,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
   int num_cycles = 2;
 
-  if (size == 0 || surf_type == 2)
+  if (size == 1 || surf_type == 2)
     num_cycles = 1;
 
   int coars_ref_cycles = (maxlevel - unilevel) > (unilevel - minlevel) ? (maxlevel - unilevel) : (unilevel - minlevel);
@@ -2589,37 +2589,37 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
   if (calc_energy>=2) {
     // Open the write file
-    // std::ofstream phi_nodes_txt;
-    // std::ofstream phi_surf_txt;
-    // FILE* phi_nod_delphi;
-    // FILE* phi_sup_delphi;
-    // std::string filename_nodes = "phi_nodes_";
-    // std::string filename_nodes_delphi = "phi_nodes_delphi_";
-    // std::string filename_surf = "phi_surf_";
-    // std::string filename_sup_delphi = "phi_sup_delphi_";
-    // std::string extension = ".txt";
-    // filename_nodes += std::to_string (bc);
-    // filename_nodes += "_";
-    // filename_surf += std::to_string (bc);
-    // filename_surf += "_";
-    // filename_nodes_delphi += std::to_string (bc);
-    // filename_nodes_delphi += "_";
-    // filename_sup_delphi += std::to_string (bc);
-    // filename_sup_delphi += "_";
-    // filename_nodes += pqrfilename;
-    // filename_surf += pqrfilename;
-    // filename_nodes += extension;
-    // filename_surf += extension;
-    // filename_nodes_delphi += pqrfilename;
-    // filename_sup_delphi += pqrfilename;
-    // filename_nodes_delphi += extension;
-    // filename_sup_delphi += extension;
+    std::ofstream phi_nodes_txt;
+    std::ofstream phi_surf_txt;
+    FILE* phi_nod_delphi;
+    FILE* phi_sup_delphi;
+    std::string filename_nodes = "phi_nodes_";
+    std::string filename_nodes_delphi = "phi_nodes_delphi_";
+    std::string filename_surf = "phi_surf_";
+    std::string filename_sup_delphi = "phi_sup_delphi_";
+    std::string extension = ".txt";
+    filename_nodes += std::to_string (bc);
+    filename_nodes += "_";
+    filename_surf += std::to_string (bc);
+    filename_surf += "_";
+    filename_nodes_delphi += std::to_string (bc);
+    filename_nodes_delphi += "_";
+    filename_sup_delphi += std::to_string (bc);
+    filename_sup_delphi += "_";
+    filename_nodes += pqrfilename;
+    filename_surf += pqrfilename;
+    filename_nodes += extension;
+    filename_surf += extension;
+    filename_nodes_delphi += pqrfilename;
+    filename_sup_delphi += pqrfilename;
+    filename_nodes_delphi += extension;
+    filename_sup_delphi += extension;
 
-    // phi_nodes_txt.open (filename_nodes.c_str ());
-    // phi_surf_txt.open (filename_surf.c_str ());
+    phi_nodes_txt.open (filename_nodes.c_str ());
+    phi_surf_txt.open (filename_surf.c_str ());
 
-    // phi_sup_delphi = std::fopen ("filename_sup_delphi.txt", "w");
-    // phi_nod_delphi = std::fopen ("filename_nodes_delphi.txt", "w");
+    phi_sup_delphi = std::fopen ("filename_sup_delphi.txt", "w");
+    phi_nod_delphi = std::fopen ("filename_nodes_delphi.txt", "w");
     /////////////////////////////////////////////////
 
     for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
@@ -2676,23 +2676,23 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
             phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
 
             // // writing potential on surf and nodes
-            // phi_nodes_txt << quadrant->p (0, i1) << "  "
-            //               << quadrant->p (1, i1) << "  "
-            //               << quadrant->p (2, i1) << "  "
-            //               << tmp_phi_1 << std::endl;
-            // phi_nodes_txt << quadrant->p (0, i2) << "  "
-            //               << quadrant->p (1, i2) << "  "
-            //               << quadrant->p (2, i2) << "  "
-            //               << tmp_phi_2 << std::endl;
+            phi_nodes_txt << quadrant->p (0, i1) << "  "
+                          << quadrant->p (1, i1) << "  "
+                          << quadrant->p (2, i1) << "  "
+                          << tmp_phi_1 << std::endl;
+            phi_nodes_txt << quadrant->p (0, i2) << "  "
+                          << quadrant->p (1, i2) << "  "
+                          << quadrant->p (2, i2) << "  "
+                          << tmp_phi_2 << std::endl;
 
-            // phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
+            phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
 
-            // std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-            //               quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
-            // std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-            //               quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
-            // std::fprintf (phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-            //               V[0],V[1],V[2],phi_sup[jj],0.0);
+            std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+                          quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
+            std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+                          quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
+            std::fprintf (phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+                          V[0],V[1],V[2],phi_sup[jj],0.0);
             /////////////////////////////////////////////////
           }
 
@@ -2716,10 +2716,10 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
     }
 
-    // phi_nodes_txt.close ();
-    // phi_surf_txt.close ();
-    // fclose (phi_nod_delphi);
-    // fclose (phi_sup_delphi);
+    phi_nodes_txt.close ();
+    phi_surf_txt.close ();
+    fclose (phi_nod_delphi);
+    fclose (phi_sup_delphi);
 
     energy_react = 0.5*second_int - first_int*constant_react;
   }
