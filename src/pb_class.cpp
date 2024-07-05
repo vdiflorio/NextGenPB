@@ -29,7 +29,7 @@ poisson_boltzmann::create_mesh_ns ()
   double l[3];
   scale_level = unilevel;
 
-  if (mesh_shape < 2 || mesh_shape >= 3) {
+  if (mesh_shape !=2) {
     auto comp = [] (const NS::Atom &a1, const NS::Atom &a2) -> bool { return a1.radius < a2.radius; };
     double maxradius = std::max_element (atoms.begin (), atoms.end (), comp)->radius;
     l_c[0] = atoms.begin ()->pos[0] - atoms.begin ()->radius;
@@ -102,7 +102,6 @@ poisson_boltzmann::create_mesh_ns ()
   if (mesh_shape == 0) {
 
     //cubic box with max perfil2
-    scale_min = scale/4.0;
     double size = 1.0/scale;
     scale_level = 0;
 
@@ -426,9 +425,9 @@ poisson_boltzmann::create_mesh_ns ()
       }
     }
     if (rank == 0) {
-      std::cout << "cx: " << cc[0]
-                << " , cy: " << cc[1]
-                << " , cz: " << cc[2] << std::endl;
+      std::cout << "cx: " << cc_focusing[0]
+                << " , cy: " << cc_focusing[1]
+                << " , cz: " << cc_focusing[2] << std::endl;
 
       std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
       std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
@@ -631,7 +630,7 @@ poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, d
   if (ct.inters.size () == 0 || x3 < ct.inters[i])
     return 0; //if there are no inters or y_the coord is before the first intersection, the point is outside.
 
-  while (i < ct.inters.size () && x3 > ct.inters[i]) //go on until the inters is passed
+  while (i < ct.inters.size () && x3 >= ct.inters[i]) //go on until the inters is passed
     i++;
 
   return (i % 2);
@@ -1446,9 +1445,9 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
       }
 
       if (jj != 0 || num_cycles == 1) {
-        if (num_int_nodes[1] == 0) { //if there's no node inside the molecule
+        if (num_int_nodes[0] == 0) { //if there's no node inside the molecule
           this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out
-        } else if (num_int_nodes[1] < (8 - num_hanging[1])) { //if the non hanging nodes are not all inside
+        } else if (num_int_nodes[0] < (8 - num_hanging[0])) { //if the non hanging nodes are not all inside
           this->marker[quadrant->get_forest_quad_idx ()] = 1.0/2.0; //"border"
         }
 
@@ -1877,23 +1876,17 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   int Atom_number = 0;
   
-  std::ofstream atoms_num;
-  std::string filename = "atom_number";
-  std::string extension = ".txt";
-  filename += std::to_string (rank);
-  filename += extension;
-  atoms_num.open (filename.c_str ());
+  
 
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
        quadrant != this->tmsh.end_quadrant_sweep ();
        ++quadrant) {
-    if (marker[quadrant->get_forest_quad_idx()] < 0.6) {
+    // if (marker[quadrant->get_forest_quad_idx()] < 0.6) {
       // only inside the molecule
       Atom_number = 0;
       for (const NS::Atom& i : atoms) {
         ++Atom_number; 
         if (is_in (i, quadrant)) {
-          atoms_num<<Atom_number<<std::endl;
           //linear approx:
           double volume = (quadrant->p (0, 7) - quadrant->p (0, 0)) *
                           (quadrant->p (1, 7) - quadrant->p (1, 0)) *
@@ -1919,12 +1912,10 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
             }
           }
-          //break;
         }
       }
-    }
+    // }
   }
-  atoms_num.close ();
   MPI_Barrier (mpicomm);
   auto end_rho = std::chrono::steady_clock::now();
   if (rank==0) {
