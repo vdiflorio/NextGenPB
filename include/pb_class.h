@@ -77,6 +77,7 @@ struct
   int mesh_shape;
   int refine_box;
   int scale_level;
+  int scale_level_min_box;
   double scale, scale_min, scale_max;
   double perfil1, perfil2;
   int loc_ref = 0;
@@ -519,7 +520,7 @@ struct
   init_tmesh ();
 
   void
-  init_tmesh_with_refine_box ();
+  init_tmesh_with_refine_scale ();
 
   void
   init_tmesh_with_refine_box_scale ();

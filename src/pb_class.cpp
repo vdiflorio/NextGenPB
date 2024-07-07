@@ -112,7 +112,6 @@ poisson_boltzmann::create_mesh_ns ()
       if (lmax/size < perfil2)
         break;
     }
-
     
     ll[0] = cc[0] - size/2;
     ll[1] = cc[1] - size/2;
@@ -333,18 +332,26 @@ poisson_boltzmann::create_mesh_ns ()
       bcells.push_back (std::make_pair (0, i));
 
   } else if (mesh_shape == 3) {
-
     //cubic box with max perfil2
     double size = 1.0/scale;
+    double scale_min_box = 0.75;
     scale_level = 0;
+    scale_level_min_box = 0;
+
 
     for (int ii = 0; ii<28; ++ii) {
       size *= 2;
       scale_level ++;
-
       if (lmax/size < perfil2)
         break;
     }
+
+    for (int ii = 0; ii<scale_level; ++ii) {
+      scale_level_min_box ++;
+      if ((std::pow(2,scale_level_min_box)+1)/size >= scale_min_box)
+        break;
+    }
+
     ll[0] = cc[0] - size/2;
     ll[1] = cc[1] - size/2;
     ll[2] = cc[2] - size/2;
@@ -379,13 +386,13 @@ poisson_boltzmann::create_mesh_ns ()
       l_box[0] = l_cr[0];
     } else {
       if (l_box[0] <= l_cr[0]) {
-        err_l = l_cr[0]-l_box[0] + 3*1.0/scale;
+        err_l = l_cr[0]-l_box[0];
         l_box[0] = l_box[0] + err_l;
         r_box[0] = r_box[0] + err_l;
       }
 
       if (r_box[0] >= r_cr[0]) {
-        err_l = r_cr[0]-r_box[0] + 3*1.0/scale;
+        err_l = r_box[0]-r_cr[0];
         l_box[0] = l_box[0] - err_l;
         r_box[0] = r_box[0] - err_l;
       }
@@ -396,13 +403,13 @@ poisson_boltzmann::create_mesh_ns ()
       l_box[1] = l_cr[1];
     } else {
       if (l_box[1] <= l_cr[1]) {
-        err_l = l_cr[1]-l_box[1] + 3*1.0/scale;
+        err_l = l_cr[1]-l_box[1];
         l_box[1] = l_box[1] + err_l;
         r_box[1] = r_box[1] + err_l;
       }
 
       if (r_box[1] >= r_cr[1]) {
-        err_l = r_cr[1]-r_box[1] + 3*1.0/scale;
+        err_l = r_box[1]-r_cr[1];
         l_box[1] = l_box[1] - err_l;
         r_box[1] = r_box[1] - err_l;
       }
@@ -413,14 +420,13 @@ poisson_boltzmann::create_mesh_ns ()
       l_box[2] = l_cr[2];
     } else {
       if (l_box[2] <= l_cr[2]) {
-        err_l = l_cr[2]-l_box[2] + 3*1.0/scale;
+        err_l = l_cr[2]-l_box[2];
         l_box[2] = l_box[2] + err_l;
         r_box[2] = r_box[2] + err_l;
       }
 
       if (r_box[2] >= r_cr[2]) {
-        err_l = r_cr[2]-r_box[2] + 3*1.0/scale;
-        l_box[2] = l_box[2] - err_l;
+        err_l = r_box[2]-r_cr[2];
         r_box[2] = r_box[2] - err_l;
       }
     }
@@ -871,6 +877,8 @@ operator>> (std::basic_istream<char>& inputfile, NS::Atom &a)
             >> a.pos[2]
             >> a.charge
             >> a.radius;
+  if (a.radius < 1.e-5)
+    a.radius = 1.0;
 
   a.radius2 = a.radius*a.radius;
   return inputfile;
@@ -887,23 +895,8 @@ poisson_boltzmann::init_tmesh ()
 
 
 void
-poisson_boltzmann::init_tmesh_with_refine_box_scale ()
+poisson_boltzmann::init_tmesh_with_refine_scale ()
 {
-  if (mesh_shape==3) {
-    l_c[0] = l_box[0];
-    l_c[1] = l_box[1];
-    l_c[2] = l_box[2];
-    r_c[0] = r_box[0];
-    r_c[1] = r_box[1];
-    r_c[2] = r_box[2];
-  } else {
-    l_c[0] = l_cr[0];
-    l_c[1] = l_cr[1];
-    l_c[2] = l_cr[2];
-    r_c[0] = r_cr[0];
-    r_c[1] = r_cr[1];
-    r_c[2] = r_cr[2];
-  }
       
   for (auto i = 0; i < outlevel; ++i) {
     tmsh.set_refine_marker (uniform_refinement);
@@ -914,15 +907,18 @@ poisson_boltzmann::init_tmesh_with_refine_box_scale ()
   (tmesh_3d::quadrant_iterator q) -> int {
     int currentlevel = static_cast<int> (q->the_quadrant->level);
     int retval = 0;
-
+    double x1, y1, z1;
     if (currentlevel >= this->scale_level)
       retval = 0;
     else {
       for (int ii = 0; ii < 8; ++ii) {
         if (! q->is_hanging (ii)) {
-          if ((q -> p (0, ii) >= this->l_c[0]) && (q -> p (0, ii) <= this->r_c[0])
-              && (q -> p (1, ii) >= this->l_c[1]) && (q -> p (1, ii) <= this->r_c[1])
-              && (q -> p (2, ii) >= this->l_c[2]) && (q -> p (2, ii) <= this->r_c[2])) {
+          x1 = q -> p (0, ii);
+          y1 = q -> p (1, ii);
+          z1 = q -> p (2, ii);
+          if ((x1 >= this->l_c[0]) && (x1 <= this->r_c[0])
+              && (y1 >= this->l_c[1]) && (y1 <= this->r_c[1])
+              && (z1 >= this->l_c[2]) && (z1 <= this->r_c[2]) ) {
             retval = 1;
             break;
           }
@@ -938,6 +934,56 @@ poisson_boltzmann::init_tmesh_with_refine_box_scale ()
     tmsh.refine (0, 1);
   }
 }
+
+
+void
+poisson_boltzmann::init_tmesh_with_refine_box_scale ()
+{
+      
+  for (auto i = 0; i < outlevel; ++i) {
+    tmsh.set_refine_marker (uniform_refinement);
+    tmsh.refine (0, 1);
+  }
+
+  auto refinement = [this]
+  (tmesh_3d::quadrant_iterator q) -> int {
+    int currentlevel = static_cast<int> (q->the_quadrant->level);
+    int retval = 0;
+    double x1, y1, z1;
+    if (currentlevel >= this->scale_level)
+      retval = 0;
+    else{
+      for (int ii = 0; ii < 8; ++ii) {
+        if (! q->is_hanging (ii)) {
+          x1 = q -> p (0, ii);
+          y1 = q -> p (1, ii);
+          z1 = q -> p (2, ii);
+          if ((x1 >= this->l_box[0]) && (x1 <= this->r_box[0])
+                      && (y1 >= this->l_box[1]) && (y1 <= this->r_box[1])
+                      && (z1 >= this->l_box[2]) && (z1 <= this->r_box[2]) ) {
+            retval = 1;
+            break;
+          }
+          else if ((x1 >= this->l_c[0]) && (x1 <= this->r_c[0])
+              && (y1 >= this->l_c[1]) && (y1 <= this->r_c[1])
+              && (z1 >= this->l_c[2]) && (z1 <= this->r_c[2]) 
+              &&currentlevel < this->scale_level_min_box) {
+            retval = 1;
+            break;
+          } 
+        }
+      }
+    }
+
+    return (retval);
+  };
+
+  for (auto i = 0; i < scale_level; ++i) {
+    tmsh.set_refine_marker (refinement);
+    tmsh.refine (0, 1);
+  }
+}
+
 bool
 poisson_boltzmann::is_in (const NS::Atom& i,
                           tmesh_3d::quadrant_iterator q)
@@ -1876,12 +1922,13 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   int Atom_number = 0;
   
+
   
 
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
        quadrant != this->tmsh.end_quadrant_sweep ();
        ++quadrant) {
-    // if (marker[quadrant->get_forest_quad_idx()] < 0.6) {
+    if (marker[quadrant->get_forest_quad_idx()] < 0.6) {
       // only inside the molecule
       Atom_number = 0;
       for (const NS::Atom& i : atoms) {
@@ -1914,7 +1961,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
           }
         }
       }
-    // }
+    }
   }
   MPI_Barrier (mpicomm);
   auto end_rho = std::chrono::steady_clock::now();
@@ -2586,38 +2633,38 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   double k = std::sqrt (k2);
 
   if (calc_energy>=2) {
-    // Open the write file
-    std::ofstream phi_nodes_txt;
-    std::ofstream phi_surf_txt;
-    FILE* phi_nod_delphi;
-    FILE* phi_sup_delphi;
-    std::string filename_nodes = "phi_nodes_";
-    std::string filename_nodes_delphi = "phi_nodes_delphi_";
-    std::string filename_surf = "phi_surf_";
-    std::string filename_sup_delphi = "phi_sup_delphi_";
-    std::string extension = ".txt";
-    filename_nodes += std::to_string (bc);
-    filename_nodes += "_";
-    filename_surf += std::to_string (bc);
-    filename_surf += "_";
-    filename_nodes_delphi += std::to_string (bc);
-    filename_nodes_delphi += "_";
-    filename_sup_delphi += std::to_string (bc);
-    filename_sup_delphi += "_";
-    filename_nodes += pqrfilename;
-    filename_surf += pqrfilename;
-    filename_nodes += extension;
-    filename_surf += extension;
-    filename_nodes_delphi += pqrfilename;
-    filename_sup_delphi += pqrfilename;
-    filename_nodes_delphi += extension;
-    filename_sup_delphi += extension;
+    // // Open the write file
+    // std::ofstream phi_nodes_txt;
+    // std::ofstream phi_surf_txt;
+    // FILE* phi_nod_delphi;
+    // FILE* phi_sup_delphi;
+    // std::string filename_nodes = "phi_nodes_";
+    // std::string filename_nodes_delphi = "phi_nodes_delphi_";
+    // std::string filename_surf = "phi_surf_";
+    // std::string filename_sup_delphi = "phi_sup_delphi_";
+    // std::string extension = ".txt";
+    // filename_nodes += std::to_string (bc);
+    // filename_nodes += "_";
+    // filename_surf += std::to_string (bc);
+    // filename_surf += "_";
+    // filename_nodes_delphi += std::to_string (bc);
+    // filename_nodes_delphi += "_";
+    // filename_sup_delphi += std::to_string (bc);
+    // filename_sup_delphi += "_";
+    // filename_nodes += pqrfilename;
+    // filename_surf += pqrfilename;
+    // filename_nodes += extension;
+    // filename_surf += extension;
+    // filename_nodes_delphi += pqrfilename;
+    // filename_sup_delphi += pqrfilename;
+    // filename_nodes_delphi += extension;
+    // filename_sup_delphi += extension;
 
-    phi_nodes_txt.open (filename_nodes.c_str ());
-    phi_surf_txt.open (filename_surf.c_str ());
+    // phi_nodes_txt.open (filename_nodes.c_str ());
+    // phi_surf_txt.open (filename_surf.c_str ());
 
-    phi_sup_delphi = std::fopen ("filename_sup_delphi.txt", "w");
-    phi_nod_delphi = std::fopen ("filename_nodes_delphi.txt", "w");
+    // phi_sup_delphi = std::fopen ("filename_sup_delphi.txt", "w");
+    // phi_nod_delphi = std::fopen ("filename_nodes_delphi.txt", "w");
     /////////////////////////////////////////////////
 
     for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
@@ -2674,23 +2721,23 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
             phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
 
             // // writing potential on surf and nodes
-            phi_nodes_txt << quadrant->p (0, i1) << "  "
-                          << quadrant->p (1, i1) << "  "
-                          << quadrant->p (2, i1) << "  "
-                          << tmp_phi_1 << std::endl;
-            phi_nodes_txt << quadrant->p (0, i2) << "  "
-                          << quadrant->p (1, i2) << "  "
-                          << quadrant->p (2, i2) << "  "
-                          << tmp_phi_2 << std::endl;
+            // phi_nodes_txt << quadrant->p (0, i1) << "  "
+            //               << quadrant->p (1, i1) << "  "
+            //               << quadrant->p (2, i1) << "  "
+            //               << tmp_phi_1 << std::endl;
+            // phi_nodes_txt << quadrant->p (0, i2) << "  "
+            //               << quadrant->p (1, i2) << "  "
+            //               << quadrant->p (2, i2) << "  "
+            //               << tmp_phi_2 << std::endl;
 
-            phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
+            // phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
 
-            std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                          quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
-            std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                          quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
-            std::fprintf (phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                          V[0],V[1],V[2],phi_sup[jj],0.0);
+            // std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+            //               quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
+            // std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+            //               quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
+            // std::fprintf (phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+            //               V[0],V[1],V[2],phi_sup[jj],0.0);
             /////////////////////////////////////////////////
           }
 
@@ -2714,10 +2761,10 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
     }
 
-    phi_nodes_txt.close ();
-    phi_surf_txt.close ();
-    fclose (phi_nod_delphi);
-    fclose (phi_sup_delphi);
+    // phi_nodes_txt.close ();
+    // phi_surf_txt.close ();
+    // fclose (phi_nod_delphi);
+    // fclose (phi_sup_delphi);
 
     energy_react = 0.5*second_int - first_int*constant_react;
   }

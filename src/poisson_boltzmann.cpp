@@ -44,11 +44,11 @@ main (int argc, char **argv)
   pb.read_atoms_from_pqr (inputfile);
   inputfile.close ();
 
-  if (rank == 0) {
-    std::cout << "Atom : " << std::endl;
-    // pb.write_atoms_to_pqr (std::cout);
-    pb.print_options ();
-  }
+  // if (rank == 0) {
+  //   std::cout << "Atom : " << std::endl;
+  //   pb.write_atoms_to_pqr (std::cout);
+  //   pb.print_options ();
+  // }
 
   MPI_Barrier (mpicomm);
 
@@ -59,7 +59,9 @@ main (int argc, char **argv)
 
   TIC ();
 
-  if ( pb.mesh_shape == 0 || pb.refine_box == 1 || pb.mesh_shape ==3 ||pb.mesh_shape ==4 )
+  if ( pb.mesh_shape == 0 || pb.refine_box == 1 ||pb.mesh_shape == 4 )
+    pb.init_tmesh_with_refine_scale ();
+  else if (pb.mesh_shape == 3)
     pb.init_tmesh_with_refine_box_scale ();
   else
     pb.init_tmesh ();
@@ -111,15 +113,15 @@ main (int argc, char **argv)
       pb.write_potential_on_atoms_fast ();
     TOC ("Write potential on atoms")
   }
+/*
+  TIC ();
+  pb.export_tmesh (ray_cache);
+  TOC ("export tmesh");
 
-  // TIC ();
-  // pb.export_tmesh (ray_cache);
-  // TOC ("export tmesh");
-
-  // TIC ();
-  // pb.export_marked_tmesh ();
-  // TOC ("export marked tmesh");
-
+  TIC ();
+  pb.export_marked_tmesh ();
+  TOC ("export marked tmesh");
+*/
 
   if (rank == 0) {
     print_timing_report();
