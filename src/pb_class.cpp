@@ -334,7 +334,7 @@ poisson_boltzmann::create_mesh_ns ()
   } else if (mesh_shape == 3) {
     //cubic box with max perfil2
     double size = 1.0/scale;
-    double scale_min_box = 0.75;
+    double scale_min_box = 0.5;
     scale_level = 0;
     scale_level_min_box = 0;
 
