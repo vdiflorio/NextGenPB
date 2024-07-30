@@ -70,7 +70,7 @@ main (int argc, char **argv)
 
   TIC ();
 
-  if (pb.surf_type != 2 && rank == 0) {
+  if ( rank == 0) {
     ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
   }
 
@@ -113,15 +113,15 @@ main (int argc, char **argv)
       pb.write_potential_on_atoms_fast ();
     TOC ("Write potential on atoms")
   }
-/*
-  TIC ();
-  pb.export_tmesh (ray_cache);
-  TOC ("export tmesh");
 
-  TIC ();
-  pb.export_marked_tmesh ();
-  TOC ("export marked tmesh");
-*/
+  // TIC ();
+  // pb.export_tmesh (ray_cache);
+  // TOC ("export tmesh");
+
+  // TIC ();
+  // pb.export_marked_tmesh ();
+  // TOC ("export marked tmesh");
+
 
   if (rank == 0) {
     print_timing_report();
@@ -153,7 +153,7 @@ main (int argc, char **argv)
     // ray_cached_file.close ();
 
     // //Alternative way to save results:
-    // //print_map (ray_cache.rays);
+    // print_map (ray_cache.rays);
     // }
     // }
   }
@@ -191,7 +191,7 @@ print_point (const std::array<std::vector<std::array<double, 2>>,3>& r)
 
 }
 
-/*
+
 void
 print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3>& r)
 {
@@ -231,7 +231,7 @@ print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_com
   }
 
 }
-
+/*
 void
 save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2>, crossings_t, map_compare>& r)
 {

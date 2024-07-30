@@ -546,6 +546,41 @@ poisson_boltzmann::create_mesh_ns ()
 
     for (int i = 0; i<6; i++)
       bcells.push_back (std::make_pair (0, i));
+  } else if (mesh_shape == 5) {
+    l_cr[0] = ll[0];
+    l_cr[1] = ll[1];
+    l_cr[2] = ll[2];
+    r_cr[0] = rr[0];
+    r_cr[1] = rr[1];
+    r_cr[2] = rr[2];
+    scale = (num_trees[0]*unilevel*2)/ (rr[0]-ll[0]);
+    //////////////////////////////
+    num_trees[1] = num_trees[0];
+    num_trees[2] = num_trees[0];
+    /////////////////////////////
+    if (rank == 0) {
+      std::cout << "x: " << l_cr[0] << ", " << r_cr[0] << std::endl;
+      std::cout << "y: " << l_cr[1] << ", " << r_cr[1] << std::endl;
+      std::cout << "z: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+      std::cout << "Number of trees: " << num_trees[0] << std::endl;
+    }
+    double bound_x = std::abs (r_cr[0]-l_cr[0]);
+    double bound_y = std::abs (r_cr[1]-l_cr[1]);
+    double bound_z = std::abs (r_cr[2]-l_cr[2]);
+    double step[3] = { bound_x/num_trees[0],
+                       bound_y/num_trees[1],
+                       bound_z/num_trees[2]
+                     };
+    double bound[3] = {bound_x, bound_y, bound_z};
+    make_connectivity_3d (num_trees, step, simple_conn_p,
+                          simple_conn_num_vertices, simple_conn_t,
+                          simple_conn_num_trees, bcells);
+    for (p4est_topidx_t i =0; i < simple_conn_num_vertices; ++i) {
+      p4est_topidx_t j = 0;
+      simple_conn_p[3*i + j++] += l_cr[0];
+      simple_conn_p[3*i + j++] += l_cr[1];
+      simple_conn_p[3*i + j] += l_cr[2];
+    }
   } else {
     if (rank == 0) {
       std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
@@ -701,7 +736,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   maxlevel = g2 ((mesh_options + "maxlevel").c_str (), 9);
   minlevel = g2 ((mesh_options + "minlevel").c_str (), 3);
   unilevel = g2 ((mesh_options + "unilevel").c_str (), 5);
-  outlevel = g2 ((mesh_options + "outlevel").c_str (), minlevel);
+  outlevel = g2 ((mesh_options + "outlevel").c_str (), 1);
   loc_refinement = g2 ((mesh_options + "loc_refinement").c_str (), 0);
   mesh_shape = g2 ((mesh_options + "mesh_shape").c_str (), 1);
   refine_box = g2 ((mesh_options + "refine_box").c_str (), 0);
@@ -742,6 +777,13 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     perfil2 = g2 ((mesh_options + "perfil2").c_str (), 0.2);
     scale_min = g2 ((mesh_options + "scale_min").c_str (), 0.5);
     scale_max = g2 ((mesh_options + "scale_max").c_str (), 2.0);
+  }
+
+  if (mesh_shape == 5 ) {
+    num_trees [0] = g2 ((mesh_options + "num_trees_x").c_str (), 10);
+    num_trees [1] = g2 ((mesh_options + "num_trees_y").c_str (), 10);
+    num_trees [2] = g2 ((mesh_options + "num_trees_z").c_str (), 10);
+    perfil1 = g2 ((mesh_options + "perfil1").c_str (), 0.8);
   }
 
   const std::string model_options = "model/";
@@ -1423,7 +1465,6 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
       int num_int_nodes_stern[3] = {0, 0, 0};
       int num_hanging[3] = {0, 0, 0};
 
-
       for (int ii = 0; ii < 8; ++ii) {
         if (! quadrant->is_hanging (ii)) {
           for (int idir = 0; idir < 3; ++idir) {
@@ -1434,7 +1475,6 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
               ++num_int_nodes[idir];
               ++num_int_nodes_stern[idir];
               (*markn)[quadrant->gt (ii)] =1;
-
             }
 
 
@@ -1512,6 +1552,8 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
     ray_cache.fill_cache();
   }
 }
+
+
 
 void
 poisson_boltzmann::export_tmesh (ray_cache_t & ray_cache)
