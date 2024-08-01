@@ -1048,13 +1048,13 @@ poisson_boltzmann::init_tmesh_with_refine_box_scale ()
             retval = 1;
             break;
           }
-          else if ((x1 >= this->l_c[0]) && (x1 <= this->r_c[0])
-              && (y1 >= this->l_c[1]) && (y1 <= this->r_c[1])
-              && (z1 >= this->l_c[2]) && (z1 <= this->r_c[2]) 
-              &&currentlevel < this->scale_level_min_box) {
-            retval = 1;
-            break;
-          } 
+          // else if ((x1 >= this->l_c[0]) && (x1 <= this->r_c[0])
+          //     && (y1 >= this->l_c[1]) && (y1 <= this->r_c[1])
+          //     && (z1 >= this->l_c[2]) && (z1 <= this->r_c[2]) 
+          //     &&currentlevel < this->scale_level_min_box) {
+          //   retval = 1;
+          //   break;
+          // } 
         }
       }
     }
