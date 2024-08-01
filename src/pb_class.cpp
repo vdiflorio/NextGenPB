@@ -32,21 +32,39 @@ poisson_boltzmann::create_mesh_ns ()
   if (mesh_shape !=2) {
     auto comp = [] (const NS::Atom &a1, const NS::Atom &a2) -> bool { return a1.radius < a2.radius; };
     double maxradius = std::max_element (atoms.begin (), atoms.end (), comp)->radius;
-    l_c[0] = atoms.begin ()->pos[0] - atoms.begin ()->radius;
-    l_c[1] = atoms.begin ()->pos[1] - atoms.begin ()->radius;
-    l_c[2] = atoms.begin ()->pos[2] - atoms.begin ()->radius;
-    r_c[0] = atoms.begin ()->pos[0] + atoms.begin ()->radius;
-    r_c[1] = atoms.begin ()->pos[1] + atoms.begin ()->radius;
-    r_c[2] = atoms.begin ()->pos[2] + atoms.begin ()->radius;
-    auto it = [this] (const NS::Atom &a1) {
-      for (int kk = 0; kk < 3; ++kk) {
-        if ((a1.pos[kk] + a1.radius+ 2*prb_radius) > this->r_c[kk])
-          this->r_c[kk] = a1.pos[kk]+ a1.radius + 2*prb_radius;
-        else if ((a1.pos[kk] - a1.radius- 2*prb_radius) < this->l_c[kk])
-          this->l_c[kk] = a1.pos[kk]- a1.radius - 2*prb_radius;
-      }
-    };
-    std::for_each (atoms.begin (), atoms.end (), it);
+    // l_c[0] = atoms.begin ()->pos[0] - atoms.begin ()->radius;
+    // l_c[1] = atoms.begin ()->pos[1] - atoms.begin ()->radius;
+    // l_c[2] = atoms.begin ()->pos[2] - atoms.begin ()->radius;
+    // r_c[0] = atoms.begin ()->pos[0] + atoms.begin ()->radius;
+    // r_c[1] = atoms.begin ()->pos[1] + atoms.begin ()->radius;
+    // r_c[2] = atoms.begin ()->pos[2] + atoms.begin ()->radius;
+
+    // auto it = [this] (const NS::Atom &a1) {
+    //   for (int kk = 0; kk < 3; ++kk) {
+    //     if ((a1.pos[kk] + a1.radius+ 2*prb_radius) > this->r_c[kk])
+    //       this->r_c[kk] = a1.pos[kk]+ a1.radius+ 2*prb_radius;
+    //     else if ((a1.pos[kk] - a1.radius- 2*prb_radius) < this->l_c[kk])
+    //       this->l_c[kk] = a1.pos[kk]- a1.radius - 2*prb_radius;
+    //   }
+    // };
+    // std::for_each (atoms.begin (), atoms.end (), it);
+
+    auto comp_pos_x = [] (const NS::Atom &a1, const NS::Atom &a2) -> bool { return a1.pos[0] < a2.pos[0]; };
+    auto comp_pos_y = [] (const NS::Atom &a1, const NS::Atom &a2) -> bool { return a1.pos[1] < a2.pos[1]; };
+    auto comp_pos_z = [] (const NS::Atom &a1, const NS::Atom &a2) -> bool { return a1.pos[2] < a2.pos[2]; };
+
+    auto minmax_x = std::minmax_element(atoms.begin (), atoms.end (), comp_pos_x);
+    auto minmax_y = std::minmax_element(atoms.begin (), atoms.end (), comp_pos_y);
+    auto minmax_z = std::minmax_element(atoms.begin (), atoms.end (), comp_pos_z);
+
+    l_c[0] = minmax_x.first->pos[0]  - maxradius - 2*prb_radius;
+    l_c[1] = minmax_y.first->pos[1]  - maxradius - 2*prb_radius;
+    l_c[2] = minmax_z.first->pos[2]  - maxradius - 2*prb_radius;
+    r_c[0] = minmax_x.second->pos[0] + maxradius + 2*prb_radius;
+    r_c[1] = minmax_y.second->pos[1] + maxradius + 2*prb_radius;
+    r_c[2] = minmax_z.second->pos[2] + maxradius + 2*prb_radius;
+
+
 
     for (int kk = 0; kk < 3; ++kk) {
       l[kk] = (r_c[kk] - l_c[kk]);
@@ -381,6 +399,7 @@ poisson_boltzmann::create_mesh_ns ()
     r_box[1] = cc_focusing[1] + std::round(n_grid/2.)/scale;
     r_box[2] = cc_focusing[2] + std::round(n_grid/2.)/scale;
 
+
     if((r_box[0]- l_box[0])>= (r_cr[0] - l_cr[0])) {
       r_box[0] = r_cr[0];
       l_box[0] = l_cr[0];
@@ -430,6 +449,25 @@ poisson_boltzmann::create_mesh_ns ()
         r_box[2] = r_box[2] - err_l;
       }
     }
+
+    //calcolo outlevel
+    unsigned int ratio_l_b;
+    double len_box_foc = n_grid/scale;
+    double len_box = rr[0]-ll[0];
+    std::cout<<"0 "<<len_box_foc << "  " << len_box <<std::endl;
+
+    for (int ii = 1; ii<=5; ++ii) {
+      len_box /= 2.0;
+      std::cout<<ii<<"  "<<len_box_foc << "  " << len_box <<std::endl;
+      if (len_box <= len_box_foc){
+        ratio_l_b =ii;
+        break;
+      }
+    }
+
+    outlevel = ratio_l_b;
+    ////////////////////////////////////////
+
     if (rank == 0) {
       std::cout << "cx: " << cc_focusing[0]
                 << " , cy: " << cc_focusing[1]
@@ -553,7 +591,10 @@ poisson_boltzmann::create_mesh_ns ()
     r_cr[0] = rr[0];
     r_cr[1] = rr[1];
     r_cr[2] = rr[2];
-    scale = (num_trees[0]*unilevel*2)/ (rr[0]-ll[0]);
+    if (unilevel == 0)
+      scale = (num_trees[0])/ (rr[0]-ll[0]);
+    else
+      scale = (num_trees[0]*(1<<unilevel))/ (rr[0]-ll[0]);
     //////////////////////////////
     num_trees[1] = num_trees[0];
     num_trees[2] = num_trees[0];
@@ -616,6 +657,7 @@ poisson_boltzmann::create_mesh_ns ()
                           simple_conn_t.get(), simple_conn_num_trees);
 
 }
+
 
 
 double
