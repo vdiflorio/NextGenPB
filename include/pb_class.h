@@ -63,6 +63,7 @@ struct
   double r_box[3]; //refined box max x, y, z value focusing
   //number of trees
   p4est_topidx_t num_trees[3];
+  double len;
 
   //Focusing mesh:
   double cc_focusing[3];

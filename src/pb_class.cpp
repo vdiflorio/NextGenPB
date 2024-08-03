@@ -57,6 +57,7 @@ poisson_boltzmann::create_mesh_ns ()
     auto minmax_y = std::minmax_element(atoms.begin (), atoms.end (), comp_pos_y);
     auto minmax_z = std::minmax_element(atoms.begin (), atoms.end (), comp_pos_z);
 
+
     l_c[0] = minmax_x.first->pos[0]  - maxradius - 2*prb_radius;
     l_c[1] = minmax_y.first->pos[1]  - maxradius - 2*prb_radius;
     l_c[2] = minmax_z.first->pos[2]  - maxradius - 2*prb_radius;
@@ -64,13 +65,16 @@ poisson_boltzmann::create_mesh_ns ()
     r_c[1] = minmax_y.second->pos[1] + maxradius + 2*prb_radius;
     r_c[2] = minmax_z.second->pos[2] + maxradius + 2*prb_radius;
 
-
-
     for (int kk = 0; kk < 3; ++kk) {
       l[kk] = (r_c[kk] - l_c[kk]);
       cc[kk] = (r_c[kk] + l_c[kk])*0.5;
       lmax = l[kk] > lmax ? l[kk] : lmax;
     }
+
+
+    std::cout << std::endl;
+    std::cout << "lmax: " << lmax << std::endl;
+    std::cout << std::endl;
 
     if (false)
     {
@@ -454,18 +458,17 @@ poisson_boltzmann::create_mesh_ns ()
     unsigned int ratio_l_b;
     double len_box_foc = n_grid/scale;
     double len_box = rr[0]-ll[0];
-    std::cout<<"0 "<<len_box_foc << "  " << len_box <<std::endl;
 
     for (int ii = 1; ii<=5; ++ii) {
       len_box /= 2.0;
-      std::cout<<ii<<"  "<<len_box_foc << "  " << len_box <<std::endl;
       if (len_box <= len_box_foc){
         ratio_l_b =ii;
         break;
       }
     }
 
-    outlevel = ratio_l_b;
+    // outlevel = ratio_l_b;
+    outlevel = 1;
     ////////////////////////////////////////
 
     if (rank == 0) {
@@ -585,16 +588,18 @@ poisson_boltzmann::create_mesh_ns ()
     for (int i = 0; i<6; i++)
       bcells.push_back (std::make_pair (0, i));
   } else if (mesh_shape == 5) {
-    l_cr[0] = ll[0];
-    l_cr[1] = ll[1];
-    l_cr[2] = ll[2];
-    r_cr[0] = rr[0];
-    r_cr[1] = rr[1];
-    r_cr[2] = rr[2];
+    l_cr[0] = cc[0] - len/2;
+    l_cr[1] = cc[1] - len/2;
+    l_cr[2] = cc[2] - len/2;
+    r_cr[0] = cc[0] + len/2;
+    r_cr[1] = cc[1] + len/2;
+    r_cr[2] = cc[2] + len/2;
+
+  
     if (unilevel == 0)
-      scale = (num_trees[0])/ (rr[0]-ll[0]);
+      scale = (num_trees[0])/ (len);
     else
-      scale = (num_trees[0]*(1<<unilevel))/ (rr[0]-ll[0]);
+      scale = (num_trees[0]*(1<<unilevel))/ (len);
     //////////////////////////////
     num_trees[1] = num_trees[0];
     num_trees[2] = num_trees[0];
@@ -825,6 +830,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     num_trees [0] = g2 ((mesh_options + "num_trees_x").c_str (), 10);
     num_trees [1] = g2 ((mesh_options + "num_trees_y").c_str (), 10);
     num_trees [2] = g2 ((mesh_options + "num_trees_z").c_str (), 10);
+    len = g2 ((mesh_options + "lato").c_str (), 50.0);
     perfil1 = g2 ((mesh_options + "perfil1").c_str (), 0.8);
   }
 
@@ -2718,37 +2724,37 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
   if (calc_energy>=2) {
     // // Open the write file
-    // std::ofstream phi_nodes_txt;
-    // std::ofstream phi_surf_txt;
-    // FILE* phi_nod_delphi;
-    // FILE* phi_sup_delphi;
-    // std::string filename_nodes = "phi_nodes_";
-    // std::string filename_nodes_delphi = "phi_nodes_delphi_";
-    // std::string filename_surf = "phi_surf_";
-    // std::string filename_sup_delphi = "phi_sup_delphi_";
-    // std::string extension = ".txt";
-    // filename_nodes += std::to_string (bc);
-    // filename_nodes += "_";
-    // filename_surf += std::to_string (bc);
-    // filename_surf += "_";
-    // filename_nodes_delphi += std::to_string (bc);
-    // filename_nodes_delphi += "_";
-    // filename_sup_delphi += std::to_string (bc);
-    // filename_sup_delphi += "_";
-    // filename_nodes += pqrfilename;
-    // filename_surf += pqrfilename;
-    // filename_nodes += extension;
-    // filename_surf += extension;
-    // filename_nodes_delphi += pqrfilename;
-    // filename_sup_delphi += pqrfilename;
-    // filename_nodes_delphi += extension;
-    // filename_sup_delphi += extension;
+    std::ofstream phi_nodes_txt;
+    std::ofstream phi_surf_txt;
+    FILE* phi_nod_delphi;
+    FILE* phi_sup_delphi;
+    std::string filename_nodes = "phi_nodes_";
+    std::string filename_nodes_delphi = "phi_nodes_delphi_";
+    std::string filename_surf = "phi_surf_";
+    std::string filename_sup_delphi = "phi_sup_delphi_";
+    std::string extension = ".txt";
+    filename_nodes += std::to_string (bc);
+    filename_nodes += "_";
+    filename_surf += std::to_string (bc);
+    filename_surf += "_";
+    filename_nodes_delphi += std::to_string (bc);
+    filename_nodes_delphi += "_";
+    filename_sup_delphi += std::to_string (bc);
+    filename_sup_delphi += "_";
+    filename_nodes += pqrfilename;
+    filename_surf += pqrfilename;
+    filename_nodes += extension;
+    filename_surf += extension;
+    filename_nodes_delphi += pqrfilename;
+    filename_sup_delphi += pqrfilename;
+    filename_nodes_delphi += extension;
+    filename_sup_delphi += extension;
 
-    // phi_nodes_txt.open (filename_nodes.c_str ());
-    // phi_surf_txt.open (filename_surf.c_str ());
+    phi_nodes_txt.open (filename_nodes.c_str ());
+    phi_surf_txt.open (filename_surf.c_str ());
 
-    // phi_sup_delphi = std::fopen ("filename_sup_delphi.txt", "w");
-    // phi_nod_delphi = std::fopen ("filename_nodes_delphi.txt", "w");
+    phi_sup_delphi = std::fopen ("filename_sup_delphi.txt", "w");
+    phi_nod_delphi = std::fopen ("filename_nodes_delphi.txt", "w");
     /////////////////////////////////////////////////
 
     for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
@@ -2805,23 +2811,23 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
             phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
 
             // // writing potential on surf and nodes
-            // phi_nodes_txt << quadrant->p (0, i1) << "  "
-            //               << quadrant->p (1, i1) << "  "
-            //               << quadrant->p (2, i1) << "  "
-            //               << tmp_phi_1 << std::endl;
-            // phi_nodes_txt << quadrant->p (0, i2) << "  "
-            //               << quadrant->p (1, i2) << "  "
-            //               << quadrant->p (2, i2) << "  "
-            //               << tmp_phi_2 << std::endl;
+            phi_nodes_txt << quadrant->p (0, i1) << "  "
+                          << quadrant->p (1, i1) << "  "
+                          << quadrant->p (2, i1) << "  "
+                          << tmp_phi_1 << std::endl;
+            phi_nodes_txt << quadrant->p (0, i2) << "  "
+                          << quadrant->p (1, i2) << "  "
+                          << quadrant->p (2, i2) << "  "
+                          << tmp_phi_2 << std::endl;
 
-            // phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
+            phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
 
-            // std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-            //               quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
-            // std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-            //               quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
-            // std::fprintf (phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-            //               V[0],V[1],V[2],phi_sup[jj],0.0);
+            std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+                          quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
+            std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+                          quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
+            std::fprintf (phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
+                          V[0],V[1],V[2],phi_sup[jj],0.0);
             /////////////////////////////////////////////////
           }
 
@@ -2845,10 +2851,10 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
     }
 
-    // phi_nodes_txt.close ();
-    // phi_surf_txt.close ();
-    // fclose (phi_nod_delphi);
-    // fclose (phi_sup_delphi);
+    phi_nodes_txt.close ();
+    phi_surf_txt.close ();
+    fclose (phi_nod_delphi);
+    fclose (phi_sup_delphi);
 
     energy_react = 0.5*second_int - first_int*constant_react;
   }
