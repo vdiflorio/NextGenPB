@@ -2722,7 +2722,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
   double k = std::sqrt (k2);
 
-  if (calc_energy>=2) {
+  if (calc_energy>=2 && k >1.e-5) {
     // // Open the write file
     std::ofstream phi_nodes_txt;
     std::ofstream phi_surf_txt;
@@ -2855,6 +2855,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
     phi_surf_txt.close ();
     fclose (phi_nod_delphi);
     fclose (phi_sup_delphi);
+
 
     energy_react = 0.5*second_int - first_int*constant_react;
   }
