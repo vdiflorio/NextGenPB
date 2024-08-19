@@ -2014,7 +2014,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   
 
   
-
+  /*
   for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
        quadrant != this->tmsh.end_quadrant_sweep ();
        ++quadrant) {
@@ -2053,6 +2053,38 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
       }
     }
   }
+  */
+
+  search_points ();
+
+
+  for (auto it = lookup_table.begin(); it!=lookup_table.end(); ++it)
+  {
+    
+      //linear approx:
+    double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
+                    (it->second.p (1, 7) - it->second.p (1, 0)) *
+                    (it->second.p (2, 7) - it->second.p (2, 0)); //volume
+
+
+    {
+      for (int ii = 0; ii < 8; ++ii) {
+        double weigth = std::abs ((atoms[it->first].pos[0] - it->second.p (0, 7-ii))*
+                                  (atoms[it->first].pos[1] - it->second.p (1, 7-ii))*
+                                  (atoms[it->first].pos[2] - it->second.p (2, 7-ii))) / volume;
+
+        if (! it->second.is_hanging (ii))
+          (*rho_fixed)[it->second.gt (ii)] += atoms[it->first].charge*4.0*pi*weigth / vol_patch[it->second.gt (ii)];
+        else
+          for (int jj = 0; jj < it->second.num_parents (ii); ++jj) {
+            double denom = it->second.num_parents (ii) * vol_patch[it->second.gparent (jj, ii)];
+            (*rho_fixed)[it->second.gparent (jj, ii)] += atoms[it->first].charge*4.0*pi*weigth / denom;
+          }
+
+      }
+    }
+  }
+
   MPI_Barrier (mpicomm);
   auto end_rho = std::chrono::steady_clock::now();
   if (rank==0) {
@@ -2256,30 +2288,31 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
   filename += extension;
   phi_atoms.open (filename.c_str ());
 
-  // FILE* phi_atoms;
-  // phi_atoms = std::fopen (filename.c_str (), "w");
   double phi_on_atom;
+  double phi_hang_nodes = 0.0;
 
-
-  for (auto it = look_at_table.begin(); it!=look_at_table.end(); ++it) {
+  for (auto it = lookup_table.begin(); it!=lookup_table.end(); ++it) {
     phi_on_atom = 0.0;
       //linear approx:
-      double volume = (it->second.second.p (0, 7) - it->second.second.p (0, 0)) *
-                      (it->second.second.p (1, 7) - it->second.second.p (1, 0)) *
-                      (it->second.second.p (2, 7) - it->second.second.p (2, 0)); //volume
+      double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
+                      (it->second.p (1, 7) - it->second.p (1, 0)) *
+                      (it->second.p (2, 7) - it->second.p (2, 0)); //volume
+
+
+
       {
         for (int ii = 0; ii < 8; ++ii) {
-          double weigth = std::abs ((it->second.first.pos[0] - it->second.second.p (0, 7-ii))*
-                                    (it->second.first.pos[1] - it->second.second.p (1, 7-ii))*
-                                    (it->second.first.pos[2] - it->second.second.p (2, 7-ii))) / volume;
+          double weigth = std::abs ((atoms[it->first].pos[0] - it->second.p (0, 7-ii))*
+                                    (atoms[it->first].pos[1] - it->second.p (1, 7-ii))*
+                                    (atoms[it->first].pos[2] - it->second.p (2, 7-ii))) / volume;
 
-          if (! it->second.second.is_hanging (ii))
-            phi_on_atom += (*phi)[it->second.second.gt (ii)]*weigth;
+          if (! it->second.is_hanging (ii))
+            phi_on_atom += (*phi)[it->second.gt (ii)]*weigth;
           else {
-            double phi_hang_nodes = 0.0;
+            phi_hang_nodes = 0.0;
+            for (int jj = 0; jj < it->second.num_parents (ii); ++jj)
+              phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)]/it->second.num_parents (ii);
 
-            for (int jj = 0; jj < it->second.second.num_parents (ii); ++jj)
-              phi_hang_nodes += (*phi)[it->second.second.gparent (jj, ii)]/it->second.second.num_parents (ii);
 
             phi_on_atom += phi_hang_nodes*weigth;
           }
@@ -2287,14 +2320,15 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
       }
 
       phi_atoms << std::fixed << std::setprecision(3)
-               << std::setw(8) << it->second.first.pos[0]
-                << std::setw(8) << it->second.first.pos[1]
-                << std::setw(8) << it->second.first.pos[2]
+                << std::setw(8) << atoms[it->first].pos[0]
+                << std::setw(8) << atoms[it->first].pos[1]
+                << std::setw(8) << atoms[it->first].pos[2]
                 << std::fixed << std::setprecision(4)
                 << "  " << phi_on_atom << std::endl;
   }
+
+
   phi_atoms.close ();
-  // fclose (phi_atoms);
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2724,6 +2758,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
   if (calc_energy>=2 && k >1.e-5) {
     // // Open the write file
+    /*
     std::ofstream phi_nodes_txt;
     std::ofstream phi_surf_txt;
     FILE* phi_nod_delphi;
@@ -2755,6 +2790,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
     phi_sup_delphi = std::fopen ("filename_sup_delphi.txt", "w");
     phi_nod_delphi = std::fopen ("filename_nodes_delphi.txt", "w");
+    /**/
     /////////////////////////////////////////////////
 
     for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
@@ -2811,6 +2847,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
             phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
 
             // // writing potential on surf and nodes
+            /*
             phi_nodes_txt << quadrant->p (0, i1) << "  "
                           << quadrant->p (1, i1) << "  "
                           << quadrant->p (2, i1) << "  "
@@ -2828,6 +2865,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
                           quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
             std::fprintf (phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
                           V[0],V[1],V[2],phi_sup[jj],0.0);
+            /**/
             /////////////////////////////////////////////////
           }
 
@@ -2850,12 +2888,12 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
       }
 
     }
-
+    /*
     phi_nodes_txt.close ();
     phi_surf_txt.close ();
     fclose (phi_nod_delphi);
     fclose (phi_sup_delphi);
-
+    /**/
 
     energy_react = 0.5*second_int - first_int*constant_react;
   }
@@ -3064,5 +3102,89 @@ poisson_boltzmann::analitic_potential()
   // tmsh.octbin_export ("field_an_0", field_an);
 }
 
+bool 
+poisson_boltzmann::controlla_coordinate (int i, const p8est_quadrant_t *quadrant)
+{
 
+  double tol = p4esttol * (rr[0]-ll[0]);
+
+  if (mesh_shape == 2)
+    tol = p4esttol * (r_c[0]-l_c[0]);
+
+
+  bool retval = false;
+
+  p8est_quadrant_t node;
+  int ii, jj;
+  double vxyz [3 * 8] = {0,0,0, 0,0,0, 0,0,0, 0,0,0,
+         0,0,0, 0,0,0, 0,0,0, 0,0,0};
+
+  for (ii = 0; ii < 8; ++ii)
+  {
+    p8est_quadrant_corner_node (quadrant, ii, &node);
+    p8est_qcoord_to_vertex (tmsh.p8est->connectivity, 0,
+          node.x, node.y, node.z, &(vxyz[3 * ii]));
+  }
+
+  double l, r, t, b, f, bk;
+
+  l = vxyz[0];
+  r = vxyz[3*7];
+
+  f  = vxyz[1];
+  bk = vxyz[3*7 +1];
+
+  b = vxyz[2];
+  t = vxyz[3*7 +2];
+
+
+  retval = (atoms[i].pos[0] > l - tol) && (atoms[i].pos[0] <= r - tol); //make sure that the charge is assigned only once
+  retval = retval && (atoms[i].pos[1] > f - tol) && (atoms[i].pos[1] <= bk - tol);
+  retval = retval && (atoms[i].pos[2] > b - tol) && (atoms[i].pos[2] <= t - tol);
+
+  return retval;
+}
+
+
+int 
+poisson_boltzmann::cerca_atomo (p8est_t * p4est,
+                p4est_topidx_t which_tree,
+                p8est_quadrant_t * quadrant,
+                p4est_locidx_t local_num,
+                void *point) {
+    int *pt = (int *) point;
+    // std::cout << "\n pt: " <<*pt <<"\n"<< std::endl;
+    bool tf = controlla_coordinate (*pt, quadrant);
+    if (tf) {
+        if (local_num > 0) {
+          auto quadrant = this->tmsh.begin_quadrant_sweep ();
+          quadrant[local_num];
+          tmesh_3d::quadrant_t qi = tmsh.current_quadrant;
+          lookup_table.emplace(*pt, qi);
+
+        }
+        return 1;
+    }
+    return 0;
+
+}
+
+void
+poisson_boltzmann::search_points ()
+{
+
+  auto base =std::make_unique<int[]> (atoms.size());
+
+  size_t count = atoms.size();
+
+  for (size_t ii = 0; ii < count; ++ii) {
+      base[ii] = ii;
+  }
+  
+  sc_array_t *points = sc_array_new_data(base.get(), sizeof(int), count);
+
+
+  p8est_search_local(tmsh.p8est, 0, NULL, cerca_atomo_wrapper, points);
+
+}
 

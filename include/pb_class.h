@@ -23,6 +23,9 @@ const double p4esttol = 1 / std::pow (2, P8EST_QMAXLEVEL);
 #include <nanoshaper.h>
 
 
+#include "wrapper_search.h"
+
+
 // Problem parameters
 constexpr double e_0 = 8.85418781762e-12; //Dielectric void const [F/m]
 constexpr double kb = 1.380649e-23; //Boltzmann constant [J/K]
@@ -115,8 +118,9 @@ struct
 
   //post_processing
   int atoms_write;
-  // std::vector<std::pair<const NS::Atom &, tmesh_3d::quadrant_t>> look_at_table;
   std::map<int,std::pair<const NS::Atom &, tmesh_3d::quadrant_t>> look_at_table;
+  std::map<int, tmesh_3d::quadrant_t> lookup_table;
+
 
   std::vector<double> marker;
   std::vector<double> marker_k;
@@ -595,6 +599,19 @@ struct
   int
   getTriangles (int cubeindex,
                 std::array<std::array<int,3>,5> &triangles);
+
+  bool 
+  controlla_coordinate (int i, const p8est_quadrant_t *quadrant);
+  
+  int 
+  cerca_atomo (p8est_t * p4est,
+                p4est_topidx_t which_tree,
+                p8est_quadrant_t * quadrant,
+                p4est_locidx_t local_num,
+                void *point);
+
+  void
+  search_points ();
 };
 
 std::basic_istream<char>&
