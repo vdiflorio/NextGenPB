@@ -1,15 +1,16 @@
 CPPFLAGS=\
+-I/usr/include/openmpi-x86_64 \
+-I/usr/include/MUMPS/ \
 -I/opt/octave_file_io/include/ \
 -I/opt/p4est/include/ \
 -I/opt/nanoshaper/src \
--I../include -I../addons \
+-I/usr/local/nextgenPB/include -I/usr/local/nextgenPB/addons \
 -I/opt/bimpp/include \
--I/opt/local/include \
 -I/opt/lis/include \
 -DHAVE_OCTAVE_44 -DOMPI_SKIP_MPICXX -DBIM_TIMING -DUSE_MPI
 
-CXXFLAGS= -std=c++17 -ggdb  -O3 -fsanitize=address
-#CXXFLAGS= -Ofast -mtune=native
+CXXFLAGS= -Ofast -mtune=native
+CXX=mpicxx
 
 LDFLAGS=-L/opt/octave_file_io/lib \
 -L/opt/p4est/lib \
@@ -21,7 +22,9 @@ LDFLAGS=-L/opt/octave_file_io/lib \
 -Wl,-rpath,/opt/bimpp/lib  \
 -Wl,-rpath,/opt/octave_file_io/lib \
 -Wl,-rpath,/opt/lis/lib \
--Wl,-rpath,/opt/p4est/lib
+-Wl,-rpath,/opt/p4est/lib \
+-Wl,-rpath -Wl,/usr/lib64/openmpi/lib \
+-Wl,-rpath -Wl,/usr/lib64
 
 
 LIBS=-lNanoShaper -lbim -lbimmumps -lbimlis -lbimp4est \
