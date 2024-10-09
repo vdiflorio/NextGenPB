@@ -2358,84 +2358,86 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
   int i1, i2;
   double x1, x2;
   std::array<double,2> ray;
-
-  for (int j: {
-         0,2,4,6
-       })
-    //x-axis edge
+  if (marker[quadrant->get_forest_quad_idx()] == 0.5)
   {
-    dir = 0;
-    i1 = edge2nodes[2 * j ];
-    i2 = edge2nodes[2 * j + 1];
-    x1 = quadrant->p (dir, i1);
-    x2 = quadrant->p (dir, i2);
-    std::vector<int> direzioni {0,1,2};
-    direzioni.erase (direzioni.begin()+dir);
+    for (int j: {
+           0,2,4,6
+         })
+      //x-axis edge
+    {
+      dir = 0;
+      i1 = edge2nodes[2 * j ];
+      i2 = edge2nodes[2 * j + 1];
+      x1 = quadrant->p (dir, i1);
+      x2 = quadrant->p (dir, i2);
+      std::vector<int> direzioni {0,1,2};
+      direzioni.erase (direzioni.begin()+dir);
 
-    for (unsigned i = 0; i < direzioni.size(); ++i) {
-      ray[i] = quadrant->p (direzioni[i], i1);
-    }
+      for (unsigned i = 0; i < direzioni.size(); ++i) {
+        ray[i] = quadrant->p (direzioni[i], i1);
+      }
 
-    auto it0 = ray_cache.rays[dir].find (ray);
-    auto inters = it0->second.inters;
+      auto it0 = ray_cache.rays[dir].find (ray);
+      auto inters = it0->second.inters;
 
-    for (int ii =0; ii<inters.size (); ii++) {
-      if (inters[ii]>= x1 && inters[ii] <=x2) {
-        fraction[j] = (inters[ii] - x1)/ (x2 - x1);
+      for (int ii =0; ii<inters.size (); ii++) {
+        if (inters[ii]>= x1 && inters[ii] <=x2) {
+          fraction[j] = (inters[ii] - x1)/ (x2 - x1);
+        }
       }
     }
-  }
 
-  for (int j: {
-         1,3,5,7
-       })
-    //y-axis edge
-  {
-    dir = 1;
-    i1 = edge2nodes[2 * j ];
-    i2 = edge2nodes[2 * j + 1];
-    x1 = quadrant->p (dir, i1);
-    x2 = quadrant->p (dir, i2);
-    std::vector<int> direzioni {0,1,2};
-    direzioni.erase (direzioni.begin()+dir);
+    for (int j: {
+           1,3,5,7
+         })
+      //y-axis edge
+    {
+      dir = 1;
+      i1 = edge2nodes[2 * j ];
+      i2 = edge2nodes[2 * j + 1];
+      x1 = quadrant->p (dir, i1);
+      x2 = quadrant->p (dir, i2);
+      std::vector<int> direzioni {0,1,2};
+      direzioni.erase (direzioni.begin()+dir);
 
-    for (unsigned i = 0; i < direzioni.size(); ++i) {
-      ray[i] = quadrant->p (direzioni[i], i1);
-    }
+      for (unsigned i = 0; i < direzioni.size(); ++i) {
+        ray[i] = quadrant->p (direzioni[i], i1);
+      }
 
-    auto it0 = ray_cache.rays[dir].find (ray);
-    auto inters = it0->second.inters;
+      auto it0 = ray_cache.rays[dir].find (ray);
+      auto inters = it0->second.inters;
 
-    for (int ii =0; ii<inters.size (); ii++) {
-      if (inters[ii]>= x1 && inters[ii] <=x2) {
-        fraction[j] = (inters[ii] - x1)/ (x2 - x1);
+      for (int ii =0; ii<inters.size (); ii++) {
+        if (inters[ii]>= x1 && inters[ii] <=x2) {
+          fraction[j] = (inters[ii] - x1)/ (x2 - x1);
+        }
       }
     }
-  }
 
-  for (int j: {
-         8,9,10,11
-       })
-    //z-axis edge
-  {
-    dir = 2;
-    i1 = edge2nodes[2 * j ];
-    i2 = edge2nodes[2 * j + 1];
-    x1 = quadrant->p (dir, i1);
-    x2 = quadrant->p (dir, i2);
-    std::vector<int> direzioni {0,1,2};
-    direzioni.erase (direzioni.begin()+dir);
+    for (int j: {
+           8,9,10,11
+         })
+      //z-axis edge
+    {
+      dir = 2;
+      i1 = edge2nodes[2 * j ];
+      i2 = edge2nodes[2 * j + 1];
+      x1 = quadrant->p (dir, i1);
+      x2 = quadrant->p (dir, i2);
+      std::vector<int> direzioni {0,1,2};
+      direzioni.erase (direzioni.begin()+dir);
 
-    for (unsigned i = 0; i < direzioni.size(); ++i) {
-      ray[i] = quadrant->p (direzioni[i], i1);
-    }
+      for (unsigned i = 0; i < direzioni.size(); ++i) {
+        ray[i] = quadrant->p (direzioni[i], i1);
+      }
 
-    auto it0 = ray_cache.rays[dir].find (ray);
-    auto inters = it0->second.inters;
+      auto it0 = ray_cache.rays[dir].find (ray);
+      auto inters = it0->second.inters;
 
-    for (int ii =0; ii<inters.size (); ii++) {
-      if (inters[ii]>= x1 && inters[ii] <=x2) {
-        fraction[j] = (inters[ii] - x1)/ (x2 - x1);
+      for (int ii =0; ii<inters.size (); ii++) {
+        if (inters[ii]>= x1 && inters[ii] <=x2) {
+          fraction[j] = (inters[ii] - x1)/ (x2 - x1);
+        }
       }
     }
   }
