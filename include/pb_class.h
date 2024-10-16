@@ -118,7 +118,6 @@ struct
 
   //post_processing
   int atoms_write;
-  std::map<int,std::pair<const NS::Atom &, tmesh_3d::quadrant_t>> look_at_table;
   std::map<int, tmesh_3d::quadrant_t> lookup_table;
 
 
