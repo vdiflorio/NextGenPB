@@ -2726,7 +2726,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
   if (calc_energy>=2 && k >1.e-5) {
     // // Open the write file
-    std::ofstream phi_nodes_txt;
+    /*std::ofstream phi_nodes_txt;
     std::ofstream phi_surf_txt;
     FILE* phi_nod_delphi;
     FILE* phi_sup_delphi;
@@ -2757,6 +2757,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
     phi_sup_delphi = std::fopen ("filename_sup_delphi.txt", "w");
     phi_nod_delphi = std::fopen ("filename_nodes_delphi.txt", "w");
+    /* */
     /////////////////////////////////////////////////
 
     for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
@@ -2813,7 +2814,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
             phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
 
             // // writing potential on surf and nodes
-            phi_nodes_txt << quadrant->p (0, i1) << "  "
+            /*phi_nodes_txt << quadrant->p (0, i1) << "  "
                           << quadrant->p (1, i1) << "  "
                           << quadrant->p (2, i1) << "  "
                           << tmp_phi_1 << std::endl;
@@ -2830,6 +2831,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
                           quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
             std::fprintf (phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
                           V[0],V[1],V[2],phi_sup[jj],0.0);
+            /* */
             /////////////////////////////////////////////////
           }
 
@@ -2852,12 +2854,12 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
       }
 
     }
-
+    /*
     phi_nodes_txt.close ();
     phi_surf_txt.close ();
     fclose (phi_nod_delphi);
     fclose (phi_sup_delphi);
-
+  /* */
 
     energy_react = 0.5*second_int - first_int*constant_react;
   }
