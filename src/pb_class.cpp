@@ -3108,7 +3108,8 @@ bool
 poisson_boltzmann::controlla_coordinate (int i, const p8est_quadrant_t *quadrant)
 {
 
-  double tol = p4esttol * (rr[0]-ll[0]);
+  double tol = 0.0;
+  // double tol = p4esttol * (rr[0]-ll[0]);
 
   if (mesh_shape == 2)
     tol = p4esttol * (r_c[0]-l_c[0]);
