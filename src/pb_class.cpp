@@ -843,7 +843,8 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   T = g2 ((model_options + "T").c_str (), 298.15);
   calc_energy = g2 ((model_options + "calc_energy").c_str (), 2);
   atoms_write = g2 ((model_options + "atoms_write").c_str (), 0);
-
+  atoms_write = g2 ((model_options + "atoms_write").c_str (), 0);
+  potential_map = g2 ((model_options + "potential_map").c_str (), 0);
   const std::string surf_options = "surface/";
   int surf_type_num = g2 ((surf_options + "surface_type").c_str (), 1);
 
@@ -1614,6 +1615,15 @@ poisson_boltzmann::export_tmesh (ray_cache_t & ray_cache)
 }
 
 void
+poisson_boltzmann::export_potential_map (ray_cache_t & ray_cache)
+{
+  int size, rank;
+  MPI_Comm_size (mpicomm, &size);
+  MPI_Comm_rank (mpicomm, &rank);
+  tmsh.octbin_export ("potential_map_0", (*phi));
+}
+
+void
 poisson_boltzmann::export_marked_tmesh ()
 {
   tmsh.octbin_export_quadrant (markerfilename.c_str (), marker);
@@ -1926,8 +1936,6 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
   phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
   (*phi) = mumps_solver.get_distributed_solution ();
   bim3a_solution_with_ghosts (tmsh, (*phi), replace_op);
-
-  // tmsh.octbin_export ("phi_0", phi);
 
   ///////
 

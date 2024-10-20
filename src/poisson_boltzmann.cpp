@@ -129,6 +129,12 @@ main (int argc, char **argv)
     TOC ("Write potential on atoms")
   }
 
+  if (pb.potential_map == 1){
+    TIC ();
+    pb.export_potential_map (ray_cache);
+    TOC ("export potential map");
+  }
+
   // TIC ();
   // pb.export_tmesh (ray_cache);
   // TOC ("export tmesh");
@@ -137,7 +143,7 @@ main (int argc, char **argv)
   // pb.export_marked_tmesh ();
   // TOC ("export marked tmesh");
 
-
+  
   if (rank == 0) {
     print_timing_report();
 

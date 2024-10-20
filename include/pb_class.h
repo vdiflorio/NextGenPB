@@ -118,6 +118,7 @@ struct
 
   //post_processing
   int atoms_write;
+  int potential_map;
   std::map<int, tmesh_3d::quadrant_t> lookup_table;
 
 
@@ -552,6 +553,9 @@ struct
 
   void
   export_tmesh (ray_cache_t & ray_cache);
+
+  void
+  export_potential_map (ray_cache_t & ray_cache);
 
   void
   export_marked_tmesh ();
