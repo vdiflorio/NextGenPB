@@ -216,6 +216,7 @@ ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const
   crossings_t::end[0] = r_cr[0];
   crossings_t::end[1] = r_cr[1];
   crossings_t::end[2] = r_cr[2];
+  ns.clean();
 }
 
 
