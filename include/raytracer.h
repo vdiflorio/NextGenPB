@@ -27,7 +27,8 @@ struct
   int count = 0;
   // unsigned dir; //direction of the ray
   NS::NanoShaper ns;
-
+  double l_c[3] = {0, 0, 0};
+  double r_c[3] = {0, 0, 0};
   // int num_req_rays = 0;
   int num_req_rays[3] = {0, 0, 0};
   std::array<std::set<std::array<double, 2>, map_compare>, 3> rays_list; //list of req rays
