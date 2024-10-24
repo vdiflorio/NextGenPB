@@ -15,9 +15,7 @@ ray_cache_t::operator() (double x0, double x1, unsigned direct)
   auto it0 = rays[direct].find (start_point);
 
   if (it0 != rays[direct].end () && it0->second.init == 1) {
-    count_cache++;
-    count_cache_dir[direct]++;
-    cr_t = it0->second;
+    return rays[direct][start_point];
   }
 
   else if (it0 != rays[direct].end () && it0->second.init == 0) {
