@@ -216,7 +216,6 @@ ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const
   crossings_t::end[0] = r_cr[0];
   crossings_t::end[1] = r_cr[1];
   crossings_t::end[2] = r_cr[2];
-  ns.clean();
 }
 
 
@@ -234,7 +233,7 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
       return;
     }
 
-    std::cout << "Sending new ray for NS!" << std::endl;
+    std::cout << "Sending new ray in x direction for NS!" << std::endl;
     std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
     ns.castAxisOrientedRay (start_ray, crossings_t::end[ct.dir], ints_norms, ct.dir, compute_normals);
 
@@ -260,7 +259,7 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
       ct.init = 1;
       return;
     }
-
+    std::cout << "Sending new ray in y direction for NS!" << std::endl;
     std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
     ns.castAxisOrientedRay (start_ray, crossings_t::end[ct.dir], ints_norms, ct.dir, compute_normals);
 
@@ -286,7 +285,7 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
       ct.init = 1;
       return;
     }
-
+    std::cout << "Sending new ray in z direction for NS!" << std::endl;
     std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
     ns.castAxisOrientedRay (start_ray, crossings_t::end[ct.dir], ints_norms, ct.dir, compute_normals);
 

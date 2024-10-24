@@ -103,9 +103,10 @@ main (int argc, char **argv)
   pb.create_markers_prova (ray_cache);
   TOC ("create element markers");
 
+
+  ray_cache.ns.clean();
+  
   TIC ();
-
-
   if (pb.linear_solver_name == "mumps")
     pb.mumps_compute_electric_potential (ray_cache);
   else if (pb.linear_solver_name == "lis")
