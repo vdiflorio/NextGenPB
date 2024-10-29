@@ -26,7 +26,8 @@ struct
   int count_cache_dir[3] = {0, 0, 0};
   int count = 0;
   // unsigned dir; //direction of the ray
-  NS::NanoShaper ns;
+  std::unique_ptr<NS::NanoShaper>  ns;
+  // NS::NanoShaper ns;
   double l_c[3] = {0, 0, 0};
   double r_c[3] = {0, 0, 0};
   // int num_req_rays = 0;

@@ -97,7 +97,7 @@ main (int argc, char **argv)
     pb.refine_surface (ray_cache);
 
   TOC ("refine the box");
-  ray_cache.ns.clean();
+  // ray_cache.ns.clean();
 
   TIC ();
   pb.create_markers_prova (ray_cache);

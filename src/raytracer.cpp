@@ -147,6 +147,7 @@ ray_cache_t::fill_cache ()
   }
 }
 
+/*
 void
 ray_cache_t::init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
                                    const double & surf_param, const double & stern_layer, const unsigned & num_threads,
@@ -296,6 +297,137 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
     ns.setDirection (ct.dir);
     std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
     ns.castAxisOrientedRay (start_ray, r_c[ct.dir], ints_norms, ct.dir, compute_normals);
+
+    if (ints_norms.size() != 0) {
+      for (unsigned i = 0; i < ints_norms.size(); i++) {
+        ct.inters.push_back (ints_norms[i].first);
+
+        ct.normals.push_back (* (ints_norms[i].second));
+        ct.normals.push_back (* (ints_norms[i].second+1));
+        ct.normals.push_back (* (ints_norms[i].second+2));
+      }
+    }
+
+    ct.init = 1; //ray is now initialized
+  }
+
+}
+*/
+
+
+void
+ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
+                                      const double & surf_param, const double & stern_layer, const unsigned & num_threads,
+                                      double* l_cr, double* r_cr, double scale, const std::string* configFile)
+{
+  ns = std::make_unique<NS::NanoShaper> (atoms, surf_type, surf_param, stern_layer, num_threads,configFile);
+  // set here a consistent grid scale
+  ns->setConfig<double> ("Grid_scale", scale );
+  ns->setConfig<bool> ("Accurate_Triangulation",true);
+  ns->setConfig<double> ("Self_Intersections_Grid_Coefficient", 1.5);
+
+  ns->setConfig<bool> ("Build_epsilon_maps",true);
+
+  // build the grid in the new mode
+  ns->setConfig<bool> ("PB_grid_mode",true);
+
+  // impose here the min and max of the cube
+  ns->setConfig<double> ("xmin",l_cr[0]);
+  ns->setConfig<double> ("ymin",l_cr[1]);
+  ns->setConfig<double> ("zmin",l_cr[2]);
+
+  ns->setConfig<double> ("xmax",r_cr[0]);
+  ns->setConfig<double> ("ymax",r_cr[1]);
+  ns->setConfig<double> ("zmax",r_cr[2]);
+  ns->buildAnalyticalSurface();
+
+  // remember to set this to true in order to collect rays intersections data
+  ns->setCollectGridRays (true);
+  ns->colourGrid();
+  // retrieve intersections data from the map
+  rays = ns->getRaysMap();
+
+  l_c[0] = l_cr[0];
+  l_c[1] = l_cr[1];
+  l_c[2] = l_cr[2];
+  r_c[0] = r_cr[0];
+  r_c[1] = r_cr[1];
+  r_c[2] = r_cr[2];
+}
+
+
+void
+ray_cache_t::compute_ns_inters (crossings_t & ct)
+{
+
+  if (ct.dir == 0) {
+    double start_ray[3] = {l_c[ct.dir], ct.point[0], ct.point[1]};
+    bool compute_normals = true;
+    
+
+    if (ct.point[0] < l_c[1] || ct.point[1] < l_c[2] || ct.point[0] > r_c[1] || ct.point[1] > r_c[2]) { //out of the molecule
+      ct.init = 1;
+      return;
+    }
+
+    std::cout << "Sending new ray in x direction for NS!" << std::endl;
+    ns->setDirection (ct.dir);
+    std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
+    ns->castAxisOrientedRay (start_ray, r_c[ct.dir], ints_norms, ct.dir, compute_normals);
+
+    if (ints_norms.size() != 0) {
+      for (unsigned i = 0; i < ints_norms.size(); i++) {
+        ct.inters.push_back (ints_norms[i].first);
+
+        ct.normals.push_back (* (ints_norms[i].second));
+        ct.normals.push_back (* (ints_norms[i].second+1));
+        ct.normals.push_back (* (ints_norms[i].second+2));
+      }
+    }
+
+    ct.init = 1; //ray is now initialized
+  }
+
+  if (ct.dir == 1) {
+    double start_ray[3] = {ct.point[0], l_c[ct.dir], ct.point[1]};
+    bool compute_normals = true;
+    
+
+    if (ct.point[0] < l_c[0] || ct.point[1] < l_c[2] || ct.point[0] > r_c[0] || ct.point[1] > r_c[2]) { //out of the molecule
+      ct.init = 1;
+      return;
+    }
+    std::cout << "Sending new ray in y direction for NS!" << std::endl;
+    ns->setDirection (ct.dir);
+    std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
+    ns->castAxisOrientedRay (start_ray, r_c[ct.dir], ints_norms, ct.dir, compute_normals);
+
+    if (ints_norms.size() != 0) {
+      for (unsigned i = 0; i < ints_norms.size(); i++) {
+        ct.inters.push_back (ints_norms[i].first);
+
+        ct.normals.push_back (* (ints_norms[i].second));
+        ct.normals.push_back (* (ints_norms[i].second+1));
+        ct.normals.push_back (* (ints_norms[i].second+2));
+      }
+    }
+
+    ct.init = 1; //ray is now initialized
+  }
+
+  if (ct.dir == 2) {
+    double start_ray[3] = {ct.point[0], ct.point[1], l_c[ct.dir]};
+    bool compute_normals = true;
+    
+
+    if (ct.point[0] < l_c[0] || ct.point[1] < l_c[1] || ct.point[0] > r_c[0] || ct.point[1] > r_c[1]) { //out of the molecule
+      ct.init = 1;
+      return;
+    }
+    std::cout << "Sending new ray in z direction for NS!" << std::endl;
+    ns->setDirection (ct.dir);
+    std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
+    ns->castAxisOrientedRay (start_ray, r_c[ct.dir], ints_norms, ct.dir, compute_normals);
 
     if (ints_norms.size() != 0) {
       for (unsigned i = 0; i < ints_norms.size(); i++) {
