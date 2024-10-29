@@ -99,6 +99,8 @@ main (int argc, char **argv)
   TOC ("refine the box");
   // ray_cache.ns.clean();
 
+  ray_cache.ns.reset();
+
   TIC ();
   pb.create_markers_prova (ray_cache);
   TOC ("create element markers");

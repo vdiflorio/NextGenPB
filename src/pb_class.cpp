@@ -2125,6 +2125,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   }
   bim3a_rhs (tmsh, const_ones, *rho_fixed, *rhs);
 
+  rho_fixed.reset();
+
 
   // Set boundary conditions.
   dirichlet_bcs3 bcs;
@@ -2167,9 +2169,12 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
     bim3a_dirichlet_bc (tmsh, bcs, A, *rhs);
   }
-
+  std::cout << "\n\n BC setted"<< std::endl<<std::endl;
   A.assemble ();
   rhs->assemble();
+
+  std::cout << "\n\n matrix assembled"<< std::endl<<std::endl;
+
 
 
   MPI_Barrier (mpicomm);
