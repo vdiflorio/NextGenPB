@@ -2157,6 +2157,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   for (i=is; i<ie; i++)
     lis_vector_set_value (LIS_INS_VALUE, i, rhs->get_owned_data()[i-is], rhs_lis);
 
+  //cleaning of rhs
+  rhs.reset();
+
   //lis_vector_print(rhs_lis);
   // lis PHI
   LIS_VECTOR phi_lis;
@@ -2199,9 +2202,15 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   lis_solve (A_lis, rhs_lis, phi_lis, solver);
 
+  lis_solver_destroy (solver);
+  lis_vector_destroy (rhs_lis);
+
   phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
 
   lis_vector_get_values (phi_lis, is, ln, phi->get_owned_data ().data());
+  
+  lis_vector_destroy (phi_lis);
+
 
   /*
   distributed_vector phi (tmsh.num_owned_nodes (), mpicomm);
@@ -2222,6 +2231,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   }
   */
   MPI_Barrier (mpicomm);
+  
   auto end_sol = std::chrono::steady_clock::now();
 
   if (rank==0) {
@@ -2231,6 +2241,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
               <<std::endl;
   }
 
+ 
   bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
 
 
