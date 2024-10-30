@@ -2108,7 +2108,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   distributed_sparse_matrix A;
   A.set_ranges (tmsh.num_owned_nodes ());
-  rhs = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
+  std::unique_ptr<distributed_vector> rhs = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
 
   bim3a_laplacian_frac (tmsh, (*epsilon_nodes), A, func_frac);
 

@@ -137,7 +137,7 @@ struct
 
   std::unique_ptr<distributed_vector> phi;
   std::unique_ptr<distributed_vector> rho_fixed;
-  std::unique_ptr<distributed_vector> rhs;
+  // std::unique_ptr<distributed_vector> rhs;
 
   static constexpr
   std::array<int, 12> edge_axis = {0,1,0,1,0,1,0,1,2,2,2,2};
