@@ -123,9 +123,11 @@ main (int argc, char **argv)
 
   TOC ("compute potential");
 
+
   if (pb.calc_energy > 0) {
     TIC ();
-    pb.energy (ray_cache);
+    // pb.energy (ray_cache);
+    pb.energy_fast (ray_cache);
     TOC ("compute energy")
   }
 

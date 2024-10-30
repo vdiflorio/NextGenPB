@@ -578,6 +578,9 @@ struct
   void
   energy (ray_cache_t & ray_cache);
 
+  void
+  energy_fast (ray_cache_t & ray_cache);
+
   double
   coulomb_boundary_conditions (double x, double y, double z);
 
