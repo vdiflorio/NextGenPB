@@ -345,6 +345,7 @@ ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const
   ns->setCollectGridRays (true);
   ns->colourGrid();
   // retrieve intersections data from the map
+
   rays = ns->getRaysMap();
 
   l_c[0] = l_cr[0];

@@ -90,16 +90,19 @@ main (int argc, char **argv)
   }
 
   TOC ("init analytical surf");
-
+  MPI_Barrier (mpicomm);
   TIC ();
 
   if (pb.loc_refinement == 1 || pb.mesh_shape == 4)
     pb.refine_surface (ray_cache);
 
   TOC ("refine the box");
-  // ray_cache.ns.clean();
+  
+  if ( rank == 0)
+    ray_cache.ns->clean();
+  // ray_cache.ns.reset();
+  
 
-  ray_cache.ns.reset();
 
   TIC ();
   pb.create_markers_prova (ray_cache);
