@@ -123,7 +123,12 @@ main (int argc, char **argv)
 
   TOC ("compute potential");
 
-
+  if (pb.atoms_write == 1) {
+    TIC ();
+      pb.write_potential_on_atoms_fast ();
+    TOC ("Write potential on atoms")
+  }
+  
   if (pb.calc_energy > 0) {
     TIC ();
     // pb.energy (ray_cache);
@@ -131,11 +136,6 @@ main (int argc, char **argv)
     TOC ("compute energy")
   }
 
-  if (pb.atoms_write == 1) {
-    TIC ();
-      pb.write_potential_on_atoms_fast ();
-    TOC ("Write potential on atoms")
-  }
 
   if (pb.potential_map == 1){
     TIC ();
