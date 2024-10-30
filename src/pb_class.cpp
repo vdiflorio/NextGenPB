@@ -2018,50 +2018,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   MPI_Barrier (mpicomm);
   auto start_rho = std::chrono::steady_clock::now();
 
-  int Atom_number = 0;
-  
-
-  
-  /*
-  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-       quadrant != this->tmsh.end_quadrant_sweep ();
-       ++quadrant) {
-    if (marker[quadrant->get_forest_quad_idx()] < 0.6) {
-      // only inside the molecule
-      Atom_number = 0;
-      for (const NS::Atom& i : atoms) {
-        ++Atom_number; 
-        if (is_in (i, quadrant)) {
-          //linear approx:
-          double volume = (quadrant->p (0, 7) - quadrant->p (0, 0)) *
-                          (quadrant->p (1, 7) - quadrant->p (1, 0)) *
-                          (quadrant->p (2, 7) - quadrant->p (2, 0)); //volume
-
-          if (atoms_write == 1)
-            look_at_table.emplace(Atom_number, std::make_pair(std::cref(i), *quadrant));
-            
-
-          {
-            for (int ii = 0; ii < 8; ++ii) {
-              double weigth = std::abs ((i.pos[0] - quadrant->p (0, 7-ii))*
-                                        (i.pos[1] - quadrant->p (1, 7-ii))*
-                                        (i.pos[2] - quadrant->p (2, 7-ii))) / volume;
-
-              if (! quadrant->is_hanging (ii))
-                (*rho_fixed)[quadrant->gt (ii)] += i.charge*4.0*pi*weigth / vol_patch[quadrant->gt (ii)];
-              else
-                for (int jj = 0; jj < quadrant->num_parents (ii); ++jj) {
-                  double denom = quadrant->num_parents (ii) * vol_patch[quadrant->gparent (jj, ii)];
-                  (*rho_fixed)[quadrant->gparent (jj, ii)] += i.charge*4.0*pi*weigth / denom;
-                }
-
-            }
-          }
-        }
-      }
-    }
-  }
-  */
+  // int Atom_number = 0;
 
   search_points ();
 
@@ -2169,7 +2126,6 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
     bim3a_dirichlet_bc (tmsh, bcs, A, *rhs);
   }
-  std::cout << "\n\n BC setted"<< std::endl<<std::endl;
   A.assemble ();
   rhs->assemble();
 
@@ -2228,6 +2184,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   value = &vals[0];
 
   lis_matrix_set_csr (nnz, ptr, index, value, A_lis);
+
 
   lis_matrix_assemble (A_lis);
 
