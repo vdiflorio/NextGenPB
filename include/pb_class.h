@@ -130,6 +130,9 @@ struct
   std::vector<double> reaction;
   std::vector<double> ones_in;
 
+  std::vector<int> border_quad;
+  
+
   std::set<std::array<int, 2>> int_nodes;
 
   std::unique_ptr<distributed_vector> markn;
