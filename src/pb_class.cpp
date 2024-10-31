@@ -2023,7 +2023,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   ones.reset();
   std::vector<double>().swap(const_ones);
   std::vector<double>().swap(reaction);
-  // std::vector<double>().swap(marker);
+  std::vector<double>().swap(marker);
 
   // Set boundary conditions.
   dirichlet_bcs3 bcs;
