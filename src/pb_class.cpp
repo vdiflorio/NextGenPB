@@ -3031,7 +3031,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   double net_charge = 0.0;
 
   // Store charged atoms
-  std::vector<const NS::Atom> charged_atoms;
+  std::vector<NS::Atom> charged_atoms;
 
 
   for (const NS::Atom& i : atoms) {
