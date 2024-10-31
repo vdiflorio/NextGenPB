@@ -1484,14 +1484,28 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
   MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
 
+  double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
+  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+
+  /////////////////////////////////////////////////////////
+  //reactions
+  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
+
   this->marker.assign (this->tmsh.num_local_quadrants (), 0.0); //marker = 0 -> in
 
   if (stern_layer_surf == 1) {
     this->marker_k.assign (this->tmsh.num_local_quadrants (), 1.0); //marker = 1 -> out stern
+    this->reaction.assign (tmsh.num_local_quadrants (), eps_out*k2);
   }
 
-  markn = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
-  markn->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0); //markn = 0 -> out
+  // markn = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
+  // markn->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0); //markn = 0 -> out
+  epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
+  epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out);
+
+  reaction_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
+  reaction_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out*k2);
 
   int num_cycles = 2;
   if (size == 1 ){
@@ -1523,7 +1537,9 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
                                      quadrant->p (2, ii),idir) > 0.5) { //inside the molecule
               ++num_int_nodes[idir];
               ++num_int_nodes_stern[idir];
-              (*markn)[quadrant->gt (ii)] =1;
+              // (*markn)[quadrant->gt (ii)] =1;
+              (*epsilon_nodes)[quadrant->gt (ii)] = eps_in;
+              (*reaction_nodes)[quadrant->gt (ii)] = 0.0;
             }
 
 
@@ -1589,8 +1605,10 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
         //else: all the nodes are inside: the quadrant is inside and the marker value is 0
         if (stern_layer_surf == 1) {
           for (int idir = 0; idir < 3; ++idir)
-            if (num_int_nodes_stern[idir] != 0) //if there is at least on node inside the stern layer along idir-axis
+            if (num_int_nodes_stern[idir] != 0){ //if there is at least on node inside the stern layer along idir-axis
               this->marker_k[quadrant->get_forest_quad_idx ()] = 0.0; //quadrant is in
+              this->reaction[quadrant->get_forest_quad_idx ()] = 0.0; //quadrant is in
+            }
         }
 
       }
@@ -1963,11 +1981,10 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
   double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
 
+  /*
   epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
   epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out);
 
-  // distributed_vector reaction_nodes (tmsh.num_owned_nodes ());
-  // reaction_nodes.get_owned_data ().assign (reaction_nodes.get_owned_data ().size (), eps_out*k2);
   std::unique_ptr<distributed_vector> reaction_nodes = 
        std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
   reaction_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out*k2);
@@ -1989,7 +2006,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
         (*rp) = eps_out*k2;
   }
 
-  markn.reset();
+  markn.reset();*/
 
   if (size >1)
   {

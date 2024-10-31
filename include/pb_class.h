@@ -134,6 +134,8 @@ struct
 
   std::unique_ptr<distributed_vector> markn;
   std::unique_ptr<distributed_vector> epsilon_nodes;
+  std::unique_ptr<distributed_vector> reaction_nodes;
+
 
   std::unique_ptr<distributed_vector> phi;
   std::unique_ptr<distributed_vector> rho_fixed;
