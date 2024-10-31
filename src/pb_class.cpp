@@ -1963,19 +1963,22 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
   double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
 
-  epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
+  epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
   epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out);
 
-  distributed_vector reaction_nodes (tmsh.num_owned_nodes ());
-  reaction_nodes.get_owned_data ().assign (reaction_nodes.get_owned_data ().size (), eps_out*k2);
+  // distributed_vector reaction_nodes (tmsh.num_owned_nodes ());
+  // reaction_nodes.get_owned_data ().assign (reaction_nodes.get_owned_data ().size (), eps_out*k2);
+  std::unique_ptr<distributed_vector> reaction_nodes = 
+       std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
+  reaction_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out*k2);
 
   for (auto ii = 0; ii< tmsh.num_owned_nodes (); ++ii) {
     if ((*markn).get_owned_data ()[ii]>0.5) {
       (*epsilon_nodes).get_owned_data ()[ii] = eps_in;
-      reaction_nodes.get_owned_data ()[ii] = 0.0;
+      (*reaction_nodes).get_owned_data ()[ii] = 0.0;
     }
   }
-
+  
   if (stern_layer_surf == 1) {
     reaction.assign (tmsh.num_local_quadrants (), 0.0);
 
@@ -1986,46 +1989,51 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
         (*rp) = eps_out*k2;
   }
 
+  markn.reset();
+
   if (size >1)
   {
     bim3a_solution_with_ghosts (tmsh, *epsilon_nodes, replace_op);
 
     if (stern_layer_surf == 0)
-      bim3a_solution_with_ghosts (tmsh, reaction_nodes, replace_op);
+      bim3a_solution_with_ghosts (tmsh, (*reaction_nodes), replace_op);
   }
 
 
   //////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////
 
-  rho_fixed = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
+  rho_fixed = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
   rho_fixed->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0);
 
-  distributed_vector ones (tmsh.num_owned_nodes ());
-  ones.get_owned_data ().assign (ones.get_owned_data ().size (), 1.0);
+  // distributed_vector ones (tmsh.num_owned_nodes ());
+  // ones.get_owned_data ().assign (ones.get_owned_data ().size (), 1.0);
+  std::unique_ptr<distributed_vector> ones = 
+       std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
+  ones->get_owned_data ().assign (tmsh.num_local_quadrants (), 1.0);
 
   std::vector<double> const_ones (tmsh.num_local_quadrants (), 1.0);
 
-  distributed_vector vol_patch (tmsh.num_owned_nodes (), mpicomm);
-  if (size >1)
-  {
-    bim3a_solution_with_ghosts (tmsh, ones, replace_op);
-  }
-  bim3a_rhs (tmsh, const_ones, ones, vol_patch);
+  // distributed_vector vol_patch (tmsh.num_owned_nodes (), mpicomm);
+  std::unique_ptr<distributed_vector> vol_patch = 
+       std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
 
-  vol_patch.assemble ();
+  if (size >1)
+    bim3a_solution_with_ghosts (tmsh, *ones, replace_op);
+  
+  bim3a_rhs (tmsh, const_ones, *ones, *vol_patch);
+
+  if (size >1)
+    vol_patch->assemble ();
 
   MPI_Barrier (mpicomm);
   auto start_rho = std::chrono::steady_clock::now();
 
-  // int Atom_number = 0;
 
   search_points ();
 
-
   for (auto it = lookup_table.begin(); it!=lookup_table.end(); ++it)
   {
-    
       //linear approx:
     double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
                     (it->second.p (1, 7) - it->second.p (1, 0)) *
@@ -2039,16 +2047,17 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
                                   (atoms[it->first].pos[2] - it->second.p (2, 7-ii))) / volume;
 
         if (! it->second.is_hanging (ii))
-          (*rho_fixed)[it->second.gt (ii)] += atoms[it->first].charge*4.0*pi*weigth / vol_patch[it->second.gt (ii)];
+          (*rho_fixed)[it->second.gt (ii)] += atoms[it->first].charge*4.0*pi*weigth / (*vol_patch)[it->second.gt (ii)];
         else
           for (int jj = 0; jj < it->second.num_parents (ii); ++jj) {
-            double denom = it->second.num_parents (ii) * vol_patch[it->second.gparent (jj, ii)];
+            double denom = it->second.num_parents (ii) * (*vol_patch)[it->second.gparent (jj, ii)];
             (*rho_fixed)[it->second.gparent (jj, ii)] += atoms[it->first].charge*4.0*pi*weigth / denom;
           }
 
       }
     }
   }
+  vol_patch.reset();
 
   MPI_Barrier (mpicomm);
   auto end_rho = std::chrono::steady_clock::now();
@@ -2063,17 +2072,21 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
     return cube_fraction_intersection (quadrant,ray_cache);
   };
 
-  distributed_sparse_matrix A;
-  A.set_ranges (tmsh.num_owned_nodes ());
-  std::unique_ptr<distributed_vector> rhs = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
+  // distributed_sparse_matrix A;
+  // A.set_ranges (tmsh.num_owned_nodes ());
+  std::unique_ptr<distributed_sparse_matrix> A = 
+       std::make_unique<distributed_sparse_matrix> (mpicomm);
+  A->set_ranges (tmsh.num_owned_nodes ());
+  std::unique_ptr<distributed_vector> rhs = 
+     std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
 
-  bim3a_laplacian_frac (tmsh, (*epsilon_nodes), A, func_frac);
+  bim3a_laplacian_frac (tmsh, *epsilon_nodes, *A, func_frac);
 
 
   if (stern_layer_surf == 1) { //se c'è lo stern leyer
-    bim3a_reaction (tmsh, reaction, ones, A);
+    bim3a_reaction (tmsh, reaction, *ones, *A);
   } else {
-    bim3a_reaction_frac (tmsh, reaction_nodes, ones, A, func_frac);
+    bim3a_reaction_frac (tmsh, (*reaction_nodes), *ones, *A, func_frac);
   }
 
   if (size >1)
@@ -2083,7 +2096,11 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   bim3a_rhs (tmsh, const_ones, *rho_fixed, *rhs);
 
   rho_fixed.reset();
-
+  reaction_nodes.reset();
+  ones.reset();
+  std::vector<double>().swap(const_ones);
+  std::vector<double>().swap(reaction);
+  // std::vector<double>().swap(marker);
 
   // Set boundary conditions.
   dirichlet_bcs3 bcs;
@@ -2098,7 +2115,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
       }));
     }
 
-    bim3a_dirichlet_bc (tmsh, bcs, A, *rhs);
+    bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs);
   }
 
   if (bc == 2) { //coulombic Dir bc
@@ -2111,7 +2128,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
       }));
     }
 
-    bim3a_dirichlet_bc (tmsh, bcs, A, *rhs);
+    bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs);
   }
 
   if (bc == 3) { //analytic Dir bc for a sphere of R = 2AA and q=1
@@ -2124,10 +2141,14 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
       }));
     }
 
-    bim3a_dirichlet_bc (tmsh, bcs, A, *rhs);
+    bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs);
   }
-  A.assemble ();
-  rhs->assemble();
+
+  if (size > 1)
+  {
+    A->assemble ();
+    rhs->assemble();
+  }
 
   std::cout << "\n\n matrix assembled"<< std::endl<<std::endl;
 
@@ -2142,7 +2163,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   std::vector<int> irow, jcol;
 
 
-  A.csr (vals, jcol, irow);
+  (*A).csr (vals, jcol, irow);
 
   // lis RHS
   LIS_INT i, is, ie, n_rhs, ln;
@@ -2176,8 +2197,10 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   LIS_SCALAR *value; //array of double stores non-zero elements of matrix A along the row
   LIS_MATRIX A_lis; //array of integer containing the col index of non zero elems
 
-  nnz = A.owned_nnz();
+  nnz = (*A).owned_nnz();
   n = tmsh.num_owned_nodes ();
+
+  A.reset();
 
   lis_matrix_create (mpicomm, &A_lis);
 
@@ -2205,7 +2228,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   lis_solver_destroy (solver);
   lis_vector_destroy (rhs_lis);
 
-  phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
+  phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
 
   lis_vector_get_values (phi_lis, is, ln, phi->get_owned_data ().data());
   
@@ -2241,16 +2264,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
               <<std::endl;
   }
 
- 
-  bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
-
-
-  /////////////////////////////////////////////////////////
-
-  // tmsh.octbin_export ("phi_0", *phi);
-  // tmsh.octbin_export ("rho_0", *rho_fixed);
-  // tmsh.octbin_export ("epsilon_nodes_0", *epsilon_nodes);
-
+  if (size > 1) 
+    bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
 
 }
 
