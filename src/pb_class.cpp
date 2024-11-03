@@ -1596,9 +1596,9 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
       }
 
       if (jj != 0 || num_cycles == 1) {
-        if (num_int_nodes[0] == 0) { //if there's no node inside the molecule
+        if (num_int_nodes[2] == 0) { //if there's no node inside the molecule
           this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out
-        } else if (num_int_nodes[0] < (8 - num_hanging[0])) { //if the non hanging nodes are not all inside
+        } else if (num_int_nodes[2] < (8 - num_hanging[2])) { //if the non hanging nodes are not all inside
           this->marker[quadrant->get_forest_quad_idx ()] = 1.0/2.0; //"border"
           border_quad.push_back (quadrant->get_forest_quad_idx ());
         }
