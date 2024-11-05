@@ -3449,10 +3449,10 @@ bool
 poisson_boltzmann::controlla_coordinate (int i, const p8est_quadrant_t *quadrant)
 {
 
-  // double tol = p4esttol * (rr[0]-ll[0]);
+  double tol = p4esttol * (rr[0]-ll[0]);
 
-  // if (mesh_shape == 2)
-  //   tol = p4esttol * (r_c[0]-l_c[0]);
+  if (mesh_shape == 2)
+    tol = p4esttol * (r_c[0]-l_c[0]);
 
 
   bool retval = false;
@@ -3480,10 +3480,9 @@ poisson_boltzmann::controlla_coordinate (int i, const p8est_quadrant_t *quadrant
   b = vxyz[2];
   t = vxyz[3*7 +2];
 
-
-  retval = (atoms[i].pos[0] > l) && (atoms[i].pos[0] <= r); //make sure that the charge is assigned only once
-  retval = retval && (atoms[i].pos[1] > f) && (atoms[i].pos[1] <= bk);
-  retval = retval && (atoms[i].pos[2] > b) && (atoms[i].pos[2] <= t);
+  retval = (atoms[i].pos[0] > l- tol) && (atoms[i].pos[0] <= r- tol); //make sure that the charge is assigned only once
+  retval = retval && (atoms[i].pos[1] > f- tol) && (atoms[i].pos[1] <= bk- tol);
+  retval = retval && (atoms[i].pos[2] > b- tol) && (atoms[i].pos[2] <= t- tol);
 
   return retval;
 }
