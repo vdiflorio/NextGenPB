@@ -1538,8 +1538,12 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
               ++num_int_nodes[idir];
               ++num_int_nodes_stern[idir];
               // (*markn)[quadrant->gt (ii)] =1;
-              (*epsilon_nodes)[quadrant->gt (ii)] = eps_in;
-              (*reaction_nodes)[quadrant->gt (ii)] = 0.0;
+              if (idir ==2)
+              {
+                (*epsilon_nodes)[quadrant->gt (ii)] = eps_in;
+                (*reaction_nodes)[quadrant->gt (ii)] = 0.0;
+              }
+              
             }
 
 
@@ -1607,6 +1611,147 @@ poisson_boltzmann::create_markers_prova (ray_cache_t & ray_cache)
         if (stern_layer_surf == 1) {
           for (int idir = 0; idir < 3; ++idir)
             if (num_int_nodes_stern[idir] != 0){ //if there is at least on node inside the stern layer along idir-axis
+              this->marker_k[quadrant->get_forest_quad_idx ()] = 0.0; //quadrant is in
+              this->reaction[quadrant->get_forest_quad_idx ()] = 0.0; //quadrant is in
+            }
+        }
+
+      }
+
+    }
+
+    MPI_Barrier (mpicomm);
+    ray_cache.fill_cache();
+  }
+}
+
+void
+poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
+{
+
+  int size, rank;
+  MPI_Comm_size (mpicomm, &size);
+  MPI_Comm_rank (mpicomm, &rank);
+
+  double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
+  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+
+  /////////////////////////////////////////////////////////
+  //reactions
+  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
+
+  this->marker.assign (this->tmsh.num_local_quadrants (), 0.0); //marker = 0 -> in
+
+  if (stern_layer_surf == 1) {
+    this->marker_k.assign (this->tmsh.num_local_quadrants (), 1.0); //marker = 1 -> out stern
+    this->reaction.assign (tmsh.num_local_quadrants (), eps_out*k2);
+  }
+
+  // markn = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
+  // markn->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0); //markn = 0 -> out
+  epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
+  epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out);
+
+  reaction_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
+  reaction_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out*k2);
+
+  int num_cycles = 2;
+  if (size == 1 ){
+    num_cycles = 1;
+  }
+  int local_num;
+  for (int jj = 0; jj < num_cycles; ++jj) {
+    ray_cache.num_req_rays[0] = 0; //zero at each ref/coarsen cycle
+    ray_cache.num_req_rays[1] = 0; //zero at each ref/coarsen cycle
+    ray_cache.num_req_rays[2] = 0; //zero at each ref/coarsen cycle
+    ray_cache.rays_list[0].clear ();
+    ray_cache.rays_list[1].clear ();
+    ray_cache.rays_list[2].clear ();
+
+
+    for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
+         quadrant != this->tmsh.end_quadrant_sweep ();
+         ++quadrant) {
+      int num_int_nodes = 0;
+      int num_int_nodes_stern = 0;
+      int num_hanging[3] = {0, 0, 0};
+      double x,y,z;
+      for (int ii = 0; ii < 8; ++ii) {
+        local_num =quadrant->gt (ii);
+        x = quadrant->p (0, ii);
+        y = quadrant->p (1, ii);
+        z = quadrant->p (2, ii);
+        if (! quadrant->is_hanging (ii)) {
+            if (this->is_in_ns_surf (ray_cache, x, y, z, 2) > 0.5) { //inside the molecule
+              ++num_int_nodes;
+              ++num_int_nodes_stern;              
+              (*epsilon_nodes)[local_num] = eps_in;
+              (*reaction_nodes)[local_num] = 0.0;   
+            } else if (this->is_in_ns_surf (ray_cache, x, y, z, 2) < -0.5 ) {
+              ray_cache.num_req_rays[2]++;
+
+              // std::array<double, 2> ray {x,y};
+
+              ray_cache.rays_list[2].insert ({x,y});
+            }
+
+            if (this->is_in_ns_surf (ray_cache, x, y, z, 0) < -0.5 ) {
+              ray_cache.num_req_rays[0]++;
+
+              // std::array<double, 2> ray {y,z};
+
+              ray_cache.rays_list[0].insert ({y,z});
+            }
+
+            if (this->is_in_ns_surf (ray_cache, x, y, z, 1) < -0.5 ) {
+              ray_cache.num_req_rays[1]++;
+
+              std::array<double, 2> ray {x,z};
+
+              ray_cache.rays_list[1].insert ({x,z});
+            }
+
+            if (stern_layer_surf == 1) {
+              if (this->is_in_ns_surf_stern (ray_cache, x, y, z, 2) > 0.5) { //inside the stern layer
+                ++num_int_nodes_stern;
+              }
+            }
+          
+
+        } else
+          for (int idir = 0; idir < 3; ++idir) {
+            ++num_hanging[idir];
+
+            if (this->is_in_ns_surf (ray_cache, x, y, z, idir) < -0.5 ) {
+              ray_cache.num_req_rays[idir]++;
+              std::array<double, 2> ray;
+
+              std::vector<int> direzioni {0,1,2};
+              direzioni.erase (direzioni.begin()+idir);
+
+              for (unsigned i = 0; i < direzioni.size(); ++i) {
+                ray[i] = quadrant->p (direzioni[i], ii);
+              }
+
+              ray_cache.rays_list[idir].insert (ray);
+
+            }
+          }
+      }
+
+      if (jj != 0 || num_cycles == 1) {
+        if (num_int_nodes == 0) { //if there's no node inside the molecule
+          this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out
+        } else if (num_int_nodes < (8 - num_hanging[2])) { //if the non hanging nodes are not all inside
+          this->marker[quadrant->get_forest_quad_idx ()] = 1.0/2.0; //"border"
+          border_quad.push_back (quadrant->get_forest_quad_idx ());
+        }
+
+        //else: all the nodes are inside: the quadrant is inside and the marker value is 0
+        if (stern_layer_surf == 1) {
+          for (int idir = 0; idir < 3; ++idir)
+            if (num_int_nodes_stern != 0){ //if there is at least on node inside the stern layer along idir-axis
               this->marker_k[quadrant->get_forest_quad_idx ()] = 0.0; //quadrant is in
               this->reaction[quadrant->get_forest_quad_idx ()] = 0.0; //quadrant is in
             }
