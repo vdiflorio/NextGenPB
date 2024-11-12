@@ -664,6 +664,638 @@ poisson_boltzmann::create_mesh_ns ()
 }
 
 
+void
+poisson_boltzmann::create_mesh ()
+{
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
+
+  int nx, ny, nz;
+  double scale_tmp, scale_x, scale_y, scale_z;
+  double lmax = 0;
+  double l[3];
+  scale_level = unilevel;
+
+  if (mesh_shape !=2) {
+    double maxradius = *std::max_element (r_atoms.begin (), r_atoms.end ());
+
+    auto comp_pos_x = [](const std::array<double, 3>& a1, const std::array<double, 3>& a2) -> bool {
+        return a1[0] < a2[0];
+    };
+    auto comp_pos_y = [](const std::array<double, 3>& a1, const std::array<double, 3>& a2) -> bool {
+        return a1[1] < a2[1];
+    };
+    auto comp_pos_z = [](const std::array<double, 3>& a1, const std::array<double, 3>& a2) -> bool {
+        return a1[2] < a2[2];
+    };
+
+
+    auto minmax_x = std::minmax_element(pos_atoms.begin (), pos_atoms.end (), comp_pos_x);
+    auto minmax_y = std::minmax_element(pos_atoms.begin (), pos_atoms.end (), comp_pos_y);
+    auto minmax_z = std::minmax_element(pos_atoms.begin (), pos_atoms.end (), comp_pos_z);
+
+
+    l_c[0] = (*minmax_x.first)[0]  - maxradius - 2*prb_radius;
+    l_c[1] = (*minmax_y.first)[1]  - maxradius - 2*prb_radius;
+    l_c[2] = (*minmax_z.first)[2]  - maxradius - 2*prb_radius;
+    r_c[0] = (*minmax_x.second)[0] + maxradius + 2*prb_radius;
+    r_c[1] = (*minmax_y.second)[1] + maxradius + 2*prb_radius;
+    r_c[2] = (*minmax_z.second)[2] + maxradius + 2*prb_radius;
+
+    for (int kk = 0; kk < 3; ++kk) {
+      l[kk] = (r_c[kk] - l_c[kk]);
+      cc[kk] = (r_c[kk] + l_c[kk])*0.5;
+      lmax = l[kk] > lmax ? l[kk] : lmax;
+    }
+
+    if (false)
+    {
+      std::random_device rd;  // Will be used to obtain a seed for the random number engine
+      std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
+      std::uniform_real_distribution<> dis(-1./scale*0.5, 1./scale*0.5);
+      double tmp_cc[3];
+
+      for (int n = 0; n < 3; ++n) { 
+        tmp_cc[n] = cc[n];
+        cc[n] = tmp_cc[n] + dis(gen);
+      }
+      std::cout << tmp_cc[0] << "  " << cc[0] << "  " << std::abs(tmp_cc[0] -cc[0]) << std::endl;
+      std::cout << tmp_cc[1] << "  " << cc[1] << "  " << std::abs(tmp_cc[1] -cc[1]) << std::endl;
+      std::cout << tmp_cc[2] << "  " << cc[2] << "  " << std::abs(tmp_cc[2] -cc[2]) << std::endl;
+    }
+
+    for (int kk = 0; kk < 3; ++kk) {
+      ll[kk] = cc[kk] - lmax*0.5;
+      rr[kk] = cc[kk] + lmax*0.5;
+    }
+
+    //stretched box with perfil1
+    l_c[0] -= l[0]*0.5* (1.0/perfil1 - 1);
+    l_c[1] -= l[1]*0.5* (1.0/perfil1 - 1);
+    l_c[2] -= l[2]*0.5* (1.0/perfil1 - 1);
+    r_c[0] += l[0]*0.5* (1.0/perfil1 - 1);
+    r_c[1] += l[1]*0.5* (1.0/perfil1 - 1);
+    r_c[2] += l[2]*0.5* (1.0/perfil1 - 1);
+
+    //cubic box with perfil1
+    ll[0] -= lmax*0.5* (1.0/perfil1 - 1);
+    ll[1] -= lmax*0.5* (1.0/perfil1 - 1);
+    ll[2] -= lmax*0.5* (1.0/perfil1 - 1);
+    rr[0] += lmax*0.5* (1.0/perfil1 - 1);
+    rr[1] += lmax*0.5* (1.0/perfil1 - 1);
+    rr[2] += lmax*0.5* (1.0/perfil1 - 1);
+
+    l_cr[0] = l_c[0];
+    r_cr[0] = r_c[0];
+    l_cr[1] = l_c[1];
+    r_cr[1] = r_c[1];
+    l_cr[2] = l_c[2];
+    r_cr[2] = r_c[2];
+  }
+
+  if (mesh_shape == 0) {
+
+    //cubic box with max perfil2
+    double size = 1.0/scale;
+    scale_level = 0;
+
+    for (int ii = 0; ii<29; ++ii) {
+      size *= 2;
+      scale_level ++;
+
+      if (lmax/size < perfil2)
+        break;
+    }
+    
+    ll[0] = cc[0] - size/2;
+    ll[1] = cc[1] - size/2;
+    ll[2] = cc[2] - size/2;
+    rr[0] = cc[0] + size/2;
+    rr[1] = cc[1] + size/2;
+    rr[2] = cc[2] + size/2;
+
+
+    nx = (int) ((r_cr[0] - cc[0])*scale + 0.5);
+    ny = (int) ((r_cr[1] - cc[1])*scale + 0.5);
+    nz = (int) ((r_cr[2] - cc[2])*scale + 0.5);
+
+    //refined box
+    l_cr[0] = cc[0] - nx*1.0/scale;
+    l_cr[1] = cc[1] - ny*1.0/scale;
+    l_cr[2] = cc[2] - nz*1.0/scale;
+    r_cr[0] = cc[0] + nx*1.0/scale;
+    r_cr[1] = cc[1] + ny*1.0/scale;
+    r_cr[2] = cc[2] + nz*1.0/scale;
+
+    if (rank == 0) {
+      std::cout << "\n Center of the system:" <<std::endl;
+      std::cout << "cx: " << cc[0]
+                << " , cy: " << cc[1]
+                << " , cz: " << cc[2] << std::endl;
+
+      std::cout << "\n Complete domain box size:" <<std::endl;
+      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+      std::cout << "z: " << ll[2] << ", " << rr[2] << std::endl;
+
+      std::cout << "\n Refined box size:" <<std::endl;
+      std::cout << "xb: " << l_cr[0] << ", " << r_cr[0] << std::endl;
+      std::cout << "yb: " << l_cr[1] << ", " << r_cr[1] << std::endl;
+      std::cout << "zb: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+
+      std::cout << "\n number of subdivision of the refined box:" <<std::endl;
+      std::cout << "nx: " << nx*2 << "  ny: " << ny*2 << " nz: " << nz*2 << std::endl;
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {ll[0], ll[1], ll[2],
+                  rr[0], ll[1], ll[2],
+                  ll[0], rr[1], ll[2],
+                  rr[0], rr[1], ll[2],
+                  ll[0], ll[1], rr[2],
+                  rr[0], ll[1], rr[2],
+                  ll[0], rr[1], rr[2],
+                  rr[0], rr[1], rr[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
+
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  } else if (mesh_shape == 1) {
+    l_cr[0] = ll[0];
+    l_cr[1] = ll[1];
+    l_cr[2] = ll[2];
+    r_cr[0] = rr[0];
+    r_cr[1] = rr[1];
+    r_cr[2] = rr[2];
+    scale = (1<<unilevel)/ (rr[0]-ll[0]);
+
+    if (refine_box == 1) {
+      //cubic box with perfil2
+      ll[0] = cc[0] - lmax*0.5*1.0/perfil2;
+      ll[1] = cc[1] - lmax*0.5*1.0/perfil2;
+      ll[2] = cc[2] - lmax*0.5*1.0/perfil2;
+      rr[0] = cc[0] + lmax*0.5*1.0/perfil2;
+      rr[1] = cc[1] + lmax*0.5*1.0/perfil2;
+      rr[2] = cc[2] + lmax*0.5*1.0/perfil2;
+      scale_tmp = (1<<unilevel)/ (rr[0]-ll[0]);
+
+      nx = (int) ((r_cr[0] - cc[0])*scale_tmp + 0.5);
+      ny = (int) ((r_cr[1] - cc[1])*scale_tmp + 0.5);
+      nz = (int) ((r_cr[2] - cc[2])*scale_tmp + 0.5);
+
+      //refined stretched box
+      l_cr[0] = cc[0] - nx*1.0/scale_tmp;
+      l_cr[1] = cc[1] - ny*1.0/scale_tmp;
+      l_cr[2] = cc[2] - nz*1.0/scale_tmp;
+      r_cr[0] = cc[0] + nx*1.0/scale_tmp;
+      r_cr[1] = cc[1] + ny*1.0/scale_tmp;
+      r_cr[2] = cc[2] + nz*1.0/scale_tmp;
+    }
+
+    if (rank == 0) {
+      std::cout << "\n Center of the system:" <<std::endl;
+      std::cout << "cx: " << cc[0]
+                << " , cy: " << cc[1]
+                << " , cz: " << cc[2] << std::endl;
+
+      std::cout << "\n Complete domain box size:" <<std::endl;
+      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+      std::cout << "z: " << ll[2] << ", " << rr[2] << std::endl;
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {ll[0], ll[1], ll[2],
+                  rr[0], ll[1], ll[2],
+                  ll[0], rr[1], ll[2],
+                  rr[0], rr[1], ll[2],
+                  ll[0], ll[1], rr[2],
+                  rr[0], ll[1], rr[2],
+                  ll[0], rr[1], rr[2],
+                  rr[0], rr[1], rr[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
+
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  } else if (mesh_shape == 2) {
+    if (rank == 0) {
+      std::cout << "\n Center of the system:" <<std::endl;
+      std::cout << "cx: "    << (r_c[0] + l_c[0])*0.5
+                << " , cy: " << (r_c[1] + l_c[1])*0.5
+                << " , cz: " << (r_c[2] + l_c[2])*0.5 << std::endl;
+
+      std::cout << "\n Complete domain box size:" <<std::endl;
+      std::cout << "x: " << l_c[0] << ", " << r_c[0] << std::endl;
+      std::cout << "y: " << l_c[1] << ", " << r_c[1] << std::endl;
+      std::cout << "z: " << l_c[2] << ", " << r_c[2] << "\n" << std::endl;
+
+      if (refine_box == 1) {
+        std::cout << "xb: " << l_cr[0] << ", " << r_cr[0] << std::endl;
+        std::cout << "yb: " << l_cr[1] << ", " << r_cr[1] << std::endl;
+        std::cout << "zb: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+      }
+    }
+
+    l_cr[0] = l_c[0];
+    l_cr[1] = l_c[1];
+    l_cr[2] = l_c[2];
+    r_cr[0] = r_c[0];
+    r_cr[1] = r_c[1];
+    r_cr[2] = r_c[2];
+    scale = (1<<unilevel)/ (r_c[0]-l_c[0]);
+
+    if (refine_box == 1) {
+      double nx_tmp, ny_tmp, nz_tmp;
+      double cc_tmp[3];
+
+      scale_x = (1<<unilevel)/ (r_c[0]-l_c[0]);
+      scale_y = (1<<unilevel)/ (r_c[1]-l_c[1]);
+      scale_z = (1<<unilevel)/ (r_c[2]-l_c[2]);
+
+      cc[0] = (r_c[0]+l_c[0])*0.5;
+      cc[1] = (r_c[1]+l_c[1])*0.5;
+      cc[2] = (r_c[2]+l_c[2])*0.5;
+
+      cc_tmp[0] = (r_cr[0]+l_cr[0])*0.5;
+      cc_tmp[1] = (r_cr[1]+l_cr[1])*0.5;
+      cc_tmp[2] = (r_cr[2]+l_cr[2])*0.5;
+
+      nx_tmp = (int) ((cc[0] - cc_tmp[0])*scale_x + 0.5);
+      ny_tmp = (int) ((cc[1] - cc_tmp[1])*scale_y + 0.5);
+      nz_tmp = (int) ((cc[2] - cc_tmp[2])*scale_z + 0.5);
+
+      cc_tmp[0] = cc[0] + nx_tmp*1.0/scale_x;
+      cc_tmp[1] = cc[1] + ny_tmp*1.0/scale_y;
+      cc_tmp[2] = cc[2] + nz_tmp*1.0/scale_z;
+
+      nx = (int) ((r_cr[0] - cc_tmp[0])*scale_x + 0.5);
+      ny = (int) ((r_cr[1] - cc_tmp[1])*scale_y + 0.5);
+      nz = (int) ((r_cr[2] - cc_tmp[2])*scale_z + 0.5);
+      //refined stretched box
+      l_cr[0] = cc_tmp[0] - nx*1.0/scale_x;
+      l_cr[1] = cc_tmp[1] - ny*1.0/scale_y;
+      l_cr[2] = cc_tmp[2] - nz*1.0/scale_z;
+      r_cr[0] = cc_tmp[0] + nx*1.0/scale_x;
+      r_cr[1] = cc_tmp[1] + ny*1.0/scale_y;
+      r_cr[2] = cc_tmp[2] + nz*1.0/scale_z;
+
+      std::cout << "xb: " << l_cr[0] << ", " << r_cr[0] << std::endl;
+      std::cout << "yb: " << l_cr[1] << ", " << r_cr[1] << std::endl;
+      std::cout << "zb: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {l_c[0], l_c[1], l_c[2],
+                  r_c[0], l_c[1], l_c[2],
+                  l_c[0], r_c[1], l_c[2],
+                  r_c[0], r_c[1], l_c[2],
+                  l_c[0], l_c[1], r_c[2],
+                  r_c[0], l_c[1], r_c[2],
+                  l_c[0], r_c[1], r_c[2],
+                  r_c[0], r_c[1], r_c[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
+
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+
+  } else if (mesh_shape == 3) {
+    //cubic box with max perfil2
+    double size = 1.0/scale;
+    double scale_min_box = 0.5;
+    scale_level = 0;
+    scale_level_min_box = 0;
+
+
+    for (int ii = 0; ii<28; ++ii) {
+      size *= 2;
+      scale_level ++;
+      if (lmax/size < perfil2)
+        break;
+    }
+
+    for (int ii = 0; ii<scale_level; ++ii) {
+      scale_level_min_box ++;
+      if ((std::pow(2,scale_level_min_box)+1)/size >= scale_min_box)
+        break;
+    }
+
+    ll[0] = cc[0] - size/2;
+    ll[1] = cc[1] - size/2;
+    ll[2] = cc[2] - size/2;
+    rr[0] = cc[0] + size/2;
+    rr[1] = cc[1] + size/2;
+    rr[2] = cc[2] + size/2;
+
+    //refined box NS
+    nx = (int) ((r_cr[0] - cc[0])*scale + 0.5);
+    ny = (int) ((r_cr[1] - cc[1])*scale + 0.5);
+    nz = (int) ((r_cr[2] - cc[2])*scale + 0.5);
+
+    l_cr[0] = cc[0] - nx*1.0/scale;
+    l_cr[1] = cc[1] - ny*1.0/scale;
+    l_cr[2] = cc[2] - nz*1.0/scale;
+    r_cr[0] = cc[0] + nx*1.0/scale;
+    r_cr[1] = cc[1] + ny*1.0/scale;
+    r_cr[2] = cc[2] + nz*1.0/scale;
+
+    //refined box FOCUS
+
+    double err_l;
+    l_box[0] = cc_focusing[0] - std::round(n_grid/2.)/scale;
+    l_box[1] = cc_focusing[1] - std::round(n_grid/2.)/scale;
+    l_box[2] = cc_focusing[2] - std::round(n_grid/2.)/scale;
+    r_box[0] = cc_focusing[0] + std::round(n_grid/2.)/scale;
+    r_box[1] = cc_focusing[1] + std::round(n_grid/2.)/scale;
+    r_box[2] = cc_focusing[2] + std::round(n_grid/2.)/scale;
+
+
+    if((r_box[0]- l_box[0])>= (r_cr[0] - l_cr[0])) {
+      r_box[0] = r_cr[0];
+      l_box[0] = l_cr[0];
+    } else {
+      if (l_box[0] <= l_cr[0]) {
+        err_l = l_cr[0]-l_box[0];
+        l_box[0] = l_box[0] + err_l;
+        r_box[0] = r_box[0] + err_l;
+      }
+
+      if (r_box[0] >= r_cr[0]) {
+        err_l = r_box[0]-r_cr[0];
+        l_box[0] = l_box[0] - err_l;
+        r_box[0] = r_box[0] - err_l;
+      }
+    }
+
+    if((r_box[1]- l_box[1])>= (r_cr[1] - l_cr[1])) {
+      r_box[1] = r_cr[1];
+      l_box[1] = l_cr[1];
+    } else {
+      if (l_box[1] <= l_cr[1]) {
+        err_l = l_cr[1]-l_box[1];
+        l_box[1] = l_box[1] + err_l;
+        r_box[1] = r_box[1] + err_l;
+      }
+
+      if (r_box[1] >= r_cr[1]) {
+        err_l = r_box[1]-r_cr[1];
+        l_box[1] = l_box[1] - err_l;
+        r_box[1] = r_box[1] - err_l;
+      }
+    }
+
+    if((r_box[2]- l_box[2])>= (r_cr[2] - l_cr[2])) {
+      r_box[2] = r_cr[2];
+      l_box[2] = l_cr[2];
+    } else {
+      if (l_box[2] <= l_cr[2]) {
+        err_l = l_cr[2]-l_box[2];
+        l_box[2] = l_box[2] + err_l;
+        r_box[2] = r_box[2] + err_l;
+      }
+
+      if (r_box[2] >= r_cr[2]) {
+        err_l = r_box[2]-r_cr[2];
+        r_box[2] = r_box[2] - err_l;
+      }
+    }
+
+    //calcolo outlevel
+    unsigned int ratio_l_b;
+    double len_box_foc = n_grid/scale;
+    double len_box = rr[0]-ll[0];
+
+    for (int ii = 1; ii<=5; ++ii) {
+      len_box /= 2.0;
+      if (len_box <= len_box_foc){
+        ratio_l_b =ii;
+        break;
+      }
+    }
+
+    outlevel = ratio_l_b;
+    // outlevel = 1;
+    ////////////////////////////////////////
+
+    if (rank == 0) {
+      std::cout << "cx: " << cc_focusing[0]
+                << " , cy: " << cc_focusing[1]
+                << " , cz: " << cc_focusing[2] << std::endl;
+
+      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+      std::cout << "z: " << ll[2] << ", " << rr[2] << std::endl;
+
+      std::cout << "xb: " << l_box[0] << ", " << r_box[0] << std::endl;
+      std::cout << "yb: " << l_box[1] << ", " << r_box[1] << std::endl;
+      std::cout << "zb: " << l_box[2] << ", " << r_box[2] << "\n" << std::endl;
+
+      std::cout << "nx: " << nx*2 << "  ny: " << ny*2 << " nz: " << nz*2 << std::endl;
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {ll[0], ll[1], ll[2],
+                  rr[0], ll[1], ll[2],
+                  ll[0], rr[1], ll[2],
+                  rr[0], rr[1], ll[2],
+                  ll[0], ll[1], rr[2],
+                  rr[0], ll[1], rr[2],
+                  ll[0], rr[1], rr[2],
+                  rr[0], rr[1], rr[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
+
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  } else if (mesh_shape == 4) {
+
+    //cubic box with max perfil2
+    
+    double size = 1.0/scale_max;
+    
+    scale = scale_max;
+    maxlevel = 0;
+
+    for (int ii = 0; ii<28; ++ii) {
+      std::cout << size << "  " << maxlevel << std::endl;
+      size *= 2;
+      maxlevel ++;
+      if (lmax/size < perfil2)
+        break;
+    }
+    
+    minlevel = (int) (maxlevel - std::sqrt(scale_max/scale_min));
+
+    unilevel = (int) ((maxlevel + minlevel)*0.5);
+    unilevel = unilevel + 1;
+    outlevel = minlevel;
+    scale_level = maxlevel;
+
+    ll[0] = cc[0] - size/2;
+    ll[1] = cc[1] - size/2;
+    ll[2] = cc[2] - size/2;
+    rr[0] = cc[0] + size/2;
+    rr[1] = cc[1] + size/2;
+    rr[2] = cc[2] + size/2;
+
+    //refined box NS
+    nx = (int) ((r_cr[0] - cc[0])*scale + 0.5);
+    ny = (int) ((r_cr[1] - cc[1])*scale + 0.5);
+    nz = (int) ((r_cr[2] - cc[2])*scale + 0.5);
+
+    l_cr[0] = cc[0] - nx*1.0/scale;
+    l_cr[1] = cc[1] - ny*1.0/scale;
+    l_cr[2] = cc[2] - nz*1.0/scale;
+    r_cr[0] = cc[0] + nx*1.0/scale;
+    r_cr[1] = cc[1] + ny*1.0/scale;
+    r_cr[2] = cc[2] + nz*1.0/scale;
+
+    
+    if (rank == 0) {
+      std::cout << "cx: " << cc[0]
+                << " , cy: " << cc[1]
+                << " , cz: " << cc[2] << std::endl;
+
+      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+      std::cout << "z: " << ll[2] << ", " << rr[2] << std::endl;
+
+      std::cout << minlevel <<" "<<maxlevel << "  " << unilevel <<std::endl;
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {ll[0], ll[1], ll[2],
+                  rr[0], ll[1], ll[2],
+                  ll[0], rr[1], ll[2],
+                  rr[0], rr[1], ll[2],
+                  ll[0], ll[1], rr[2],
+                  rr[0], ll[1], rr[2],
+                  ll[0], rr[1], rr[2],
+                  rr[0], rr[1], rr[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
+
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  } else if (mesh_shape == 5) {
+    l_cr[0] = cc[0] - len/2;
+    l_cr[1] = cc[1] - len/2;
+    l_cr[2] = cc[2] - len/2;
+    r_cr[0] = cc[0] + len/2;
+    r_cr[1] = cc[1] + len/2;
+    r_cr[2] = cc[2] + len/2;
+
+  
+    if (unilevel == 0)
+      scale = (num_trees[0])/ (len);
+    else
+      scale = (num_trees[0]*(1<<unilevel))/ (len);
+    //////////////////////////////
+    num_trees[1] = num_trees[0];
+    num_trees[2] = num_trees[0];
+    /////////////////////////////
+    if (rank == 0) {
+      std::cout << "x: " << l_cr[0] << ", " << r_cr[0] << std::endl;
+      std::cout << "y: " << l_cr[1] << ", " << r_cr[1] << std::endl;
+      std::cout << "z: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+      std::cout << "Number of trees: " << num_trees[0] << std::endl;
+    }
+    double bound_x = std::abs (r_cr[0]-l_cr[0]);
+    double bound_y = std::abs (r_cr[1]-l_cr[1]);
+    double bound_z = std::abs (r_cr[2]-l_cr[2]);
+    double step[3] = { bound_x/num_trees[0],
+                       bound_y/num_trees[1],
+                       bound_z/num_trees[2]
+                     };
+    double bound[3] = {bound_x, bound_y, bound_z};
+    make_connectivity_3d (num_trees, step, simple_conn_p,
+                          simple_conn_num_vertices, simple_conn_t,
+                          simple_conn_num_trees, bcells);
+    for (p4est_topidx_t i =0; i < simple_conn_num_vertices; ++i) {
+      p4est_topidx_t j = 0;
+      simple_conn_p[3*i + j++] += l_cr[0];
+      simple_conn_p[3*i + j++] += l_cr[1];
+      simple_conn_p[3*i + j] += l_cr[2];
+    }
+  } else {
+    if (rank == 0) {
+      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
+      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
+      std::cout << "z: " << ll[2] << ", " << rr[2] << "\n" << std::endl;
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees = 1;
+
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices*3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {ll[0], ll[1], ll[2],
+                  rr[0], ll[1], ll[2],
+                  ll[0], rr[1], ll[2],
+                  rr[0], rr[1], ll[2],
+                  ll[0], ll[1], rr[2],
+                  rr[0], ll[1], rr[2],
+                  ll[0], rr[1], rr[2],
+                  rr[0], rr[1], rr[2]
+                 };
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
+
+    std::copy (tmp_p.begin(), tmp_p.end(), simple_conn_p.get());
+    std::copy (tmp_t.begin(), tmp_t.end(), simple_conn_t.get());
+
+    for (int i = 0; i<6; i++)
+      bcells.push_back (std::make_pair (0, i));
+  }
+
+  tmsh.read_connectivity (simple_conn_p.get(), simple_conn_num_vertices,
+                          simple_conn_t.get(), simple_conn_num_trees);
+
+}
+
+
 
 double
 poisson_boltzmann::levelsetfun (double x, double y, double z)
@@ -932,6 +1564,36 @@ poisson_boltzmann::read_atoms_from_pqr (std::basic_istream<char> &inputfile)
 }
 
 void
+poisson_boltzmann::read_atoms_from_class ()
+{
+  static std::array<double,3> pos;
+  for (const NS::Atom& i : atoms) {
+    pos[0] = i.pos[0];
+    pos[1] = i.pos[1];
+    pos[2] = i.pos[2];
+    pos_atoms.push_back(pos);
+    charge_atoms.push_back(i.charge);
+    r_atoms.push_back(i.radius);
+  }
+}
+
+void
+poisson_boltzmann::broadcast_vectors (){
+  int size_vec = charge_atoms.size();
+  MPI_Bcast(&size_vec, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+  // Ogni processo alloca il vettore
+  pos_atoms.resize(size_vec);
+  charge_atoms.resize(size_vec);
+  r_atoms.resize(size_vec);
+
+  // Effettuare il broadcast del vettore
+  MPI_Bcast(pos_atoms.data(), size_vec * 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(charge_atoms.data(), size_vec, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast(r_atoms.data(), size_vec, MPI_DOUBLE, 0, MPI_COMM_WORLD);  
+}
+
+void
 poisson_boltzmann::write_atoms_to_pqr (std::basic_ostream<char> &outputfile)
 {
   int Atom_number = 1;
@@ -972,6 +1634,32 @@ operator>> (std::basic_istream<char>& inputfile, NS::Atom &a)
     a.radius = 1.0;
 
   a.radius2 = a.radius*a.radius;
+  return inputfile;
+}
+
+std::basic_istream<char>&
+operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a)
+{
+
+  int Atom_number;
+  std::string Field_name;
+  std::string name;
+  std::string resName;
+  int resNum;
+
+  inputfile >> Field_name
+            >> Atom_number
+            >> name
+            >> resName
+            >> resNum
+            >> a[0]       // x_pos
+            >> a[1]       // y_pos
+            >> a[2]       // z_pos
+            >> a[3]       // charge
+            >> a[4];      // radius
+  if (a[4] < 1.e-5)
+    a[4] = 1.0;
+
   return inputfile;
 }
 
@@ -2099,7 +2787,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
 
   search_points ();
-
+  /*
   for (auto it = lookup_table.begin(); it!=lookup_table.end(); ++it)
   {
       //linear approx:
@@ -2120,6 +2808,32 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
           for (int jj = 0; jj < it->second.num_parents (ii); ++jj) {
             double denom = it->second.num_parents (ii) * (*vol_patch)[it->second.gparent (jj, ii)];
             (*rho_fixed)[it->second.gparent (jj, ii)] += atoms[it->first].charge*4.0*pi*weigth / denom;
+          }
+
+      }
+    }
+  }
+  */
+  for (auto it = lookup_table.begin(); it!=lookup_table.end(); ++it)
+  {
+      //linear approx:
+    double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
+                    (it->second.p (1, 7) - it->second.p (1, 0)) *
+                    (it->second.p (2, 7) - it->second.p (2, 0)); //volume
+
+
+    {
+      for (int ii = 0; ii < 8; ++ii) {
+        double weigth = std::abs ((pos_atoms[it->first][0] - it->second.p (0, 7-ii))*
+                                  (pos_atoms[it->first][1] - it->second.p (1, 7-ii))*
+                                  (pos_atoms[it->first][2] - it->second.p (2, 7-ii))) / volume;
+
+        if (! it->second.is_hanging (ii))
+          (*rho_fixed)[it->second.gt (ii)] +=  charge_atoms[it->first]*4.0*pi*weigth / (*vol_patch)[it->second.gt (ii)];
+        else
+          for (int jj = 0; jj < it->second.num_parents (ii); ++jj) {
+            double denom = it->second.num_parents (ii) * (*vol_patch)[it->second.gparent (jj, ii)];
+            (*rho_fixed)[it->second.gparent (jj, ii)] += charge_atoms[it->first]*4.0*pi*weigth / denom;
           }
 
       }
@@ -2366,6 +3080,42 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
 
       {
         for (int ii = 0; ii < 8; ++ii) {
+          double weigth = std::abs ((pos_atoms[it->first][0] - it->second.p (0, 7-ii))*
+                                    (pos_atoms[it->first][1] - it->second.p (1, 7-ii))*
+                                    (pos_atoms[it->first][2] - it->second.p (2, 7-ii))) / volume;
+
+          if (! it->second.is_hanging (ii))
+            phi_on_atom += (*phi)[it->second.gt (ii)]*weigth;
+          else {
+            phi_hang_nodes = 0.0;
+            for (int jj = 0; jj < it->second.num_parents (ii); ++jj)
+              phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)]/it->second.num_parents (ii);
+
+
+            phi_on_atom += phi_hang_nodes*weigth;
+          }
+        }
+      }
+
+      phi_atoms << std::fixed << std::setprecision(3)
+                << std::setw(8) << atoms[it->first].pos[0]
+                << std::setw(8) << atoms[it->first].pos[1]
+                << std::setw(8) << atoms[it->first].pos[2]
+                << std::fixed << std::setprecision(4)
+                << "  " << phi_on_atom << std::endl;
+  }
+
+  /*for (auto it = lookup_table.begin(); it!=lookup_table.end(); ++it) {
+    phi_on_atom = 0.0;
+      //linear approx:
+      double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
+                      (it->second.p (1, 7) - it->second.p (1, 0)) *
+                      (it->second.p (2, 7) - it->second.p (2, 0)); //volume
+
+
+
+      {
+        for (int ii = 0; ii < 8; ++ii) {
           double weigth = std::abs ((atoms[it->first].pos[0] - it->second.p (0, 7-ii))*
                                     (atoms[it->first].pos[1] - it->second.p (1, 7-ii))*
                                     (atoms[it->first].pos[2] - it->second.p (2, 7-ii))) / volume;
@@ -2389,8 +3139,7 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
                 << std::setw(8) << atoms[it->first].pos[2]
                 << std::fixed << std::setprecision(4)
                 << "  " << phi_on_atom << std::endl;
-  }
-
+  }*/
 
   phi_atoms.close ();
 }
@@ -3064,7 +3813,389 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   }
 }
 
+void
+poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
+{
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
 
+  if (rank == 0)
+    std::cout << "\nStarting energy calculation with surface integrals" << std::endl;
+
+
+  double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
+  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+
+  double net_charge = 0.0;
+
+  // Store charged atoms
+  std::cout << charge_atoms.size()<<std::endl;
+  for (int ii = 0; ii < charge_atoms.size(); ++ii) {
+    net_charge += charge_atoms[ii];  
+  }
+
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////
+  double fract;
+  std::array<double,3> V;
+  std::array<double,3> N;
+  std::array<double,3> dist_vert;
+  std::array<double,3> h;
+  std::array<double,3> area_h;
+
+  std::array<double,8> tmp_eps;
+  std::array<double,8> tmp_phi;
+  std::vector<double> edg;
+  std::vector<int> fl_dir;
+
+  int cubeindex = -1;
+
+  double charge_pol = 0.0;
+
+  double constant_pol = 0.5* (1.0/eps_out - 1.0/eps_in)/ (4.0*pi);
+  double constant_react = 1.0/ (8*pi*eps_out);
+  double distance = 0.0;
+  double product = 0.0;
+  double first_int = 0.0;
+  double second_int = 0.0;
+  double tmp_flux;
+  int i1 = 0, i2 = 0;
+  double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
+         tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
+
+
+  int ntriang = 0;
+  int edge;
+  std::array<std::array<double,3>,3> vert_triangles;
+  std::array<std::array<double,3>,3> norms_vert;
+  std::array<double,3> phi_sup;
+
+  double area = 0.0;
+
+  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
+  double k = std::sqrt (k2);
+  double energy_pol = 0.0;
+  double energy_react = 0.0;
+  double coul_energy = 0.0;
+
+  auto quadrant = this->tmsh.begin_quadrant_sweep ();
+
+  // flux and polarization energy calculation
+  if (calc_energy==1){
+    for (const int ii : border_quad) {
+      quadrant[ii];
+      h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
+      h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
+      h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
+      area_h[0] = h[1]*h[2]/h[0] * 0.25;
+      area_h[1] = h[0]*h[2]/h[1] * 0.25;
+      area_h[2] = h[0]*h[1]/h[2] * 0.25;
+
+      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant);
+
+      for (int ip = 0; ip < edg.size (); ++ip) {
+        tmp_flux = 0.0;
+        i1 = edge2nodes[2 * edg[ip] ];
+        i2 = edge2nodes[2 * edg[ip] + 1];
+        normal_intersection (quadrant, ray_cache, edg[ip], N,fract);
+        V[0] = quadrant->p (0, i1);
+        V[1] = quadrant->p (1, i1);
+        V[2] = quadrant->p (2, i1);
+        V[edge_axis[edg[ip]]] += fract*h[edge_axis[edg[ip]]];
+        tmp_flux = - (tmp_phi[i2] - tmp_phi[i1]) * wha (tmp_eps[i1],tmp_eps[i2], fract)*
+                   fl_dir[ip] * area_h[edge_axis[edg[ip]]];
+        charge_pol += tmp_flux;
+
+        for (int ii = 0; ii < charge_atoms.size(); ++ii) {
+          distance = std::hypot (pos_atoms[ii][0]-V[0], pos_atoms[ii][1]-V[1], pos_atoms[ii][2]-V[2]);
+          first_int += charge_atoms[ii]*tmp_flux/distance;
+        }
+
+      }
+    }
+    energy_pol = constant_pol*first_int;
+  }
+
+  //direct reaction energy
+  if (calc_energy==2) {
+    for (const int ii : border_quad) {
+      quadrant[ii];
+      cubeindex = classifyCube (quadrant, eps_out);
+
+      h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
+      h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
+      h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
+      area_h[0] = h[1]*h[2]/h[0] * 0.25;
+      area_h[1] = h[0]*h[2]/h[1] * 0.25;
+      area_h[2] = h[0]*h[1]/h[2] * 0.25;
+
+      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant);
+      ntriang = getTriangles (cubeindex, triangles);
+
+      for (int ip = 0; ip < edg.size (); ++ip) {
+
+        tmp_flux = 0.0;
+
+        i1 = edge2nodes[2 * edg[ip] ];
+        i2 = edge2nodes[2 * edg[ip] + 1];
+
+        normal_intersection (quadrant, ray_cache, edg[ip], N,fract);
+        V[0] = quadrant->p (0, i1);
+        V[1] = quadrant->p (1, i1);
+        V[2] = quadrant->p (2, i1);
+        V[edge_axis[edg[ip]]] += fract*h[edge_axis[edg[ip]]];
+        tmp_flux = - (tmp_phi[i2] - tmp_phi[i1]) * wha (tmp_eps[i1],tmp_eps[i2], fract)*
+                   fl_dir[ip] * area_h[edge_axis[edg[ip]]];
+        charge_pol += tmp_flux;
+        for (int ii = 0; ii < charge_atoms.size(); ++ii) {
+          distance = std::hypot (pos_atoms[ii][0]-V[0], pos_atoms[ii][1]-V[1], pos_atoms[ii][2]-V[2]);
+          first_int += charge_atoms[ii]*tmp_flux/distance;
+        }
+      }
+      if (k > 1.e-5)
+        for (int ii = 0; ii < ntriang; ++ii) {
+          for (int jj = 0; jj < 3; ++jj) {
+            tmp_eps_1 = 0.0;
+            tmp_eps_2 = 0.0;
+            tmp_phi_1 = 0.0;
+            tmp_phi_2 = 0.0;
+            edge = triangles[ii][jj];
+            i1 = edge2nodes[2 * edge ];
+            i2 = edge2nodes[2 * edge + 1];
+            V[0] = quadrant->p (0, i1);
+            V[1] = quadrant->p (1, i1);
+            V[2] = quadrant->p (2, i1);
+
+            normal_intersection (quadrant, ray_cache, edge, N,fract);
+            V[edge_axis[edge]] += fract*h[edge_axis[edge]];
+
+            vert_triangles[jj] = V;
+            norms_vert[jj] = N;
+
+            if (! quadrant->is_hanging (i1)) {
+              tmp_phi_1 = (*phi)[quadrant->gt (i1)];
+              tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
+            } else {
+              for (int jj = 0; jj < quadrant->num_parents (i1); ++jj) {
+                tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
+                tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
+              }
+            }
+
+            if (! quadrant->is_hanging (i2)) {
+              tmp_phi_2 = (*phi)[quadrant->gt (i2)];
+              tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
+            } else {
+              for (int jj = 0; jj < quadrant->num_parents (i2); ++jj) {
+                tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
+                tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
+              }
+            }
+
+            phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
+
+          }
+
+          area = areaTriangle (vert_triangles);
+          // area = SphercalAreaTriangle (vert_triangles);
+  
+          for (int ii = 0; ii < charge_atoms.size(); ++ii) {
+            for (int kk = 0; kk < 3; ++kk) {
+              dist_vert[0] = vert_triangles[kk][0]-pos_atoms[ii][0];
+              dist_vert[1] = vert_triangles[kk][1]-pos_atoms[ii][1];
+              dist_vert[2] = vert_triangles[kk][2]-pos_atoms[ii][2];
+              distance = std::hypot (dist_vert[0], dist_vert[1], dist_vert[2]);
+              product = dist_vert[0]*norms_vert[kk][0] +
+                        dist_vert[1]*norms_vert[kk][1] +
+                        dist_vert[2]*norms_vert[kk][2];
+              second_int += charge_atoms[ii]*phi_sup[kk]*product/ (4.0*pi*distance*distance*distance)*area/3;
+            }
+          }
+        }
+    }
+    energy_pol = constant_pol*first_int;
+    energy_react = 0.5*second_int - first_int*constant_react;
+  }
+
+  //coulombic energy
+  if (calc_energy==3) {
+    for (const int ii : border_quad) {
+      quadrant[ii];
+      cubeindex = classifyCube (quadrant, eps_out);
+
+      h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
+      h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
+      h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
+      area_h[0] = h[1]*h[2]/h[0] * 0.25;
+      area_h[1] = h[0]*h[2]/h[1] * 0.25;
+      area_h[2] = h[0]*h[1]/h[2] * 0.25;
+      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant);
+      ntriang = getTriangles (cubeindex, triangles);
+
+      for (int ip = 0; ip < edg.size (); ++ip) {
+        tmp_flux = 0.0;
+        i1 = edge2nodes[2 * edg[ip] ];
+        i2 = edge2nodes[2 * edg[ip] + 1];
+        normal_intersection (quadrant, ray_cache, edg[ip], N,fract);
+        V[0] = quadrant->p (0, i1);
+        V[1] = quadrant->p (1, i1);
+        V[2] = quadrant->p (2, i1);
+        V[edge_axis[edg[ip]]] += fract*h[edge_axis[edg[ip]]];
+        tmp_flux = - (tmp_phi[i2] - tmp_phi[i1]) * wha (tmp_eps[i1],tmp_eps[i2], fract)*
+                   fl_dir[ip] * area_h[edge_axis[edg[ip]]];
+        charge_pol += tmp_flux;
+        for (int ii = 0; ii < charge_atoms.size(); ++ii) {
+          distance = std::hypot (pos_atoms[ii][0]-V[0], pos_atoms[ii][1]-V[1], pos_atoms[ii][2]-V[2]);
+          first_int += charge_atoms[ii]*tmp_flux/distance;
+        }
+      }
+
+      if (k > 1.e-5)
+        for (int ii = 0; ii < ntriang; ++ii) {
+          for (int jj = 0; jj < 3; ++jj) {
+            tmp_eps_1 = 0.0;
+            tmp_eps_2 = 0.0;
+            tmp_phi_1 = 0.0;
+            tmp_phi_2 = 0.0;
+            edge = triangles[ii][jj];
+            i1 = edge2nodes[2 * edge ];
+            i2 = edge2nodes[2 * edge + 1];
+            V[0] = quadrant->p (0, i1);
+            V[1] = quadrant->p (1, i1);
+            V[2] = quadrant->p (2, i1);
+
+            normal_intersection (quadrant, ray_cache, edge, N,fract);
+            V[edge_axis[edge]] += fract*h[edge_axis[edge]];
+
+            vert_triangles[jj] = V;
+            norms_vert[jj] = N;
+
+            if (! quadrant->is_hanging (i1)) {
+              tmp_phi_1 = (*phi)[quadrant->gt (i1)];
+              tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
+            } else {
+              for (int jj = 0; jj < quadrant->num_parents (i1); ++jj) {
+                tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
+                tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
+              }
+            }
+
+            if (! quadrant->is_hanging (i2)) {
+              tmp_phi_2 = (*phi)[quadrant->gt (i2)];
+              tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
+            } else {
+              for (int jj = 0; jj < quadrant->num_parents (i2); ++jj) {
+                tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
+                tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
+              }
+            }
+            phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
+          }
+
+          area = areaTriangle (vert_triangles);
+          // area = SphercalAreaTriangle (vert_triangles);
+
+          for (int ii = 0; ii < charge_atoms.size(); ++ii) {
+            for (int kk = 0; kk < 3; ++kk) {
+              dist_vert[0] = vert_triangles[kk][0]-pos_atoms[ii][0];
+              dist_vert[1] = vert_triangles[kk][1]-pos_atoms[ii][1];
+              dist_vert[2] = vert_triangles[kk][2]-pos_atoms[ii][2];
+              distance = std::hypot (dist_vert[0], dist_vert[1], dist_vert[2]);
+              product = dist_vert[0]*norms_vert[kk][0] +
+                        dist_vert[1]*norms_vert[kk][1] +
+                        dist_vert[2]*norms_vert[kk][2];
+              second_int += charge_atoms[ii]*phi_sup[kk]*product/ (4.0*pi*distance*distance*distance)*area/3;
+            }
+          }
+        }
+    
+    }
+
+    double den_in = 1.0 / eps_in;
+    
+    // Calculate energy
+    for (size_t i = 0; i < charge_atoms.size(); ++i) {
+        for (size_t j = i + 1; j < charge_atoms.size(); ++j) {
+            distance = std::hypot((pos_atoms[i][0] - pos_atoms[j][0]),
+                                  (pos_atoms[i][1] - pos_atoms[j][1]),
+                                  (pos_atoms[i][2] - pos_atoms[j][2]));
+            if (distance > 0) {  // Check to avoid division by zero
+                coul_energy += (charge_atoms[i] * charge_atoms[j]) / distance;
+            }
+        }
+    }
+
+    coul_energy *= den_in;
+    energy_pol = constant_pol*first_int;
+    energy_react = 0.5*second_int - first_int*constant_react;
+  }
+
+  if (rank == 0) {
+    MPI_Reduce (MPI_IN_PLACE, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+    MPI_Reduce (MPI_IN_PLACE, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+    MPI_Reduce (MPI_IN_PLACE, &energy_react, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+  } else {
+    MPI_Reduce (&charge_pol, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+    MPI_Reduce (&energy_pol, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+    MPI_Reduce (&energy_react, &energy_react, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+  }
+
+  // Print the result
+  if (rank == 0) {
+    std::cout << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << "Net charge: "
+              << std::setprecision (16)<<net_charge
+              << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << std::endl;
+
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << "Polarization charge: "
+              << std::setprecision (16)<<charge_pol/ (4.0*pi)
+              << "  Errore %:" << (charge_pol/ (4.0*pi) - net_charge)/net_charge*100
+              << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << std::endl;
+
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << "Polarization energy: "
+              << std::setprecision (16)<<energy_pol
+              << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << std::endl;
+
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << "Direct ionic energy: "
+              << std::setprecision (16)<<energy_react
+              << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << std::endl;
+
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << "Coulumbic energy: "
+              << std::setprecision (16)<<coul_energy
+              << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << std::endl;
+
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << "Total energy: "
+              << std::setprecision (16)<<energy_pol + energy_react + coul_energy
+              << std::endl;
+    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+  }
+}
+
+
+/*
 void
 poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
 {
@@ -3485,7 +4616,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
     std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
   }
 }
-
+*/
 
 double
 poisson_boltzmann::coulomb_boundary_conditions (double x, double y, double z)
@@ -3625,9 +4756,12 @@ poisson_boltzmann::controlla_coordinate (int i, const p8est_quadrant_t *quadrant
   b = vxyz[2];
   t = vxyz[3*7 +2];
 
-  retval = (atoms[i].pos[0] > l- tol) && (atoms[i].pos[0] <= r- tol); //make sure that the charge is assigned only once
-  retval = retval && (atoms[i].pos[1] > f- tol) && (atoms[i].pos[1] <= bk- tol);
-  retval = retval && (atoms[i].pos[2] > b- tol) && (atoms[i].pos[2] <= t- tol);
+  // retval = (atoms[i].pos[0] > l- tol) && (atoms[i].pos[0] <= r- tol); //make sure that the charge is assigned only once
+  // retval = retval && (atoms[i].pos[1] > f- tol) && (atoms[i].pos[1] <= bk- tol);
+  // retval = retval && (atoms[i].pos[2] > b- tol) && (atoms[i].pos[2] <= t- tol);
+  retval = (pos_atoms[i][0] > l- tol) && (pos_atoms[i][0] <= r- tol); //make sure that the charge is assigned only once
+  retval = retval && (pos_atoms[i][1] > f- tol) && (pos_atoms[i][1] <= bk- tol);
+  retval = retval && (pos_atoms[i][2] > b- tol) && (pos_atoms[i][2] <= t- tol);
 
   return retval;
 }
@@ -3662,7 +4796,8 @@ poisson_boltzmann::search_points ()
 
   auto base =std::make_unique<int[]> (atoms.size());
 
-  size_t count = atoms.size();
+  // size_t count = atoms.size();
+  size_t count = charge_atoms.size();
   for (size_t ii = 0; ii < count; ++ii) {
       base[ii] = ii;
   }

@@ -49,6 +49,9 @@ struct
   std::vector<std::pair<p4est_topidx_t, p4est_topidx_t>> bcells;
 
   std::vector<NS::Atom> atoms;
+  std::vector<std::array<double,3>> pos_atoms;
+  std::vector<double> charge_atoms;
+  std::vector<double> r_atoms;
 
   // Center of the system
   double cc[3];
@@ -500,10 +503,10 @@ struct
   create_mesh ();
 
   void
-  create_mesh_scale ();
+  create_mesh_ns ();
 
   void
-  create_mesh_ns ();
+  create_mesh_scale ();
 
   int
   parse_options (int argc, char **argv);
@@ -515,10 +518,19 @@ struct
   read_atoms_from_pqr (std::basic_istream<char> &inputfile);
 
   void
+  read_atoms_from_class ();
+
+  void
+  broadcast_vectors ();
+
+  void
   write_atoms_to_pqr (std::basic_ostream<char> &outputfile);
 
   friend std::basic_istream<char>&
   operator>> (std::basic_istream<char>& inputfile, NS::Atom &a);
+
+  friend std::basic_istream<char>&
+  operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a);
 
   void
   write_potential_on_atoms ();
@@ -627,5 +639,6 @@ struct
 
 std::basic_istream<char>&
 operator>> (std::basic_istream<char>& inputfile, NS::Atom &a);
-
+std::basic_istream<char>&
+operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a);
 #endif

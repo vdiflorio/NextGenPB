@@ -55,10 +55,17 @@ main (int argc, char **argv)
   if (pb.parse_options (argc, argv))
     return 1;
 
-  std::ifstream inputfile (pb.pqrfilename);
-  pb.read_atoms_from_pqr (inputfile);
-  inputfile.close ();
+  if (rank == 0){
+    std::ifstream inputfile (pb.pqrfilename);
+    pb.read_atoms_from_pqr (inputfile);
+    inputfile.close ();
+    pb.read_atoms_from_class ();
+  }
 
+  MPI_Barrier (mpicomm);
+  if (size > 1){
+    pb.broadcast_vectors();
+  }
   // if (rank == 0) {
   //   std::cout << "Atom : " << std::endl;
   //   pb.write_atoms_to_pqr (std::cout);
@@ -68,12 +75,23 @@ main (int argc, char **argv)
   MPI_Barrier (mpicomm);
 
   TIC ();
-  pb.create_mesh_ns ();
+  // pb.create_mesh_ns ();
+  pb.create_mesh ();
   TOC ("create_mesh");
 
+  std::vector<double>().swap(pb.r_atoms);
 
   TIC ();
+  if (rank == 0){
+    ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+    ray_cache.ns->clean();
+    std::vector<NS::Atom>().swap(pb.atoms);
+  }
 
+  TOC ("init analytical surf");
+  MPI_Barrier (mpicomm);
+
+  TIC ();
   if ( pb.mesh_shape == 0 || pb.refine_box == 1 ||pb.mesh_shape == 4 )
     pb.init_tmesh_with_refine_scale ();
   else if (pb.mesh_shape == 3)
@@ -83,14 +101,14 @@ main (int argc, char **argv)
 
   TOC ("init_tmesh");
 
-  TIC ();
+  // TIC ();
 
-  if ( rank == 0) {
-    ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
-  }
+  // if ( rank == 0) {
+  //   ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+  // }
 
-  TOC ("init analytical surf");
-  MPI_Barrier (mpicomm);
+  // TOC ("init analytical surf");
+  // MPI_Barrier (mpicomm);
   TIC ();
 
   if (pb.loc_refinement == 1 || pb.mesh_shape == 4)
@@ -98,9 +116,8 @@ main (int argc, char **argv)
 
   TOC ("refine the box");
   
-  if ( rank == 0)
-    ray_cache.ns->clean();
-  // ray_cache.ns.reset();
+  // if ( rank == 0)
+  //   ray_cache.ns->clean();
   
 
 
@@ -121,7 +138,6 @@ main (int argc, char **argv)
     std::cerr << "Invalid linear solver selected" << std::endl;
     return 1;
   }
-
   TOC ("compute potential");
 
   if (pb.atoms_write == 1) {
