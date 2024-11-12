@@ -3829,10 +3829,21 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   double net_charge = 0.0;
 
   // Store charged atoms
-  std::cout << charge_atoms.size()<<std::endl;
+  std::vector<double> charge_atoms_tmp;
+  std::vector<std::array<double,3>> pos_atoms_tmp;
+
+  // Store charged atoms
   for (int ii = 0; ii < charge_atoms.size(); ++ii) {
-    net_charge += charge_atoms[ii];  
+    if (std::fabs(charge_atoms[ii]) > 1.e-5)
+    {
+      net_charge += charge_atoms[ii];
+      charge_atoms_tmp.push_back(std::move(charge_atoms[ii]));
+      pos_atoms_tmp.push_back(std::move(pos_atoms[ii]));
+    }  
   }
+  std::vector<double>().swap(charge_atoms);
+  std::vector<std::array<double,3>>().swap(pos_atoms);
+
 
   ////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////
@@ -3907,9 +3918,9 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
                    fl_dir[ip] * area_h[edge_axis[edg[ip]]];
         charge_pol += tmp_flux;
 
-        for (int ii = 0; ii < charge_atoms.size(); ++ii) {
-          distance = std::hypot (pos_atoms[ii][0]-V[0], pos_atoms[ii][1]-V[1], pos_atoms[ii][2]-V[2]);
-          first_int += charge_atoms[ii]*tmp_flux/distance;
+        for (int ii = 0; ii < charge_atoms_tmp.size(); ++ii) {
+          distance = std::hypot (pos_atoms_tmp[ii][0]-V[0], pos_atoms_tmp[ii][1]-V[1], pos_atoms_tmp[ii][2]-V[2]);
+          first_int += charge_atoms_tmp[ii]*tmp_flux/distance;
         }
 
       }
@@ -3948,9 +3959,9 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
         tmp_flux = - (tmp_phi[i2] - tmp_phi[i1]) * wha (tmp_eps[i1],tmp_eps[i2], fract)*
                    fl_dir[ip] * area_h[edge_axis[edg[ip]]];
         charge_pol += tmp_flux;
-        for (int ii = 0; ii < charge_atoms.size(); ++ii) {
-          distance = std::hypot (pos_atoms[ii][0]-V[0], pos_atoms[ii][1]-V[1], pos_atoms[ii][2]-V[2]);
-          first_int += charge_atoms[ii]*tmp_flux/distance;
+        for (int ii = 0; ii < charge_atoms_tmp.size(); ++ii) {
+          distance = std::hypot (pos_atoms_tmp[ii][0]-V[0], pos_atoms_tmp[ii][1]-V[1], pos_atoms_tmp[ii][2]-V[2]);
+          first_int += charge_atoms_tmp[ii]*tmp_flux/distance;
         }
       }
       if (k > 1.e-5)
@@ -4000,16 +4011,16 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
           area = areaTriangle (vert_triangles);
           // area = SphercalAreaTriangle (vert_triangles);
   
-          for (int ii = 0; ii < charge_atoms.size(); ++ii) {
+          for (int ii = 0; ii < charge_atoms_tmp.size(); ++ii) {
             for (int kk = 0; kk < 3; ++kk) {
-              dist_vert[0] = vert_triangles[kk][0]-pos_atoms[ii][0];
-              dist_vert[1] = vert_triangles[kk][1]-pos_atoms[ii][1];
-              dist_vert[2] = vert_triangles[kk][2]-pos_atoms[ii][2];
+              dist_vert[0] = vert_triangles[kk][0]-pos_atoms_tmp[ii][0];
+              dist_vert[1] = vert_triangles[kk][1]-pos_atoms_tmp[ii][1];
+              dist_vert[2] = vert_triangles[kk][2]-pos_atoms_tmp[ii][2];
               distance = std::hypot (dist_vert[0], dist_vert[1], dist_vert[2]);
               product = dist_vert[0]*norms_vert[kk][0] +
                         dist_vert[1]*norms_vert[kk][1] +
                         dist_vert[2]*norms_vert[kk][2];
-              second_int += charge_atoms[ii]*phi_sup[kk]*product/ (4.0*pi*distance*distance*distance)*area/3;
+              second_int += charge_atoms_tmp[ii]*phi_sup[kk]*product/ (4.0*pi*distance*distance*distance)*area/3;
             }
           }
         }
@@ -4045,9 +4056,9 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
         tmp_flux = - (tmp_phi[i2] - tmp_phi[i1]) * wha (tmp_eps[i1],tmp_eps[i2], fract)*
                    fl_dir[ip] * area_h[edge_axis[edg[ip]]];
         charge_pol += tmp_flux;
-        for (int ii = 0; ii < charge_atoms.size(); ++ii) {
-          distance = std::hypot (pos_atoms[ii][0]-V[0], pos_atoms[ii][1]-V[1], pos_atoms[ii][2]-V[2]);
-          first_int += charge_atoms[ii]*tmp_flux/distance;
+        for (int ii = 0; ii < charge_atoms_tmp.size(); ++ii) {
+          distance = std::hypot (pos_atoms_tmp[ii][0]-V[0], pos_atoms_tmp[ii][1]-V[1], pos_atoms_tmp[ii][2]-V[2]);
+          first_int += charge_atoms_tmp[ii]*tmp_flux/distance;
         }
       }
 
@@ -4096,16 +4107,16 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
           area = areaTriangle (vert_triangles);
           // area = SphercalAreaTriangle (vert_triangles);
 
-          for (int ii = 0; ii < charge_atoms.size(); ++ii) {
+          for (int ii = 0; ii < charge_atoms_tmp.size(); ++ii) {
             for (int kk = 0; kk < 3; ++kk) {
-              dist_vert[0] = vert_triangles[kk][0]-pos_atoms[ii][0];
-              dist_vert[1] = vert_triangles[kk][1]-pos_atoms[ii][1];
-              dist_vert[2] = vert_triangles[kk][2]-pos_atoms[ii][2];
+              dist_vert[0] = vert_triangles[kk][0]-pos_atoms_tmp[ii][0];
+              dist_vert[1] = vert_triangles[kk][1]-pos_atoms_tmp[ii][1];
+              dist_vert[2] = vert_triangles[kk][2]-pos_atoms_tmp[ii][2];
               distance = std::hypot (dist_vert[0], dist_vert[1], dist_vert[2]);
               product = dist_vert[0]*norms_vert[kk][0] +
                         dist_vert[1]*norms_vert[kk][1] +
                         dist_vert[2]*norms_vert[kk][2];
-              second_int += charge_atoms[ii]*phi_sup[kk]*product/ (4.0*pi*distance*distance*distance)*area/3;
+              second_int += charge_atoms_tmp[ii]*phi_sup[kk]*product/ (4.0*pi*distance*distance*distance)*area/3;
             }
           }
         }
@@ -4115,14 +4126,14 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
     double den_in = 1.0 / eps_in;
     
     // Calculate energy
-    for (size_t i = 0; i < charge_atoms.size(); ++i) {
-        for (size_t j = i + 1; j < charge_atoms.size(); ++j) {
-            distance = std::hypot((pos_atoms[i][0] - pos_atoms[j][0]),
-                                  (pos_atoms[i][1] - pos_atoms[j][1]),
-                                  (pos_atoms[i][2] - pos_atoms[j][2]));
-            if (distance > 0) {  // Check to avoid division by zero
-                coul_energy += (charge_atoms[i] * charge_atoms[j]) / distance;
-            }
+    for (size_t i = 0; i < charge_atoms_tmp.size(); ++i) {
+        for (size_t j = i + 1; j < charge_atoms_tmp.size(); ++j) {
+            distance = std::hypot((pos_atoms_tmp[i][0] - pos_atoms_tmp[j][0]),
+                                  (pos_atoms_tmp[i][1] - pos_atoms_tmp[j][1]),
+                                  (pos_atoms_tmp[i][2] - pos_atoms_tmp[j][2]));
+            // if (distance > 0) {  // Check to avoid division by zero
+                coul_energy += (charge_atoms_tmp[i] * charge_atoms_tmp[j]) / distance;
+            // }
         }
     }
 
@@ -4793,11 +4804,10 @@ poisson_boltzmann::cerca_atomo (p8est_t * p4est,
 void
 poisson_boltzmann::search_points ()
 {
-
-  auto base =std::make_unique<int[]> (atoms.size());
-
   // size_t count = atoms.size();
   size_t count = charge_atoms.size();
+  auto base =std::make_unique<int[]> (count);
+  
   for (size_t ii = 0; ii < count; ++ii) {
       base[ii] = ii;
   }
