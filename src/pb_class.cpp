@@ -3098,9 +3098,9 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
       }
 
       phi_atoms << std::fixed << std::setprecision(3)
-                << std::setw(8) << atoms[it->first].pos[0]
-                << std::setw(8) << atoms[it->first].pos[1]
-                << std::setw(8) << atoms[it->first].pos[2]
+                << std::setw(8) << pos_atoms[it->first][0]
+                << std::setw(8) << pos_atoms[it->first][1]
+                << std::setw(8) << pos_atoms[it->first][2]
                 << std::fixed << std::setprecision(4)
                 << "  " << phi_on_atom << std::endl;
   }
