@@ -9,7 +9,8 @@ CPPFLAGS=\
 -I/opt/lis/include \
 -DHAVE_OCTAVE_44 -DOMPI_SKIP_MPICXX -DBIM_TIMING -DUSE_MPI
 
-CXXFLAGS= -Ofast -mtune=native
+
+CXXFLAGS= -Ofast -mtune=generic
 CXX=mpicxx
 
 LDFLAGS=-L/opt/octave_file_io/lib \
@@ -18,12 +19,20 @@ LDFLAGS=-L/opt/octave_file_io/lib \
 -L/opt/nanoshaper/build_lib \
 -L/opt/bimpp/lib \
 -L/opt/p4est/lib \
+<<<<<<< HEAD
+=======
+-L/opt/openmpi/lib \
+-L/usr/lib64/openmpi/lib \
+>>>>>>> fast_density
 -Wl,-rpath,/opt/nanoshaper/build_lib \
 -Wl,-rpath,/opt/bimpp/lib  \
 -Wl,-rpath,/opt/octave_file_io/lib \
 -Wl,-rpath,/opt/lis/lib \
 -Wl,-rpath,/opt/p4est/lib \
+<<<<<<< HEAD
 -Wl,-rpath -Wl,/usr/lib64/openmpi/lib \
+=======
+>>>>>>> fast_density
 -Wl,-rpath -Wl,/usr/lib64
 
 

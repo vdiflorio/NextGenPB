@@ -23,6 +23,9 @@ const double p4esttol = 1 / std::pow (2, P8EST_QMAXLEVEL);
 #include <nanoshaper.h>
 
 
+#include "wrapper_search.h"
+
+
 // Problem parameters
 constexpr double e_0 = 8.85418781762e-12; //Dielectric void const [F/m]
 constexpr double kb = 1.380649e-23; //Boltzmann constant [J/K]
@@ -46,6 +49,9 @@ struct
   std::vector<std::pair<p4est_topidx_t, p4est_topidx_t>> bcells;
 
   std::vector<NS::Atom> atoms;
+  std::vector<std::array<double,3>> pos_atoms;
+  std::vector<double> charge_atoms;
+  std::vector<double> r_atoms;
 
   // Center of the system
   double cc[3];
@@ -115,8 +121,10 @@ struct
 
   //post_processing
   int atoms_write;
-  // std::vector<std::pair<const NS::Atom &, tmesh_3d::quadrant_t>> look_at_table;
-  std::map<int,std::pair<const NS::Atom &, tmesh_3d::quadrant_t>> look_at_table;
+  int potential_map;
+  int eps_map;
+  std::map<int, tmesh_3d::quadrant_t> lookup_table;
+
 
   std::vector<double> marker;
   std::vector<double> marker_k;
@@ -126,14 +134,19 @@ struct
   std::vector<double> reaction;
   std::vector<double> ones_in;
 
+  std::vector<int> border_quad;
+  
+
   std::set<std::array<int, 2>> int_nodes;
 
   std::unique_ptr<distributed_vector> markn;
   std::unique_ptr<distributed_vector> epsilon_nodes;
+  std::unique_ptr<distributed_vector> reaction_nodes;
+
 
   std::unique_ptr<distributed_vector> phi;
   std::unique_ptr<distributed_vector> rho_fixed;
-  std::unique_ptr<distributed_vector> rhs;
+  // std::unique_ptr<distributed_vector> rhs;
 
   static constexpr
   std::array<int, 12> edge_axis = {0,1,0,1,0,1,0,1,2,2,2,2};
@@ -491,10 +504,10 @@ struct
   create_mesh ();
 
   void
-  create_mesh_scale ();
+  create_mesh_ns ();
 
   void
-  create_mesh_ns ();
+  create_mesh_scale ();
 
   int
   parse_options (int argc, char **argv);
@@ -506,10 +519,19 @@ struct
   read_atoms_from_pqr (std::basic_istream<char> &inputfile);
 
   void
+  read_atoms_from_class ();
+
+  void
+  broadcast_vectors ();
+
+  void
   write_atoms_to_pqr (std::basic_ostream<char> &outputfile);
 
   friend std::basic_istream<char>&
   operator>> (std::basic_istream<char>& inputfile, NS::Atom &a);
+
+  friend std::basic_istream<char>&
+  operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a);
 
   void
   write_potential_on_atoms ();
@@ -551,6 +573,9 @@ struct
   export_tmesh (ray_cache_t & ray_cache);
 
   void
+  export_potential_map (ray_cache_t & ray_cache);
+
+  void
   export_marked_tmesh ();
 
   void
@@ -570,6 +595,9 @@ struct
 
   void
   energy (ray_cache_t & ray_cache);
+
+  void
+  energy_fast (ray_cache_t & ray_cache);
 
   double
   coulomb_boundary_conditions (double x, double y, double z);
@@ -595,9 +623,23 @@ struct
   int
   getTriangles (int cubeindex,
                 std::array<std::array<int,3>,5> &triangles);
+
+  bool 
+  controlla_coordinate (int i, const p8est_quadrant_t *quadrant);
+  
+  int 
+  cerca_atomo (p8est_t * p4est,
+                p4est_topidx_t which_tree,
+                p8est_quadrant_t * quadrant,
+                p4est_locidx_t local_num,
+                void *point);
+
+  void
+  search_points ();
 };
 
 std::basic_istream<char>&
 operator>> (std::basic_istream<char>& inputfile, NS::Atom &a);
-
+std::basic_istream<char>&
+operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a);
 #endif

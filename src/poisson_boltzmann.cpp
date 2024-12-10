@@ -2,6 +2,19 @@
 
 #include "pb_class.h"
 
+#include "wrapper_search.h"
+
+int 
+cerca_atomo_wrapper(p8est_t *p4est, 
+                    p4est_topidx_t which_tree, 
+                    p8est_quadrant_t *quadrant, 
+                    p4est_locidx_t local_num, 
+                    void *point){
+
+  poisson_boltzmann * pb_wrapper = static_cast<poisson_boltzmann*> (pb_global);
+  return pb_wrapper->cerca_atomo(p4est, which_tree, quadrant, local_num,point);
+}
+
 // static char filename[255];
 
 double crossings_t::start[3] = {0., 0., 0.};
@@ -37,13 +50,22 @@ main (int argc, char **argv)
   poisson_boltzmann pb;
   ray_cache_t ray_cache;
 
+  pb_global = (void *) (&pb);
+
   if (pb.parse_options (argc, argv))
     return 1;
 
-  std::ifstream inputfile (pb.pqrfilename);
-  pb.read_atoms_from_pqr (inputfile);
-  inputfile.close ();
+  if (rank == 0){
+    std::ifstream inputfile (pb.pqrfilename);
+    pb.read_atoms_from_pqr (inputfile);
+    inputfile.close ();
+    pb.read_atoms_from_class ();
+  }
 
+  MPI_Barrier (mpicomm);
+  if (size > 1){
+    pb.broadcast_vectors();
+  }
   // if (rank == 0) {
   //   std::cout << "Atom : " << std::endl;
   //   pb.write_atoms_to_pqr (std::cout);
@@ -53,12 +75,23 @@ main (int argc, char **argv)
   MPI_Barrier (mpicomm);
 
   TIC ();
-  pb.create_mesh_ns ();
+  // pb.create_mesh_ns ();
+  pb.create_mesh ();
   TOC ("create_mesh");
 
+  std::vector<double>().swap(pb.r_atoms);
 
   TIC ();
+  if (rank == 0){
+    ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+    ray_cache.ns->clean();
+    std::vector<NS::Atom>().swap(pb.atoms);
+  }
 
+  TOC ("init analytical surf");
+  MPI_Barrier (mpicomm);
+
+  TIC ();
   if ( pb.mesh_shape == 0 || pb.refine_box == 1 ||pb.mesh_shape == 4 )
     pb.init_tmesh_with_refine_scale ();
   else if (pb.mesh_shape == 3)
@@ -68,29 +101,35 @@ main (int argc, char **argv)
 
   TOC ("init_tmesh");
 
-  TIC ();
+  // TIC ();
 
-  if ( rank == 0) {
-    ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
-  }
+  // if ( rank == 0) {
+  //   ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+  // }
 
-  TOC ("init analytical surf");
-
+  // TOC ("init analytical surf");
+  // MPI_Barrier (mpicomm);
   TIC ();
 
   if (pb.loc_refinement == 1 || pb.mesh_shape == 4)
     pb.refine_surface (ray_cache);
 
   TOC ("refine the box");
+  
+  // if ( rank == 0)
+  //   ray_cache.ns->clean();
+  
 
 
   TIC ();
-  pb.create_markers_prova (ray_cache);
+  pb.create_markers (ray_cache);
+  // pb.create_markers_prova (ray_cache);
   TOC ("create element markers");
 
+
+  
+  
   TIC ();
-
-
   if (pb.linear_solver_name == "mumps")
     pb.mumps_compute_electric_potential (ray_cache);
   else if (pb.linear_solver_name == "lis")
@@ -99,30 +138,37 @@ main (int argc, char **argv)
     std::cerr << "Invalid linear solver selected" << std::endl;
     return 1;
   }
-
   TOC ("compute potential");
-
-  if (pb.calc_energy > 0) {
-    TIC ();
-    pb.energy (ray_cache);
-    TOC ("compute energy")
-  }
 
   if (pb.atoms_write == 1) {
     TIC ();
       pb.write_potential_on_atoms_fast ();
     TOC ("Write potential on atoms")
   }
+  
+  if (pb.calc_energy > 0) {
+    TIC ();
+    // pb.energy (ray_cache);
+    pb.energy_fast (ray_cache);
+    TOC ("compute energy")
+  }
 
-  // TIC ();
-  // pb.export_tmesh (ray_cache);
-  // TOC ("export tmesh");
 
+  if (pb.potential_map == 1){
+    TIC ();
+    pb.export_potential_map (ray_cache);
+    TOC ("export potential map");
+  }
+  if (pb.eps_map == 1){
+    TIC ();
+    pb.export_tmesh (ray_cache);
+    TOC ("export tmesh");
+  }
   // TIC ();
   // pb.export_marked_tmesh ();
   // TOC ("export marked tmesh");
 
-
+  
   if (rank == 0) {
     print_timing_report();
 
