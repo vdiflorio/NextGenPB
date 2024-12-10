@@ -10,7 +10,7 @@ CPPFLAGS=\
 -DHAVE_OCTAVE_44 -DOMPI_SKIP_MPICXX -DBIM_TIMING -DUSE_MPI
 
 
-CXXFLAGS= -O2 -mtune=generic -march=generic
+CXXFLAGS= -O2 -mtune=generic
 CXX=mpicxx
 
 LDFLAGS=-L/opt/octave_file_io/lib \
