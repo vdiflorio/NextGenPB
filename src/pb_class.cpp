@@ -1477,6 +1477,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   atoms_write = g2 ((model_options + "atoms_write").c_str (), 0);
   atoms_write = g2 ((model_options + "atoms_write").c_str (), 0);
   potential_map = g2 ((model_options + "potential_map").c_str (), 0);
+  eps_map = g2 ((model_options + "eps_map").c_str (), 0);
   const std::string surf_options = "surface/";
   int surf_type_num = g2 ((surf_options + "surface_type").c_str (), 1);
 
@@ -2462,8 +2463,8 @@ poisson_boltzmann::export_tmesh (ray_cache_t & ray_cache)
   int size, rank;
   MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
-  bim3a_solution_with_ghosts (tmsh, (*markn), replace_op);
-  tmsh.octbin_export (surffilename.c_str (), (*markn));
+  bim3a_solution_with_ghosts (tmsh, (*epsilon_nodes), replace_op);
+  tmsh.octbin_export ("eps_map_0", (*epsilon_nodes));
 }
 
 void

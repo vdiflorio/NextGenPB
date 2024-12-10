@@ -159,11 +159,11 @@ main (int argc, char **argv)
     pb.export_potential_map (ray_cache);
     TOC ("export potential map");
   }
-
-  // TIC ();
-  // pb.export_tmesh (ray_cache);
-  // TOC ("export tmesh");
-
+  if (pb.eps_map == 1){
+    TIC ();
+    pb.export_tmesh (ray_cache);
+    TOC ("export tmesh");
+  }
   // TIC ();
   // pb.export_marked_tmesh ();
   // TOC ("export marked tmesh");

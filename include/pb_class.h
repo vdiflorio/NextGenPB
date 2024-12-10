@@ -122,6 +122,7 @@ struct
   //post_processing
   int atoms_write;
   int potential_map;
+  int eps_map;
   std::map<int, tmesh_3d::quadrant_t> lookup_table;
 
 
