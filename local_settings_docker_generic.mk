@@ -10,7 +10,7 @@ CPPFLAGS=\
 -DHAVE_OCTAVE_44 -DOMPI_SKIP_MPICXX -DBIM_TIMING -DUSE_MPI
 
 
-CXXFLAGS= -Ofast -mtune=native -march=native
+CXXFLAGS= -O2 -mtune=generic
 CXX=mpicxx
 
 LDFLAGS=-L/opt/octave_file_io/lib \
@@ -25,7 +25,6 @@ LDFLAGS=-L/opt/octave_file_io/lib \
 -Wl,-rpath,/opt/octave_file_io/lib \
 -Wl,-rpath,/opt/lis/lib \
 -Wl,-rpath,/opt/p4est/lib
-
 
 
 LIBS=-lNanoShaper -lbim -lbimmumps -lbimlis -lbimp4est \
