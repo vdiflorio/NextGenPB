@@ -1,5 +1,5 @@
 CPPFLAGS=\
--I/usr/include/openmpi-x86_64 \
+-I/opt/openmpi/include \
 -I/usr/include/MUMPS/ \
 -I/opt/octave_file_io/include/ \
 -I/opt/p4est/include/ \
@@ -10,7 +10,7 @@ CPPFLAGS=\
 -DHAVE_OCTAVE_44 -DOMPI_SKIP_MPICXX -DBIM_TIMING -DUSE_MPI
 
 
-CXXFLAGS= -O2 -mtune=generic
+CXXFLAGS= -O2 -mtune=generic -march=generic
 CXX=mpicxx
 
 LDFLAGS=-L/opt/octave_file_io/lib \
@@ -19,13 +19,7 @@ LDFLAGS=-L/opt/octave_file_io/lib \
 -L/opt/nanoshaper/build_lib \
 -L/opt/bimpp/lib \
 -L/opt/p4est/lib \
--L/opt/openmpi/lib \
--Wl,-rpath,/opt/nanoshaper/build_lib \
--Wl,-rpath,/opt/bimpp/lib  \
--Wl,-rpath,/opt/octave_file_io/lib \
--Wl,-rpath,/opt/lis/lib \
--Wl,-rpath,/opt/p4est/lib
-
+-L/opt/openmpi/lib
 
 LIBS=-lNanoShaper -lbim -lbimmumps -lbimlis -lbimp4est \
      -lbimlinalg -llis -ldmumps -lmumps_common \
