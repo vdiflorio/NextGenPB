@@ -167,7 +167,7 @@ main (int argc, char **argv)
   if (pb.eps_map == 1){
     TIC ();
     pb.export_tmesh (ray_cache);
-    TOC ("export tmesh");
+    TOC ("export epsilon map");
   }
   // TIC ();
   // pb.export_marked_tmesh ();
