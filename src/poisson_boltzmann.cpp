@@ -153,7 +153,12 @@ main (int argc, char **argv)
     TOC ("compute energy")
   }
 
-
+  if (pb.surf_write == 1) {
+    TIC ();
+      pb.write_potential_on_surface (ray_cache);
+    TOC ("Write potential on the surface")
+  }
+  
   if (pb.potential_map == 1){
     TIC ();
     pb.export_potential_map (ray_cache);

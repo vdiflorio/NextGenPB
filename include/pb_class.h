@@ -121,6 +121,7 @@ struct
 
   //post_processing
   int atoms_write;
+  int surf_write;
   int potential_map;
   int eps_map;
   std::map<int, tmesh_3d::quadrant_t> lookup_table;
@@ -598,6 +599,9 @@ struct
 
   void
   energy_fast (ray_cache_t & ray_cache);
+
+  void
+  write_potential_on_surface (ray_cache_t & ray_cache);
 
   double
   coulomb_boundary_conditions (double x, double y, double z);
