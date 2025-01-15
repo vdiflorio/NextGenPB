@@ -25,20 +25,18 @@ RUN dnf upgrade -y && \
 RUN dnf install -y epel-release
 RUN dnf --enablerepo crb install -y glpk-utils bison \
          openblas-devel autoconf automake libtool scotch scotch-devel \
-         redhat-rpm-config libasan bzip2 bzip2-devel
-#mpi openmpi openmpi-devel
+         redhat-rpm-config libasan bzip2 bzip2-devel MUMPS MUMPS-devel \
+         qhull-devel arpack-devel octave octave-devel \
+         cmake tbb tbb-devel CGAL-devel
 
-###MK###
-WORKDIR /opt/
-RUN git clone https://github.com/carlodefalco/mk.git
-WORKDIR /opt/mk
-RUN git checkout nextgenPB
-WORKDIR /opt
-
+#RUN dnf --enablerepo crb install -y openmpi openmpi-devel mpi
+#ENV PATH=/usr/lib64/openmpi/bin:$PATH
+#ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
 
 ###OPENMPI 
+WORKDIR /opt
 ENV pkgname=openmpi
-ENV pkgver=5.0.1
+ENV pkgver=5.0.0
 ENV mver=v5.0
 RUN wget https://download.open-mpi.org/release/open-mpi/$mver/$pkgname-$pkgver.tar.bz2 && \
     tar xf $pkgname-$pkgver.tar.bz2 && \
@@ -63,86 +61,14 @@ RUN rm -rf /opt/$pkgname-$pkgver
 ENV PATH=/opt/openmpi/bin:$PATH
 ENV LD_LIBRARY_PATH=/opt/openmpi/lib:$LD_LIBRARY_PATH
 
-###CMAKE (at least 3.1 for tbb)###
-
-RUN wget https://cmake.org/files/v3.19/cmake-3.19.0-Linux-x86_64.tar.gz && \
-    tar -xzf cmake-3.19.0-Linux-x86_64.tar.gz && \
-    rm cmake-3.19.0-Linux-x86_64.tar.gz
-
-
-###TBB###
-WORKDIR /opt/
-RUN wget https://github.com/oneapi-src/oneTBB/archive/v2021.4.0.tar.gz && \
-    tar -xvzf v2021.4.0.tar.gz && \
-    mv oneTBB-2021.4.0 tbb
-WORKDIR /opt/tbb
-RUN /opt/cmake-3.19.0-Linux-x86_64/bin/cmake \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=/opt/tbb/lib \
-        -DTBB_TEST=OFF .
-RUN make -j10
-RUN make install
-WORKDIR /opt
-RUN rm v2021.4.0.tar.gz
-
 ###NanoShaper###
 WORKDIR /opt/
 RUN git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git
-
-
-###CGAL-5.6.1###
-ENV CGALVER="5.6.1"
-ENV CGALFILE="CGAL-5.6.1.tar.xz"
-ENV CGALDIR="CGAL-5.6.1"
-WORKDIR /opt/
-RUN wget https://github.com/CGAL/cgal/releases/download/v$CGALVER/$CGALFILE && \
-   tar -xvf ${CGALFILE} && \
-   rm ${CGALFILE}
-###Patching###
-RUN cp /opt/mk/pkgs/nanoshaper/wp* /opt/${CGALDIR}
-WORKDIR /opt/${CGALDIR}
-RUN [ -r wp2.diff ] && patch -p0 -i wp2.diff && \
-    [ -r wp3.diff ] && patch -p0 -i wp3.diff
-
-
-###Install CGAL###
-RUN  mkdir build
-WORKDIR /opt/${CGALDIR}/build
-RUN /opt/cmake-3.19.0-Linux-x86_64/bin/cmake .. \
-        -DCMAKE_INSTALL_PREFIX=/opt/${CGALDIR}/ \
-        -DWITH_examples=false \
-        -DWITH_CGAL_ImageIO=false \
-        -DCMAKE_BUILD_TYPE=Release
-RUN make -j10 install
-
-###NextGenPB###
-RUN mkdir /usr/local/nextgenPB
-RUN git config --global \
-  url."https://vdiflorio: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@github.com/".insteadOf \
-  "https://github.com/"
-RUN git clone --branch main --single-branch https://github.com/vdiflorio/nextgenPB.git /usr/local/nextgenPB/
-
-###NS Install NS###
 WORKDIR /opt/nanoshaper/
-RUN git checkout Nanoshaper_devel_TBB
 RUN cp  CMakeLists_so.txt CMakeLists.txt 
-RUN mv /usr/local/nextgenPB/src_NS.tar.bz2 /opt/nanoshaper/ && \
-    rm -rf src && tar -xf src_NS.tar.bz2 && \
-    rm -rf src_NS.tar.bz2 && rm -rf src/._*
 WORKDIR /opt/nanoshaper/build_lib
-RUN /opt/cmake-3.19.0-Linux-x86_64/bin/cmake .. \
-      -DCGAL_DIR=/opt/${CGALDIR}/lib64/cmake/CGAL \
-      -DTBB_DIR=/opt/tbb/lib/lib64/cmake/TBB  \
-      -DCMAKE_BUILD_TYPE="Release"
-RUN make clean 
+RUN cmake .. -DCMAKE_BUILD_TYPE="Release"
 RUN make -j10
-
-###BIMPP LIBRARY###
-RUN rm -rf /opt/mk
-
-
-###MUMPS###
-RUN dnf install -y MUMPS MUMPS-devel
 
 
 ##LIS###
@@ -188,15 +114,36 @@ RUN make install
 WORKDIR /opt/
 RUN rm -rf $pkgname-$pkgver
 
+###OCTAVE-FILE-IO###
+ENV pkgname=octave_file_io
+ENV pkgver=1.0.91
+ENV archive=v$pkgver.tar.gz
+RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/$archive && \
+    tar -xf $archive && \
+    rm -rf $archive
+WORKDIR /opt/$pkgname-$pkgver
+RUN ./autogen.sh
+RUN mkdir build
+WORKDIR /opt/$pkgname-$pkgver/build
+RUN ../configure --prefix="/opt/$pkgname" \
+                --with-octave-home=/usr/bin \
+                CC=mpicc CXX=mpicxx
+RUN make -j10
+RUN make install
+WORKDIR /opt
+RUN rm -rf /opt/$pkgname-$pkgver
+
+RUN mkdir /usr/local/nextgenPB
+RUN git config --global \
+  url."https://vdiflorio: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@github.com/".insteadOf \
+  "https://github.com/"
+RUN git clone --branch main --single-branch https://github.com/vdiflorio/nextgenPB.git /usr/local/nextgenPB/
 
 ###BIMPP###
 WORKDIR /opt
 ENV pkgname=bimpp
 ENV pkgver=patch
-ENV archive=$pkgname-$pkgver.tar.bz2
-RUN mv /usr/local/nextgenPB/$archive /opt && \
-    tar -xf $archive && mv $pkgname $pkgname-$pkgver && \
-    rm -rf $archive
+RUN git clone --branch nextgenPB https://github.com/vdiflorio/bimpp.git $pkgname-$pkgver
 WORKDIR /opt/$pkgname-$pkgver
 RUN mkdir build
 RUN ./autogen.sh
@@ -220,9 +167,8 @@ WORKDIR /opt
 RUN rm -rf /opt/$pkgname-$pkgver
 RUN rm -rf /opt/nanoshaper/example && \
     rm -rf /opt/nanoshaper/src_client && \
-    rm -rf /opt/nanoshaper/test
-RUN rm -rf /opt/mk
-RUN rm -rf /usr/local/nextgenPB/d* && \
+    rm -rf /opt/nanoshaper/test && \
+    rm -rf /usr/local/nextgenPB/d* && \
     rm -rf /usr/local/nextgenPB/*.bz2
 
 ###NGPB###
@@ -238,4 +184,3 @@ ENV PATH=/usr/local/nextgenPB/src:$PATH
 
 VOLUME ["/App"]
 WORKDIR /App
-
