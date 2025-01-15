@@ -4,32 +4,67 @@ LABEL maintainer="vincenzo.diflorio@iit.it"
 
 RUN echo "Installing NextGenPB 0.0"
 
+#ENV CFLAGS="-Ofast -mtune=native -march=native"
+#ENV CFLAGS="-O3 -mtune=generic -march=generic"
+ENV CFLAGS="-O2 -mtune=generic"
+ENV CXXFLAGS="$CFLAGS"
+ENV FCFLAGS="$CFLAGS"
+
 # Install dependencies and clean up
 RUN dnf upgrade -y && \
     dnf --enablerepo crb install -y \
     gcc gcc-c++ gcc-gfortran make python3 texinfo nano\
     gawk procps wget openssh-clients p11-kit diffutils which \
     git rsync zip unzip bzip2 glibc-static patch xz perl-locale \
-    perl-Unicode-Normalize \
+    perl-Unicode-Normalize infiniband-diags libibverbs libibverbs-utils rdma-core \
     boost boost-devel \
-    mpi openmpi zlib-devel json-c  jansson jansson-devel\
+    zlib-devel json-c  jansson jansson-devel \
     gmp gmp-devel mpfr mpfr-devel \
     openssl-devel tar && \
     dnf clean all
-
+RUN dnf install -y epel-release
+RUN dnf --enablerepo crb install -y glpk-utils bison \
+         openblas-devel autoconf automake libtool scotch scotch-devel \
+         redhat-rpm-config libasan bzip2 bzip2-devel
+#mpi openmpi openmpi-devel
 
 ###MK###
 WORKDIR /opt/
 RUN git clone https://github.com/carlodefalco/mk.git
 WORKDIR /opt/mk
 RUN git checkout nextgenPB
+WORKDIR /opt
 
-ENV CFLAGS="-O3 -mtune=native"
-ENV CXXFLAGS=$CFLAGS
-ENV FCFLAGS=$CFLAGS
+
+###OPENMPI 
+ENV pkgname=openmpi
+ENV pkgver=5.0.1
+ENV mver=v5.0
+RUN wget https://download.open-mpi.org/release/open-mpi/$mver/$pkgname-$pkgver.tar.bz2 && \
+    tar xf $pkgname-$pkgver.tar.bz2 && \
+    rm -rf $pkgname-$pkgver.tar.bz2
+   
+WORKDIR /opt/$pkgname-$pkgver
+RUN mkdir build
+WORKDIR /opt/$pkgname-$pkgver/build/
+RUN ../configure --prefix="/opt/openmpi" \
+                 --disable-silent-rules \
+                 --enable-mpi-fortran=all \
+                 --disable-mpi-cxx \
+                 --enable-ipv6 --without-x   \
+                 --without-libltdl --disable-dlopen   \
+                 --enable-pretty-print-stacktrace  \
+                 --enable-openib-rdmacm  \
+                 --disable-sphinx
+RUN make -j10
+RUN make install
+WORKDIR /opt
+RUN rm -rf /opt/$pkgname-$pkgver 
+ENV PATH=/opt/openmpi/bin:$PATH
+ENV LD_LIBRARY_PATH=/opt/openmpi/lib:$LD_LIBRARY_PATH
 
 ###CMAKE (at least 3.1 for tbb)###
-WORKDIR /opt/
+
 RUN wget https://cmake.org/files/v3.19/cmake-3.19.0-Linux-x86_64.tar.gz && \
     tar -xzf cmake-3.19.0-Linux-x86_64.tar.gz && \
     rm cmake-3.19.0-Linux-x86_64.tar.gz
@@ -45,11 +80,10 @@ RUN /opt/cmake-3.19.0-Linux-x86_64/bin/cmake \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX=/opt/tbb/lib \
         -DTBB_TEST=OFF .
-RUN make -j4
+RUN make -j10
 RUN make install
-WORKDIR /opt/
+WORKDIR /opt
 RUN rm v2021.4.0.tar.gz
-
 
 ###NanoShaper###
 WORKDIR /opt/
@@ -79,41 +113,42 @@ RUN /opt/cmake-3.19.0-Linux-x86_64/bin/cmake .. \
         -DWITH_examples=false \
         -DWITH_CGAL_ImageIO=false \
         -DCMAKE_BUILD_TYPE=Release
-RUN make -j4 install
+RUN make -j10 install
 
+###NextGenPB###
+RUN mkdir /usr/local/nextgenPB
+RUN git config --global \
+  url."https://vdiflorio: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@github.com/".insteadOf \
+  "https://github.com/"
+RUN git clone --branch main --single-branch https://github.com/vdiflorio/nextgenPB.git /usr/local/nextgenPB/
 
 ###NS Install NS###
 WORKDIR /opt/nanoshaper/
 RUN git checkout Nanoshaper_devel_TBB
 RUN cp  CMakeLists_so.txt CMakeLists.txt 
+RUN mv /usr/local/nextgenPB/src_NS.tar.bz2 /opt/nanoshaper/ && \
+    rm -rf src && tar -xf src_NS.tar.bz2 && \
+    rm -rf src_NS.tar.bz2 && rm -rf src/._*
 WORKDIR /opt/nanoshaper/build_lib
 RUN /opt/cmake-3.19.0-Linux-x86_64/bin/cmake .. \
       -DCGAL_DIR=/opt/${CGALDIR}/lib64/cmake/CGAL \
       -DTBB_DIR=/opt/tbb/lib/lib64/cmake/TBB  \
       -DCMAKE_BUILD_TYPE="Release"
 RUN make clean 
-RUN make -j4
+RUN make -j10
 
 ###BIMPP LIBRARY###
-RUN echo "export PATH=/usr/lib64/openmpi/bin:$PATH" >> ~/.bashrc
-RUN echo "export LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH" >> ~/.bashrc
-ENV PATH=/usr/lib64/openmpi/bin:$PATH
-ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
+RUN rm -rf /opt/mk
 
-RUN dnf install -y epel-release
-RUN dnf --enablerepo crb install -y glpk-utils bison \
-         openblas-devel autoconf automake libtool scotch scotch-devel \
-         redhat-rpm-config libasan bzip2 bzip2-devel
+
 ###MUMPS###
 RUN dnf install -y MUMPS MUMPS-devel
 
-###OCTAVE###
-RUN dnf --enablerepo crb install -y qhull-devel arpack-devel octave octave-devel
 
 ##LIS###
 WORKDIR /opt/
 ENV pkgname=lis
-ENV pkgver=2.1.3
+ENV pkgver=2.1.6
 ENV archive=$pkgname-$pkgver.zip
 RUN wget https://www.ssisc.org/lis/dl/$archive
 RUN unzip $archive
@@ -123,7 +158,7 @@ RUN ./configure --prefix="/opt/$pkgname" \
                 --enable-mpi \
                 --enable-shared \
                 --disable-static
-RUN make -j4
+RUN make -j10
 RUN make -j4 install
 WORKDIR /opt/
 RUN rm -rf $pkgname-$pkgver $archive
@@ -134,8 +169,8 @@ ENV pkgname=p4est
 ENV pkgver=2.8.6
 ENV archive=$pkgname-$pkgver.tar.gz
 RUN wget https://p4est.github.io/release/$archive && \
-    tar -xzf $archive && \
-    rm -rf $archive
+    tar -xzf $archive
+RUN    rm -rf $archive
 WORKDIR /opt/$pkgname-$pkgver
 ENV CC=mpicc
 ENV CXX=mpic++
@@ -147,66 +182,11 @@ RUN ../configure --prefix="/opt/$pkgname" \
                 --disable-static \
                 --disable-vtk-binary \
                 --without-blas \
-                CPPFLAGS="-I/usr/include/openmpi-x86_64/"
-RUN make -j4
+                CPPFLAGS="-I/opt/openmpi/include"
+RUN make -j10
 RUN make install
 WORKDIR /opt/
 RUN rm -rf $pkgname-$pkgver
-
-
-###SCALAPACK###
-ENV pkgname=scalapack
-ENV pkgver=2.1.0
-ENV archive=$pkgname-$pkgver.tgz
-RUN wget https://www.netlib.org/$pkgname/$archive && \
-    tar -xf $archive && \
-    rm -rf $archive
-WORKDIR /opt/$pkgname-$pkgver
-RUN mkdir build
-WORKDIR /opt/$pkgname-$pkgver/build
-ENV FFLAGS="-std=legacy"
-RUN /opt/cmake-3.19.0-Linux-x86_64/bin/cmake \
-          -D CMAKE_INSTALL_PREFIX="/opt/$pkgname" \
-          -D CMAKE_SKIP_INSTALL_RPATH=ON \
-          -D CMAKE_SKIP_RPATH=ON \
-          -D BUILD_TESTING=OFF \
-          -D BUILD_SHARED_LIBS=ON \
-          -D LAPACK_LIBRARIES=openblas \
-          -D BLAS_LIBRARIES=openblas \
-          -D MPI_BASE_DIR=/usr/lib64/openmpi \
-          ..
-RUN make -j4 VERBOSE=1
-RUN make install
-WORKDIR /opt/
-RUN rm -rf /opt/$pkgname-$pkgver
-
-
-###OCTAVE-FILE-IO###
-ENV pkgname=octave_file_io
-ENV pkgver=1.0.91
-ENV archive=v$pkgver.tar.gz
-RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/$archive && \
-    tar -xf $archive && \
-    rm -rf $archive
-WORKDIR /opt/$pkgname-$pkgver
-RUN ./autogen.sh
-RUN mkdir build
-WORKDIR /opt/$pkgname-$pkgver/build
-RUN ../configure --prefix="/opt/$pkgname" \
-                --with-octave-home=/usr/bin \
-                CC=mpicc CXX=mpicxx
-RUN make -j4
-RUN make install
-WORKDIR /opt
-RUN rm -rf /opt/$pkgname-$pkgver
-
-
-###NextGenPB###
-RUN mkdir /usr/local/nextgenPB
-RUN git config --global \
-  url."https://vdiflorio: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@github.com/".insteadOf \
-  "https://github.com/"
-RUN git clone https://github.com/vdiflorio/nextgenPB.git /usr/local/nextgenPB/
 
 
 ###BIMPP###
@@ -214,19 +194,16 @@ WORKDIR /opt
 ENV pkgname=bimpp
 ENV pkgver=patch
 ENV archive=$pkgname-$pkgver.tar.bz2
-#RUN cp /usr/local/nextgenPB/$archive /opt && mkdir $pkgname-patch && \
-#    tar -xf $archive -C $pkgname-patch --strip-components=1 && \
-#    rm -rf $archive
-RUN cp /usr/local/nextgenPB/$archive /opt && \
-    tar -xf $archive && \
+RUN mv /usr/local/nextgenPB/$archive /opt && \
+    tar -xf $archive && mv $pkgname $pkgname-$pkgver && \
     rm -rf $archive
-WORKDIR /opt/$pkgname-patch
+WORKDIR /opt/$pkgname-$pkgver
 RUN mkdir build
 RUN ./autogen.sh
-WORKDIR /opt/$pkgname-patch/build
+WORKDIR /opt/$pkgname-$pkgver/build
 RUN ../configure --prefix=/opt/bimpp/ \
-                CPPFLAGS="-I/usr/include/openmpi-x86_64 -I/usr/include/ -I/usr/include/MUMPS/ -I/opt/p4est/include -DOMPI_SKIP_MPICXX -DHAVE_OCTAVE_44 -DBIM_TIMING" \
-                LDFLAGS="-L/usr/lib64 -L/usr/lib64/openmpi/lib -L/lib64" \
+                CPPFLAGS="-I/opt/openmpi/include -I/usr/include/ -I/usr/include/MUMPS/ -I/opt/p4est/include -DOMPI_SKIP_MPICXX -DHAVE_OCTAVE_44 -DBIM_TIMING" \
+                LDFLAGS="-L/usr/lib64 -L/opt/openmpi/lib -L/lib64" \
                  --with-blas-lapack="-lopenblas"  \
                  --with-octave_file_io-home=/opt/octave_file_io \
                  --with-octave-home=/usr/bin \
@@ -234,18 +211,31 @@ RUN ../configure --prefix=/opt/bimpp/ \
                  --with-lis-home=/opt/lis \
                  --with-mumps-home=/usr/lib64 \
 F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc \
-CXXFLAGS="-O3" \
---with-mumps-extra-libs="-L/usr/lib64 -L/lib64 -L/usr/lib64/lib -lscotch -lmpi \
+--with-mumps-extra-libs="-L/usr/lib64 -L/opt/openmpi/lib -L/usr/lib64/lib -lscotch -lmpi \
  -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lmpi -lopenblas  -lgfortran"
-RUN make -j4
+RUN make -j10
 RUN make install
 WORKDIR /opt
 
+RUN rm -rf /opt/$pkgname-$pkgver
+RUN rm -rf /opt/nanoshaper/example && \
+    rm -rf /opt/nanoshaper/src_client && \
+    rm -rf /opt/nanoshaper/test
+RUN rm -rf /opt/mk
+RUN rm -rf /usr/local/nextgenPB/d* && \
+    rm -rf /usr/local/nextgenPB/*.bz2
 
 ###NGPB###
 WORKDIR  /usr/local/nextgenPB
-RUN git checkout fast_density
-RUN cp local_settings_docker.mk /usr/local/nextgenPB/src/local_settings.mk
+RUN cp local_settings_docker_generic.mk /usr/local/nextgenPB/src/local_settings.mk
 WORKDIR  /usr/local/nextgenPB/src
 RUN make clean all
+
+WORKDIR /opt
+
+# Create a volume for passing input data (potfile, pqrfile, etc.)
+ENV PATH=/usr/local/nextgenPB/src:$PATH
+
+VOLUME ["/App"]
+WORKDIR /App
 
