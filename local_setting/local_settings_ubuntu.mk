@@ -26,7 +26,7 @@ $(shell mkoctfile --link-stand-alone -p LDFLAGS) \
 -Wl,-rpath,/opt/lis/lib 
 
 LIBS=-lNanoShaper -lbim -lbimmumps -lbimlis -lbimp4est \
-     -lbimlinalg \
+     -lbimlinalg -loctave_file_io \
      $(shell mkoctfile --link-stand-alone -p OCTAVE_LIBS) \
      -llis -ldmumps -lmumps_common \
      -lscotcherr -lbz2 -lmpi_usempif08 \
