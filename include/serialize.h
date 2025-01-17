@@ -142,7 +142,7 @@ write (const std::vector<std::map<F, S,C>>& container)
 
   for (int ii = 1; ii < N + 1; ++ii) {
     std::vector<unsigned char> tmp2 = write (container[ii-1]);
-    res.insert (res.end (), tmp2.begin(), tmp2.end());
+    res.insert (res.end (), tmp2.begin (), tmp2.end ());
   }
 
   return res;

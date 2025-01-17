@@ -99,7 +99,7 @@ struct
   //surface:
   NS::surface_type surf_type;
   double surf_param;
-  double prb_radius = 1.4;  //typical prob radious;
+  double prb_radius = 1.4; //typical prob radious;
   int stern_layer_surf;
   double stern_layer;
   unsigned num_threads;
@@ -136,7 +136,7 @@ struct
   std::vector<double> ones_in;
 
   std::vector<int> border_quad;
-  
+
 
   std::set<std::array<int, 2>> int_nodes;
 
@@ -610,7 +610,7 @@ struct
   analytic_solution (double x, double y, double z);
 
   void
-  analitic_potential();
+  analitic_potential ();
 
   void
   abs_value_field (distributed_vector &phi);
@@ -628,15 +628,15 @@ struct
   getTriangles (int cubeindex,
                 std::array<std::array<int,3>,5> &triangles);
 
-  bool 
+  bool
   controlla_coordinate (int i, const p8est_quadrant_t *quadrant);
-  
-  int 
+
+  int
   cerca_atomo (p8est_t * p4est,
-                p4est_topidx_t which_tree,
-                p8est_quadrant_t * quadrant,
-                p4est_locidx_t local_num,
-                void *point);
+               p4est_topidx_t which_tree,
+               p8est_quadrant_t * quadrant,
+               p4est_locidx_t local_num,
+               void *point);
 
   void
   search_points ();
