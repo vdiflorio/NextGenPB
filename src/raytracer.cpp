@@ -1,8 +1,7 @@
 #include "raytracer.h"
 
 crossings_t &
-ray_cache_t::operator() (double x0, double x1, unsigned direct)
-{
+ray_cache_t::operator () (double x0, double x1, unsigned direct) {
 
   int rank;
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
@@ -44,8 +43,7 @@ ray_cache_t::operator() (double x0, double x1, unsigned direct)
 }
 
 void
-ray_cache_t::fill_cache ()
-{
+ray_cache_t::fill_cache () {
   int rank, size;
   MPI_Comm mpicomm = MPI_COMM_WORLD;
   MPI_Comm_rank (mpicomm, &rank);
@@ -82,8 +80,8 @@ ray_cache_t::fill_cache ()
 
     MPI_Reduce (&ser_rays_len, &global_ser_rays_len, 1, MPI_INT, MPI_SUM, 0, mpicomm); //fill global_ser_rays_len
 
-    MPI_Gather (&ser_rays_len, 1, MPI_INT, proc_ser_rays_len.get(), 1, MPI_INT, 0, mpicomm); //fill proc_ser_rays_len
-    MPI_Gather (&num_req_rays[idir], 1, MPI_INT, proc_num_req_rays.get(), 1, MPI_INT, 0, mpicomm); //fill proc_num_req_rays
+    MPI_Gather (&ser_rays_len, 1, MPI_INT, proc_ser_rays_len.get (), 1, MPI_INT, 0, mpicomm); //fill proc_ser_rays_len
+    MPI_Gather (&num_req_rays[idir], 1, MPI_INT, proc_num_req_rays.get (), 1, MPI_INT, 0, mpicomm); //fill proc_num_req_rays
 
     if (rank == 0) {
       for (int i = 1; i < size; i++) {
@@ -96,7 +94,7 @@ ray_cache_t::fill_cache ()
 
     // Send the requested rays to rank 0
     MPI_Gatherv (&local_ser_rays_vec[0], ser_rays_len, MPI_CHAR, &global_ser_rays_vec[0],
-                 proc_ser_rays_len.get(), displ_ser_rays_vec.get(), MPI_CHAR, 0, mpicomm);
+                 proc_ser_rays_len.get (), displ_ser_rays_vec.get (), MPI_CHAR, 0, mpicomm);
 
     std::map<std::array<double, 2>, crossings_t, map_compare> local_req_rays_map;
 
@@ -130,10 +128,10 @@ ray_cache_t::fill_cache ()
 
     }
 
-    MPI_Scatter (proc_ser_map_len.get(), 1, MPI_INT, &local_ser_map_len, 1, MPI_INT, 0, mpicomm);
+    MPI_Scatter (proc_ser_map_len.get (), 1, MPI_INT, &local_ser_map_len, 1, MPI_INT, 0, mpicomm);
 
     local_ser_map.resize (local_ser_map_len);
-    MPI_Scatterv (&global_ser_map[0], proc_ser_map_len.get(), displ_ser_map.get(), MPI_CHAR,
+    MPI_Scatterv (&global_ser_map[0], proc_ser_map_len.get (), displ_ser_map.get (), MPI_CHAR,
                   &local_ser_map[0], local_ser_map_len, MPI_CHAR, 0, mpicomm);
 
     if (rank != 0) {
@@ -232,7 +230,7 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
   if (ct.dir == 0) {
     double start_ray[3] = {l_c[ct.dir], ct.point[0], ct.point[1]};
     bool compute_normals = true;
-    
+
 
     if (ct.point[0] < l_c[1] || ct.point[1] < l_c[2] || ct.point[0] > r_c[1] || ct.point[1] > r_c[2]) { //out of the molecule
       ct.init = 1;
@@ -260,7 +258,7 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
   if (ct.dir == 1) {
     double start_ray[3] = {ct.point[0], l_c[ct.dir], ct.point[1]};
     bool compute_normals = true;
-    
+
 
     if (ct.point[0] < l_c[0] || ct.point[1] < l_c[2] || ct.point[0] > r_c[0] || ct.point[1] > r_c[2]) { //out of the molecule
       ct.init = 1;
@@ -287,7 +285,7 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
   if (ct.dir == 2) {
     double start_ray[3] = {ct.point[0], ct.point[1], l_c[ct.dir]};
     bool compute_normals = true;
-    
+
 
     if (ct.point[0] < l_c[0] || ct.point[1] < l_c[1] || ct.point[0] > r_c[0] || ct.point[1] > r_c[1]) { //out of the molecule
       ct.init = 1;
@@ -318,11 +316,10 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
 void
 ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
                                       const double & surf_param, const double & stern_layer, const unsigned & num_threads,
-                                      double* l_cr, double* r_cr, double scale, const std::string* configFile)
-{
+                                      double* l_cr, double* r_cr, double scale, const std::string* configFile) {
   ns = std::make_unique<NS::NanoShaper> (atoms, surf_type, surf_param, stern_layer, num_threads,configFile);
   // set here a consistent grid scale
-  ns->setConfig<double> ("Grid_scale", scale );
+  ns->setConfig<double> ("Grid_scale", scale);
   ns->setConfig<bool> ("Accurate_Triangulation",true);
   ns->setConfig<double> ("Self_Intersections_Grid_Coefficient", 1.5);
 
@@ -339,14 +336,14 @@ ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const
   ns->setConfig<double> ("xmax",r_cr[0]);
   ns->setConfig<double> ("ymax",r_cr[1]);
   ns->setConfig<double> ("zmax",r_cr[2]);
-  ns->buildAnalyticalSurface();
+  ns->buildAnalyticalSurface ();
 
   // remember to set this to true in order to collect rays intersections data
   ns->setCollectGridRays (true);
-  ns->colourGrid();
+  ns->colourGrid ();
   // retrieve intersections data from the map
 
-  rays = ns->getRaysMap();
+  rays = ns->getRaysMap ();
 
   l_c[0] = l_cr[0];
   l_c[1] = l_cr[1];
@@ -358,13 +355,12 @@ ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const
 
 
 void
-ray_cache_t::compute_ns_inters (crossings_t & ct)
-{
+ray_cache_t::compute_ns_inters (crossings_t & ct) {
 
   if (ct.dir == 0) {
     double start_ray[3] = {l_c[ct.dir], ct.point[0], ct.point[1]};
     bool compute_normals = true;
-    
+
 
     if (ct.point[0] < l_c[1] || ct.point[1] < l_c[2] || ct.point[0] > r_c[1] || ct.point[1] > r_c[2]) { //out of the molecule
       ct.init = 1;
@@ -376,8 +372,8 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
     std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
     ns->castAxisOrientedRay (start_ray, r_c[ct.dir], ints_norms, ct.dir, compute_normals);
 
-    if (ints_norms.size() != 0) {
-      for (unsigned i = 0; i < ints_norms.size(); i++) {
+    if (ints_norms.size () != 0) {
+      for (unsigned i = 0; i < ints_norms.size (); i++) {
         ct.inters.push_back (ints_norms[i].first);
 
         ct.normals.push_back (* (ints_norms[i].second));
@@ -392,19 +388,20 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
   if (ct.dir == 1) {
     double start_ray[3] = {ct.point[0], l_c[ct.dir], ct.point[1]};
     bool compute_normals = true;
-    
+
 
     if (ct.point[0] < l_c[0] || ct.point[1] < l_c[2] || ct.point[0] > r_c[0] || ct.point[1] > r_c[2]) { //out of the molecule
       ct.init = 1;
       return;
     }
+
     std::cout << "Sending new ray in y direction for NS!" << std::endl;
     ns->setDirection (ct.dir);
     std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
     ns->castAxisOrientedRay (start_ray, r_c[ct.dir], ints_norms, ct.dir, compute_normals);
 
-    if (ints_norms.size() != 0) {
-      for (unsigned i = 0; i < ints_norms.size(); i++) {
+    if (ints_norms.size () != 0) {
+      for (unsigned i = 0; i < ints_norms.size (); i++) {
         ct.inters.push_back (ints_norms[i].first);
 
         ct.normals.push_back (* (ints_norms[i].second));
@@ -419,19 +416,20 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
   if (ct.dir == 2) {
     double start_ray[3] = {ct.point[0], ct.point[1], l_c[ct.dir]};
     bool compute_normals = true;
-    
+
 
     if (ct.point[0] < l_c[0] || ct.point[1] < l_c[1] || ct.point[0] > r_c[0] || ct.point[1] > r_c[1]) { //out of the molecule
       ct.init = 1;
       return;
     }
+
     std::cout << "Sending new ray in z direction for NS!" << std::endl;
     ns->setDirection (ct.dir);
     std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
     ns->castAxisOrientedRay (start_ray, r_c[ct.dir], ints_norms, ct.dir, compute_normals);
 
-    if (ints_norms.size() != 0) {
-      for (unsigned i = 0; i < ints_norms.size(); i++) {
+    if (ints_norms.size () != 0) {
+      for (unsigned i = 0; i < ints_norms.size (); i++) {
         ct.inters.push_back (ints_norms[i].first);
 
         ct.normals.push_back (* (ints_norms[i].second));
@@ -451,8 +449,7 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
 //!  be saved to a binary file or transmitted through
 //!  a channel such as a socket or sent as an MPI message.
 std::vector<unsigned char>
-ray_cache_t::write_ct (const crossings_t& ct)
-{
+ray_cache_t::write_ct (const crossings_t& ct) {
 
   size_t N = sizeof (unsigned) + sizeof (bool) + sizeof (double)*2;
   std::vector<unsigned char> res (N, 0);
@@ -462,19 +459,18 @@ ray_cache_t::write_ct (const crossings_t& ct)
   std::copy (ct.point, ct.point+2, reinterpret_cast<double*> (& (res[sizeof (bool)+sizeof (unsigned)])));
 
   std::vector<unsigned char> tmp = serialize::write (ct.inters);
-  res.insert (res.end (), tmp.begin(), tmp.end());
+  res.insert (res.end (), tmp.begin (), tmp.end ());
   tmp = serialize::write (ct.normals);
-  res.insert (res.end (), tmp.begin(), tmp.end());
+  res.insert (res.end (), tmp.begin (), tmp.end ());
   return res;
 }
 
 void
-ray_cache_t::read_ct (const std::vector<unsigned char>& data, crossings_t& ct)
-{
+ray_cache_t::read_ct (const std::vector<unsigned char>& data, crossings_t& ct) {
 
   size_t size_fixed = sizeof (unsigned) + sizeof (bool) + sizeof (double)*2;
   size_t size_non_fixed = 4*sizeof (double); // + sizeof(bool);
-  size_t numel_flags = ((data.size () * sizeof (unsigned char)) - size_fixed) / size_non_fixed;
+  size_t numel_flags = ( (data.size () * sizeof (unsigned char)) - size_fixed) / size_non_fixed;
 
   std::copy (data.begin (), data.begin () + sizeof (unsigned),
              reinterpret_cast<unsigned char*> (& (ct.dir)));
@@ -506,8 +502,7 @@ ray_cache_t::read_ct (const std::vector<unsigned char>& data, crossings_t& ct)
 }
 
 std::vector<unsigned char>
-ray_cache_t::write_map (const std::map<std::array<double, 2>, crossings_t, map_compare>& container)
-{
+ray_cache_t::write_map (const std::map<std::array<double, 2>, crossings_t, map_compare>& container) {
   size_t numel = container.size (); //number of elements inside the container
   size_t size = numel * (sizeof (double)*2); //array of double
 
@@ -520,7 +515,7 @@ ray_cache_t::write_map (const std::map<std::array<double, 2>, crossings_t, map_c
 
   for (auto ii = container.begin (); ii != container.end (); ++ii) {
     std::vector<unsigned char> tmp = write_ct (ii->second);
-    res.insert (res.end (), tmp.begin(), tmp.end());
+    res.insert (res.end (), tmp.begin (), tmp.end ());
   }
 
   std::vector<size_t> num_flags (numel + 1);
@@ -528,7 +523,7 @@ ray_cache_t::write_map (const std::map<std::array<double, 2>, crossings_t, map_c
   num_flags[0] = numel;
 
   for (auto it = container.cbegin (); it != container.cend (); it++) {
-    num_flags[pos] = it->second.inters.size();
+    num_flags[pos] = it->second.inters.size ();
     pos++;
   }
 
@@ -540,8 +535,7 @@ ray_cache_t::write_map (const std::map<std::array<double, 2>, crossings_t, map_c
 
 void
 ray_cache_t::read_map (const std::vector<unsigned char>& data,
-                       std::map<std::array<double, 2>, crossings_t, map_compare>& container)
-{
+                       std::map<std::array<double, 2>, crossings_t, map_compare>& container) {
   const size_t *psize = (reinterpret_cast<const size_t*> (& (data[0])));
   size_t num_maps = *psize;
 

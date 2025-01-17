@@ -4,15 +4,15 @@
 
 #include "wrapper_search.h"
 
-int 
-cerca_atomo_wrapper(p8est_t *p4est, 
-                    p4est_topidx_t which_tree, 
-                    p8est_quadrant_t *quadrant, 
-                    p4est_locidx_t local_num, 
-                    void *point){
+int
+cerca_atomo_wrapper (p8est_t *p4est,
+                     p4est_topidx_t which_tree,
+                     p8est_quadrant_t *quadrant,
+                     p4est_locidx_t local_num,
+                     void *point) {
 
   poisson_boltzmann * pb_wrapper = static_cast<poisson_boltzmann*> (pb_global);
-  return pb_wrapper->cerca_atomo(p4est, which_tree, quadrant, local_num,point);
+  return pb_wrapper->cerca_atomo (p4est, which_tree, quadrant, local_num,point);
 }
 
 // static char filename[255];
@@ -34,8 +34,7 @@ save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2>, crossin
 
 
 int
-main (int argc, char **argv)
-{
+main (int argc, char **argv) {
 
   MPI_Init (&argc, &argv);
 
@@ -55,7 +54,7 @@ main (int argc, char **argv)
   if (pb.parse_options (argc, argv))
     return 1;
 
-  if (rank == 0){
+  if (rank == 0) {
     std::ifstream inputfile (pb.pqrfilename);
     pb.read_atoms_from_pqr (inputfile);
     inputfile.close ();
@@ -63,13 +62,15 @@ main (int argc, char **argv)
   }
 
   MPI_Barrier (mpicomm);
-  if (size > 1){
-    pb.broadcast_vectors();
+
+  if (size > 1) {
+    pb.broadcast_vectors ();
   }
+
   // if (rank == 0) {
-  //   std::cout << "Atom : " << std::endl;
-  //   pb.write_atoms_to_pqr (std::cout);
-  //   pb.print_options ();
+  // std::cout << "Atom : " << std::endl;
+  // pb.write_atoms_to_pqr (std::cout);
+  // pb.print_options ();
   // }
 
   MPI_Barrier (mpicomm);
@@ -79,20 +80,22 @@ main (int argc, char **argv)
   pb.create_mesh ();
   TOC ("create_mesh");
 
-  std::vector<double>().swap(pb.r_atoms);
+  std::vector<double> ().swap (pb.r_atoms);
 
   TIC ();
-  if (rank == 0){
+
+  if (rank == 0) {
     ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
     // ray_cache.ns->clean();
-    std::vector<NS::Atom>().swap(pb.atoms);
+    std::vector<NS::Atom> ().swap (pb.atoms);
   }
 
   TOC ("init analytical surf");
   MPI_Barrier (mpicomm);
 
   TIC ();
-  if ( pb.mesh_shape == 0 || pb.refine_box == 1 ||pb.mesh_shape == 4 )
+
+  if (pb.mesh_shape == 0 || pb.refine_box == 1 ||pb.mesh_shape == 4)
     pb.init_tmesh_with_refine_scale ();
   else if (pb.mesh_shape == 3)
     pb.init_tmesh_with_refine_box_scale ();
@@ -104,7 +107,7 @@ main (int argc, char **argv)
   // TIC ();
 
   // if ( rank == 0) {
-  //   ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+  // ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
   // }
 
   // TOC ("init analytical surf");
@@ -115,10 +118,10 @@ main (int argc, char **argv)
     pb.refine_surface (ray_cache);
 
   TOC ("refine the box");
-  
+
   // if ( rank == 0)
-  //   ray_cache.ns->clean();
-  
+  // ray_cache.ns->clean();
+
 
 
   TIC ();
@@ -127,9 +130,10 @@ main (int argc, char **argv)
   TOC ("create element markers");
 
 
-  
-  
+
+
   TIC ();
+
   if (pb.linear_solver_name == "mumps")
     pb.mumps_compute_electric_potential (ray_cache);
   else if (pb.linear_solver_name == "lis")
@@ -138,14 +142,15 @@ main (int argc, char **argv)
     std::cerr << "Invalid linear solver selected" << std::endl;
     return 1;
   }
+
   TOC ("compute potential");
 
   if (pb.atoms_write == 1) {
     TIC ();
-      pb.write_potential_on_atoms_fast ();
+    pb.write_potential_on_atoms_fast ();
     TOC ("Write potential on atoms")
   }
-  
+
   if (pb.calc_energy > 0) {
     TIC ();
     // pb.energy (ray_cache);
@@ -155,27 +160,29 @@ main (int argc, char **argv)
 
   if (pb.surf_write == 1) {
     TIC ();
-      pb.write_potential_on_surface (ray_cache);
+    pb.write_potential_on_surface (ray_cache);
     TOC ("Write potential on the surface")
   }
-  
-  if (pb.potential_map == 1){
+
+  if (pb.potential_map == 1) {
     TIC ();
     pb.export_potential_map (ray_cache);
     TOC ("export potential map");
   }
-  if (pb.eps_map == 1){
+
+  if (pb.eps_map == 1) {
     TIC ();
     pb.export_tmesh (ray_cache);
     TOC ("export epsilon map");
   }
+
   // TIC ();
   // pb.export_marked_tmesh ();
   // TOC ("export marked tmesh");
 
-  
+
   if (rank == 0) {
-    print_timing_report();
+    print_timing_report ();
 
     // if (pb.surf_type != 2)
     // {
@@ -219,8 +226,7 @@ main (int argc, char **argv)
 
 
 void
-print_point (const std::array<std::vector<std::array<double, 2>>,3>& r)
-{
+print_point (const std::array<std::vector<std::array<double, 2>>,3>& r) {
   std::ofstream ray_cached_file;
 
   // ray_cached_file.open ("ray_cache_ns.txt");
@@ -232,7 +238,7 @@ print_point (const std::array<std::vector<std::array<double, 2>>,3>& r)
     ray_cached_file.open (filename.c_str ());
 
     if (ray_cached_file.is_open ()) {
-      for (auto it = r[i].begin(); it !=r[i].end(); ++it) {
+      for (auto it = r[i].begin (); it !=r[i].end (); ++it) {
         ray_cached_file <<std::setprecision (9)<< "[[" << (*it)[0] << ", " << (*it)[1] << "]" << std::endl;
       }
     }
@@ -244,8 +250,7 @@ print_point (const std::array<std::vector<std::array<double, 2>>,3>& r)
 
 
 void
-print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3>& r)
-{
+print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3>& r) {
   std::ofstream ray_cached_file;
 
   // ray_cached_file.open ("ray_cache_ns.txt");
@@ -282,6 +287,7 @@ print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_com
   }
 
 }
+
 /*
 void
 save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2>, crossings_t, map_compare>& r)
