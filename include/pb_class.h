@@ -495,8 +495,7 @@ struct
   is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, double y, double z, int dir);
 
   static int
-  uniform_refinement (tmesh_3d::quadrant_iterator quadrant)
-  {
+  uniform_refinement (tmesh_3d::quadrant_iterator quadrant) {
     return 1;
   }
 

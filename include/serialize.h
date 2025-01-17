@@ -6,16 +6,14 @@
 #include <set>
 #include "raytracer.h"
 
-namespace serialize
-{
+namespace serialize {
 //! Convert an std::vector<T>, where T is a trivial type,
 //!  to a vector of bytes that can be saved to a binary file
 //!  or transmitted through a channel such as a socket or
 //!  sent as an MPI message.
 template <class T>
 std::vector<unsigned char>
-write (const std::vector<T>& container)
-{
+write (const std::vector<T>& container) {
   static_assert (std::is_trivial<T>::value,
                  "Cannot serialize vector of this type");
 
@@ -34,8 +32,7 @@ write (const std::vector<T>& container)
 template <class T>
 void
 read (const std::vector<unsigned char>& data,
-      std::vector<T> &container)
-{
+      std::vector<T> &container) {
   static_assert (std::is_trivial<T>::value,
                  "Cannot serialize vector of this type");
 
@@ -53,8 +50,7 @@ read (const std::vector<unsigned char>& data,
 //!  sent as an MPI message.
 template <class F, class S>
 std::vector<unsigned char>
-write (const std::map<F,S>& container)
-{
+write (const std::map<F,S>& container) {
   static_assert (std::is_trivial<F>::value
                  && std::is_trivial<S>::value,
                  "Cannot serialize map of this type");
@@ -82,8 +78,7 @@ write (const std::map<F,S>& container)
 template <class F, class S, class C>
 void
 read (const std::vector<unsigned char>& data,
-      std::map<F,S,C> &container)
-{
+      std::map<F,S,C> &container) {
   static_assert (std::is_trivial<F>::value
                  && std::is_trivial<S>::value,
                  "Cannot serialize map of this type");
@@ -109,8 +104,7 @@ read (const std::vector<unsigned char>& data,
 //!  a channel such as a socket or sent as an MPI message.
 template <class F, class S, class C>
 std::vector<unsigned char>
-write (const std::vector<std::map<F, S,C>>& container)
-{
+write (const std::vector<std::map<F, S,C>>& container) {
 
   // sizeof (F) = nF
   // sizeof (S) = nS
@@ -153,8 +147,7 @@ write (const std::vector<std::map<F, S,C>>& container)
 template <class F, class S>
 void
 read (const std::vector<unsigned char>& data,
-      std::vector<std::map<F,S>> &container)
-{
+      std::vector<std::map<F,S>> &container) {
   static_assert (std::is_trivial<F>::value
                  && std::is_trivial<S>::value,
                  "Cannot serialize map of this type");

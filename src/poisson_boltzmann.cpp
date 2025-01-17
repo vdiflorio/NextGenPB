@@ -9,8 +9,7 @@ cerca_atomo_wrapper (p8est_t *p4est,
                      p4est_topidx_t which_tree,
                      p8est_quadrant_t *quadrant,
                      p4est_locidx_t local_num,
-                     void *point)
-{
+                     void *point) {
 
   poisson_boltzmann * pb_wrapper = static_cast<poisson_boltzmann*> (pb_global);
   return pb_wrapper->cerca_atomo (p4est, which_tree, quadrant, local_num,point);
@@ -35,8 +34,7 @@ save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2>, crossin
 
 
 int
-main (int argc, char **argv)
-{
+main (int argc, char **argv) {
 
   MPI_Init (&argc, &argv);
 
@@ -59,14 +57,14 @@ main (int argc, char **argv)
   if (rank == 0) {
     std::ifstream inputfile (pb.pqrfilename);
     pb.read_atoms_from_pqr (inputfile);
-    inputfile.close();
-    pb.read_atoms_from_class();
+    inputfile.close ();
+    pb.read_atoms_from_class ();
   }
 
   MPI_Barrier (mpicomm);
 
   if (size > 1) {
-    pb.broadcast_vectors();
+    pb.broadcast_vectors ();
   }
 
   // if (rank == 0) {
@@ -77,32 +75,32 @@ main (int argc, char **argv)
 
   MPI_Barrier (mpicomm);
 
-  TIC();
+  TIC ();
   // pb.create_mesh_ns ();
-  pb.create_mesh();
+  pb.create_mesh ();
   TOC ("create_mesh");
 
-  std::vector<double>().swap (pb.r_atoms);
+  std::vector<double> ().swap (pb.r_atoms);
 
-  TIC();
+  TIC ();
 
   if (rank == 0) {
     ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
     // ray_cache.ns->clean();
-    std::vector<NS::Atom>().swap (pb.atoms);
+    std::vector<NS::Atom> ().swap (pb.atoms);
   }
 
   TOC ("init analytical surf");
   MPI_Barrier (mpicomm);
 
-  TIC();
+  TIC ();
 
   if (pb.mesh_shape == 0 || pb.refine_box == 1 ||pb.mesh_shape == 4)
-    pb.init_tmesh_with_refine_scale();
+    pb.init_tmesh_with_refine_scale ();
   else if (pb.mesh_shape == 3)
-    pb.init_tmesh_with_refine_box_scale();
+    pb.init_tmesh_with_refine_box_scale ();
   else
-    pb.init_tmesh();
+    pb.init_tmesh ();
 
   TOC ("init_tmesh");
 
@@ -114,7 +112,7 @@ main (int argc, char **argv)
 
   // TOC ("init analytical surf");
   // MPI_Barrier (mpicomm);
-  TIC();
+  TIC ();
 
   if (pb.loc_refinement == 1 || pb.mesh_shape == 4)
     pb.refine_surface (ray_cache);
@@ -126,7 +124,7 @@ main (int argc, char **argv)
 
 
 
-  TIC();
+  TIC ();
   pb.create_markers (ray_cache);
   // pb.create_markers_prova (ray_cache);
   TOC ("create element markers");
@@ -134,7 +132,7 @@ main (int argc, char **argv)
 
 
 
-  TIC();
+  TIC ();
 
   if (pb.linear_solver_name == "mumps")
     pb.mumps_compute_electric_potential (ray_cache);
@@ -148,32 +146,32 @@ main (int argc, char **argv)
   TOC ("compute potential");
 
   if (pb.atoms_write == 1) {
-    TIC();
-    pb.write_potential_on_atoms_fast();
+    TIC ();
+    pb.write_potential_on_atoms_fast ();
     TOC ("Write potential on atoms")
   }
 
   if (pb.calc_energy > 0) {
-    TIC();
+    TIC ();
     // pb.energy (ray_cache);
     pb.energy_fast (ray_cache);
     TOC ("compute energy")
   }
 
   if (pb.surf_write == 1) {
-    TIC();
+    TIC ();
     pb.write_potential_on_surface (ray_cache);
     TOC ("Write potential on the surface")
   }
 
   if (pb.potential_map == 1) {
-    TIC();
+    TIC ();
     pb.export_potential_map (ray_cache);
     TOC ("export potential map");
   }
 
   if (pb.eps_map == 1) {
-    TIC();
+    TIC ();
     pb.export_tmesh (ray_cache);
     TOC ("export epsilon map");
   }
@@ -184,7 +182,7 @@ main (int argc, char **argv)
 
 
   if (rank == 0) {
-    print_timing_report();
+    print_timing_report ();
 
     // if (pb.surf_type != 2)
     // {
@@ -220,7 +218,7 @@ main (int argc, char **argv)
 
   MPI_Barrier (mpicomm);
 
-  MPI_Finalize();
+  MPI_Finalize ();
 
   return 0;
 
@@ -228,8 +226,7 @@ main (int argc, char **argv)
 
 
 void
-print_point (const std::array<std::vector<std::array<double, 2>>,3>& r)
-{
+print_point (const std::array<std::vector<std::array<double, 2>>,3>& r) {
   std::ofstream ray_cached_file;
 
   // ray_cached_file.open ("ray_cache_ns.txt");
@@ -238,23 +235,22 @@ print_point (const std::array<std::vector<std::array<double, 2>>,3>& r)
     std::string extension = ".txt";
     filename += std::to_string (i);
     filename += extension;
-    ray_cached_file.open (filename.c_str());
+    ray_cached_file.open (filename.c_str ());
 
-    if (ray_cached_file.is_open()) {
-      for (auto it = r[i].begin(); it !=r[i].end(); ++it) {
+    if (ray_cached_file.is_open ()) {
+      for (auto it = r[i].begin (); it !=r[i].end (); ++it) {
         ray_cached_file <<std::setprecision (9)<< "[[" << (*it)[0] << ", " << (*it)[1] << "]" << std::endl;
       }
     }
 
-    ray_cached_file.close();
+    ray_cached_file.close ();
   }
 
 }
 
 
 void
-print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3>& r)
-{
+print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3>& r) {
   std::ofstream ray_cached_file;
 
   // ray_cached_file.open ("ray_cache_ns.txt");
@@ -263,9 +259,9 @@ print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_com
     std::string extension = ".txt";
     filename += std::to_string (i);
     filename += extension;
-    ray_cached_file.open (filename.c_str());
+    ray_cached_file.open (filename.c_str ());
 
-    if (ray_cached_file.is_open()) {
+    if (ray_cached_file.is_open ()) {
       ray_cached_file << "Count cached rays: " << ray_cache_t::count_cache << std::endl;
       ray_cached_file << "Count new rays: " << ray_cache_t::count_new << std::endl;
       int count = 0;
@@ -273,11 +269,11 @@ print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_com
       for (auto it : r[i]) {
         ray_cached_file <<std::setprecision (9)<< "[[" << it.first.at (0) << ", " << it.first.at (1) << "]";
 
-        if (it.second.inters.size()>0) {
+        if (it.second.inters.size ()>0) {
           count++;
         }
 
-        for (int i = 0; i < it.second.inters.size(); i++)
+        for (int i = 0; i < it.second.inters.size (); i++)
           ray_cached_file << ", " << it.second.inters[i];
 
         ray_cached_file << "]" << std::endl;
@@ -287,7 +283,7 @@ print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_com
       ray_cached_file << "num raggi inters: " << count << std::endl;
     }
 
-    ray_cached_file.close();
+    ray_cached_file.close ();
   }
 
 }
