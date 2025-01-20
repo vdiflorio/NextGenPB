@@ -10,6 +10,7 @@ $(shell mkoctfile --link-stand-alone -p INCFLAGS) \
 
 
 CXXFLAGS= -O2 -mtune=generic
+#CXXFLAGS= -Ofast -mtune=native -march=native
 CXX=mpicxx
 
 LDFLAGS=-L/opt/octave_file_io/lib \

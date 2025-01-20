@@ -6,7 +6,7 @@ CPPFLAGS=\
 -I/opt/local/include \
 -DHAVE_OCTAVE_44 -DOMPI_SKIP_MPICXX -DBIM_TIMING -DUSE_MPI
 
-#CXXFLAGS= -std=c++17 -ggdb  -O3 -fsanitize=address
+#CXXFLAGS= -std=c++17 -ggdb  -O2 -mtune=generic
 CXXFLAGS= -std=c++17 -Ofast -mtune=native -march=native
 
 LDFLAGS=-L/opt/octave_file_io/1.0.91/lib \
