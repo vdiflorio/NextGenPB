@@ -16,13 +16,28 @@ on a rectangular domain.
 
 The direct dependencies of the code are:
 
+- **`lis`**
+- **`p4est`**
 - **`bim++`**  
 - **`NanoShaper`**  
 
 For post-processing, you will also need:  
 
 - **Paraview**  
-- **GNU Octave**  
+- **GNU Octave**
+
+## Mac
+Install MacPort (or Homebrew) and install the packeges:
+```bash
+sudo port install cmake onetbb boost cgal5 nlohmann-json jansson octave
+sudo port install mumps +openmpi -mpich
+sudo port install lis +openmpi -mpich
+sudo port install p4est +openmpi -mpich
+```
+## Rocky Linux
+
+## Ubuntu
+
 
 To compile the program, create a `local_settings.mk` file to add or modify the compilation options specified in the `Makefile`. Then, run:  
 
