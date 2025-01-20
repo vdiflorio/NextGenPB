@@ -14,6 +14,8 @@ on a rectangular domain.
 
 # Table of Contents
 1. [Installation](#installation)
+   1.1 [Dependencies](#dependencies)
+   1.2 [Setup](#setup)
 2. [Usage](#usage)
 3. [Contributing](#contributing)
 
