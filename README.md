@@ -40,19 +40,19 @@ The following dependencies are required to build and run the program:
 
 ## For the impatient
 ### Very impatient
-We have a precompiled apptainer image with openmpi version 4 and 5 at link (...). 
-To run the apptainer you need to install appteiner (or singularity) and run this command:
+A precompiled Apptainer image with OpenMPI versions 4 and 5 is available [here](https://boh).
+To run the Apptainer image, install Apptainer (or Singularity) and execute the following command:
 ```bash
 mpirun -np <number_of_processors> singularity exec --bind /path/to/files/:/App \
   /path/to/sif/nextgenpb_latest.sif ngpb --potfile /App/options.pot --pqrfile /App/file.pqr
 ```
 ### Less impatient
-If you have the root permission you can build the Dockerfile. In this way you can also personalize some settigns as the version of the libraries or the compiling flags (e.g. `CFLAGS="-O3 -mtune=native -march=native"`).
-To build
+If you have root permissions, you can build the Docker image. This approach allows customization of library versions and compiler flags (e.g. `CFLAGS="-O3 -mtune=native -march=native"`).
+To build the Docker image:
 ```bash
 sudo docker build -f Dockerfile -t <name_of_image>:latest .
 ```
-To run
+To run the Docker container:
 ```bash
 sudo docker run -v "$(pwd)":/App <name_of_image>:latest ngpb --potfile /App/options.pot --pqrfile /App/file.pqr
 ```
