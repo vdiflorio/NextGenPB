@@ -13,14 +13,16 @@ on a rectangular domain.
 ---
 
 # Table of Contents
-1. [Installation](#installation) \\
-   1.1 [Dependencies](#dependencies)
-   1.2 [Setup](#setup)
-2. [Usage](#usage)
-3. [Contributing](#contributing)
+1. [Installation](#installation)  
+   1.1 [Dependencies](#dependencies)  
+   1.2 [Installation on macOS](#macos)
+   1.3 [Installation on Rocky Linux and Ubuntu](#linux) 
+3. [Usage](#usage)  
+4. [Contributing](#contributing)
 
 ---
 # Installation
+## Dependencies
 The following dependencies are required to build and run the program:  
 
 ### Core Libraries
