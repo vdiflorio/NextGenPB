@@ -1,29 +1,33 @@
-#intentation style 
+# NextGenPB 
 
-```astyle --style=kr --indent=spaces=2 --break-blocks --pad-first-paren-out --convert-tabs --squeeze-ws```
-
-# easy_pbe 
-
-Poisson Boltzmann solver on Octree mesh.
+Linearized Poisson-Boltzmann solver on Octree mesh.
 
 Solves the linearized PBE 
 
-\f{equation}{ 
--\mathrm{div} \left( \varepsilon_0 \varepsilon_r \nabla \varphi \right) + 
-\kappa^2 \varphi = \rho^f 
-\f}
+\[
+-\mathrm{div} \left( \varepsilon_0 \varepsilon_r \nabla \varphi \right) + \kappa^2 \varphi = \rho^f
+\]
 
 on a rectangular domain.
 
 ## basic usage instructions
 
 ### Installation
-The direct dependencies of the code are `bim++` and `NanoShaper`, while Paraview and `GNU Octave` are necessary for the post-processing operations. 
 
-For the compilation, a `local_settings.mk` file must be created in order to add or modify, 
-accordingly to the user necessities, the compilation options present inside `Makefile`, and then the following command must be executed 
+The direct dependencies of the code are:
 
-```
+- **`bim++`**  
+- **`NanoShaper`**  
+
+For post-processing, you will also need:  
+
+- **Paraview**  
+- **GNU Octave**  
+
+To compile the program, create a `local_settings.mk` file to add or modify the compilation options specified in the `Makefile`. Then, run:  
+
+
+```bash
 make
 ```
 
