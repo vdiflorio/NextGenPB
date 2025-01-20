@@ -122,6 +122,7 @@ struct
   //post_processing
   int atoms_write;
   int surf_write;
+  std::string map_type;
   int potential_map;
   int eps_map;
   std::map<int, tmesh_3d::quadrant_t> lookup_table;
@@ -495,7 +496,8 @@ struct
   is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, double y, double z, int dir);
 
   static int
-  uniform_refinement (tmesh_3d::quadrant_iterator quadrant) {
+  uniform_refinement (tmesh_3d::quadrant_iterator quadrant)
+  {
     return 1;
   }
 

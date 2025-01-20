@@ -1,6 +1,7 @@
 #include <mpi.h>
 
 #include "pb_class.h"
+#include "vtk_class.h"
 
 #include "wrapper_search.h"
 
@@ -9,7 +10,8 @@ cerca_atomo_wrapper (p8est_t *p4est,
                      p4est_topidx_t which_tree,
                      p8est_quadrant_t *quadrant,
                      p4est_locidx_t local_num,
-                     void *point) {
+                     void *point)
+{
 
   poisson_boltzmann * pb_wrapper = static_cast<poisson_boltzmann*> (pb_global);
   return pb_wrapper->cerca_atomo (p4est, which_tree, quadrant, local_num,point);
@@ -34,7 +36,8 @@ save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2>, crossin
 
 
 int
-main (int argc, char **argv) {
+main (int argc, char **argv)
+{
 
   MPI_Init (&argc, &argv);
 
@@ -164,21 +167,53 @@ main (int argc, char **argv) {
     TOC ("Write potential on the surface")
   }
 
-  if (pb.potential_map == 1) {
-    TIC ();
-    pb.export_potential_map (ray_cache);
-    TOC ("export potential map");
-  }
+  if (pb.map_type == "oct") {
+    if (pb.potential_map == 1) {
+      TIC ();
+      pb.export_potential_map (ray_cache);
+      TOC ("export potential map");
+    }
 
-  if (pb.eps_map == 1) {
-    TIC ();
-    pb.export_tmesh (ray_cache);
-    TOC ("export epsilon map");
-  }
+    if (pb.eps_map == 1) {
+      TIC ();
+      pb.export_tmesh (ray_cache);
+      TOC ("export epsilon map");
+    }
+  } else if (pb.map_type == "vtu") {
+    std::vector<std::string> fieldNames;
+    std::vector<std::string> baseNames;
+    VTKWriter vtk ("");
 
-  // TIC ();
-  // pb.export_marked_tmesh ();
-  // TOC ("export marked tmesh");
+    if (pb.potential_map == 1) {
+      TIC ();
+      std::string fieldname = "phi";
+      std::string basename = "potential_map";
+      fieldNames.push_back (fieldname);
+      baseNames.push_back (basename);
+      vtk.setBaseName (basename, rank);
+      vtk.writeFieldVtuBinary (pb.tmsh, *pb.phi, fieldname);
+      TOC ("export potential map new");
+    }
+
+    if (pb.eps_map == 1) {
+      TIC ();
+      std::string fieldname = "eps";
+      std::string basename = "eps_map";
+      fieldNames.push_back (fieldname);
+      baseNames.push_back (basename);
+      vtk.setBaseName (basename, rank);
+      vtk.writeFieldVtuBinary (pb.tmsh, *pb.epsilon_nodes, fieldname);
+      TOC ("export epsilon map new");
+    }
+
+    MPI_Barrier (mpicomm);
+
+    if (rank == 0)
+      if (pb.potential_map == 1 || pb.eps_map == 1)
+        vtk.createPvtuFile (fieldNames, baseNames, size);
+  } else
+    std::cout << "\n Wrong type of map output! "<<std::endl;
+
 
 
   if (rank == 0) {
@@ -226,7 +261,8 @@ main (int argc, char **argv) {
 
 
 void
-print_point (const std::array<std::vector<std::array<double, 2>>,3>& r) {
+print_point (const std::array<std::vector<std::array<double, 2>>,3>& r)
+{
   std::ofstream ray_cached_file;
 
   // ray_cached_file.open ("ray_cache_ns.txt");
@@ -250,7 +286,8 @@ print_point (const std::array<std::vector<std::array<double, 2>>,3>& r) {
 
 
 void
-print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3>& r) {
+print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3>& r)
+{
   std::ofstream ray_cached_file;
 
   // ray_cached_file.open ("ray_cache_ns.txt");
