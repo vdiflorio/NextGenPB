@@ -15,7 +15,7 @@ on a rectangular domain.
 # Table of Contents
 1. [Installation](#installation)  
    1.1 [Dependencies](#dependencies)  
-   1.2 [Installation on macOS](#macos)
+   1.2 [Installation on macOS](#macos)  
    1.3 [Installation on Rocky Linux and Ubuntu](#linux) 
 3. [Usage](#usage)  
 4. [Contributing](#contributing)
