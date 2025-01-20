@@ -10,9 +10,7 @@ $$
 
 on a rectangular domain.
 
-## basic usage instructions
-
-### Installation
+## Installation dependencies
 
 The direct dependencies of the code are:
 
@@ -26,17 +24,72 @@ For post-processing, you will also need:
 - **Paraview**  
 - **GNU Octave**
 
-## Mac
+### Mac
 Install MacPort (or Homebrew) and install the packeges:
+
 ```bash
-sudo port install cmake onetbb boost cgal5 nlohmann-json jansson octave
+sudo port install openmpi cmake onetbb boost cgal5 nlohmann-json jansson octave
 sudo port install mumps +openmpi -mpich
 sudo port install lis +openmpi -mpich
 sudo port install p4est +openmpi -mpich
 ```
-## Rocky Linux
 
-## Ubuntu
+Other dependencies have to install from souces.
+
+**`NanoShaper`**
+
+```bash
+git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git
+cd nanoshaper
+cp CMakeLists_so.txt CMakeLists.txt
+cd build_lib
+cmake .. -DCGAL_DIR=/opt/local/ -DCMAKE_BUILD_TYPE=Release
+make
+```
+
+**`octave_file_io`**
+ 
+```bash
+git clone https://github.com/carlodefalco/octave_file_io.git
+cd octave_file_io
+./autogen.sh
+mkdir build
+cd build
+../configure CXX=mpicxx --prefix=/opt/octave_file_io/1.0.91 --with-octave-home=/opt/local/bin 'LDFLAGS=-Wl,-rpath -Wl,/opt/local/lib/libgcc -Wl,-rpath -Wl,/opt/local/lib/gcc13 -ld_classic'
+make
+sudo make install
+```
+
+**`bim++`**
+
+```bash
+git clone
+cd bimpp
+git checkout nextgenPB
+./autogen.sh
+mkdir build
+cd build
+../configure --prefix=/opt/bimpp --disable-option-checking \
+LDFLAGS="-L/opt/local/lib -Wl,-rpath,/opt/local/lib/libgcc -Wl,-rpath,/opt/local/lib/gcc14" \
+CPPFLAGS="-I/opt/local/include/ -I/opt/local/include/gcc14 -DOMPI_SKIP_MPICXX -DHAVE_OCTAVE_44 -DBIM_TIMING" \
+ --with-blas-lapack="-lopenblas"  \
+ --with-octave_file_io-home=/opt/octave_file_io/1.0.91 \
+ --with-octave-home=/opt/local/bin \
+ --with-p4est-home=/opt/local \
+ --with-lis-home=/opt/local \
+ --with-mumps-home=/opt/local \
+ F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc \
+CXXFLAGS="-std=c++17 -O3 -mtune=native" \
+--with-mumps-extra-libs="-L/opt/local/lib -lptscotch -lscotch -lmpi -Wl,-flat_namespace -Wl,-commons,use_dylibs \
+-L/opt/local/lib/openmpi-mp -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lopenblas -L/opt/local/lib/gcc14 -lgfortran"
+
+make
+sudo make install
+```
+
+### Rocky Linux
+
+### Ubuntu
 
 
 To compile the program, create a `local_settings.mk` file to add or modify the compilation options specified in the `Makefile`. Then, run:  
