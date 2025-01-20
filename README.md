@@ -15,14 +15,15 @@ on a rectangular domain.
 # Table of Contents
 1. [Installation](#installation)  
    1.1 [Dependencies](#dependencies)  
-   1.2 [For the impatient](#impatient)  
+   1.2 [For the Impatient](#impatient)  
    1.3 [Installation on macOS](#macos)  
    1.4 [Installation on Rocky Linux and Ubuntu](#linux)   
-3. [Usage](#usage)  
-4. [Contributing](#contributing)
+2. [Usage](#usage)  
+3. [Contributing](#contributing)
 
 ---
 # Installation
+
 ## Dependencies
 The following dependencies are required to build and run the program:  
 
@@ -38,9 +39,9 @@ The following dependencies are required to build and run the program:
 - **Paraview**  
 - **GNU Octave**
 
-## For the impatient
-### Very impatient
-A precompiled Apptainer image with OpenMPI versions 4 and 5 is available [here](https://boh).
+## For the Impatient
+### Very Impatient
+Precompiled Apptainer images with OpenMPI versions 4 or 5 are available [here](https://boh).
 To run the Apptainer image, install Apptainer (or Singularity) and execute the following command:
 ```bash
 mpirun -np <number_of_processors> singularity exec --bind /path/to/files/:/App \
@@ -121,9 +122,25 @@ make
 sudo make install
 ```
 
+### Compiling of ngpb
+To compile NextGenPB, create a `local_settings.mk` file to add or modify the compilation options specified in the `Makefile`.
+Prototypes of `local_settings.mk` for different distributions are available in the `local_setting `directory. Copy the appropriate file to the `src` directory:
+```bash
+cp local_setting/local_settings_ubuntu.mk src/local_settings.mk
+```
+Then, run:  
+
+```bash
+make clean all
+```
+This process generates an executable named `ngpb` in the `src` directory. Optionally, add the executable path to your `.zshrc` file:
+```bash
+export PATH=/path/to/exec:$PATH
+```
+
 ## Installation on Rocky Linux and Ubuntu
 
-Follow the instructions of Dockerfile (for Rocky Linux) and Dockerfile_ubuntu (for Ubuntu). If you are running NGPB on the same computer where are you installing the libraries be sure to compile everyting with the flags:
+Follow the instructions in the Dockerfile (for Rocky Linux) and Dockerfile_ubuntu (for Ubuntu). If you are running NGPB on the same machine where the libraries are installed, ensure that you compile everything with the following flags:
 ```bash
 export CXXFLAGS="-O3 -mtune=native -march=native"
 export CFLAGS="-O3 -mtune=native -march=native"
@@ -131,15 +148,7 @@ export FCFLAGS="-O3 -mtune=native -march=native"
 ```
 
 
-
-To compile the program, create a `local_settings.mk` file to add or modify the compilation options specified in the `Makefile`. Then, run:  
-
-
-```bash
-make
-```
-
-### command line options
+# Usage
 
 To run the code in serial, using the default `options.pot` file and the `1CCM.pqr` file, 
 the necessary commands are
