@@ -4,9 +4,9 @@ Linearized Poisson-Boltzmann solver on Octree mesh.
 
 Solves the linearized PBE 
 
-\[
+$$
 -\mathrm{div} \left( \varepsilon_0 \varepsilon_r \nabla \varphi \right) + \kappa^2 \varphi = \rho^f
-\]
+$$
 
 on a rectangular domain.
 
