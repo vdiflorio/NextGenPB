@@ -12,20 +12,26 @@ on a rectangular domain.
 
 ## Installation dependencies
 
-The direct dependencies of the code are:
+The following dependencies are required to build and run the program:  
+
+### Core Libraries
 
 - **`lis`**
 - **`p4est`**
 - **`bim++`**  
 - **`NanoShaper`**  
 
-For post-processing, you will also need:  
+### Post-Processing Tools
 
 - **Paraview**  
 - **GNU Octave**
 
-### Mac
-Install MacPort (or Homebrew) and install the packeges:
+---
+
+### Installation on macOS
+#### Prerequisites
+
+Use MacPorts (or Homebrew) to install the required packages: 
 
 ```bash
 sudo port install openmpi cmake onetbb boost cgal5 nlohmann-json jansson octave
@@ -34,10 +40,9 @@ sudo port install lis +openmpi -mpich
 sudo port install p4est +openmpi -mpich
 ```
 
-Other dependencies have to install from souces.
-
+#### Installing Additional Dependencies
 **`NanoShaper`**
-
+Clone and build the NanoShaper library:
 ```bash
 git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git
 cd nanoshaper
@@ -48,7 +53,7 @@ make
 ```
 
 **`octave_file_io`**
- 
+Clone and build the octave_file_io library:
 ```bash
 git clone https://github.com/carlodefalco/octave_file_io.git
 cd octave_file_io
@@ -61,9 +66,9 @@ sudo make install
 ```
 
 **`bim++`**
-
+Clone and build the bim++ library:
 ```bash
-git clone
+git clone https://github.com/carlodefalco/bimpp.git
 cd bimpp
 git checkout nextgenPB
 ./autogen.sh
@@ -87,9 +92,8 @@ make
 sudo make install
 ```
 
-### Rocky Linux
+### Installation on Rocky Linux and Ubuntu
 
-### Ubuntu
 
 
 To compile the program, create a `local_settings.mk` file to add or modify the compilation options specified in the `Makefile`. Then, run:  
