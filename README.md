@@ -10,6 +10,19 @@ $$
 
 on a rectangular domain.
 
+---
+
+## Table of Contents
+1. [Installation Dependencies](#installation-dependencies)
+    1. [Core Libraries](#core-libraries)
+    2. [Post-Processing Tools](#post-processing-tools)
+2. [Installation on macOS](#installation-on-macos)
+    1. [Prerequisites](#prerequisites)
+    2. [Installing Additional Dependencies](#installing-additional-dependencies)
+3. [Compiling the Program](#compiling-the-program)
+
+---
+
 ## Installation dependencies
 
 The following dependencies are required to build and run the program:  
