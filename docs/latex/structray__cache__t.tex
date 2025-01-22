@@ -1,0 +1,188 @@
+\doxysection{ray\+\_\+cache\+\_\+t Struct Reference}
+\hypertarget{structray__cache__t}{}\label{structray__cache__t}\index{ray\_cache\_t@{ray\_cache\_t}}
+
+
+{\ttfamily \#include $<$raytracer.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+crossings\+\_\+t \& \mbox{\hyperlink{structray__cache__t_a5b76d605f92c36fd1c3d9d75557ec6c8}{operator()}} (double x0, double x1, unsigned dir=1)
+\item 
+void \mbox{\hyperlink{structray__cache__t_ad5d335836c48ad139b6a0e40a1910c6e}{fill\+\_\+cache}} ()
+\item 
+void \mbox{\hyperlink{structray__cache__t_afb901f898cfabddff806fd1fc5ea9d4a}{init\+\_\+analytical\+\_\+surf}} (const std\+::vector$<$ NS\+::\+Atom $>$ \&atoms, const NS\+::surface\+\_\+type \&surf\+\_\+type, const double \&surf\+\_\+param, const double \&stern\+\_\+layer, const unsigned \&num\+\_\+threads, const std\+::string \texorpdfstring{$\ast$}{*}config\+File=nullptr)
+\item 
+void \mbox{\hyperlink{structray__cache__t_a6dd8d2325c7a0caea03d0b6d42f5f413}{init\+\_\+analytical\+\_\+surf\+\_\+ns}} (const std\+::vector$<$ NS\+::\+Atom $>$ \&atoms, const NS\+::surface\+\_\+type \&surf\+\_\+type, const double \&surf\+\_\+param, const double \&stern\+\_\+layer, const unsigned \&num\+\_\+threads, double \texorpdfstring{$\ast$}{*}l\+\_\+cr, double \texorpdfstring{$\ast$}{*}r\+\_\+cr, double scale, const std\+::string \texorpdfstring{$\ast$}{*}config\+File=nullptr)
+\item 
+void \mbox{\hyperlink{structray__cache__t_aad3569f23203a7197e43e82880c68d34}{compute\+\_\+ns\+\_\+inters}} (crossings\+\_\+t \&ct)
+\item 
+std\+::vector$<$ unsigned char $>$ \mbox{\hyperlink{structray__cache__t_a37bc8d7f6152d4cd52d4e85ee172b2c5}{write\+\_\+map}} (const std\+::map$<$ std\+::array$<$ double, 2 $>$, crossings\+\_\+t, map\+\_\+compare $>$ \&container)
+\item 
+void \mbox{\hyperlink{structray__cache__t_a8398d0f22f1103897be81a6b8e36c827}{read\+\_\+map}} (const std\+::vector$<$ unsigned char $>$ \&data, std\+::map$<$ std\+::array$<$ double, 2 $>$, crossings\+\_\+t, map\+\_\+compare $>$ \&container)
+\item 
+std\+::vector$<$ unsigned char $>$ \mbox{\hyperlink{structray__cache__t_a2a66fd6ec6bc675fb989fa575f7ad0f7}{write\+\_\+ct}} (const crossings\+\_\+t \&ct)
+\item 
+void \mbox{\hyperlink{structray__cache__t_ae71d5e40637ee25f4e942d308c627c42}{read\+\_\+ct}} (const std\+::vector$<$ unsigned char $>$ \&data, crossings\+\_\+t \&ct)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+rays\+\_\+t \mbox{\hyperlink{structray__cache__t_a8f183b5ad6cfb287f5c05a7bad3511d2}{rays}}
+\item 
+int \mbox{\hyperlink{structray__cache__t_aeb969b3145e5dbfb50fc1c64240fe286}{count\+\_\+new\+\_\+dir}} \mbox{[}3\mbox{]} = \{0, 0, 0\}
+\item 
+int \mbox{\hyperlink{structray__cache__t_a6dbf480aaf3fad1b4d1c859df910a482}{count\+\_\+cache\+\_\+dir}} \mbox{[}3\mbox{]} = \{0, 0, 0\}
+\item 
+int \mbox{\hyperlink{structray__cache__t_ac218a7eaf6a5a19b238dff41b050c810}{count}} = 0
+\item 
+std\+::unique\+\_\+ptr$<$ NS\+::\+Nano\+Shaper $>$ \mbox{\hyperlink{structray__cache__t_ad5a36bcb8f72c501804c1cde4d70fb59}{ns}}
+\item 
+double \mbox{\hyperlink{structray__cache__t_a45c325603a9cc8e76edad44bfef44e3c}{l\+\_\+c}} \mbox{[}3\mbox{]} = \{0, 0, 0\}
+\item 
+double \mbox{\hyperlink{structray__cache__t_a78d533199d6235334e79f825a52f09ef}{r\+\_\+c}} \mbox{[}3\mbox{]} = \{0, 0, 0\}
+\item 
+int \mbox{\hyperlink{structray__cache__t_a660c00d75b46bbe6de199864e8d787fe}{num\+\_\+req\+\_\+rays}} \mbox{[}3\mbox{]} = \{0, 0, 0\}
+\item 
+std\+::array$<$ std\+::set$<$ std\+::array$<$ double, 2 $>$, map\+\_\+compare $>$, 3 $>$ \mbox{\hyperlink{structray__cache__t_a0860b6d780679710232774fc2a8613a5}{rays\+\_\+list}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static \mbox{\hyperlink{raytracer_8h_a4efe5052ed87980f656ce822f0b7c417}{int\+\_\+coord\+\_\+t}} \mbox{\hyperlink{structray__cache__t_afd2e09aac421e258422871f84f2b12e8}{count\+\_\+cache}} = 0
+\item 
+static \mbox{\hyperlink{raytracer_8h_a4efe5052ed87980f656ce822f0b7c417}{int\+\_\+coord\+\_\+t}} \mbox{\hyperlink{structray__cache__t_a06b96a2fa16ca51b29bcd7196b9199ec}{count\+\_\+new}} = 0
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{structray__cache__t_aad3569f23203a7197e43e82880c68d34}\index{ray\_cache\_t@{ray\_cache\_t}!compute\_ns\_inters@{compute\_ns\_inters}}
+\index{compute\_ns\_inters@{compute\_ns\_inters}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{compute\_ns\_inters()}{compute\_ns\_inters()}}
+{\footnotesize\ttfamily \label{structray__cache__t_aad3569f23203a7197e43e82880c68d34} 
+void ray\+\_\+cache\+\_\+t\+::compute\+\_\+ns\+\_\+inters (\begin{DoxyParamCaption}\item[{crossings\+\_\+t \&}]{ct}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structray__cache__t_ad5d335836c48ad139b6a0e40a1910c6e}\index{ray\_cache\_t@{ray\_cache\_t}!fill\_cache@{fill\_cache}}
+\index{fill\_cache@{fill\_cache}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{fill\_cache()}{fill\_cache()}}
+{\footnotesize\ttfamily \label{structray__cache__t_ad5d335836c48ad139b6a0e40a1910c6e} 
+void ray\+\_\+cache\+\_\+t\+::fill\+\_\+cache (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structray__cache__t_afb901f898cfabddff806fd1fc5ea9d4a}\index{ray\_cache\_t@{ray\_cache\_t}!init\_analytical\_surf@{init\_analytical\_surf}}
+\index{init\_analytical\_surf@{init\_analytical\_surf}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{init\_analytical\_surf()}{init\_analytical\_surf()}}
+{\footnotesize\ttfamily \label{structray__cache__t_afb901f898cfabddff806fd1fc5ea9d4a} 
+void ray\+\_\+cache\+\_\+t\+::init\+\_\+analytical\+\_\+surf (\begin{DoxyParamCaption}\item[{const std\+::vector$<$ NS\+::\+Atom $>$ \&}]{atoms}{, }\item[{const NS\+::surface\+\_\+type \&}]{surf\+\_\+type}{, }\item[{const double \&}]{surf\+\_\+param}{, }\item[{const double \&}]{stern\+\_\+layer}{, }\item[{const unsigned \&}]{num\+\_\+threads}{, }\item[{const std\+::string \texorpdfstring{$\ast$}{*}}]{config\+File}{ = {\ttfamily nullptr}}\end{DoxyParamCaption})}
+
+\Hypertarget{structray__cache__t_a6dd8d2325c7a0caea03d0b6d42f5f413}\index{ray\_cache\_t@{ray\_cache\_t}!init\_analytical\_surf\_ns@{init\_analytical\_surf\_ns}}
+\index{init\_analytical\_surf\_ns@{init\_analytical\_surf\_ns}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{init\_analytical\_surf\_ns()}{init\_analytical\_surf\_ns()}}
+{\footnotesize\ttfamily \label{structray__cache__t_a6dd8d2325c7a0caea03d0b6d42f5f413} 
+void ray\+\_\+cache\+\_\+t\+::init\+\_\+analytical\+\_\+surf\+\_\+ns (\begin{DoxyParamCaption}\item[{const std\+::vector$<$ NS\+::\+Atom $>$ \&}]{atoms}{, }\item[{const NS\+::surface\+\_\+type \&}]{surf\+\_\+type}{, }\item[{const double \&}]{surf\+\_\+param}{, }\item[{const double \&}]{stern\+\_\+layer}{, }\item[{const unsigned \&}]{num\+\_\+threads}{, }\item[{double \texorpdfstring{$\ast$}{*}}]{l\+\_\+cr}{, }\item[{double \texorpdfstring{$\ast$}{*}}]{r\+\_\+cr}{, }\item[{double}]{scale}{, }\item[{const std\+::string \texorpdfstring{$\ast$}{*}}]{config\+File}{ = {\ttfamily nullptr}}\end{DoxyParamCaption})}
+
+\Hypertarget{structray__cache__t_a5b76d605f92c36fd1c3d9d75557ec6c8}\index{ray\_cache\_t@{ray\_cache\_t}!operator()@{operator()}}
+\index{operator()@{operator()}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{operator()()}{operator()()}}
+{\footnotesize\ttfamily \label{structray__cache__t_a5b76d605f92c36fd1c3d9d75557ec6c8} 
+crossings\+\_\+t \& ray\+\_\+cache\+\_\+t\+::operator() (\begin{DoxyParamCaption}\item[{double}]{x0}{, }\item[{double}]{x1}{, }\item[{unsigned}]{dir}{ = {\ttfamily 1}}\end{DoxyParamCaption})}
+
+\Hypertarget{structray__cache__t_ae71d5e40637ee25f4e942d308c627c42}\index{ray\_cache\_t@{ray\_cache\_t}!read\_ct@{read\_ct}}
+\index{read\_ct@{read\_ct}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{read\_ct()}{read\_ct()}}
+{\footnotesize\ttfamily \label{structray__cache__t_ae71d5e40637ee25f4e942d308c627c42} 
+void ray\+\_\+cache\+\_\+t\+::read\+\_\+ct (\begin{DoxyParamCaption}\item[{const std\+::vector$<$ unsigned char $>$ \&}]{data}{, }\item[{crossings\+\_\+t \&}]{ct}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structray__cache__t_a8398d0f22f1103897be81a6b8e36c827}\index{ray\_cache\_t@{ray\_cache\_t}!read\_map@{read\_map}}
+\index{read\_map@{read\_map}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{read\_map()}{read\_map()}}
+{\footnotesize\ttfamily \label{structray__cache__t_a8398d0f22f1103897be81a6b8e36c827} 
+void ray\+\_\+cache\+\_\+t\+::read\+\_\+map (\begin{DoxyParamCaption}\item[{const std\+::vector$<$ unsigned char $>$ \&}]{data}{, }\item[{std\+::map$<$ std\+::array$<$ double, 2 $>$, crossings\+\_\+t, map\+\_\+compare $>$ \&}]{container}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structray__cache__t_a2a66fd6ec6bc675fb989fa575f7ad0f7}\index{ray\_cache\_t@{ray\_cache\_t}!write\_ct@{write\_ct}}
+\index{write\_ct@{write\_ct}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{write\_ct()}{write\_ct()}}
+{\footnotesize\ttfamily \label{structray__cache__t_a2a66fd6ec6bc675fb989fa575f7ad0f7} 
+std\+::vector$<$ unsigned char $>$ ray\+\_\+cache\+\_\+t\+::write\+\_\+ct (\begin{DoxyParamCaption}\item[{const crossings\+\_\+t \&}]{ct}{}\end{DoxyParamCaption})}
+
+Convert an crossings\+\_\+t object to a vector of bytes that can be saved to a binary file or transmitted through a channel such as a socket or sent as an MPI message. \Hypertarget{structray__cache__t_a37bc8d7f6152d4cd52d4e85ee172b2c5}\index{ray\_cache\_t@{ray\_cache\_t}!write\_map@{write\_map}}
+\index{write\_map@{write\_map}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{write\_map()}{write\_map()}}
+{\footnotesize\ttfamily \label{structray__cache__t_a37bc8d7f6152d4cd52d4e85ee172b2c5} 
+std\+::vector$<$ unsigned char $>$ ray\+\_\+cache\+\_\+t\+::write\+\_\+map (\begin{DoxyParamCaption}\item[{const std\+::map$<$ std\+::array$<$ double, 2 $>$, crossings\+\_\+t, map\+\_\+compare $>$ \&}]{container}{}\end{DoxyParamCaption})}
+
+
+
+\doxysubsection{Member Data Documentation}
+\Hypertarget{structray__cache__t_ac218a7eaf6a5a19b238dff41b050c810}\index{ray\_cache\_t@{ray\_cache\_t}!count@{count}}
+\index{count@{count}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{count}{count}}
+{\footnotesize\ttfamily \label{structray__cache__t_ac218a7eaf6a5a19b238dff41b050c810} 
+int ray\+\_\+cache\+\_\+t\+::count = 0}
+
+\Hypertarget{structray__cache__t_afd2e09aac421e258422871f84f2b12e8}\index{ray\_cache\_t@{ray\_cache\_t}!count\_cache@{count\_cache}}
+\index{count\_cache@{count\_cache}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{count\_cache}{count\_cache}}
+{\footnotesize\ttfamily \label{structray__cache__t_afd2e09aac421e258422871f84f2b12e8} 
+\mbox{\hyperlink{raytracer_8h_a4efe5052ed87980f656ce822f0b7c417}{int\+\_\+coord\+\_\+t}} ray\+\_\+cache\+\_\+t\+::count\+\_\+cache = 0\hspace{0.3cm}{\ttfamily [static]}}
+
+\Hypertarget{structray__cache__t_a6dbf480aaf3fad1b4d1c859df910a482}\index{ray\_cache\_t@{ray\_cache\_t}!count\_cache\_dir@{count\_cache\_dir}}
+\index{count\_cache\_dir@{count\_cache\_dir}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{count\_cache\_dir}{count\_cache\_dir}}
+{\footnotesize\ttfamily \label{structray__cache__t_a6dbf480aaf3fad1b4d1c859df910a482} 
+int ray\+\_\+cache\+\_\+t\+::count\+\_\+cache\+\_\+dir\mbox{[}3\mbox{]} = \{0, 0, 0\}}
+
+\Hypertarget{structray__cache__t_a06b96a2fa16ca51b29bcd7196b9199ec}\index{ray\_cache\_t@{ray\_cache\_t}!count\_new@{count\_new}}
+\index{count\_new@{count\_new}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{count\_new}{count\_new}}
+{\footnotesize\ttfamily \label{structray__cache__t_a06b96a2fa16ca51b29bcd7196b9199ec} 
+\mbox{\hyperlink{raytracer_8h_a4efe5052ed87980f656ce822f0b7c417}{int\+\_\+coord\+\_\+t}} ray\+\_\+cache\+\_\+t\+::count\+\_\+new = 0\hspace{0.3cm}{\ttfamily [static]}}
+
+\Hypertarget{structray__cache__t_aeb969b3145e5dbfb50fc1c64240fe286}\index{ray\_cache\_t@{ray\_cache\_t}!count\_new\_dir@{count\_new\_dir}}
+\index{count\_new\_dir@{count\_new\_dir}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{count\_new\_dir}{count\_new\_dir}}
+{\footnotesize\ttfamily \label{structray__cache__t_aeb969b3145e5dbfb50fc1c64240fe286} 
+int ray\+\_\+cache\+\_\+t\+::count\+\_\+new\+\_\+dir\mbox{[}3\mbox{]} = \{0, 0, 0\}}
+
+\Hypertarget{structray__cache__t_a45c325603a9cc8e76edad44bfef44e3c}\index{ray\_cache\_t@{ray\_cache\_t}!l\_c@{l\_c}}
+\index{l\_c@{l\_c}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{l\_c}{l\_c}}
+{\footnotesize\ttfamily \label{structray__cache__t_a45c325603a9cc8e76edad44bfef44e3c} 
+double ray\+\_\+cache\+\_\+t\+::l\+\_\+c\mbox{[}3\mbox{]} = \{0, 0, 0\}}
+
+\Hypertarget{structray__cache__t_ad5a36bcb8f72c501804c1cde4d70fb59}\index{ray\_cache\_t@{ray\_cache\_t}!ns@{ns}}
+\index{ns@{ns}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{ns}{ns}}
+{\footnotesize\ttfamily \label{structray__cache__t_ad5a36bcb8f72c501804c1cde4d70fb59} 
+std\+::unique\+\_\+ptr$<$NS\+::\+Nano\+Shaper$>$ ray\+\_\+cache\+\_\+t\+::ns}
+
+\Hypertarget{structray__cache__t_a660c00d75b46bbe6de199864e8d787fe}\index{ray\_cache\_t@{ray\_cache\_t}!num\_req\_rays@{num\_req\_rays}}
+\index{num\_req\_rays@{num\_req\_rays}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{num\_req\_rays}{num\_req\_rays}}
+{\footnotesize\ttfamily \label{structray__cache__t_a660c00d75b46bbe6de199864e8d787fe} 
+int ray\+\_\+cache\+\_\+t\+::num\+\_\+req\+\_\+rays\mbox{[}3\mbox{]} = \{0, 0, 0\}}
+
+\Hypertarget{structray__cache__t_a78d533199d6235334e79f825a52f09ef}\index{ray\_cache\_t@{ray\_cache\_t}!r\_c@{r\_c}}
+\index{r\_c@{r\_c}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{r\_c}{r\_c}}
+{\footnotesize\ttfamily \label{structray__cache__t_a78d533199d6235334e79f825a52f09ef} 
+double ray\+\_\+cache\+\_\+t\+::r\+\_\+c\mbox{[}3\mbox{]} = \{0, 0, 0\}}
+
+\Hypertarget{structray__cache__t_a8f183b5ad6cfb287f5c05a7bad3511d2}\index{ray\_cache\_t@{ray\_cache\_t}!rays@{rays}}
+\index{rays@{rays}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{rays}{rays}}
+{\footnotesize\ttfamily \label{structray__cache__t_a8f183b5ad6cfb287f5c05a7bad3511d2} 
+rays\+\_\+t ray\+\_\+cache\+\_\+t\+::rays}
+
+\Hypertarget{structray__cache__t_a0860b6d780679710232774fc2a8613a5}\index{ray\_cache\_t@{ray\_cache\_t}!rays\_list@{rays\_list}}
+\index{rays\_list@{rays\_list}!ray\_cache\_t@{ray\_cache\_t}}
+\doxysubsubsection{\texorpdfstring{rays\_list}{rays\_list}}
+{\footnotesize\ttfamily \label{structray__cache__t_a0860b6d780679710232774fc2a8613a5} 
+std\+::array$<$std\+::set$<$std\+::array$<$double, 2$>$, map\+\_\+compare$>$, 3$>$ ray\+\_\+cache\+\_\+t\+::rays\+\_\+list}
+
+
+
+The documentation for this struct was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/\+Users/vincenzo/\+Documents/\+Ph\+D/\+PBE/\+LPBe/nextgen\+PB/include/\mbox{\hyperlink{raytracer_8h}{raytracer.\+h}}\item 
+/\+Users/vincenzo/\+Documents/\+Ph\+D/\+PBE/\+LPBe/nextgen\+PB/src/\mbox{\hyperlink{poisson__boltzmann_8cpp}{poisson\+\_\+boltzmann.\+cpp}}\item 
+/\+Users/vincenzo/\+Documents/\+Ph\+D/\+PBE/\+LPBe/nextgen\+PB/src/\mbox{\hyperlink{raytracer_8cpp}{raytracer.\+cpp}}\end{DoxyCompactItemize}

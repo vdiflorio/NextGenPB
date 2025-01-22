@@ -1,0 +1,92 @@
+\doxysection{vtk\+\_\+class.\+h}
+\hypertarget{vtk__class_8h_source}{}\label{vtk__class_8h_source}\index{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/vtk\_class.h@{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/vtk\_class.h}}
+\mbox{\hyperlink{vtk__class_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#include\ <iostream>}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#include\ <fstream>}}
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <string>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <cstdint>}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <sstream>}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <stdexcept>}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ <algorithm>}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ <bim\_distributed\_vector.h>}}
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#include\ <quad\_operators\_3d.h>}}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ <tmesh\_3d.h>}}
+\DoxyCodeLine{00012\ }
+\DoxyCodeLine{00013\ \textcolor{comment}{//\ Data\ containers}}
+\DoxyCodeLine{00014\ \textcolor{keyword}{typedef}\ std::vector<uint8\_t>\ \mbox{\hyperlink{vtk__class_8h_a35da937e2331acce98d47f44892f4a76}{ByteArray}};}
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00016\ \textcolor{keyword}{class\ }\mbox{\hyperlink{class_v_t_k_writer}{VTKWriter}}}
+\DoxyCodeLine{00017\ \{}
+\DoxyCodeLine{00018\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ \ \ \mbox{\hyperlink{class_v_t_k_writer_a062468d679a3eae7698a78924a95f308}{VTKWriter}}\ (std::string\ basename\_\ =\ \textcolor{stringliteral}{"{}default"{}},\ \textcolor{keywordtype}{int}\ rank\_\ =\ 0)}
+\DoxyCodeLine{00021\ \ \ \ \ :\ basename\ (basename\_.empty()\ ?\ \textcolor{stringliteral}{"{}default"{}}\ :\ basename\_),}
+\DoxyCodeLine{00022\ \ \ \ \ \ \ rank\ (rank\_),\ offsetCounter\ (0)}
+\DoxyCodeLine{00023\ \ \ \{}
+\DoxyCodeLine{00024\ }
+\DoxyCodeLine{00025\ \ \ \ \ \textcolor{comment}{/*if\ (basename\_.empty())\ \{}}
+\DoxyCodeLine{00026\ \textcolor{comment}{\ \ \ \ \ \ std::cerr\ <<\ "{}Warning:\ Basename\ is\ empty.\ Setting\ basename\ to\ 'default'.\(\backslash\)n"{};}}
+\DoxyCodeLine{00027\ \textcolor{comment}{\ \ \ \ \}*/}}
+\DoxyCodeLine{00028\ \ \ \ \ snprintf\ (filename,\ \textcolor{keyword}{sizeof}\ (filename),\ \textcolor{stringliteral}{"{}\%s\_\%4.4d.vtu"{}},\ basename.c\_str(),\ rank);}
+\DoxyCodeLine{00029\ \ \ \}}
+\DoxyCodeLine{00030\ }
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00032\ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{class_v_t_k_writer_a0e7d0f785abe530ec6441c005d8d184f}{setBaseName}}\ (std::string\ basename\_,\ \textcolor{keywordtype}{int}\ rank\_);}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00034\ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{class_v_t_k_writer_a9ca43853a2b0bff84260cf1a540b46a0}{writeFieldVtuBinary}}\ (tmesh\_3d\&\ tmsh,}
+\DoxyCodeLine{00035\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ distributed\_vector\&\ field,}
+\DoxyCodeLine{00036\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ std::string\ \&fieldname\_);}
+\DoxyCodeLine{00037\ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{class_v_t_k_writer_afa78a1e9b30cc7d4ee62f43e8173ae6d}{writeFieldVtuBinary\_local}}\ (tmesh\_3d\&\ tmsh,}
+\DoxyCodeLine{00038\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ distributed\_vector\&\ field,}
+\DoxyCodeLine{00039\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ std::string\ \&fieldname\_,\ \textcolor{keywordtype}{double}*\ l\_cr,\ \textcolor{keywordtype}{double}*\ r\_cr);}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00041\ \ \ \textcolor{keywordtype}{void}\ \mbox{\hyperlink{class_v_t_k_writer_abaedbe56ea82117c4c1c00e646f12726}{createPvtuFile}}\ (std::vector<std::string>\ \&fieldNames,\ std::vector<std::string>\ \&baseNames,\ \textcolor{keywordtype}{int}\ numRanks);}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00043\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00044\ \ \ std::string\ basename;}
+\DoxyCodeLine{00045\ \ \ std::string\ fieldname;}
+\DoxyCodeLine{00046\ \ \ \textcolor{keywordtype}{char}\ filename[255];}
+\DoxyCodeLine{00047\ \ \ std::ofstream\ file;}
+\DoxyCodeLine{00048\ \ \ \mbox{\hyperlink{vtk__class_8h_a35da937e2331acce98d47f44892f4a76}{ByteArray}}\ dataContainer;}
+\DoxyCodeLine{00049\ \ \ \textcolor{keywordtype}{int}\ nnodes;}
+\DoxyCodeLine{00050\ \ \ \textcolor{keywordtype}{int}\ nelems;}
+\DoxyCodeLine{00051\ \ \ std::vector<double>\ p;}
+\DoxyCodeLine{00052\ \ \ std::vector<double>\ f\_loc;}
+\DoxyCodeLine{00053\ \ \ std::vector<int>\ t;}
+\DoxyCodeLine{00054\ \ \ \textcolor{keywordtype}{int}\ offsetCounter;}
+\DoxyCodeLine{00055\ \ \ \textcolor{keywordtype}{int}\ rank;}
+\DoxyCodeLine{00056\ }
+\DoxyCodeLine{00057\ \ \ \textcolor{keywordtype}{void}\ preparingData\ (\textcolor{keyword}{const}\ distributed\_vector\&\ field,\ tmesh\_3d\&\ tmsh);}
+\DoxyCodeLine{00058\ }
+\DoxyCodeLine{00059\ \ \ \textcolor{keywordtype}{void}\ preparingData\_local\ (\textcolor{keyword}{const}\ distributed\_vector\&\ field,\ tmesh\_3d\&\ tmsh,\ \textcolor{keywordtype}{double}*\ l\_cr,\ \textcolor{keywordtype}{double}*\ r\_cr);}
+\DoxyCodeLine{00060\ }
+\DoxyCodeLine{00061\ \ \ \textcolor{keywordtype}{void}\ setFieldName\ (std::string\ \&fieldname\_);}
+\DoxyCodeLine{00062\ }
+\DoxyCodeLine{00063\ \ \ \textcolor{keywordtype}{void}\ initializeFile();}
+\DoxyCodeLine{00064\ }
+\DoxyCodeLine{00065\ \ \ \textcolor{keywordtype}{void}\ writePieceHeader();}
+\DoxyCodeLine{00066\ }
+\DoxyCodeLine{00067\ \ \ \textcolor{keywordtype}{void}\ writeGrid();}
+\DoxyCodeLine{00068\ }
+\DoxyCodeLine{00069\ \ \ \textcolor{keywordtype}{void}\ writeDataPoints();}
+\DoxyCodeLine{00070\ }
+\DoxyCodeLine{00071\ \ \ \textcolor{keywordtype}{void}\ writeDataArray\ (\textcolor{keyword}{const}\ std::string\&\ type,\ \textcolor{keyword}{const}\ std::string\&\ name,\ \textcolor{keywordtype}{int}\ numComponents,}
+\DoxyCodeLine{00072\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ std::vector<double>\&\ data,\ \textcolor{keywordtype}{int}\ numEntries);}
+\DoxyCodeLine{00073\ }
+\DoxyCodeLine{00074\ \ \ \textcolor{keywordtype}{void}\ writeConnectivity();}
+\DoxyCodeLine{00075\ }
+\DoxyCodeLine{00076\ \ \ \textcolor{keywordtype}{void}\ writeOffsets();}
+\DoxyCodeLine{00077\ }
+\DoxyCodeLine{00078\ \ \ \textcolor{keywordtype}{void}\ writeCellTypes();}
+\DoxyCodeLine{00079\ }
+\DoxyCodeLine{00080\ }
+\DoxyCodeLine{00081\ \ \ \textcolor{keywordtype}{void}\ appendData\ (\textcolor{keyword}{const}\ \mbox{\hyperlink{vtk__class_8h_a35da937e2331acce98d47f44892f4a76}{ByteArray}}\&\ rawData);}
+\DoxyCodeLine{00082\ }
+\DoxyCodeLine{00083\ \ \ \textcolor{keywordtype}{void}\ finalizeFile();}
+\DoxyCodeLine{00084\ }
+\DoxyCodeLine{00085\ \ \ \textcolor{keywordtype}{bool}\ fileExists\ (std::string\&\ name);}
+\DoxyCodeLine{00086\ \};}
+
+\end{DoxyCode}

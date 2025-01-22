@@ -1,0 +1,648 @@
+\doxysection{pb\+\_\+class.\+h}
+\hypertarget{pb__class_8h_source}{}\label{pb__class_8h_source}\index{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/pb\_class.h@{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/pb\_class.h}}
+\mbox{\hyperlink{pb__class_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ HAVE\_PB\_CLASS\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ HAVE\_PB\_CLASS\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <bim\_timing.h>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <tmesh\_3d.h>}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#define\ TIC()\ MPI\_Barrier\ (MPI\_COMM\_WORLD);\ if\ (rank\ ==\ 0)\ \{\ tic\ ();\ \}}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#define\ TOC(S)\ MPI\_Barrier\ (MPI\_COMM\_WORLD);\ if\ (rank\ ==\ 0)\ \{\ toc\ (S);\ \}}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ <cmath>}}
+\DoxyCodeLine{00010\ }
+\DoxyCodeLine{00011\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{pb__class_8h_ad09fa89526f50d4b4a031f43a211319e}{p4esttol}}\ =\ 1\ /\ std::pow\ (2,\ P8EST\_QMAXLEVEL);}
+\DoxyCodeLine{00012\ }
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#include\ <array>}}
+\DoxyCodeLine{00014\ \textcolor{preprocessor}{\#include\ <string>}}
+\DoxyCodeLine{00015\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{00016\ \textcolor{preprocessor}{\#include\ <fstream>}}
+\DoxyCodeLine{00017\ \textcolor{preprocessor}{\#include\ <iostream>}}
+\DoxyCodeLine{00018\ \textcolor{preprocessor}{\#include\ <memory>}}
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{raytracer_8h}{raytracer.h}}"{}}}
+\DoxyCodeLine{00021\ \textcolor{preprocessor}{\#include\ <nanoshaper.h>}}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00024\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{wrapper__search_8h}{wrapper\_search.h}}"{}}}
+\DoxyCodeLine{00025\ }
+\DoxyCodeLine{00026\ }
+\DoxyCodeLine{00027\ \textcolor{comment}{//\ Problem\ parameters}}
+\DoxyCodeLine{00028\ \textcolor{keyword}{constexpr}\ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{pb__class_8h_ab8852654a6f05fe1dcec3a1a5725f1cd}{e\_0}}\ =\ 8.85418781762e-\/12;\ \textcolor{comment}{//Dielectric\ void\ const\ [F/m]}}
+\DoxyCodeLine{00029\ \textcolor{keyword}{constexpr}\ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{pb__class_8h_a20c343545bb88a9206285e5d0d8b2b1b}{kb}}\ =\ 1.380649e-\/23;\ \textcolor{comment}{//Boltzmann\ constant\ [J/K]}}
+\DoxyCodeLine{00030\ \textcolor{comment}{//\ constexpr\ double\ T\ =\ 273.15\ +\ 25;\ //Temperature\ [K]}}
+\DoxyCodeLine{00031\ \textcolor{comment}{//\ constexpr\ double\ T\ =\ 273.15\ +\ 25.00005445539216;}}
+\DoxyCodeLine{00032\ \textcolor{keyword}{constexpr}\ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{pb__class_8h_ab1b5243878365dc4acdd37a1dce0d976}{e}}\ =\ 1.602176634e-\/19;\ \textcolor{comment}{//Charge\ of\ an\ electron\ [C]}}
+\DoxyCodeLine{00033\ \textcolor{keyword}{constexpr}\ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{pb__class_8h_a6b179ba3e597a3a8ed8a1dabbec390dd}{N\_av}}\ =\ 6.022e23;\ \textcolor{comment}{//Avogadro\ Number\ [mol\string^-\/1]}}
+\DoxyCodeLine{00034\ \textcolor{keyword}{constexpr}\ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{pb__class_8h_a82d27cee63b25cc1b380ad8299586fb2}{Angs}}\ =\ 1\mbox{\hyperlink{pb__class_8h_ab1b5243878365dc4acdd37a1dce0d976}{e}}-\/10;\ \textcolor{comment}{//Angstrom\ [m]}}
+\DoxyCodeLine{00035\ \textcolor{keyword}{constexpr}\ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{pb__class_8h_ad172e8d1a294401209781f9aeaa77410}{pi}}\ =\ 3.14159265358979323846;}
+\DoxyCodeLine{00036\ }
+\DoxyCodeLine{00037\ }
+\DoxyCodeLine{00038\ \textcolor{keyword}{struct}}
+\DoxyCodeLine{00039\ \ \ \mbox{\hyperlink{structpoisson__boltzmann}{poisson\_boltzmann}}\ \{}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00041\ \ \ p4est\_topidx\_t\ \mbox{\hyperlink{structpoisson__boltzmann_ad4080b9b085cddcbb3ed8254ff566870}{simple\_conn\_num\_vertices}};}
+\DoxyCodeLine{00042\ \ \ p4est\_topidx\_t\ \mbox{\hyperlink{structpoisson__boltzmann_ada6750bc870ae1c3815c824b96c4a481}{simple\_conn\_num\_trees}};}
+\DoxyCodeLine{00043\ \ \ std::unique\_ptr<double[]>\ \mbox{\hyperlink{structpoisson__boltzmann_ae35f28b2f60817065b11a6ca7e0a5a77}{simple\_conn\_p}};}
+\DoxyCodeLine{00044\ \ \ std::unique\_ptr<p4est\_topidx\_t[]>\ \mbox{\hyperlink{structpoisson__boltzmann_a8c46bf974c4b145df7d331388f840c7d}{simple\_conn\_t}};}
+\DoxyCodeLine{00045\ \ \ \textcolor{comment}{//\ double\ *simple\_conn\_p;}}
+\DoxyCodeLine{00046\ \ \ \textcolor{comment}{//\ p4est\_topidx\_t\ *simple\_conn\_t;}}
+\DoxyCodeLine{00047\ \ \ std::vector<std::pair<p4est\_topidx\_t,\ p4est\_topidx\_t>>\ \mbox{\hyperlink{structpoisson__boltzmann_a0ce1800e0a54eabd9bd638d5434e063a}{bcells}};}
+\DoxyCodeLine{00048\ }
+\DoxyCodeLine{00049\ \ \ std::vector<NS::Atom>\ \mbox{\hyperlink{structpoisson__boltzmann_aaf0802ca2d2e4c159b03246f50cd1b33}{atoms}};}
+\DoxyCodeLine{00050\ \ \ std::vector<std::array<double,3>>\ \mbox{\hyperlink{structpoisson__boltzmann_a266ad49c8e38bbe7034893b7de213a23}{pos\_atoms}};}
+\DoxyCodeLine{00051\ \ \ std::vector<double>\ \mbox{\hyperlink{structpoisson__boltzmann_af998f20b72a695f7b080116dbee90c95}{charge\_atoms}};}
+\DoxyCodeLine{00052\ \ \ std::vector<double>\ \mbox{\hyperlink{structpoisson__boltzmann_ae687636e97546958daadd62f42999c9a}{r\_atoms}};}
+\DoxyCodeLine{00053\ }
+\DoxyCodeLine{00054\ \ \ \textcolor{comment}{//\ Center\ of\ the\ system}}
+\DoxyCodeLine{00055\ \ \ \textcolor{keywordtype}{double}\ cc[3];}
+\DoxyCodeLine{00056\ }
+\DoxyCodeLine{00057\ \ \ \textcolor{comment}{//Cubic\ mesh:}}
+\DoxyCodeLine{00058\ \ \ \textcolor{keywordtype}{double}\ ll[3];\ \textcolor{comment}{//min\ value\ between\ all\ the\ coordinates}}
+\DoxyCodeLine{00059\ \ \ \textcolor{keywordtype}{double}\ rr[3];\ \textcolor{comment}{//max\ value\ between\ all\ the\ coordinates}}
+\DoxyCodeLine{00060\ }
+\DoxyCodeLine{00061\ \ \ \textcolor{comment}{//Stretched\ mesh:}}
+\DoxyCodeLine{00062\ \ \ \textcolor{keywordtype}{double}\ l\_c[3];\ \textcolor{comment}{//min\ x,\ y,\ z\ value}}
+\DoxyCodeLine{00063\ \ \ \textcolor{keywordtype}{double}\ r\_c[3];\ \textcolor{comment}{//max\ x,\ y,\ z\ value}}
+\DoxyCodeLine{00064\ \ \ \textcolor{keywordtype}{double}\ l\_cr[3];\ \textcolor{comment}{//refined\ box\ min\ x,\ y,\ z\ value}}
+\DoxyCodeLine{00065\ \ \ \textcolor{keywordtype}{double}\ r\_cr[3];\ \textcolor{comment}{//refined\ box\ max\ x,\ y,\ z\ value}}
+\DoxyCodeLine{00066\ \ \ \textcolor{keywordtype}{double}\ l\_box[3];\ \textcolor{comment}{//refined\ box\ min\ x,\ y,\ z\ value\ focusing}}
+\DoxyCodeLine{00067\ \ \ \textcolor{keywordtype}{double}\ r\_box[3];\ \textcolor{comment}{//refined\ box\ max\ x,\ y,\ z\ value\ focusing}}
+\DoxyCodeLine{00068\ \ \ \textcolor{comment}{//number\ of\ trees}}
+\DoxyCodeLine{00069\ \ \ p4est\_topidx\_t\ num\_trees[3];}
+\DoxyCodeLine{00070\ \ \ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{structpoisson__boltzmann_a088f38c3a9053599fa9c211707327fde}{len}};}
+\DoxyCodeLine{00071\ }
+\DoxyCodeLine{00072\ \ \ \textcolor{comment}{//Focusing\ mesh:}}
+\DoxyCodeLine{00073\ \ \ \textcolor{keywordtype}{double}\ cc\_focusing[3];}
+\DoxyCodeLine{00074\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_a4094f5d90666822dc20feb754d2a7779}{n\_grid}};}
+\DoxyCodeLine{00075\ }
+\DoxyCodeLine{00076\ \ \ \textcolor{comment}{//mesh:}}
+\DoxyCodeLine{00077\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_ada70a8b8390e0a273d44ea1be8b12237}{maxlevel}};}
+\DoxyCodeLine{00078\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_a8d0fbc088f8db88c9e68b680a048169b}{minlevel}};}
+\DoxyCodeLine{00079\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_a7e5cb352275e0121b15fedc4439c9ad9}{unilevel}};}
+\DoxyCodeLine{00080\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_a70ab9b61836e45760a0449ebfb140dd4}{outlevel}};}
+\DoxyCodeLine{00081\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_aab6588d46efea99997cf8cb96744cc84}{loc\_refinement}};}
+\DoxyCodeLine{00082\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_a843d3fb2db009524e498a0c26168c936}{mesh\_shape}};}
+\DoxyCodeLine{00083\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_a24f1f30ab3b65b947a32cc2c0427880e}{refine\_box}};}
+\DoxyCodeLine{00084\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_a230d04b7ead695aca162c51c8526a788}{scale\_level}};}
+\DoxyCodeLine{00085\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_ac9ccf3d2e3f523d1f70c716d0023f147}{scale\_level\_min\_box}};}
+\DoxyCodeLine{00086\ \ \ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{structpoisson__boltzmann_a6645595cafb6442ba9d968a328b350ee}{scale}},\ scale\_min,\ scale\_max;}
+\DoxyCodeLine{00087\ \ \ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{structpoisson__boltzmann_a72ae4e7e3a980f8692a81704b74a7417}{perfil1}},\ perfil2;}
+\DoxyCodeLine{00088\ \ \ \textcolor{keywordtype}{int}\ loc\_ref\ =\ 0;}
+\DoxyCodeLine{00089\ }
+\DoxyCodeLine{00090\ \ \ \textcolor{comment}{//model:}}
+\DoxyCodeLine{00091\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_ad8b0b210be7ff7fc926789b39b2f4d5f}{linearized}};}
+\DoxyCodeLine{00092\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_ab66e7d15f0a17db0a01fd36a8e1ad928}{bc}};}
+\DoxyCodeLine{00093\ \ \ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{structpoisson__boltzmann_a3469f7059f33dca08462398e264b3ee8}{e\_in}},\ e\_out,\ ionic\_strength;\ \textcolor{comment}{//[M]}}
+\DoxyCodeLine{00094\ \ \ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{structpoisson__boltzmann_a0ce6946c5e7845bbd5209e643d95eb7d}{T}};}
+\DoxyCodeLine{00095\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_adb2fab7915f075ead209ccbdec9f92a0}{calc\_energy}};}
+\DoxyCodeLine{00096\ }
+\DoxyCodeLine{00097\ \ \ \textcolor{comment}{//surface:}}
+\DoxyCodeLine{00098\ \ \ NS::surface\_type\ \mbox{\hyperlink{structpoisson__boltzmann_af4f5f24416210800beb58c2ceceaf806}{surf\_type}};}
+\DoxyCodeLine{00099\ \ \ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{structpoisson__boltzmann_aff5baddd56f7f2eb414ab76188c1b764}{surf\_param}};}
+\DoxyCodeLine{00100\ \ \ \textcolor{keywordtype}{double}\ prb\_radius\ =\ 1.4;\ \textcolor{comment}{//typical\ prob\ radious;}}
+\DoxyCodeLine{00101\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_a712206ec0622882bd66649ec89aaa246}{stern\_layer\_surf}};}
+\DoxyCodeLine{00102\ \ \ \textcolor{keywordtype}{double}\ \mbox{\hyperlink{structpoisson__boltzmann_ac92de7cf4d19bb910098b007817403af}{stern\_layer}};}
+\DoxyCodeLine{00103\ \ \ \textcolor{keywordtype}{unsigned}\ \mbox{\hyperlink{structpoisson__boltzmann_afbf780d4c02a0233c0ccccaaf2afbe39}{num\_threads}};}
+\DoxyCodeLine{00104\ }
+\DoxyCodeLine{00105\ \ \ \textcolor{comment}{//algorithm:}}
+\DoxyCodeLine{00106\ \ \ std::string\ \mbox{\hyperlink{structpoisson__boltzmann_a2a13fa4678d6fd832174e499c2274b13}{linear\_solver\_name}};}
+\DoxyCodeLine{00107\ \ \ std::string\ \mbox{\hyperlink{structpoisson__boltzmann_a2be1899b67868330e25315c7d84a4974}{linear\_solver\_options}};}
+\DoxyCodeLine{00108\ }
+\DoxyCodeLine{00109\ \ \ MPI\_Comm\ \mbox{\hyperlink{structpoisson__boltzmann_ac58228995612efdf2076c3606cf1c2a0}{mpicomm}};}
+\DoxyCodeLine{00110\ \ \ tmesh\_3d\ \mbox{\hyperlink{structpoisson__boltzmann_a1c8953fea663682856648664b6e99160}{tmsh}};}
+\DoxyCodeLine{00111\ }
+\DoxyCodeLine{00112\ \ \ std::string\ \mbox{\hyperlink{structpoisson__boltzmann_a1f0f3333c358e84de8b0d5578a73ff6f}{optionsfilename}};}
+\DoxyCodeLine{00113\ \ \ std::string\ \mbox{\hyperlink{structpoisson__boltzmann_a65c8927f049a59d175799bfbb31ab250}{pqrfilename}};}
+\DoxyCodeLine{00114\ \ \ std::string\ \mbox{\hyperlink{structpoisson__boltzmann_a9edca2ad6b750e50cae0d7be793741a5}{p4estfilename}};}
+\DoxyCodeLine{00115\ \ \ std::string\ \mbox{\hyperlink{structpoisson__boltzmann_a6013c2e73a20caab51bfd8c2f25480e0}{surffilename}};}
+\DoxyCodeLine{00116\ \ \ std::string\ \mbox{\hyperlink{structpoisson__boltzmann_a6e57b67794fb48c5f9c2df7b7c82aae9}{markerfilename}};}
+\DoxyCodeLine{00117\ }
+\DoxyCodeLine{00118\ \ \ std::string\ \mbox{\hyperlink{structpoisson__boltzmann_a1d758b0108160763dddf3e4306b30f50}{pqr\_atoms}};}
+\DoxyCodeLine{00119\ }
+\DoxyCodeLine{00120\ \ \ \textcolor{comment}{//post\_processing}}
+\DoxyCodeLine{00121\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_a07099aa2c65afcf1badd04105fb3a9d2}{atoms\_write}};}
+\DoxyCodeLine{00122\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_a89f91065362b2f1910da5873b531138b}{surf\_write}};}
+\DoxyCodeLine{00123\ \ \ std::string\ \mbox{\hyperlink{structpoisson__boltzmann_aaac1686e5e2b30f68356cffd4589d983}{map\_type}};}
+\DoxyCodeLine{00124\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_a47c4338d64840074317ec42e22c00170}{potential\_map}};}
+\DoxyCodeLine{00125\ \ \ \textcolor{keywordtype}{int}\ \mbox{\hyperlink{structpoisson__boltzmann_a579dd0c47dcafe074e0b60925e77ccad}{eps\_map}};}
+\DoxyCodeLine{00126\ \ \ std::map<int,\ tmesh\_3d::quadrant\_t>\ \mbox{\hyperlink{structpoisson__boltzmann_a3a25c156728a7294f90b17cafba125f2}{lookup\_table}};}
+\DoxyCodeLine{00127\ }
+\DoxyCodeLine{00128\ }
+\DoxyCodeLine{00129\ \ \ std::vector<double>\ \mbox{\hyperlink{structpoisson__boltzmann_ae0ceaa5f2aa5ce801c3d4c0d5223c06b}{marker}};}
+\DoxyCodeLine{00130\ \ \ std::vector<double>\ \mbox{\hyperlink{structpoisson__boltzmann_ad2d97878a54ee20cd1530b21c9e11400}{marker\_k}};}
+\DoxyCodeLine{00131\ \ \ std::vector<double>\ \mbox{\hyperlink{structpoisson__boltzmann_a84d44521fbde6ddad9c133ae5a03e957}{epsilon}};}
+\DoxyCodeLine{00132\ \ \ std::vector<double>\ \mbox{\hyperlink{structpoisson__boltzmann_a7b510f8e7f268c325e075d882ec29da3}{epsilon\_in}};}
+\DoxyCodeLine{00133\ \ \ std::vector<double>\ \mbox{\hyperlink{structpoisson__boltzmann_a698245e830f0274771d2e08f3ae5879f}{epsilon\_out}};}
+\DoxyCodeLine{00134\ \ \ std::vector<double>\ \mbox{\hyperlink{structpoisson__boltzmann_a6c880680bf2608788374a5bfd77f1591}{reaction}};}
+\DoxyCodeLine{00135\ \ \ std::vector<double>\ \mbox{\hyperlink{structpoisson__boltzmann_acd4e8ee8e42b10514e17fa886a4e0286}{ones\_in}};}
+\DoxyCodeLine{00136\ }
+\DoxyCodeLine{00137\ \ \ std::vector<int>\ \mbox{\hyperlink{structpoisson__boltzmann_abb0a067ea4ad9a1738bd7b9744095e1a}{border\_quad}};}
+\DoxyCodeLine{00138\ }
+\DoxyCodeLine{00139\ }
+\DoxyCodeLine{00140\ \ \ std::set<std::array<int,\ 2>>\ \mbox{\hyperlink{structpoisson__boltzmann_af840403e584d64807c3d6ddcff9b792a}{int\_nodes}};}
+\DoxyCodeLine{00141\ }
+\DoxyCodeLine{00142\ \ \ std::unique\_ptr<distributed\_vector>\ \mbox{\hyperlink{structpoisson__boltzmann_ab3daea492c5690b67e91e033ac2f6085}{markn}};}
+\DoxyCodeLine{00143\ \ \ std::unique\_ptr<distributed\_vector>\ \mbox{\hyperlink{structpoisson__boltzmann_aedaed5a229714981786df08d60809b77}{epsilon\_nodes}};}
+\DoxyCodeLine{00144\ \ \ std::unique\_ptr<distributed\_vector>\ \mbox{\hyperlink{structpoisson__boltzmann_acdf7e0afa452648bb77e20653f30cc4a}{reaction\_nodes}};}
+\DoxyCodeLine{00145\ }
+\DoxyCodeLine{00146\ }
+\DoxyCodeLine{00147\ \ \ std::unique\_ptr<distributed\_vector>\ \mbox{\hyperlink{structpoisson__boltzmann_a36064372d1201f079e8441c94929cc75}{phi}};}
+\DoxyCodeLine{00148\ \ \ std::unique\_ptr<distributed\_vector>\ \mbox{\hyperlink{structpoisson__boltzmann_a26443a3b714ac95b374d26221d317b99}{rho\_fixed}};}
+\DoxyCodeLine{00149\ \ \ \textcolor{comment}{//\ std::unique\_ptr<distributed\_vector>\ rhs;}}
+\DoxyCodeLine{00150\ }
+\DoxyCodeLine{00151\ \ \ \textcolor{keyword}{static}\ \textcolor{keyword}{constexpr}}
+\DoxyCodeLine{00152\ \ \ std::array<int,\ 12>\ edge\_axis\ =\ \{0,1,0,1,0,1,0,1,2,2,2,2\};}
+\DoxyCodeLine{00153\ }
+\DoxyCodeLine{00154\ \ \ \textcolor{keyword}{static}\ \textcolor{keyword}{constexpr}}
+\DoxyCodeLine{00155\ \ \ std::array<int,\ 24>\ edge2nodes\ =\ \{}
+\DoxyCodeLine{00156\ \ \ \ \ 0,\ 1,}
+\DoxyCodeLine{00157\ \ \ \ \ 1,\ 3,}
+\DoxyCodeLine{00158\ \ \ \ \ 2,\ 3,}
+\DoxyCodeLine{00159\ \ \ \ \ 0,\ 2,}
+\DoxyCodeLine{00160\ \ \ \ \ 4,\ 5,}
+\DoxyCodeLine{00161\ \ \ \ \ 5,\ 7,}
+\DoxyCodeLine{00162\ \ \ \ \ 6,\ 7,}
+\DoxyCodeLine{00163\ \ \ \ \ 4,\ 6,}
+\DoxyCodeLine{00164\ \ \ \ \ 0,\ 4,}
+\DoxyCodeLine{00165\ \ \ \ \ 1,\ 5,}
+\DoxyCodeLine{00166\ \ \ \ \ 3,\ 7,}
+\DoxyCodeLine{00167\ \ \ \ \ 2,\ 6}
+\DoxyCodeLine{00168\ \ \ \};}
+\DoxyCodeLine{00169\ }
+\DoxyCodeLine{00170\ }
+\DoxyCodeLine{00171\ }
+\DoxyCodeLine{00172\ \ \ \textcolor{keywordtype}{int}\ edgeTable[256]=\ \{}
+\DoxyCodeLine{00173\ \ \ \ \ 0x0,\ 0x109,\ 0x203,\ 0x30a,\ 0x406,\ 0x50f,\ 0x605,\ 0x70c,}
+\DoxyCodeLine{00174\ \ \ \ \ 0x80c,\ 0x905,\ 0xa0f,\ 0xb06,\ 0xc0a,\ 0xd03,\ 0xe09,\ 0xf00,}
+\DoxyCodeLine{00175\ \ \ \ \ 0x190,\ 0x99,\ 0x393,\ 0x29a,\ 0x596,\ 0x49f,\ 0x795,\ 0x69c,}
+\DoxyCodeLine{00176\ \ \ \ \ 0x99c,\ 0x895,\ 0xb9f,\ 0xa96,\ 0xd9a,\ 0xc93,\ 0xf99,\ 0xe90,}
+\DoxyCodeLine{00177\ \ \ \ \ 0x230,\ 0x339,\ 0x33,\ 0x13a,\ 0x636,\ 0x73f,\ 0x435,\ 0x53c,}
+\DoxyCodeLine{00178\ \ \ \ \ 0xa3c,\ 0xb35,\ 0x83f,\ 0x936,\ 0xe3a,\ 0xf33,\ 0xc39,\ 0xd30,}
+\DoxyCodeLine{00179\ \ \ \ \ 0x3a0,\ 0x2a9,\ 0x1a3,\ 0xaa,\ 0x7a6,\ 0x6af,\ 0x5a5,\ 0x4ac,}
+\DoxyCodeLine{00180\ \ \ \ \ 0xbac,\ 0xaa5,\ 0x9af,\ 0x8a6,\ 0xfaa,\ 0xea3,\ 0xda9,\ 0xca0,}
+\DoxyCodeLine{00181\ \ \ \ \ 0x460,\ 0x569,\ 0x663,\ 0x76a,\ 0x66,\ 0x16f,\ 0x265,\ 0x36c,}
+\DoxyCodeLine{00182\ \ \ \ \ 0xc6c,\ 0xd65,\ 0xe6f,\ 0xf66,\ 0x86a,\ 0x963,\ 0xa69,\ 0xb60,}
+\DoxyCodeLine{00183\ \ \ \ \ 0x5f0,\ 0x4f9,\ 0x7f3,\ 0x6fa,\ 0x1f6,\ 0xff,\ 0x3f5,\ 0x2fc,}
+\DoxyCodeLine{00184\ \ \ \ \ 0xdfc,\ 0xcf5,\ 0xfff,\ 0xef6,\ 0x9fa,\ 0x8f3,\ 0xbf9,\ 0xaf0,}
+\DoxyCodeLine{00185\ \ \ \ \ 0x650,\ 0x759,\ 0x453,\ 0x55a,\ 0x256,\ 0x35f,\ 0x55,\ 0x15c,}
+\DoxyCodeLine{00186\ \ \ \ \ 0xe5c,\ 0xf55,\ 0xc5f,\ 0xd56,\ 0xa5a,\ 0xb53,\ 0x859,\ 0x950,}
+\DoxyCodeLine{00187\ \ \ \ \ 0x7c0,\ 0x6c9,\ 0x5c3,\ 0x4ca,\ 0x3c6,\ 0x2cf,\ 0x1c5,\ 0xcc,}
+\DoxyCodeLine{00188\ \ \ \ \ 0xfcc,\ 0xec5,\ 0xdcf,\ 0xcc6,\ 0xbca,\ 0xac3,\ 0x9c9,\ 0x8c0,}
+\DoxyCodeLine{00189\ \ \ \ \ 0x8c0,\ 0x9c9,\ 0xac3,\ 0xbca,\ 0xcc6,\ 0xdcf,\ 0xec5,\ 0xfcc,}
+\DoxyCodeLine{00190\ \ \ \ \ 0xcc,\ 0x1c5,\ 0x2cf,\ 0x3c6,\ 0x4ca,\ 0x5c3,\ 0x6c9,\ 0x7c0,}
+\DoxyCodeLine{00191\ \ \ \ \ 0x950,\ 0x859,\ 0xb53,\ 0xa5a,\ 0xd56,\ 0xc5f,\ 0xf55,\ 0xe5c,}
+\DoxyCodeLine{00192\ \ \ \ \ 0x15c,\ 0x55,\ 0x35f,\ 0x256,\ 0x55a,\ 0x453,\ 0x759,\ 0x650,}
+\DoxyCodeLine{00193\ \ \ \ \ 0xaf0,\ 0xbf9,\ 0x8f3,\ 0x9fa,\ 0xef6,\ 0xfff,\ 0xcf5,\ 0xdfc,}
+\DoxyCodeLine{00194\ \ \ \ \ 0x2fc,\ 0x3f5,\ 0xff,\ 0x1f6,\ 0x6fa,\ 0x7f3,\ 0x4f9,\ 0x5f0,}
+\DoxyCodeLine{00195\ \ \ \ \ 0xb60,\ 0xa69,\ 0x963,\ 0x86a,\ 0xf66,\ 0xe6f,\ 0xd65,\ 0xc6c,}
+\DoxyCodeLine{00196\ \ \ \ \ 0x36c,\ 0x265,\ 0x16f,\ 0x66,\ 0x76a,\ 0x663,\ 0x569,\ 0x460,}
+\DoxyCodeLine{00197\ \ \ \ \ 0xca0,\ 0xda9,\ 0xea3,\ 0xfaa,\ 0x8a6,\ 0x9af,\ 0xaa5,\ 0xbac,}
+\DoxyCodeLine{00198\ \ \ \ \ 0x4ac,\ 0x5a5,\ 0x6af,\ 0x7a6,\ 0xaa,\ 0x1a3,\ 0x2a9,\ 0x3a0,}
+\DoxyCodeLine{00199\ \ \ \ \ 0xd30,\ 0xc39,\ 0xf33,\ 0xe3a,\ 0x936,\ 0x83f,\ 0xb35,\ 0xa3c,}
+\DoxyCodeLine{00200\ \ \ \ \ 0x53c,\ 0x435,\ 0x73f,\ 0x636,\ 0x13a,\ 0x33,\ 0x339,\ 0x230,}
+\DoxyCodeLine{00201\ \ \ \ \ 0xe90,\ 0xf99,\ 0xc93,\ 0xd9a,\ 0xa96,\ 0xb9f,\ 0x895,\ 0x99c,}
+\DoxyCodeLine{00202\ \ \ \ \ 0x69c,\ 0x795,\ 0x49f,\ 0x596,\ 0x29a,\ 0x393,\ 0x99,\ 0x190,}
+\DoxyCodeLine{00203\ \ \ \ \ 0xf00,\ 0xe09,\ 0xd03,\ 0xc0a,\ 0xb06,\ 0xa0f,\ 0x905,\ 0x80c,}
+\DoxyCodeLine{00204\ \ \ \ \ 0x70c,\ 0x605,\ 0x50f,\ 0x406,\ 0x30a,\ 0x203,\ 0x109,\ 0x0}
+\DoxyCodeLine{00205\ \ \ \};}
+\DoxyCodeLine{00206\ \ \ \textcolor{keywordtype}{int}\ triTable[256][16]\ =\ \{}
+\DoxyCodeLine{00207\ \ \ \ \ \{-\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00208\ \ \ \ \ \{0,\ 8,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00209\ \ \ \ \ \{0,\ 1,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00210\ \ \ \ \ \{1,\ 8,\ 3,\ 9,\ 8,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00211\ \ \ \ \ \{1,\ 2,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00212\ \ \ \ \ \{0,\ 8,\ 3,\ 1,\ 2,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00213\ \ \ \ \ \{9,\ 2,\ 10,\ 0,\ 2,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00214\ \ \ \ \ \{2,\ 8,\ 3,\ 2,\ 10,\ 8,\ 10,\ 9,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00215\ \ \ \ \ \{3,\ 11,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00216\ \ \ \ \ \{0,\ 11,\ 2,\ 8,\ 11,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00217\ \ \ \ \ \{1,\ 9,\ 0,\ 2,\ 3,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00218\ \ \ \ \ \{1,\ 11,\ 2,\ 1,\ 9,\ 11,\ 9,\ 8,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00219\ \ \ \ \ \{3,\ 10,\ 1,\ 11,\ 10,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00220\ \ \ \ \ \{0,\ 10,\ 1,\ 0,\ 8,\ 10,\ 8,\ 11,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00221\ \ \ \ \ \{3,\ 9,\ 0,\ 3,\ 11,\ 9,\ 11,\ 10,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00222\ \ \ \ \ \{9,\ 8,\ 10,\ 10,\ 8,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00223\ \ \ \ \ \{4,\ 7,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00224\ \ \ \ \ \{4,\ 3,\ 0,\ 7,\ 3,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00225\ \ \ \ \ \{0,\ 1,\ 9,\ 8,\ 4,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00226\ \ \ \ \ \{4,\ 1,\ 9,\ 4,\ 7,\ 1,\ 7,\ 3,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00227\ \ \ \ \ \{1,\ 2,\ 10,\ 8,\ 4,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00228\ \ \ \ \ \{3,\ 4,\ 7,\ 3,\ 0,\ 4,\ 1,\ 2,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00229\ \ \ \ \ \{9,\ 2,\ 10,\ 9,\ 0,\ 2,\ 8,\ 4,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00230\ \ \ \ \ \{2,\ 10,\ 9,\ 2,\ 9,\ 7,\ 2,\ 7,\ 3,\ 7,\ 9,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00231\ \ \ \ \ \{8,\ 4,\ 7,\ 3,\ 11,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00232\ \ \ \ \ \{11,\ 4,\ 7,\ 11,\ 2,\ 4,\ 2,\ 0,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00233\ \ \ \ \ \{9,\ 0,\ 1,\ 8,\ 4,\ 7,\ 2,\ 3,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00234\ \ \ \ \ \{4,\ 7,\ 11,\ 9,\ 4,\ 11,\ 9,\ 11,\ 2,\ 9,\ 2,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00235\ \ \ \ \ \{3,\ 10,\ 1,\ 3,\ 11,\ 10,\ 7,\ 8,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00236\ \ \ \ \ \{1,\ 11,\ 10,\ 1,\ 4,\ 11,\ 1,\ 0,\ 4,\ 7,\ 11,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00237\ \ \ \ \ \{4,\ 7,\ 8,\ 9,\ 0,\ 11,\ 9,\ 11,\ 10,\ 11,\ 0,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00238\ \ \ \ \ \{4,\ 7,\ 11,\ 4,\ 11,\ 9,\ 9,\ 11,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00239\ \ \ \ \ \{9,\ 5,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00240\ \ \ \ \ \{9,\ 5,\ 4,\ 0,\ 8,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00241\ \ \ \ \ \{0,\ 5,\ 4,\ 1,\ 5,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00242\ \ \ \ \ \{8,\ 5,\ 4,\ 8,\ 3,\ 5,\ 3,\ 1,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00243\ \ \ \ \ \{1,\ 2,\ 10,\ 9,\ 5,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00244\ \ \ \ \ \{3,\ 0,\ 8,\ 1,\ 2,\ 10,\ 4,\ 9,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00245\ \ \ \ \ \{5,\ 2,\ 10,\ 5,\ 4,\ 2,\ 4,\ 0,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00246\ \ \ \ \ \{2,\ 10,\ 5,\ 3,\ 2,\ 5,\ 3,\ 5,\ 4,\ 3,\ 4,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00247\ \ \ \ \ \{9,\ 5,\ 4,\ 2,\ 3,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00248\ \ \ \ \ \{0,\ 11,\ 2,\ 0,\ 8,\ 11,\ 4,\ 9,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00249\ \ \ \ \ \{0,\ 5,\ 4,\ 0,\ 1,\ 5,\ 2,\ 3,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00250\ \ \ \ \ \{2,\ 1,\ 5,\ 2,\ 5,\ 8,\ 2,\ 8,\ 11,\ 4,\ 8,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00251\ \ \ \ \ \{10,\ 3,\ 11,\ 10,\ 1,\ 3,\ 9,\ 5,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00252\ \ \ \ \ \{4,\ 9,\ 5,\ 0,\ 8,\ 1,\ 8,\ 10,\ 1,\ 8,\ 11,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00253\ \ \ \ \ \{5,\ 4,\ 0,\ 5,\ 0,\ 11,\ 5,\ 11,\ 10,\ 11,\ 0,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00254\ \ \ \ \ \{5,\ 4,\ 8,\ 5,\ 8,\ 10,\ 10,\ 8,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00255\ \ \ \ \ \{9,\ 7,\ 8,\ 5,\ 7,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00256\ \ \ \ \ \{9,\ 3,\ 0,\ 9,\ 5,\ 3,\ 5,\ 7,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00257\ \ \ \ \ \{0,\ 7,\ 8,\ 0,\ 1,\ 7,\ 1,\ 5,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00258\ \ \ \ \ \{1,\ 5,\ 3,\ 3,\ 5,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00259\ \ \ \ \ \{9,\ 7,\ 8,\ 9,\ 5,\ 7,\ 10,\ 1,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00260\ \ \ \ \ \{10,\ 1,\ 2,\ 9,\ 5,\ 0,\ 5,\ 3,\ 0,\ 5,\ 7,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00261\ \ \ \ \ \{8,\ 0,\ 2,\ 8,\ 2,\ 5,\ 8,\ 5,\ 7,\ 10,\ 5,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00262\ \ \ \ \ \{2,\ 10,\ 5,\ 2,\ 5,\ 3,\ 3,\ 5,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00263\ \ \ \ \ \{7,\ 9,\ 5,\ 7,\ 8,\ 9,\ 3,\ 11,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00264\ \ \ \ \ \{9,\ 5,\ 7,\ 9,\ 7,\ 2,\ 9,\ 2,\ 0,\ 2,\ 7,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00265\ \ \ \ \ \{2,\ 3,\ 11,\ 0,\ 1,\ 8,\ 1,\ 7,\ 8,\ 1,\ 5,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00266\ \ \ \ \ \{11,\ 2,\ 1,\ 11,\ 1,\ 7,\ 7,\ 1,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00267\ \ \ \ \ \{9,\ 5,\ 8,\ 8,\ 5,\ 7,\ 10,\ 1,\ 3,\ 10,\ 3,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00268\ \ \ \ \ \{5,\ 7,\ 0,\ 5,\ 0,\ 9,\ 7,\ 11,\ 0,\ 1,\ 0,\ 10,\ 11,\ 10,\ 0,\ -\/1\},}
+\DoxyCodeLine{00269\ \ \ \ \ \{11,\ 10,\ 0,\ 11,\ 0,\ 3,\ 10,\ 5,\ 0,\ 8,\ 0,\ 7,\ 5,\ 7,\ 0,\ -\/1\},}
+\DoxyCodeLine{00270\ \ \ \ \ \{11,\ 10,\ 5,\ 7,\ 11,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00271\ \ \ \ \ \{10,\ 6,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00272\ \ \ \ \ \{0,\ 8,\ 3,\ 5,\ 10,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00273\ \ \ \ \ \{9,\ 0,\ 1,\ 5,\ 10,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00274\ \ \ \ \ \{1,\ 8,\ 3,\ 1,\ 9,\ 8,\ 5,\ 10,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00275\ \ \ \ \ \{1,\ 6,\ 5,\ 2,\ 6,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00276\ \ \ \ \ \{1,\ 6,\ 5,\ 1,\ 2,\ 6,\ 3,\ 0,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00277\ \ \ \ \ \{9,\ 6,\ 5,\ 9,\ 0,\ 6,\ 0,\ 2,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00278\ \ \ \ \ \{5,\ 9,\ 8,\ 5,\ 8,\ 2,\ 5,\ 2,\ 6,\ 3,\ 2,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00279\ \ \ \ \ \{2,\ 3,\ 11,\ 10,\ 6,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00280\ \ \ \ \ \{11,\ 0,\ 8,\ 11,\ 2,\ 0,\ 10,\ 6,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00281\ \ \ \ \ \{0,\ 1,\ 9,\ 2,\ 3,\ 11,\ 5,\ 10,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00282\ \ \ \ \ \{5,\ 10,\ 6,\ 1,\ 9,\ 2,\ 9,\ 11,\ 2,\ 9,\ 8,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00283\ \ \ \ \ \{6,\ 3,\ 11,\ 6,\ 5,\ 3,\ 5,\ 1,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00284\ \ \ \ \ \{0,\ 8,\ 11,\ 0,\ 11,\ 5,\ 0,\ 5,\ 1,\ 5,\ 11,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00285\ \ \ \ \ \{3,\ 11,\ 6,\ 0,\ 3,\ 6,\ 0,\ 6,\ 5,\ 0,\ 5,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00286\ \ \ \ \ \{6,\ 5,\ 9,\ 6,\ 9,\ 11,\ 11,\ 9,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00287\ \ \ \ \ \{5,\ 10,\ 6,\ 4,\ 7,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00288\ \ \ \ \ \{4,\ 3,\ 0,\ 4,\ 7,\ 3,\ 6,\ 5,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00289\ \ \ \ \ \{1,\ 9,\ 0,\ 5,\ 10,\ 6,\ 8,\ 4,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00290\ \ \ \ \ \{10,\ 6,\ 5,\ 1,\ 9,\ 7,\ 1,\ 7,\ 3,\ 7,\ 9,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00291\ \ \ \ \ \{6,\ 1,\ 2,\ 6,\ 5,\ 1,\ 4,\ 7,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00292\ \ \ \ \ \{1,\ 2,\ 5,\ 5,\ 2,\ 6,\ 3,\ 0,\ 4,\ 3,\ 4,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00293\ \ \ \ \ \{8,\ 4,\ 7,\ 9,\ 0,\ 5,\ 0,\ 6,\ 5,\ 0,\ 2,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00294\ \ \ \ \ \{7,\ 3,\ 9,\ 7,\ 9,\ 4,\ 3,\ 2,\ 9,\ 5,\ 9,\ 6,\ 2,\ 6,\ 9,\ -\/1\},}
+\DoxyCodeLine{00295\ \ \ \ \ \{3,\ 11,\ 2,\ 7,\ 8,\ 4,\ 10,\ 6,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00296\ \ \ \ \ \{5,\ 10,\ 6,\ 4,\ 7,\ 2,\ 4,\ 2,\ 0,\ 2,\ 7,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00297\ \ \ \ \ \{0,\ 1,\ 9,\ 4,\ 7,\ 8,\ 2,\ 3,\ 11,\ 5,\ 10,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00298\ \ \ \ \ \{9,\ 2,\ 1,\ 9,\ 11,\ 2,\ 9,\ 4,\ 11,\ 7,\ 11,\ 4,\ 5,\ 10,\ 6,\ -\/1\},}
+\DoxyCodeLine{00299\ \ \ \ \ \{8,\ 4,\ 7,\ 3,\ 11,\ 5,\ 3,\ 5,\ 1,\ 5,\ 11,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00300\ \ \ \ \ \{5,\ 1,\ 11,\ 5,\ 11,\ 6,\ 1,\ 0,\ 11,\ 7,\ 11,\ 4,\ 0,\ 4,\ 11,\ -\/1\},}
+\DoxyCodeLine{00301\ \ \ \ \ \{0,\ 5,\ 9,\ 0,\ 6,\ 5,\ 0,\ 3,\ 6,\ 11,\ 6,\ 3,\ 8,\ 4,\ 7,\ -\/1\},}
+\DoxyCodeLine{00302\ \ \ \ \ \{6,\ 5,\ 9,\ 6,\ 9,\ 11,\ 4,\ 7,\ 9,\ 7,\ 11,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00303\ \ \ \ \ \{10,\ 4,\ 9,\ 6,\ 4,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00304\ \ \ \ \ \{4,\ 10,\ 6,\ 4,\ 9,\ 10,\ 0,\ 8,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00305\ \ \ \ \ \{10,\ 0,\ 1,\ 10,\ 6,\ 0,\ 6,\ 4,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00306\ \ \ \ \ \{8,\ 3,\ 1,\ 8,\ 1,\ 6,\ 8,\ 6,\ 4,\ 6,\ 1,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00307\ \ \ \ \ \{1,\ 4,\ 9,\ 1,\ 2,\ 4,\ 2,\ 6,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00308\ \ \ \ \ \{3,\ 0,\ 8,\ 1,\ 2,\ 9,\ 2,\ 4,\ 9,\ 2,\ 6,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00309\ \ \ \ \ \{0,\ 2,\ 4,\ 4,\ 2,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00310\ \ \ \ \ \{8,\ 3,\ 2,\ 8,\ 2,\ 4,\ 4,\ 2,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00311\ \ \ \ \ \{10,\ 4,\ 9,\ 10,\ 6,\ 4,\ 11,\ 2,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00312\ \ \ \ \ \{0,\ 8,\ 2,\ 2,\ 8,\ 11,\ 4,\ 9,\ 10,\ 4,\ 10,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00313\ \ \ \ \ \{3,\ 11,\ 2,\ 0,\ 1,\ 6,\ 0,\ 6,\ 4,\ 6,\ 1,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00314\ \ \ \ \ \{6,\ 4,\ 1,\ 6,\ 1,\ 10,\ 4,\ 8,\ 1,\ 2,\ 1,\ 11,\ 8,\ 11,\ 1,\ -\/1\},}
+\DoxyCodeLine{00315\ \ \ \ \ \{9,\ 6,\ 4,\ 9,\ 3,\ 6,\ 9,\ 1,\ 3,\ 11,\ 6,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00316\ \ \ \ \ \{8,\ 11,\ 1,\ 8,\ 1,\ 0,\ 11,\ 6,\ 1,\ 9,\ 1,\ 4,\ 6,\ 4,\ 1,\ -\/1\},}
+\DoxyCodeLine{00317\ \ \ \ \ \{3,\ 11,\ 6,\ 3,\ 6,\ 0,\ 0,\ 6,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00318\ \ \ \ \ \{6,\ 4,\ 8,\ 11,\ 6,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00319\ \ \ \ \ \{7,\ 10,\ 6,\ 7,\ 8,\ 10,\ 8,\ 9,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00320\ \ \ \ \ \{0,\ 7,\ 3,\ 0,\ 10,\ 7,\ 0,\ 9,\ 10,\ 6,\ 7,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00321\ \ \ \ \ \{10,\ 6,\ 7,\ 1,\ 10,\ 7,\ 1,\ 7,\ 8,\ 1,\ 8,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00322\ \ \ \ \ \{10,\ 6,\ 7,\ 10,\ 7,\ 1,\ 1,\ 7,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00323\ \ \ \ \ \{1,\ 2,\ 6,\ 1,\ 6,\ 8,\ 1,\ 8,\ 9,\ 8,\ 6,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00324\ \ \ \ \ \{2,\ 6,\ 9,\ 2,\ 9,\ 1,\ 6,\ 7,\ 9,\ 0,\ 9,\ 3,\ 7,\ 3,\ 9,\ -\/1\},}
+\DoxyCodeLine{00325\ \ \ \ \ \{7,\ 8,\ 0,\ 7,\ 0,\ 6,\ 6,\ 0,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00326\ \ \ \ \ \{7,\ 3,\ 2,\ 6,\ 7,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00327\ \ \ \ \ \{2,\ 3,\ 11,\ 10,\ 6,\ 8,\ 10,\ 8,\ 9,\ 8,\ 6,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00328\ \ \ \ \ \{2,\ 0,\ 7,\ 2,\ 7,\ 11,\ 0,\ 9,\ 7,\ 6,\ 7,\ 10,\ 9,\ 10,\ 7,\ -\/1\},}
+\DoxyCodeLine{00329\ \ \ \ \ \{1,\ 8,\ 0,\ 1,\ 7,\ 8,\ 1,\ 10,\ 7,\ 6,\ 7,\ 10,\ 2,\ 3,\ 11,\ -\/1\},}
+\DoxyCodeLine{00330\ \ \ \ \ \{11,\ 2,\ 1,\ 11,\ 1,\ 7,\ 10,\ 6,\ 1,\ 6,\ 7,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00331\ \ \ \ \ \{8,\ 9,\ 6,\ 8,\ 6,\ 7,\ 9,\ 1,\ 6,\ 11,\ 6,\ 3,\ 1,\ 3,\ 6,\ -\/1\},}
+\DoxyCodeLine{00332\ \ \ \ \ \{0,\ 9,\ 1,\ 11,\ 6,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00333\ \ \ \ \ \{7,\ 8,\ 0,\ 7,\ 0,\ 6,\ 3,\ 11,\ 0,\ 11,\ 6,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00334\ \ \ \ \ \{7,\ 11,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00335\ \ \ \ \ \{7,\ 6,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00336\ \ \ \ \ \{3,\ 0,\ 8,\ 11,\ 7,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00337\ \ \ \ \ \{0,\ 1,\ 9,\ 11,\ 7,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00338\ \ \ \ \ \{8,\ 1,\ 9,\ 8,\ 3,\ 1,\ 11,\ 7,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00339\ \ \ \ \ \{10,\ 1,\ 2,\ 6,\ 11,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00340\ \ \ \ \ \{1,\ 2,\ 10,\ 3,\ 0,\ 8,\ 6,\ 11,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00341\ \ \ \ \ \{2,\ 9,\ 0,\ 2,\ 10,\ 9,\ 6,\ 11,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00342\ \ \ \ \ \{6,\ 11,\ 7,\ 2,\ 10,\ 3,\ 10,\ 8,\ 3,\ 10,\ 9,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00343\ \ \ \ \ \{7,\ 2,\ 3,\ 6,\ 2,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00344\ \ \ \ \ \{7,\ 0,\ 8,\ 7,\ 6,\ 0,\ 6,\ 2,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00345\ \ \ \ \ \{2,\ 7,\ 6,\ 2,\ 3,\ 7,\ 0,\ 1,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00346\ \ \ \ \ \{1,\ 6,\ 2,\ 1,\ 8,\ 6,\ 1,\ 9,\ 8,\ 8,\ 7,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00347\ \ \ \ \ \{10,\ 7,\ 6,\ 10,\ 1,\ 7,\ 1,\ 3,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00348\ \ \ \ \ \{10,\ 7,\ 6,\ 1,\ 7,\ 10,\ 1,\ 8,\ 7,\ 1,\ 0,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00349\ \ \ \ \ \{0,\ 3,\ 7,\ 0,\ 7,\ 10,\ 0,\ 10,\ 9,\ 6,\ 10,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00350\ \ \ \ \ \{7,\ 6,\ 10,\ 7,\ 10,\ 8,\ 8,\ 10,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00351\ \ \ \ \ \{6,\ 8,\ 4,\ 11,\ 8,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00352\ \ \ \ \ \{3,\ 6,\ 11,\ 3,\ 0,\ 6,\ 0,\ 4,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00353\ \ \ \ \ \{8,\ 6,\ 11,\ 8,\ 4,\ 6,\ 9,\ 0,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00354\ \ \ \ \ \{9,\ 4,\ 6,\ 9,\ 6,\ 3,\ 9,\ 3,\ 1,\ 11,\ 3,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00355\ \ \ \ \ \{6,\ 8,\ 4,\ 6,\ 11,\ 8,\ 2,\ 10,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00356\ \ \ \ \ \{1,\ 2,\ 10,\ 3,\ 0,\ 11,\ 0,\ 6,\ 11,\ 0,\ 4,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00357\ \ \ \ \ \{4,\ 11,\ 8,\ 4,\ 6,\ 11,\ 0,\ 2,\ 9,\ 2,\ 10,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00358\ \ \ \ \ \{10,\ 9,\ 3,\ 10,\ 3,\ 2,\ 9,\ 4,\ 3,\ 11,\ 3,\ 6,\ 4,\ 6,\ 3,\ -\/1\},}
+\DoxyCodeLine{00359\ \ \ \ \ \{8,\ 2,\ 3,\ 8,\ 4,\ 2,\ 4,\ 6,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00360\ \ \ \ \ \{0,\ 4,\ 2,\ 4,\ 6,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00361\ \ \ \ \ \{1,\ 9,\ 0,\ 2,\ 3,\ 4,\ 2,\ 4,\ 6,\ 4,\ 3,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00362\ \ \ \ \ \{1,\ 9,\ 4,\ 1,\ 4,\ 2,\ 2,\ 4,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00363\ \ \ \ \ \{8,\ 1,\ 3,\ 8,\ 6,\ 1,\ 8,\ 4,\ 6,\ 6,\ 10,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00364\ \ \ \ \ \{10,\ 1,\ 0,\ 10,\ 0,\ 6,\ 6,\ 0,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00365\ \ \ \ \ \{4,\ 6,\ 3,\ 4,\ 3,\ 8,\ 6,\ 10,\ 3,\ 0,\ 3,\ 9,\ 10,\ 9,\ 3,\ -\/1\},}
+\DoxyCodeLine{00366\ \ \ \ \ \{10,\ 9,\ 4,\ 6,\ 10,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00367\ \ \ \ \ \{4,\ 9,\ 5,\ 7,\ 6,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00368\ \ \ \ \ \{0,\ 8,\ 3,\ 4,\ 9,\ 5,\ 11,\ 7,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00369\ \ \ \ \ \{5,\ 0,\ 1,\ 5,\ 4,\ 0,\ 7,\ 6,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00370\ \ \ \ \ \{11,\ 7,\ 6,\ 8,\ 3,\ 4,\ 3,\ 5,\ 4,\ 3,\ 1,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00371\ \ \ \ \ \{9,\ 5,\ 4,\ 10,\ 1,\ 2,\ 7,\ 6,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00372\ \ \ \ \ \{6,\ 11,\ 7,\ 1,\ 2,\ 10,\ 0,\ 8,\ 3,\ 4,\ 9,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00373\ \ \ \ \ \{7,\ 6,\ 11,\ 5,\ 4,\ 10,\ 4,\ 2,\ 10,\ 4,\ 0,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00374\ \ \ \ \ \{3,\ 4,\ 8,\ 3,\ 5,\ 4,\ 3,\ 2,\ 5,\ 10,\ 5,\ 2,\ 11,\ 7,\ 6,\ -\/1\},}
+\DoxyCodeLine{00375\ \ \ \ \ \{7,\ 2,\ 3,\ 7,\ 6,\ 2,\ 5,\ 4,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00376\ \ \ \ \ \{9,\ 5,\ 4,\ 0,\ 8,\ 6,\ 0,\ 6,\ 2,\ 6,\ 8,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00377\ \ \ \ \ \{3,\ 6,\ 2,\ 3,\ 7,\ 6,\ 1,\ 5,\ 0,\ 5,\ 4,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00378\ \ \ \ \ \{6,\ 2,\ 8,\ 6,\ 8,\ 7,\ 2,\ 1,\ 8,\ 4,\ 8,\ 5,\ 1,\ 5,\ 8,\ -\/1\},}
+\DoxyCodeLine{00379\ \ \ \ \ \{9,\ 5,\ 4,\ 10,\ 1,\ 6,\ 1,\ 7,\ 6,\ 1,\ 3,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00380\ \ \ \ \ \{1,\ 6,\ 10,\ 1,\ 7,\ 6,\ 1,\ 0,\ 7,\ 8,\ 7,\ 0,\ 9,\ 5,\ 4,\ -\/1\},}
+\DoxyCodeLine{00381\ \ \ \ \ \{4,\ 0,\ 10,\ 4,\ 10,\ 5,\ 0,\ 3,\ 10,\ 6,\ 10,\ 7,\ 3,\ 7,\ 10,\ -\/1\},}
+\DoxyCodeLine{00382\ \ \ \ \ \{7,\ 6,\ 10,\ 7,\ 10,\ 8,\ 5,\ 4,\ 10,\ 4,\ 8,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00383\ \ \ \ \ \{6,\ 9,\ 5,\ 6,\ 11,\ 9,\ 11,\ 8,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00384\ \ \ \ \ \{3,\ 6,\ 11,\ 0,\ 6,\ 3,\ 0,\ 5,\ 6,\ 0,\ 9,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00385\ \ \ \ \ \{0,\ 11,\ 8,\ 0,\ 5,\ 11,\ 0,\ 1,\ 5,\ 5,\ 6,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00386\ \ \ \ \ \{6,\ 11,\ 3,\ 6,\ 3,\ 5,\ 5,\ 3,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00387\ \ \ \ \ \{1,\ 2,\ 10,\ 9,\ 5,\ 11,\ 9,\ 11,\ 8,\ 11,\ 5,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00388\ \ \ \ \ \{0,\ 11,\ 3,\ 0,\ 6,\ 11,\ 0,\ 9,\ 6,\ 5,\ 6,\ 9,\ 1,\ 2,\ 10,\ -\/1\},}
+\DoxyCodeLine{00389\ \ \ \ \ \{11,\ 8,\ 5,\ 11,\ 5,\ 6,\ 8,\ 0,\ 5,\ 10,\ 5,\ 2,\ 0,\ 2,\ 5,\ -\/1\},}
+\DoxyCodeLine{00390\ \ \ \ \ \{6,\ 11,\ 3,\ 6,\ 3,\ 5,\ 2,\ 10,\ 3,\ 10,\ 5,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00391\ \ \ \ \ \{5,\ 8,\ 9,\ 5,\ 2,\ 8,\ 5,\ 6,\ 2,\ 3,\ 8,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00392\ \ \ \ \ \{9,\ 5,\ 6,\ 9,\ 6,\ 0,\ 0,\ 6,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00393\ \ \ \ \ \{1,\ 5,\ 8,\ 1,\ 8,\ 0,\ 5,\ 6,\ 8,\ 3,\ 8,\ 2,\ 6,\ 2,\ 8,\ -\/1\},}
+\DoxyCodeLine{00394\ \ \ \ \ \{1,\ 5,\ 6,\ 2,\ 1,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00395\ \ \ \ \ \{1,\ 3,\ 6,\ 1,\ 6,\ 10,\ 3,\ 8,\ 6,\ 5,\ 6,\ 9,\ 8,\ 9,\ 6,\ -\/1\},}
+\DoxyCodeLine{00396\ \ \ \ \ \{10,\ 1,\ 0,\ 10,\ 0,\ 6,\ 9,\ 5,\ 0,\ 5,\ 6,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00397\ \ \ \ \ \{0,\ 3,\ 8,\ 5,\ 6,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00398\ \ \ \ \ \{10,\ 5,\ 6,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00399\ \ \ \ \ \{11,\ 5,\ 10,\ 7,\ 5,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00400\ \ \ \ \ \{11,\ 5,\ 10,\ 11,\ 7,\ 5,\ 8,\ 3,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00401\ \ \ \ \ \{5,\ 11,\ 7,\ 5,\ 10,\ 11,\ 1,\ 9,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00402\ \ \ \ \ \{10,\ 7,\ 5,\ 10,\ 11,\ 7,\ 9,\ 8,\ 1,\ 8,\ 3,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00403\ \ \ \ \ \{11,\ 1,\ 2,\ 11,\ 7,\ 1,\ 7,\ 5,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00404\ \ \ \ \ \{0,\ 8,\ 3,\ 1,\ 2,\ 7,\ 1,\ 7,\ 5,\ 7,\ 2,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00405\ \ \ \ \ \{9,\ 7,\ 5,\ 9,\ 2,\ 7,\ 9,\ 0,\ 2,\ 2,\ 11,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00406\ \ \ \ \ \{7,\ 5,\ 2,\ 7,\ 2,\ 11,\ 5,\ 9,\ 2,\ 3,\ 2,\ 8,\ 9,\ 8,\ 2,\ -\/1\},}
+\DoxyCodeLine{00407\ \ \ \ \ \{2,\ 5,\ 10,\ 2,\ 3,\ 5,\ 3,\ 7,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00408\ \ \ \ \ \{8,\ 2,\ 0,\ 8,\ 5,\ 2,\ 8,\ 7,\ 5,\ 10,\ 2,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00409\ \ \ \ \ \{9,\ 0,\ 1,\ 5,\ 10,\ 3,\ 5,\ 3,\ 7,\ 3,\ 10,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00410\ \ \ \ \ \{9,\ 8,\ 2,\ 9,\ 2,\ 1,\ 8,\ 7,\ 2,\ 10,\ 2,\ 5,\ 7,\ 5,\ 2,\ -\/1\},}
+\DoxyCodeLine{00411\ \ \ \ \ \{1,\ 3,\ 5,\ 3,\ 7,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00412\ \ \ \ \ \{0,\ 8,\ 7,\ 0,\ 7,\ 1,\ 1,\ 7,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00413\ \ \ \ \ \{9,\ 0,\ 3,\ 9,\ 3,\ 5,\ 5,\ 3,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00414\ \ \ \ \ \{9,\ 8,\ 7,\ 5,\ 9,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00415\ \ \ \ \ \{5,\ 8,\ 4,\ 5,\ 10,\ 8,\ 10,\ 11,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00416\ \ \ \ \ \{5,\ 0,\ 4,\ 5,\ 11,\ 0,\ 5,\ 10,\ 11,\ 11,\ 3,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00417\ \ \ \ \ \{0,\ 1,\ 9,\ 8,\ 4,\ 10,\ 8,\ 10,\ 11,\ 10,\ 4,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00418\ \ \ \ \ \{10,\ 11,\ 4,\ 10,\ 4,\ 5,\ 11,\ 3,\ 4,\ 9,\ 4,\ 1,\ 3,\ 1,\ 4,\ -\/1\},}
+\DoxyCodeLine{00419\ \ \ \ \ \{2,\ 5,\ 1,\ 2,\ 8,\ 5,\ 2,\ 11,\ 8,\ 4,\ 5,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00420\ \ \ \ \ \{0,\ 4,\ 11,\ 0,\ 11,\ 3,\ 4,\ 5,\ 11,\ 2,\ 11,\ 1,\ 5,\ 1,\ 11,\ -\/1\},}
+\DoxyCodeLine{00421\ \ \ \ \ \{0,\ 2,\ 5,\ 0,\ 5,\ 9,\ 2,\ 11,\ 5,\ 4,\ 5,\ 8,\ 11,\ 8,\ 5,\ -\/1\},}
+\DoxyCodeLine{00422\ \ \ \ \ \{9,\ 4,\ 5,\ 2,\ 11,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00423\ \ \ \ \ \{2,\ 5,\ 10,\ 3,\ 5,\ 2,\ 3,\ 4,\ 5,\ 3,\ 8,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00424\ \ \ \ \ \{5,\ 10,\ 2,\ 5,\ 2,\ 4,\ 4,\ 2,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00425\ \ \ \ \ \{3,\ 10,\ 2,\ 3,\ 5,\ 10,\ 3,\ 8,\ 5,\ 4,\ 5,\ 8,\ 0,\ 1,\ 9,\ -\/1\},}
+\DoxyCodeLine{00426\ \ \ \ \ \{5,\ 10,\ 2,\ 5,\ 2,\ 4,\ 1,\ 9,\ 2,\ 9,\ 4,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00427\ \ \ \ \ \{8,\ 4,\ 5,\ 8,\ 5,\ 3,\ 3,\ 5,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00428\ \ \ \ \ \{0,\ 4,\ 5,\ 1,\ 0,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00429\ \ \ \ \ \{8,\ 4,\ 5,\ 8,\ 5,\ 3,\ 9,\ 0,\ 5,\ 0,\ 3,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00430\ \ \ \ \ \{9,\ 4,\ 5,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00431\ \ \ \ \ \{4,\ 11,\ 7,\ 4,\ 9,\ 11,\ 9,\ 10,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00432\ \ \ \ \ \{0,\ 8,\ 3,\ 4,\ 9,\ 7,\ 9,\ 11,\ 7,\ 9,\ 10,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00433\ \ \ \ \ \{1,\ 10,\ 11,\ 1,\ 11,\ 4,\ 1,\ 4,\ 0,\ 7,\ 4,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00434\ \ \ \ \ \{3,\ 1,\ 4,\ 3,\ 4,\ 8,\ 1,\ 10,\ 4,\ 7,\ 4,\ 11,\ 10,\ 11,\ 4,\ -\/1\},}
+\DoxyCodeLine{00435\ \ \ \ \ \{4,\ 11,\ 7,\ 9,\ 11,\ 4,\ 9,\ 2,\ 11,\ 9,\ 1,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00436\ \ \ \ \ \{9,\ 7,\ 4,\ 9,\ 11,\ 7,\ 9,\ 1,\ 11,\ 2,\ 11,\ 1,\ 0,\ 8,\ 3,\ -\/1\},}
+\DoxyCodeLine{00437\ \ \ \ \ \{11,\ 7,\ 4,\ 11,\ 4,\ 2,\ 2,\ 4,\ 0,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00438\ \ \ \ \ \{11,\ 7,\ 4,\ 11,\ 4,\ 2,\ 8,\ 3,\ 4,\ 3,\ 2,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00439\ \ \ \ \ \{2,\ 9,\ 10,\ 2,\ 7,\ 9,\ 2,\ 3,\ 7,\ 7,\ 4,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00440\ \ \ \ \ \{9,\ 10,\ 7,\ 9,\ 7,\ 4,\ 10,\ 2,\ 7,\ 8,\ 7,\ 0,\ 2,\ 0,\ 7,\ -\/1\},}
+\DoxyCodeLine{00441\ \ \ \ \ \{3,\ 7,\ 10,\ 3,\ 10,\ 2,\ 7,\ 4,\ 10,\ 1,\ 10,\ 0,\ 4,\ 0,\ 10,\ -\/1\},}
+\DoxyCodeLine{00442\ \ \ \ \ \{1,\ 10,\ 2,\ 8,\ 7,\ 4,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00443\ \ \ \ \ \{4,\ 9,\ 1,\ 4,\ 1,\ 7,\ 7,\ 1,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00444\ \ \ \ \ \{4,\ 9,\ 1,\ 4,\ 1,\ 7,\ 0,\ 8,\ 1,\ 8,\ 7,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00445\ \ \ \ \ \{4,\ 0,\ 3,\ 7,\ 4,\ 3,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00446\ \ \ \ \ \{4,\ 8,\ 7,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00447\ \ \ \ \ \{9,\ 10,\ 8,\ 10,\ 11,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00448\ \ \ \ \ \{3,\ 0,\ 9,\ 3,\ 9,\ 11,\ 11,\ 9,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00449\ \ \ \ \ \{0,\ 1,\ 10,\ 0,\ 10,\ 8,\ 8,\ 10,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00450\ \ \ \ \ \{3,\ 1,\ 10,\ 11,\ 3,\ 10,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00451\ \ \ \ \ \{1,\ 2,\ 11,\ 1,\ 11,\ 9,\ 9,\ 11,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00452\ \ \ \ \ \{3,\ 0,\ 9,\ 3,\ 9,\ 11,\ 1,\ 2,\ 9,\ 2,\ 11,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00453\ \ \ \ \ \{0,\ 2,\ 11,\ 8,\ 0,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00454\ \ \ \ \ \{3,\ 2,\ 11,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00455\ \ \ \ \ \{2,\ 3,\ 8,\ 2,\ 8,\ 10,\ 10,\ 8,\ 9,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00456\ \ \ \ \ \{9,\ 10,\ 2,\ 0,\ 9,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00457\ \ \ \ \ \{2,\ 3,\ 8,\ 2,\ 8,\ 10,\ 0,\ 1,\ 8,\ 1,\ 10,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00458\ \ \ \ \ \{1,\ 10,\ 2,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00459\ \ \ \ \ \{1,\ 3,\ 8,\ 9,\ 1,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00460\ \ \ \ \ \{0,\ 9,\ 1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00461\ \ \ \ \ \{0,\ 3,\ 8,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\},}
+\DoxyCodeLine{00462\ \ \ \ \ \{-\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1,\ -\/1\}}
+\DoxyCodeLine{00463\ \ \ \};}
+\DoxyCodeLine{00464\ }
+\DoxyCodeLine{00465\ \ \ std::array<std::array<int,3>,5>\ \mbox{\hyperlink{structpoisson__boltzmann_a382dc91094274230d1c1806458aff65c}{triangles}};}
+\DoxyCodeLine{00466\ }
+\DoxyCodeLine{00467\ \ \ \mbox{\hyperlink{structpoisson__boltzmann_ae8a8828beb453fac022899a45aa71080}{poisson\_boltzmann}}\ (\textcolor{keywordtype}{int}\ maxlevel\_\ =\ 9,\ \textcolor{keywordtype}{int}\ minlevel\_\ =\ 3,\ \textcolor{keywordtype}{int}\ unilevel\_\ =\ 5,\ \textcolor{keywordtype}{int}\ mesh\_shape\_\ =\ 1,}
+\DoxyCodeLine{00468\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ bc\_\ =\ 1,\ \textcolor{keywordtype}{int}\ linearized\_\ =\ 1,}
+\DoxyCodeLine{00469\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{double}\ e\_in\_\ =\ 2.0,\ \textcolor{keywordtype}{double}\ e\_out\_\ =\ 80.0,\ \textcolor{keywordtype}{double}\ ionic\_strength\_\ =\ 0.145,}
+\DoxyCodeLine{00470\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ std::string\ linear\_solver\_name\_\ =\ \textcolor{stringliteral}{"{}mumps"{}},\ std::string\ linear\_solver\_options\_\ =\ \textcolor{stringliteral}{"{}"{}},}
+\DoxyCodeLine{00471\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ MPI\_Comm\ mpicomm\_\ =\ MPI\_COMM\_WORLD)}
+\DoxyCodeLine{00472\ \ \ \ \ :\ maxlevel\ (maxlevel\_),}
+\DoxyCodeLine{00473\ \ \ \ \ \ \ minlevel\ (minlevel\_),}
+\DoxyCodeLine{00474\ \ \ \ \ \ \ unilevel\ (unilevel\_),}
+\DoxyCodeLine{00475\ \ \ \ \ \ \ mesh\_shape\ (mesh\_shape\_),}
+\DoxyCodeLine{00476\ \ \ \ \ \ \ bc\ (bc\_),}
+\DoxyCodeLine{00477\ \ \ \ \ \ \ linearized\ (linearized\_),}
+\DoxyCodeLine{00478\ \ \ \ \ \ \ e\_in\ (e\_in\_),}
+\DoxyCodeLine{00479\ \ \ \ \ \ \ e\_out\ (e\_out\_),}
+\DoxyCodeLine{00480\ \ \ \ \ \ \ ionic\_strength\ (ionic\_strength\_),}
+\DoxyCodeLine{00481\ \ \ \ \ \ \ linear\_solver\_name\ (linear\_solver\_name\_),}
+\DoxyCodeLine{00482\ \ \ \ \ \ \ linear\_solver\_options\ (linear\_solver\_options\_),}
+\DoxyCodeLine{00483\ \ \ \ \ \ \ mpicomm\ (mpicomm\_),}
+\DoxyCodeLine{00484\ \ \ \ \ \ \ tmsh\ (mpicomm)}
+\DoxyCodeLine{00485\ \ \ \{\ \};}
+\DoxyCodeLine{00486\ }
+\DoxyCodeLine{00487\ \ \ \textcolor{keywordtype}{double}}
+\DoxyCodeLine{00488\ \ \ levelsetfun\ (\textcolor{keywordtype}{double}\ x,\ \textcolor{keywordtype}{double}\ y,\ \textcolor{keywordtype}{double}\ z);}
+\DoxyCodeLine{00489\ }
+\DoxyCodeLine{00525\ \ \ \textcolor{keywordtype}{double}}
+\DoxyCodeLine{00526\ \ \ is\_in\_ns\_surf\ (\mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache,\ \textcolor{keywordtype}{double}\ x,\ \textcolor{keywordtype}{double}\ y,\ \textcolor{keywordtype}{double}\ z,\ \textcolor{keywordtype}{int}\ dir);}
+\DoxyCodeLine{00527\ \ \ }
+\DoxyCodeLine{00563\ \ \ \textcolor{keywordtype}{double}}
+\DoxyCodeLine{00564\ \ \ is\_in\_ns\_surf\_stern\ (\mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache,\ \textcolor{keywordtype}{double}\ x,\ \textcolor{keywordtype}{double}\ y,\ \textcolor{keywordtype}{double}\ z,\ \textcolor{keywordtype}{int}\ dir);}
+\DoxyCodeLine{00565\ }
+\DoxyCodeLine{00566\ \ \ \textcolor{keyword}{static}\ \textcolor{keywordtype}{int}}
+\DoxyCodeLine{00567\ \ \ \mbox{\hyperlink{structpoisson__boltzmann_ab24c0340bc5067b9eeb04c62e476889e}{uniform\_refinement}}\ (tmesh\_3d::quadrant\_iterator\ quadrant)}
+\DoxyCodeLine{00568\ \ \ \{}
+\DoxyCodeLine{00569\ \ \ \ \ \textcolor{keywordflow}{return}\ 1;}
+\DoxyCodeLine{00570\ \ \ \}}
+\DoxyCodeLine{00571\ }
+\DoxyCodeLine{00572\ }
+\DoxyCodeLine{00573\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00574\ \ \ create\_mesh\ ();}
+\DoxyCodeLine{00575\ }
+\DoxyCodeLine{00576\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00577\ \ \ create\_mesh\_ns\ ();}
+\DoxyCodeLine{00578\ }
+\DoxyCodeLine{00579\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00580\ \ \ \mbox{\hyperlink{structpoisson__boltzmann_a6425a8be9d2e3794a2ccce9e7b1216d8}{create\_mesh\_scale}}\ ();}
+\DoxyCodeLine{00581\ }
+\DoxyCodeLine{00582\ \ \ \textcolor{keywordtype}{int}}
+\DoxyCodeLine{00583\ \ \ parse\_options\ (\textcolor{keywordtype}{int}\ argc,\ \textcolor{keywordtype}{char}\ **argv);}
+\DoxyCodeLine{00584\ }
+\DoxyCodeLine{00585\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00586\ \ \ print\_options\ ();}
+\DoxyCodeLine{00587\ }
+\DoxyCodeLine{00588\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00589\ \ \ read\_atoms\_from\_pqr\ (std::basic\_istream<char>\ \&inputfile);}
+\DoxyCodeLine{00590\ }
+\DoxyCodeLine{00591\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00592\ \ \ read\_atoms\_from\_class\ ();}
+\DoxyCodeLine{00593\ }
+\DoxyCodeLine{00594\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00595\ \ \ broadcast\_vectors\ ();}
+\DoxyCodeLine{00596\ }
+\DoxyCodeLine{00597\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00598\ \ \ write\_atoms\_to\_pqr\ (std::basic\_ostream<char>\ \&outputfile);}
+\DoxyCodeLine{00599\ }
+\DoxyCodeLine{00600\ \ \ \textcolor{keyword}{friend}\ std::basic\_istream<char>\&}
+\DoxyCodeLine{00601\ \ \ \mbox{\hyperlink{pb__class_8h_a54fc217eeb0c8b26e9b494bad1422bdd}{operator>>\ }}(std::basic\_istream<char>\&\ inputfile,\ NS::Atom\ \&a);}
+\DoxyCodeLine{00602\ }
+\DoxyCodeLine{00603\ \ \ \textcolor{keyword}{friend}\ std::basic\_istream<char>\&}
+\DoxyCodeLine{00604\ \ \ \mbox{\hyperlink{pb__class_8h_a54fc217eeb0c8b26e9b494bad1422bdd}{operator>>\ }}(std::basic\_istream<char>\&\ inputfile,\ std::array<float,5>\ \&a);}
+\DoxyCodeLine{00605\ }
+\DoxyCodeLine{00606\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00607\ \ \ \mbox{\hyperlink{structpoisson__boltzmann_ac4b08e11c8bdbeb0f23bb9b8f7f94dd6}{write\_potential\_on\_atoms}}\ ();}
+\DoxyCodeLine{00608\ }
+\DoxyCodeLine{00609\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00610\ \ \ write\_potential\_on\_atoms\_fast\ ();}
+\DoxyCodeLine{00611\ }
+\DoxyCodeLine{00612\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00613\ \ \ init\_tmesh\ ();}
+\DoxyCodeLine{00614\ }
+\DoxyCodeLine{00615\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00616\ \ \ init\_tmesh\_with\_refine\_scale\ ();}
+\DoxyCodeLine{00617\ }
+\DoxyCodeLine{00618\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00619\ \ \ init\_tmesh\_with\_refine\_box\_scale\ ();}
+\DoxyCodeLine{00620\ }
+\DoxyCodeLine{00621\ \ \ \textcolor{keywordtype}{bool}}
+\DoxyCodeLine{00622\ \ \ is\_in\ (\textcolor{keyword}{const}\ NS::Atom\&\ i,\ tmesh\_3d::quadrant\_iterator\ q);}
+\DoxyCodeLine{00623\ }
+\DoxyCodeLine{00624\ \ \ \textcolor{keywordtype}{bool}}
+\DoxyCodeLine{00625\ \ \ is\_in\_ref\ (\textcolor{keyword}{const}\ NS::Atom\&\ i,\ tmesh\_3d::quadrant\_iterator\ q);}
+\DoxyCodeLine{00626\ }
+\DoxyCodeLine{00627\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00628\ \ \ refine\_surface\ (\mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache);}
+\DoxyCodeLine{00629\ }
+\DoxyCodeLine{00630\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00631\ \ \ \mbox{\hyperlink{structpoisson__boltzmann_a404432e4e36b22fa22c7bb0c92f9487d}{refine\_only\_surface}}\ (\mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache);}
+\DoxyCodeLine{00632\ }
+\DoxyCodeLine{00674\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00675\ \ \ create\_markers\ (\mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache);}
+\DoxyCodeLine{00676\ }
+\DoxyCodeLine{00677\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00678\ \ \ export\_tmesh\ (\mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache);}
+\DoxyCodeLine{00679\ }
+\DoxyCodeLine{00680\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00681\ \ \ export\_potential\_map\ (\mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache);}
+\DoxyCodeLine{00682\ }
+\DoxyCodeLine{00683\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00684\ \ \ export\_marked\_tmesh\ ();}
+\DoxyCodeLine{00685\ }
+\DoxyCodeLine{00686\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00687\ \ \ export\_p4est\ ();}
+\DoxyCodeLine{00688\ }
+\DoxyCodeLine{00689\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00690\ \ \ mumps\_compute\_electric\_potential\ (\mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache);}
+\DoxyCodeLine{00691\ }
+\DoxyCodeLine{00692\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00693\ \ \ lis\_compute\_electric\_potential\ (\mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache);}
+\DoxyCodeLine{00694\ }
+\DoxyCodeLine{00695\ \ \ \textcolor{keywordtype}{int}}
+\DoxyCodeLine{00696\ \ \ classifyCube\ (tmesh\_3d::quadrant\_iterator\&\ quadrant,\textcolor{keywordtype}{double}\ isolevel);}
+\DoxyCodeLine{00697\ }
+\DoxyCodeLine{00698\ \ \ std::tuple<std::array<double,8>,\ std::array<double,8>,\ std::vector<double>,std::vector<int>>}
+\DoxyCodeLine{00699\ \ \ classifyCube\_flux\ (tmesh\_3d::quadrant\_iterator\&\ quadrant);}
+\DoxyCodeLine{00700\ }
+\DoxyCodeLine{00701\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00702\ \ \ energy\ (\mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache);}
+\DoxyCodeLine{00703\ }
+\DoxyCodeLine{00704\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00705\ \ \ energy\_fast\ (\mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache);}
+\DoxyCodeLine{00706\ }
+\DoxyCodeLine{00707\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00708\ \ \ write\_potential\_on\_surface\ (\mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache);}
+\DoxyCodeLine{00709\ }
+\DoxyCodeLine{00710\ \ \ \textcolor{keywordtype}{double}}
+\DoxyCodeLine{00711\ \ \ coulomb\_boundary\_conditions\ (\textcolor{keywordtype}{double}\ x,\ \textcolor{keywordtype}{double}\ y,\ \textcolor{keywordtype}{double}\ z);}
+\DoxyCodeLine{00712\ }
+\DoxyCodeLine{00713\ \ \ \textcolor{keywordtype}{double}}
+\DoxyCodeLine{00714\ \ \ analytic\_solution\ (\textcolor{keywordtype}{double}\ x,\ \textcolor{keywordtype}{double}\ y,\ \textcolor{keywordtype}{double}\ z);}
+\DoxyCodeLine{00715\ }
+\DoxyCodeLine{00716\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00717\ \ \ analitic\_potential\ ();}
+\DoxyCodeLine{00718\ }
+\DoxyCodeLine{00719\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00720\ \ \ \mbox{\hyperlink{structpoisson__boltzmann_ab4c4b9e45a15643ac9a5e00fa8e89887}{abs\_value\_field}}\ (distributed\_vector\ \&phi);}
+\DoxyCodeLine{00721\ }
+\DoxyCodeLine{00722\ \ \ std::array<double,12>}
+\DoxyCodeLine{00723\ \ \ cube\_fraction\_intersection\ (tmesh\_3d::quadrant\_iterator\&\ quadrant,}
+\DoxyCodeLine{00724\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache);}
+\DoxyCodeLine{00725\ }
+\DoxyCodeLine{00726\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00727\ \ \ normal\_intersection\ (tmesh\_3d::quadrant\_iterator\&\ quadrant,}
+\DoxyCodeLine{00728\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \&\ ray\_cache,}
+\DoxyCodeLine{00729\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{int}\ edge,\ std::array<double,3>\ \&norm,\textcolor{keywordtype}{double}\ \&frac);}
+\DoxyCodeLine{00730\ }
+\DoxyCodeLine{00731\ \ \ \textcolor{keywordtype}{int}}
+\DoxyCodeLine{00732\ \ \ getTriangles\ (\textcolor{keywordtype}{int}\ cubeindex,}
+\DoxyCodeLine{00733\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ std::array<std::array<int,3>,5>\ \&triangles);}
+\DoxyCodeLine{00734\ }
+\DoxyCodeLine{00735\ \ \ \textcolor{keywordtype}{bool}}
+\DoxyCodeLine{00736\ \ \ controlla\_coordinate\ (\textcolor{keywordtype}{int}\ i,\ \textcolor{keyword}{const}\ p8est\_quadrant\_t\ *quadrant);}
+\DoxyCodeLine{00737\ }
+\DoxyCodeLine{00738\ \ \ \textcolor{keywordtype}{int}}
+\DoxyCodeLine{00739\ \ \ cerca\_atomo\ (p8est\_t\ *\ p4est,}
+\DoxyCodeLine{00740\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ p4est\_topidx\_t\ which\_tree,}
+\DoxyCodeLine{00741\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ p8est\_quadrant\_t\ *\ quadrant,}
+\DoxyCodeLine{00742\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ p4est\_locidx\_t\ local\_num,}
+\DoxyCodeLine{00743\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ *point);}
+\DoxyCodeLine{00744\ }
+\DoxyCodeLine{00745\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00746\ \ \ search\_points\ ();}
+\DoxyCodeLine{00747\ \};}
+\DoxyCodeLine{00748\ }
+\DoxyCodeLine{00749\ std::basic\_istream<char>\&}
+\DoxyCodeLine{00750\ \mbox{\hyperlink{pb__class_8h_a54fc217eeb0c8b26e9b494bad1422bdd}{operator>>\ }}(std::basic\_istream<char>\&\ inputfile,\ NS::Atom\ \&a);}
+\DoxyCodeLine{00751\ std::basic\_istream<char>\&}
+\DoxyCodeLine{00752\ \mbox{\hyperlink{pb__class_8h_a54fc217eeb0c8b26e9b494bad1422bdd}{operator>>\ }}(std::basic\_istream<char>\&\ inputfile,\ std::array<float,5>\ \&a);}
+\DoxyCodeLine{00753\ \textcolor{preprocessor}{\#endif}}
+
+\end{DoxyCode}

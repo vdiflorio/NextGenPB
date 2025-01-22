@@ -1,0 +1,29 @@
+\doxysection{/\+Users/vincenzo/\+Documents/\+Ph\+D/\+PBE/\+LPBe/nextgen\+PB/include/serialize.h File Reference}
+\hypertarget{serialize_8h}{}\label{serialize_8h}\index{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/serialize.h@{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/serialize.h}}
+{\ttfamily \#include $<$algorithm$>$}\newline
+{\ttfamily \#include $<$iostream$>$}\newline
+{\ttfamily \#include $<$map$>$}\newline
+{\ttfamily \#include $<$numeric$>$}\newline
+{\ttfamily \#include $<$vector$>$}\newline
+{\ttfamily \#include $<$set$>$}\newline
+{\ttfamily \#include "{}raytracer.\+h"{}}\newline
+\doxysubsubsection*{Namespaces}
+\begin{DoxyCompactItemize}
+\item 
+namespace \mbox{\hyperlink{namespaceserialize}{serialize}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$class T $>$ }\\std\+::vector$<$ unsigned char $>$ \mbox{\hyperlink{namespaceserialize_af50fc00ac1675cfac88d6a7df862b4b8}{serialize\+::write}} (const std\+::vector$<$ T $>$ \&container)
+\item 
+{\footnotesize template$<$class T $>$ }\\void \mbox{\hyperlink{namespaceserialize_a7b8b28f42b64c8c39992d74892eb6b55}{serialize\+::read}} (const std\+::vector$<$ unsigned char $>$ \&data, std\+::vector$<$ T $>$ \&container)
+\item 
+{\footnotesize template$<$class F , class S $>$ }\\std\+::vector$<$ unsigned char $>$ \mbox{\hyperlink{namespaceserialize_a19995a5f603d150561cf203615541315}{serialize\+::write}} (const std\+::map$<$ F, S $>$ \&container)
+\item 
+{\footnotesize template$<$class F , class S , class C $>$ }\\void \mbox{\hyperlink{namespaceserialize_a9d4a8790a24e1877e5b360fcaaec524c}{serialize\+::read}} (const std\+::vector$<$ unsigned char $>$ \&data, std\+::map$<$ F, S, C $>$ \&container)
+\item 
+{\footnotesize template$<$class F , class S , class C $>$ }\\std\+::vector$<$ unsigned char $>$ \mbox{\hyperlink{namespaceserialize_a0588c4516e99ad3a4b0b294456f22f6e}{serialize\+::write}} (const std\+::vector$<$ std\+::map$<$ F, S, C $>$ $>$ \&container)
+\item 
+{\footnotesize template$<$class F , class S $>$ }\\void \mbox{\hyperlink{namespaceserialize_aa0aca948235175be78b473d1ac4f29aa}{serialize\+::read}} (const std\+::vector$<$ unsigned char $>$ \&data, std\+::vector$<$ std\+::map$<$ F, S $>$ $>$ \&container)
+\end{DoxyCompactItemize}

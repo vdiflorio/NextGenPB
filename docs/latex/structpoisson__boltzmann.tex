@@ -1,0 +1,1240 @@
+\doxysection{poisson\+\_\+boltzmann Struct Reference}
+\hypertarget{structpoisson__boltzmann}{}\label{structpoisson__boltzmann}\index{poisson\_boltzmann@{poisson\_boltzmann}}
+
+
+{\ttfamily \#include $<$pb\+\_\+class.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{structpoisson__boltzmann_ae8a8828beb453fac022899a45aa71080}{poisson\+\_\+boltzmann}} (int maxlevel\+\_\+=9, int minlevel\+\_\+=3, int unilevel\+\_\+=5, int mesh\+\_\+shape\+\_\+=1, int bc\+\_\+=1, int linearized\+\_\+=1, double e\+\_\+in\+\_\+=2.\+0, double e\+\_\+out\+\_\+=80.\+0, double ionic\+\_\+strength\+\_\+=0.\+145, std\+::string linear\+\_\+solver\+\_\+name\+\_\+="{}mumps"{}, std\+::string linear\+\_\+solver\+\_\+options\+\_\+="{}"{}, MPI\+\_\+\+Comm mpicomm\+\_\+=MPI\+\_\+\+COMM\+\_\+\+WORLD)
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a6c5b54f4a40fe7b43914052f2bd4c691}{levelsetfun}} (double x, double y, double z)
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a88bc56e3437db79723c60cb9e9e28acf}{is\+\_\+in\+\_\+ns\+\_\+surf}} (\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache, double x, double y, double z, int dir)
+\begin{DoxyCompactList}\small\item\em Determines whether a point is inside a molecular surface along a specified direction. \end{DoxyCompactList}\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a80729d23efbccebeea17b473ecc6337f}{is\+\_\+in\+\_\+ns\+\_\+surf\+\_\+stern}} (\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache, double x, double y, double z, int dir)
+\begin{DoxyCompactList}\small\item\em Determines whether a point is inside the Stern layer along a specified direction. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a8b6e46589efe4fb7387855e50456619e}{create\+\_\+mesh}} ()
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_ae30ca6de93b5007013d36a0c15ae7233}{create\+\_\+mesh\+\_\+ns}} ()
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a6425a8be9d2e3794a2ccce9e7b1216d8}{create\+\_\+mesh\+\_\+scale}} ()
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a089bd6acbb0d02d356aec241c2b5b231}{parse\+\_\+options}} (int argc, char \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}argv)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a003cd682f654be8009b2287758d72bf5}{print\+\_\+options}} ()
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_ac6808467c1c2d595fdd958a6f31a12b4}{read\+\_\+atoms\+\_\+from\+\_\+pqr}} (std\+::basic\+\_\+istream$<$ char $>$ \&inputfile)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a86beea6d47af16e2d2d5cbdeaa713be1}{read\+\_\+atoms\+\_\+from\+\_\+class}} ()
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a60b2381dc5f9c24601cd6c83f84c38fd}{broadcast\+\_\+vectors}} ()
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_aec61a2906caa3cc5d599e76bc7b28f1c}{write\+\_\+atoms\+\_\+to\+\_\+pqr}} (std\+::basic\+\_\+ostream$<$ char $>$ \&outputfile)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_ac4b08e11c8bdbeb0f23bb9b8f7f94dd6}{write\+\_\+potential\+\_\+on\+\_\+atoms}} ()
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a6bfe0b0a6cd30aedeab72978e845b99c}{write\+\_\+potential\+\_\+on\+\_\+atoms\+\_\+fast}} ()
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a50f995bf3630328870d6ce12dee2cddf}{init\+\_\+tmesh}} ()
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_ada2c67497ddcab8b622e8863d0a24d79}{init\+\_\+tmesh\+\_\+with\+\_\+refine\+\_\+scale}} ()
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a02502acbb9cf57b4a6f01bb79a8c7fbc}{init\+\_\+tmesh\+\_\+with\+\_\+refine\+\_\+box\+\_\+scale}} ()
+\item 
+bool \mbox{\hyperlink{structpoisson__boltzmann_a2cc252f4eee6662c7149d826c2bd3448}{is\+\_\+in}} (const NS\+::\+Atom \&i, tmesh\+\_\+3d\+::quadrant\+\_\+iterator q)
+\item 
+bool \mbox{\hyperlink{structpoisson__boltzmann_acd6c0a18c7a8beeb8a608c479b006ed2}{is\+\_\+in\+\_\+ref}} (const NS\+::\+Atom \&i, tmesh\+\_\+3d\+::quadrant\+\_\+iterator q)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_abd0234d354952b2c942ca3ec211804be}{refine\+\_\+surface}} (\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a404432e4e36b22fa22c7bb0c92f9487d}{refine\+\_\+only\+\_\+surface}} (\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_ab22fbb26a0240a51ae5dd6a5e269f82b}{create\+\_\+markers}} (\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache)
+\begin{DoxyCompactList}\small\item\em Initializes and updates markers for quadrants in a forest mesh. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a115288511e9c1376e9da1d7684751411}{export\+\_\+tmesh}} (\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a80090bff7521b64888126a4803c0fd80}{export\+\_\+potential\+\_\+map}} (\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a374bdbb8bd2c5a24081b02dab0296ff0}{export\+\_\+marked\+\_\+tmesh}} ()
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a179e61bb4b8ae35732cedd52db1c6b02}{export\+\_\+p4est}} ()
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a804c4eaed5e1621c7e847403a0f6cd94}{mumps\+\_\+compute\+\_\+electric\+\_\+potential}} (\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a1f55d99ffedad9266bf860bdacc03b61}{lis\+\_\+compute\+\_\+electric\+\_\+potential}} (\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache)
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a530d2c030025f0f0a99624b671d043c5}{classify\+Cube}} (tmesh\+\_\+3d\+::quadrant\+\_\+iterator \&quadrant, double isolevel)
+\item 
+std\+::tuple$<$ std\+::array$<$ double, 8 $>$, std\+::array$<$ double, 8 $>$, std\+::vector$<$ double $>$, std\+::vector$<$ int $>$ $>$ \mbox{\hyperlink{structpoisson__boltzmann_a9468821e793841db22e55b21da6f19d2}{classify\+Cube\+\_\+flux}} (tmesh\+\_\+3d\+::quadrant\+\_\+iterator \&quadrant)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a22fc8312ed89a977fb4726cfedf19278}{energy}} (\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a332fd74168dc0229b2bd87a4232c9c96}{energy\+\_\+fast}} (\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a97e49efcfc205f254c0cf82496014a0c}{write\+\_\+potential\+\_\+on\+\_\+surface}} (\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache)
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_aa4eb340f7a894a167f2d992c2a363e29}{coulomb\+\_\+boundary\+\_\+conditions}} (double x, double y, double z)
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a2cec7821bf214d20d2338d29dbc8bd0e}{analytic\+\_\+solution}} (double x, double y, double z)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a5afeb9dbce6ab41d2c3394c319ad48c3}{analitic\+\_\+potential}} ()
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_ab4c4b9e45a15643ac9a5e00fa8e89887}{abs\+\_\+value\+\_\+field}} (distributed\+\_\+vector \&\mbox{\hyperlink{structpoisson__boltzmann_a36064372d1201f079e8441c94929cc75}{phi}})
+\item 
+std\+::array$<$ double, 12 $>$ \mbox{\hyperlink{structpoisson__boltzmann_a3bcae08c7cac419bc56464cd7ea46004}{cube\+\_\+fraction\+\_\+intersection}} (tmesh\+\_\+3d\+::quadrant\+\_\+iterator \&quadrant, const \mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_a78705d85fb2c017a0c29e042f7fd13b0}{normal\+\_\+intersection}} (tmesh\+\_\+3d\+::quadrant\+\_\+iterator \&quadrant, const \mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&ray\+\_\+cache, int edge, std\+::array$<$ double, 3 $>$ \&norm, double \&frac)
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a75463d072ece26596ae536bebe132252}{get\+Triangles}} (int cubeindex, std\+::array$<$ std\+::array$<$ int, 3 $>$, 5 $>$ \&\mbox{\hyperlink{structpoisson__boltzmann_a382dc91094274230d1c1806458aff65c}{triangles}})
+\item 
+bool \mbox{\hyperlink{structpoisson__boltzmann_abcb0eb6fd2f5489e31bfb9cb05dafc19}{controlla\+\_\+coordinate}} (int i, const p8est\+\_\+quadrant\+\_\+t \texorpdfstring{$\ast$}{*}quadrant)
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_ad8bbebd3a1763c32dcb5206e373ee518}{cerca\+\_\+atomo}} (p8est\+\_\+t \texorpdfstring{$\ast$}{*}p4est, p4est\+\_\+topidx\+\_\+t which\+\_\+tree, p8est\+\_\+quadrant\+\_\+t \texorpdfstring{$\ast$}{*}quadrant, p4est\+\_\+locidx\+\_\+t local\+\_\+num, void \texorpdfstring{$\ast$}{*}point)
+\item 
+void \mbox{\hyperlink{structpoisson__boltzmann_adb158be89b73d31e6703b5cab7472027}{search\+\_\+points}} ()
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static int \mbox{\hyperlink{structpoisson__boltzmann_ab24c0340bc5067b9eeb04c62e476889e}{uniform\+\_\+refinement}} (tmesh\+\_\+3d\+::quadrant\+\_\+iterator quadrant)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+p4est\+\_\+topidx\+\_\+t \mbox{\hyperlink{structpoisson__boltzmann_ad4080b9b085cddcbb3ed8254ff566870}{simple\+\_\+conn\+\_\+num\+\_\+vertices}}
+\item 
+p4est\+\_\+topidx\+\_\+t \mbox{\hyperlink{structpoisson__boltzmann_ada6750bc870ae1c3815c824b96c4a481}{simple\+\_\+conn\+\_\+num\+\_\+trees}}
+\item 
+std\+::unique\+\_\+ptr$<$ double\mbox{[}$\,$\mbox{]}$>$ \mbox{\hyperlink{structpoisson__boltzmann_ae35f28b2f60817065b11a6ca7e0a5a77}{simple\+\_\+conn\+\_\+p}}
+\item 
+std\+::unique\+\_\+ptr$<$ p4est\+\_\+topidx\+\_\+t\mbox{[}$\,$\mbox{]}$>$ \mbox{\hyperlink{structpoisson__boltzmann_a8c46bf974c4b145df7d331388f840c7d}{simple\+\_\+conn\+\_\+t}}
+\item 
+std\+::vector$<$ std\+::pair$<$ p4est\+\_\+topidx\+\_\+t, p4est\+\_\+topidx\+\_\+t $>$ $>$ \mbox{\hyperlink{structpoisson__boltzmann_a0ce1800e0a54eabd9bd638d5434e063a}{bcells}}
+\item 
+std\+::vector$<$ NS\+::\+Atom $>$ \mbox{\hyperlink{structpoisson__boltzmann_aaf0802ca2d2e4c159b03246f50cd1b33}{atoms}}
+\item 
+std\+::vector$<$ std\+::array$<$ double, 3 $>$ $>$ \mbox{\hyperlink{structpoisson__boltzmann_a266ad49c8e38bbe7034893b7de213a23}{pos\+\_\+atoms}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{structpoisson__boltzmann_af998f20b72a695f7b080116dbee90c95}{charge\+\_\+atoms}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{structpoisson__boltzmann_ae687636e97546958daadd62f42999c9a}{r\+\_\+atoms}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a3bdf63e7b7cab2be4cf74a017ae37e38}{cc}} \mbox{[}3\mbox{]}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a513627682a26668ae6b81b8423fc3aab}{ll}} \mbox{[}3\mbox{]}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a20ec98e36fcfec6afbe072a8f1f4bf65}{rr}} \mbox{[}3\mbox{]}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a1275e62a9fdcd4d2122886c9b389e9f7}{l\+\_\+c}} \mbox{[}3\mbox{]}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a5de7c54d4190b7af042e18fcd2cf3670}{r\+\_\+c}} \mbox{[}3\mbox{]}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_ad1a35cfa08a4182b5ed26a69e811e2bd}{l\+\_\+cr}} \mbox{[}3\mbox{]}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a0d7619ed5365bfea50b68133b3534545}{r\+\_\+cr}} \mbox{[}3\mbox{]}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_af71100dfe72d7c718bd7a5e0a3ea4d29}{l\+\_\+box}} \mbox{[}3\mbox{]}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a26e7a54f5e19ba2c3dc56f1ad8f5743c}{r\+\_\+box}} \mbox{[}3\mbox{]}
+\item 
+p4est\+\_\+topidx\+\_\+t \mbox{\hyperlink{structpoisson__boltzmann_a8ff44147adfe9489114a7ee804cc7c54}{num\+\_\+trees}} \mbox{[}3\mbox{]}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a088f38c3a9053599fa9c211707327fde}{len}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a57fb6001bdb751988612ba000b72e6e4}{cc\+\_\+focusing}} \mbox{[}3\mbox{]}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a4094f5d90666822dc20feb754d2a7779}{n\+\_\+grid}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_ada70a8b8390e0a273d44ea1be8b12237}{maxlevel}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a8d0fbc088f8db88c9e68b680a048169b}{minlevel}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a7e5cb352275e0121b15fedc4439c9ad9}{unilevel}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a70ab9b61836e45760a0449ebfb140dd4}{outlevel}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_aab6588d46efea99997cf8cb96744cc84}{loc\+\_\+refinement}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a843d3fb2db009524e498a0c26168c936}{mesh\+\_\+shape}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a24f1f30ab3b65b947a32cc2c0427880e}{refine\+\_\+box}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a230d04b7ead695aca162c51c8526a788}{scale\+\_\+level}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_ac9ccf3d2e3f523d1f70c716d0023f147}{scale\+\_\+level\+\_\+min\+\_\+box}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a6645595cafb6442ba9d968a328b350ee}{scale}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_ad353d781f1f1a3b90f7e460755d4c400}{scale\+\_\+min}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_ad5aaf8bf529d89fe67e18ffb446bdb60}{scale\+\_\+max}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a72ae4e7e3a980f8692a81704b74a7417}{perfil1}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a599f98621e7b94d2a3ae326fc16fe1f3}{perfil2}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_aa192b55665beeeafcbab572a7338c05f}{loc\+\_\+ref}} = 0
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_ad8b0b210be7ff7fc926789b39b2f4d5f}{linearized}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_ab66e7d15f0a17db0a01fd36a8e1ad928}{bc}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a3469f7059f33dca08462398e264b3ee8}{e\+\_\+in}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a46317d7e6285ea7ee3399fd55f8a0e01}{e\+\_\+out}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a709782bede1a2ca45a069bd522241782}{ionic\+\_\+strength}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a0ce6946c5e7845bbd5209e643d95eb7d}{T}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_adb2fab7915f075ead209ccbdec9f92a0}{calc\+\_\+energy}}
+\item 
+NS\+::surface\+\_\+type \mbox{\hyperlink{structpoisson__boltzmann_af4f5f24416210800beb58c2ceceaf806}{surf\+\_\+type}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_aff5baddd56f7f2eb414ab76188c1b764}{surf\+\_\+param}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_a0e7a690caa1f6e499f2c23febb2e9e56}{prb\+\_\+radius}} = 1.\+4
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a712206ec0622882bd66649ec89aaa246}{stern\+\_\+layer\+\_\+surf}}
+\item 
+double \mbox{\hyperlink{structpoisson__boltzmann_ac92de7cf4d19bb910098b007817403af}{stern\+\_\+layer}}
+\item 
+unsigned \mbox{\hyperlink{structpoisson__boltzmann_afbf780d4c02a0233c0ccccaaf2afbe39}{num\+\_\+threads}}
+\item 
+std\+::string \mbox{\hyperlink{structpoisson__boltzmann_a2a13fa4678d6fd832174e499c2274b13}{linear\+\_\+solver\+\_\+name}}
+\item 
+std\+::string \mbox{\hyperlink{structpoisson__boltzmann_a2be1899b67868330e25315c7d84a4974}{linear\+\_\+solver\+\_\+options}}
+\item 
+MPI\+\_\+\+Comm \mbox{\hyperlink{structpoisson__boltzmann_ac58228995612efdf2076c3606cf1c2a0}{mpicomm}}
+\item 
+tmesh\+\_\+3d \mbox{\hyperlink{structpoisson__boltzmann_a1c8953fea663682856648664b6e99160}{tmsh}}
+\item 
+std\+::string \mbox{\hyperlink{structpoisson__boltzmann_a1f0f3333c358e84de8b0d5578a73ff6f}{optionsfilename}}
+\item 
+std\+::string \mbox{\hyperlink{structpoisson__boltzmann_a65c8927f049a59d175799bfbb31ab250}{pqrfilename}}
+\item 
+std\+::string \mbox{\hyperlink{structpoisson__boltzmann_a9edca2ad6b750e50cae0d7be793741a5}{p4estfilename}}
+\item 
+std\+::string \mbox{\hyperlink{structpoisson__boltzmann_a6013c2e73a20caab51bfd8c2f25480e0}{surffilename}}
+\item 
+std\+::string \mbox{\hyperlink{structpoisson__boltzmann_a6e57b67794fb48c5f9c2df7b7c82aae9}{markerfilename}}
+\item 
+std\+::string \mbox{\hyperlink{structpoisson__boltzmann_a1d758b0108160763dddf3e4306b30f50}{pqr\+\_\+atoms}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a07099aa2c65afcf1badd04105fb3a9d2}{atoms\+\_\+write}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a89f91065362b2f1910da5873b531138b}{surf\+\_\+write}}
+\item 
+std\+::string \mbox{\hyperlink{structpoisson__boltzmann_aaac1686e5e2b30f68356cffd4589d983}{map\+\_\+type}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a47c4338d64840074317ec42e22c00170}{potential\+\_\+map}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a579dd0c47dcafe074e0b60925e77ccad}{eps\+\_\+map}}
+\item 
+std\+::map$<$ int, tmesh\+\_\+3d\+::quadrant\+\_\+t $>$ \mbox{\hyperlink{structpoisson__boltzmann_a3a25c156728a7294f90b17cafba125f2}{lookup\+\_\+table}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{structpoisson__boltzmann_ae0ceaa5f2aa5ce801c3d4c0d5223c06b}{marker}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{structpoisson__boltzmann_ad2d97878a54ee20cd1530b21c9e11400}{marker\+\_\+k}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{structpoisson__boltzmann_a84d44521fbde6ddad9c133ae5a03e957}{epsilon}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{structpoisson__boltzmann_a7b510f8e7f268c325e075d882ec29da3}{epsilon\+\_\+in}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{structpoisson__boltzmann_a698245e830f0274771d2e08f3ae5879f}{epsilon\+\_\+out}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{structpoisson__boltzmann_a6c880680bf2608788374a5bfd77f1591}{reaction}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{structpoisson__boltzmann_acd4e8ee8e42b10514e17fa886a4e0286}{ones\+\_\+in}}
+\item 
+std\+::vector$<$ int $>$ \mbox{\hyperlink{structpoisson__boltzmann_abb0a067ea4ad9a1738bd7b9744095e1a}{border\+\_\+quad}}
+\item 
+std\+::set$<$ std\+::array$<$ int, 2 $>$ $>$ \mbox{\hyperlink{structpoisson__boltzmann_af840403e584d64807c3d6ddcff9b792a}{int\+\_\+nodes}}
+\item 
+std\+::unique\+\_\+ptr$<$ distributed\+\_\+vector $>$ \mbox{\hyperlink{structpoisson__boltzmann_ab3daea492c5690b67e91e033ac2f6085}{markn}}
+\item 
+std\+::unique\+\_\+ptr$<$ distributed\+\_\+vector $>$ \mbox{\hyperlink{structpoisson__boltzmann_aedaed5a229714981786df08d60809b77}{epsilon\+\_\+nodes}}
+\item 
+std\+::unique\+\_\+ptr$<$ distributed\+\_\+vector $>$ \mbox{\hyperlink{structpoisson__boltzmann_acdf7e0afa452648bb77e20653f30cc4a}{reaction\+\_\+nodes}}
+\item 
+std\+::unique\+\_\+ptr$<$ distributed\+\_\+vector $>$ \mbox{\hyperlink{structpoisson__boltzmann_a36064372d1201f079e8441c94929cc75}{phi}}
+\item 
+std\+::unique\+\_\+ptr$<$ distributed\+\_\+vector $>$ \mbox{\hyperlink{structpoisson__boltzmann_a26443a3b714ac95b374d26221d317b99}{rho\+\_\+fixed}}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_aa35119e0c17eb7f90b4136d57bb5b5a8}{edge\+Table}} \mbox{[}256\mbox{]}
+\item 
+int \mbox{\hyperlink{structpoisson__boltzmann_a8b156cadd55549da0cb9f3dce56836ae}{tri\+Table}} \mbox{[}256\mbox{]}\mbox{[}16\mbox{]}
+\item 
+std\+::array$<$ std\+::array$<$ int, 3 $>$, 5 $>$ \mbox{\hyperlink{structpoisson__boltzmann_a382dc91094274230d1c1806458aff65c}{triangles}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+static constexpr std\+::array$<$ int, 12 $>$ \mbox{\hyperlink{structpoisson__boltzmann_abcedb80e032b9a99412347bb403461aa}{edge\+\_\+axis}} = \{0,1,0,1,0,1,0,1,2,2,2,2\}
+\item 
+static constexpr std\+::array$<$ int, 24 $>$ \mbox{\hyperlink{structpoisson__boltzmann_ab5dccc00e94971b70343d94dee05536c}{edge2nodes}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Friends}
+\begin{DoxyCompactItemize}
+\item 
+std\+::basic\+\_\+istream$<$ char $>$ \& \mbox{\hyperlink{structpoisson__boltzmann_a54fc217eeb0c8b26e9b494bad1422bdd}{operator$>$$>$}} (std\+::basic\+\_\+istream$<$ char $>$ \&inputfile, NS\+::\+Atom \&a)
+\item 
+std\+::basic\+\_\+istream$<$ char $>$ \& \mbox{\hyperlink{structpoisson__boltzmann_aa050ae9c3805d8ecae282994091cbc3d}{operator$>$$>$}} (std\+::basic\+\_\+istream$<$ char $>$ \&inputfile, std\+::array$<$ float, 5 $>$ \&a)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{structpoisson__boltzmann_ae8a8828beb453fac022899a45aa71080}\index{poisson\_boltzmann@{poisson\_boltzmann}!poisson\_boltzmann@{poisson\_boltzmann}}
+\index{poisson\_boltzmann@{poisson\_boltzmann}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{poisson\_boltzmann()}{poisson\_boltzmann()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ae8a8828beb453fac022899a45aa71080} 
+poisson\+\_\+boltzmann\+::poisson\+\_\+boltzmann (\begin{DoxyParamCaption}\item[{int}]{maxlevel\+\_\+}{ = {\ttfamily 9}, }\item[{int}]{minlevel\+\_\+}{ = {\ttfamily 3}, }\item[{int}]{unilevel\+\_\+}{ = {\ttfamily 5}, }\item[{int}]{mesh\+\_\+shape\+\_\+}{ = {\ttfamily 1}, }\item[{int}]{bc\+\_\+}{ = {\ttfamily 1}, }\item[{int}]{linearized\+\_\+}{ = {\ttfamily 1}, }\item[{double}]{e\+\_\+in\+\_\+}{ = {\ttfamily 2.0}, }\item[{double}]{e\+\_\+out\+\_\+}{ = {\ttfamily 80.0}, }\item[{double}]{ionic\+\_\+strength\+\_\+}{ = {\ttfamily 0.145}, }\item[{std\+::string}]{linear\+\_\+solver\+\_\+name\+\_\+}{ = {\ttfamily "{}mumps"{}}, }\item[{std\+::string}]{linear\+\_\+solver\+\_\+options\+\_\+}{ = {\ttfamily "{}"{}}, }\item[{MPI\+\_\+\+Comm}]{mpicomm\+\_\+}{ = {\ttfamily MPI\+\_\+COMM\+\_\+WORLD}}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{structpoisson__boltzmann_ab4c4b9e45a15643ac9a5e00fa8e89887}\index{poisson\_boltzmann@{poisson\_boltzmann}!abs\_value\_field@{abs\_value\_field}}
+\index{abs\_value\_field@{abs\_value\_field}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{abs\_value\_field()}{abs\_value\_field()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ab4c4b9e45a15643ac9a5e00fa8e89887} 
+void poisson\+\_\+boltzmann\+::abs\+\_\+value\+\_\+field (\begin{DoxyParamCaption}\item[{distributed\+\_\+vector \&}]{phi}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a5afeb9dbce6ab41d2c3394c319ad48c3}\index{poisson\_boltzmann@{poisson\_boltzmann}!analitic\_potential@{analitic\_potential}}
+\index{analitic\_potential@{analitic\_potential}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{analitic\_potential()}{analitic\_potential()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a5afeb9dbce6ab41d2c3394c319ad48c3} 
+void poisson\+\_\+boltzmann\+::analitic\+\_\+potential (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a2cec7821bf214d20d2338d29dbc8bd0e}\index{poisson\_boltzmann@{poisson\_boltzmann}!analytic\_solution@{analytic\_solution}}
+\index{analytic\_solution@{analytic\_solution}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{analytic\_solution()}{analytic\_solution()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a2cec7821bf214d20d2338d29dbc8bd0e} 
+double poisson\+\_\+boltzmann\+::analytic\+\_\+solution (\begin{DoxyParamCaption}\item[{double}]{x}{, }\item[{double}]{y}{, }\item[{double}]{z}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a60b2381dc5f9c24601cd6c83f84c38fd}\index{poisson\_boltzmann@{poisson\_boltzmann}!broadcast\_vectors@{broadcast\_vectors}}
+\index{broadcast\_vectors@{broadcast\_vectors}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{broadcast\_vectors()}{broadcast\_vectors()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a60b2381dc5f9c24601cd6c83f84c38fd} 
+void poisson\+\_\+boltzmann\+::broadcast\+\_\+vectors (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_ad8bbebd3a1763c32dcb5206e373ee518}\index{poisson\_boltzmann@{poisson\_boltzmann}!cerca\_atomo@{cerca\_atomo}}
+\index{cerca\_atomo@{cerca\_atomo}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{cerca\_atomo()}{cerca\_atomo()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ad8bbebd3a1763c32dcb5206e373ee518} 
+int poisson\+\_\+boltzmann\+::cerca\+\_\+atomo (\begin{DoxyParamCaption}\item[{p8est\+\_\+t \texorpdfstring{$\ast$}{*}}]{p4est}{, }\item[{p4est\+\_\+topidx\+\_\+t}]{which\+\_\+tree}{, }\item[{p8est\+\_\+quadrant\+\_\+t \texorpdfstring{$\ast$}{*}}]{quadrant}{, }\item[{p4est\+\_\+locidx\+\_\+t}]{local\+\_\+num}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{point}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a530d2c030025f0f0a99624b671d043c5}\index{poisson\_boltzmann@{poisson\_boltzmann}!classifyCube@{classifyCube}}
+\index{classifyCube@{classifyCube}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{classifyCube()}{classifyCube()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a530d2c030025f0f0a99624b671d043c5} 
+int poisson\+\_\+boltzmann\+::classify\+Cube (\begin{DoxyParamCaption}\item[{tmesh\+\_\+3d\+::quadrant\+\_\+iterator \&}]{quadrant}{, }\item[{double}]{isolevel}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a9468821e793841db22e55b21da6f19d2}\index{poisson\_boltzmann@{poisson\_boltzmann}!classifyCube\_flux@{classifyCube\_flux}}
+\index{classifyCube\_flux@{classifyCube\_flux}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{classifyCube\_flux()}{classifyCube\_flux()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a9468821e793841db22e55b21da6f19d2} 
+std\+::tuple$<$ std\+::array$<$ double, 8 $>$, std\+::array$<$ double, 8 $>$, std\+::vector$<$ double $>$, std\+::vector$<$ int $>$ $>$ poisson\+\_\+boltzmann\+::classify\+Cube\+\_\+flux (\begin{DoxyParamCaption}\item[{tmesh\+\_\+3d\+::quadrant\+\_\+iterator \&}]{quadrant}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_abcb0eb6fd2f5489e31bfb9cb05dafc19}\index{poisson\_boltzmann@{poisson\_boltzmann}!controlla\_coordinate@{controlla\_coordinate}}
+\index{controlla\_coordinate@{controlla\_coordinate}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{controlla\_coordinate()}{controlla\_coordinate()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_abcb0eb6fd2f5489e31bfb9cb05dafc19} 
+bool poisson\+\_\+boltzmann\+::controlla\+\_\+coordinate (\begin{DoxyParamCaption}\item[{int}]{i}{, }\item[{const p8est\+\_\+quadrant\+\_\+t \texorpdfstring{$\ast$}{*}}]{quadrant}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_aa4eb340f7a894a167f2d992c2a363e29}\index{poisson\_boltzmann@{poisson\_boltzmann}!coulomb\_boundary\_conditions@{coulomb\_boundary\_conditions}}
+\index{coulomb\_boundary\_conditions@{coulomb\_boundary\_conditions}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{coulomb\_boundary\_conditions()}{coulomb\_boundary\_conditions()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_aa4eb340f7a894a167f2d992c2a363e29} 
+double poisson\+\_\+boltzmann\+::coulomb\+\_\+boundary\+\_\+conditions (\begin{DoxyParamCaption}\item[{double}]{x}{, }\item[{double}]{y}{, }\item[{double}]{z}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_ab22fbb26a0240a51ae5dd6a5e269f82b}\index{poisson\_boltzmann@{poisson\_boltzmann}!create\_markers@{create\_markers}}
+\index{create\_markers@{create\_markers}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{create\_markers()}{create\_markers()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ab22fbb26a0240a51ae5dd6a5e269f82b} 
+void poisson\+\_\+boltzmann\+::create\+\_\+markers (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{}\end{DoxyParamCaption})}
+
+
+
+Initializes and updates markers for quadrants in a forest mesh. 
+
+This function sets up markers for quadrants within a forest mesh to distinguish whether they are inside, outside, or on the boundary of a molecule. It also computes dielectric properties and reaction rates for the nodes based on their location relative to the molecule and optional Stern layer.
+
+
+\begin{DoxyParams}{Parameters}
+{\em ray\+\_\+cache} & A reference to a ray tracing cache structure that holds information on required rays and their intersections.\\
+\hline
+\end{DoxyParams}
+This function performs the following\+:
+\begin{DoxyItemize}
+\item Initializes the dielectric constants ({\ttfamily epsilon}) for the inside and outside regions.
+\item Computes reaction rates based on ionic strength and other physical parameters.
+\item Loops over quadrants in the mesh, evaluating the position of nodes relative to the molecule and Stern layer (if present).
+\item Updates markers for quadrants and nodes based on their location\+:
+\begin{DoxyItemize}
+\item {\ttfamily 0.\+0}\+: Inside the molecule.
+\item {\ttfamily 0.\+5}\+: On the boundary of the molecule.
+\item {\ttfamily 1.\+0}\+: Outside the molecule.
+\end{DoxyItemize}
+\item Updates reaction and dielectric properties for nodes inside the molecule or Stern layer.
+\item Handles MPI-\/based parallelism, including barrier synchronization and data exchange.
+\item Ensures rays are calculated and cached for points near molecular boundaries.
+\end{DoxyItemize}\hypertarget{structpoisson__boltzmann_autotoc_md4}{}\doxysubsubsubsection{\texorpdfstring{Stern Layer Handling}{Stern Layer Handling}}\label{structpoisson__boltzmann_autotoc_md4}
+If {\ttfamily stern\+\_\+layer\+\_\+surf} is set to {\ttfamily 1}, the function also processes Stern layer interactions, updating markers and reaction values accordingly.\hypertarget{structpoisson__boltzmann_autotoc_md5}{}\doxysubsubsubsection{\texorpdfstring{Constants}{Constants}}\label{structpoisson__boltzmann_autotoc_md5}
+
+\begin{DoxyItemize}
+\item Dielectric constants for inside ({\ttfamily eps\+\_\+in}) and outside ({\ttfamily eps\+\_\+out}) regions.
+\item Reaction rate constant based on ionic strength ({\ttfamily k2}).
+\end{DoxyItemize}\hypertarget{structpoisson__boltzmann_autotoc_md6}{}\doxysubsubsubsection{\texorpdfstring{Notes}{Notes}}\label{structpoisson__boltzmann_autotoc_md6}
+
+\begin{DoxyItemize}
+\item The function assumes that the mesh and ray tracing cache are correctly initialized before calling.
+\item It performs two cycles of refinement for multi-\/process configurations and one cycle for single-\/process configurations. 
+\end{DoxyItemize}\Hypertarget{structpoisson__boltzmann_a8b6e46589efe4fb7387855e50456619e}\index{poisson\_boltzmann@{poisson\_boltzmann}!create\_mesh@{create\_mesh}}
+\index{create\_mesh@{create\_mesh}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{create\_mesh()}{create\_mesh()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a8b6e46589efe4fb7387855e50456619e} 
+void poisson\+\_\+boltzmann\+::create\+\_\+mesh (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_ae30ca6de93b5007013d36a0c15ae7233}\index{poisson\_boltzmann@{poisson\_boltzmann}!create\_mesh\_ns@{create\_mesh\_ns}}
+\index{create\_mesh\_ns@{create\_mesh\_ns}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{create\_mesh\_ns()}{create\_mesh\_ns()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ae30ca6de93b5007013d36a0c15ae7233} 
+void poisson\+\_\+boltzmann\+::create\+\_\+mesh\+\_\+ns (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a6425a8be9d2e3794a2ccce9e7b1216d8}\index{poisson\_boltzmann@{poisson\_boltzmann}!create\_mesh\_scale@{create\_mesh\_scale}}
+\index{create\_mesh\_scale@{create\_mesh\_scale}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{create\_mesh\_scale()}{create\_mesh\_scale()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a6425a8be9d2e3794a2ccce9e7b1216d8} 
+void poisson\+\_\+boltzmann\+::create\+\_\+mesh\+\_\+scale (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a3bcae08c7cac419bc56464cd7ea46004}\index{poisson\_boltzmann@{poisson\_boltzmann}!cube\_fraction\_intersection@{cube\_fraction\_intersection}}
+\index{cube\_fraction\_intersection@{cube\_fraction\_intersection}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{cube\_fraction\_intersection()}{cube\_fraction\_intersection()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a3bcae08c7cac419bc56464cd7ea46004} 
+std\+::array$<$ double, 12 $>$ poisson\+\_\+boltzmann\+::cube\+\_\+fraction\+\_\+intersection (\begin{DoxyParamCaption}\item[{tmesh\+\_\+3d\+::quadrant\+\_\+iterator \&}]{quadrant}{, }\item[{const \mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a22fc8312ed89a977fb4726cfedf19278}\index{poisson\_boltzmann@{poisson\_boltzmann}!energy@{energy}}
+\index{energy@{energy}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{energy()}{energy()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a22fc8312ed89a977fb4726cfedf19278} 
+void poisson\+\_\+boltzmann\+::energy (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a332fd74168dc0229b2bd87a4232c9c96}\index{poisson\_boltzmann@{poisson\_boltzmann}!energy\_fast@{energy\_fast}}
+\index{energy\_fast@{energy\_fast}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{energy\_fast()}{energy\_fast()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a332fd74168dc0229b2bd87a4232c9c96} 
+void poisson\+\_\+boltzmann\+::energy\+\_\+fast (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a374bdbb8bd2c5a24081b02dab0296ff0}\index{poisson\_boltzmann@{poisson\_boltzmann}!export\_marked\_tmesh@{export\_marked\_tmesh}}
+\index{export\_marked\_tmesh@{export\_marked\_tmesh}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{export\_marked\_tmesh()}{export\_marked\_tmesh()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a374bdbb8bd2c5a24081b02dab0296ff0} 
+void poisson\+\_\+boltzmann\+::export\+\_\+marked\+\_\+tmesh (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a179e61bb4b8ae35732cedd52db1c6b02}\index{poisson\_boltzmann@{poisson\_boltzmann}!export\_p4est@{export\_p4est}}
+\index{export\_p4est@{export\_p4est}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{export\_p4est()}{export\_p4est()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a179e61bb4b8ae35732cedd52db1c6b02} 
+void poisson\+\_\+boltzmann\+::export\+\_\+p4est (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a80090bff7521b64888126a4803c0fd80}\index{poisson\_boltzmann@{poisson\_boltzmann}!export\_potential\_map@{export\_potential\_map}}
+\index{export\_potential\_map@{export\_potential\_map}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{export\_potential\_map()}{export\_potential\_map()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a80090bff7521b64888126a4803c0fd80} 
+void poisson\+\_\+boltzmann\+::export\+\_\+potential\+\_\+map (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a115288511e9c1376e9da1d7684751411}\index{poisson\_boltzmann@{poisson\_boltzmann}!export\_tmesh@{export\_tmesh}}
+\index{export\_tmesh@{export\_tmesh}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{export\_tmesh()}{export\_tmesh()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a115288511e9c1376e9da1d7684751411} 
+void poisson\+\_\+boltzmann\+::export\+\_\+tmesh (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a75463d072ece26596ae536bebe132252}\index{poisson\_boltzmann@{poisson\_boltzmann}!getTriangles@{getTriangles}}
+\index{getTriangles@{getTriangles}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{getTriangles()}{getTriangles()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a75463d072ece26596ae536bebe132252} 
+int poisson\+\_\+boltzmann\+::get\+Triangles (\begin{DoxyParamCaption}\item[{int}]{cubeindex}{, }\item[{std\+::array$<$ std\+::array$<$ int, 3 $>$, 5 $>$ \&}]{triangles}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a50f995bf3630328870d6ce12dee2cddf}\index{poisson\_boltzmann@{poisson\_boltzmann}!init\_tmesh@{init\_tmesh}}
+\index{init\_tmesh@{init\_tmesh}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{init\_tmesh()}{init\_tmesh()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a50f995bf3630328870d6ce12dee2cddf} 
+void poisson\+\_\+boltzmann\+::init\+\_\+tmesh (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a02502acbb9cf57b4a6f01bb79a8c7fbc}\index{poisson\_boltzmann@{poisson\_boltzmann}!init\_tmesh\_with\_refine\_box\_scale@{init\_tmesh\_with\_refine\_box\_scale}}
+\index{init\_tmesh\_with\_refine\_box\_scale@{init\_tmesh\_with\_refine\_box\_scale}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{init\_tmesh\_with\_refine\_box\_scale()}{init\_tmesh\_with\_refine\_box\_scale()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a02502acbb9cf57b4a6f01bb79a8c7fbc} 
+void poisson\+\_\+boltzmann\+::init\+\_\+tmesh\+\_\+with\+\_\+refine\+\_\+box\+\_\+scale (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_ada2c67497ddcab8b622e8863d0a24d79}\index{poisson\_boltzmann@{poisson\_boltzmann}!init\_tmesh\_with\_refine\_scale@{init\_tmesh\_with\_refine\_scale}}
+\index{init\_tmesh\_with\_refine\_scale@{init\_tmesh\_with\_refine\_scale}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{init\_tmesh\_with\_refine\_scale()}{init\_tmesh\_with\_refine\_scale()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ada2c67497ddcab8b622e8863d0a24d79} 
+void poisson\+\_\+boltzmann\+::init\+\_\+tmesh\+\_\+with\+\_\+refine\+\_\+scale (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a2cc252f4eee6662c7149d826c2bd3448}\index{poisson\_boltzmann@{poisson\_boltzmann}!is\_in@{is\_in}}
+\index{is\_in@{is\_in}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{is\_in()}{is\_in()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a2cc252f4eee6662c7149d826c2bd3448} 
+bool poisson\+\_\+boltzmann\+::is\+\_\+in (\begin{DoxyParamCaption}\item[{const NS\+::\+Atom \&}]{i}{, }\item[{tmesh\+\_\+3d\+::quadrant\+\_\+iterator}]{q}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a88bc56e3437db79723c60cb9e9e28acf}\index{poisson\_boltzmann@{poisson\_boltzmann}!is\_in\_ns\_surf@{is\_in\_ns\_surf}}
+\index{is\_in\_ns\_surf@{is\_in\_ns\_surf}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{is\_in\_ns\_surf()}{is\_in\_ns\_surf()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a88bc56e3437db79723c60cb9e9e28acf} 
+double poisson\+\_\+boltzmann\+::is\+\_\+in\+\_\+ns\+\_\+surf (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{, }\item[{double}]{x}{, }\item[{double}]{y}{, }\item[{double}]{z}{, }\item[{int}]{dir}{}\end{DoxyParamCaption})}
+
+
+
+Determines whether a point is inside a molecular surface along a specified direction. 
+
+This function evaluates whether a point defined by coordinates {\ttfamily (x, y, z)} lies inside, outside, or on the boundary of a molecular surface based on ray intersections retrieved from a ray cache.
+
+
+\begin{DoxyParams}{Parameters}
+{\em ray\+\_\+cache} & A reference to the ray tracing cache that stores intersection data and manages ray operations. \\
+\hline
+{\em x} & The x-\/coordinate of the point. \\
+\hline
+{\em y} & The y-\/coordinate of the point. \\
+\hline
+{\em z} & The z-\/coordinate of the point. \\
+\hline
+{\em dir} & The direction of the evaluation\+:
+\begin{DoxyItemize}
+\item {\ttfamily 0}\+: Evaluate in the yz-\/plane.
+\item {\ttfamily 1}\+: Evaluate in the xz-\/plane.
+\item {\ttfamily 2}\+: Evaluate in the xy-\/plane.
+\end{DoxyItemize}\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+A value indicating the position of the point relative to the molecular surface\+:
+\begin{DoxyItemize}
+\item {\ttfamily 0.\+0}\+: The point is outside the surface.
+\item {\ttfamily 1.\+0}\+: The point is inside the surface.
+\item {\ttfamily -\/1.\+0}\+: The point requires additional ray tracing or data is unavailable.
+\end{DoxyItemize}
+\end{DoxyReturn}
+\hypertarget{structpoisson__boltzmann_autotoc_md0}{}\doxysubsubsubsection{\texorpdfstring{Algorithm Details}{Algorithm Details}}\label{structpoisson__boltzmann_autotoc_md0}
+
+\begin{DoxyItemize}
+\item Coordinates {\ttfamily (x, y, z)} are reordered based on the specified evaluation direction ({\ttfamily dir}).
+\item Intersections along the specified direction are retrieved from the ray cache.
+\item If no intersections are found, or the point lies before the first intersection, it is marked as outside.
+\item Iteratively evaluates whether the point alternates between inside and outside based on intersection crossings.
+\item Returns {\ttfamily 1.\+0} if the number of intersections passed is odd (inside) and {\ttfamily 0.\+0} if even (outside).
+\end{DoxyItemize}\hypertarget{structpoisson__boltzmann_autotoc_md1}{}\doxysubsubsubsection{\texorpdfstring{Notes}{Notes}}\label{structpoisson__boltzmann_autotoc_md1}
+
+\begin{DoxyItemize}
+\item Requires the {\ttfamily ray\+\_\+cache} to be properly initialized and populated with intersection data.
+\item Assumes that intersections are sorted and stored in the ray cache.
+\item This function is intended to be used within an MPI-\/based parallel environment. 
+\end{DoxyItemize}\Hypertarget{structpoisson__boltzmann_a80729d23efbccebeea17b473ecc6337f}\index{poisson\_boltzmann@{poisson\_boltzmann}!is\_in\_ns\_surf\_stern@{is\_in\_ns\_surf\_stern}}
+\index{is\_in\_ns\_surf\_stern@{is\_in\_ns\_surf\_stern}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{is\_in\_ns\_surf\_stern()}{is\_in\_ns\_surf\_stern()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a80729d23efbccebeea17b473ecc6337f} 
+double poisson\+\_\+boltzmann\+::is\+\_\+in\+\_\+ns\+\_\+surf\+\_\+stern (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{, }\item[{double}]{x}{, }\item[{double}]{y}{, }\item[{double}]{z}{, }\item[{int}]{dir}{}\end{DoxyParamCaption})}
+
+
+
+Determines whether a point is inside the Stern layer along a specified direction. 
+
+This function evaluates whether a point defined by coordinates {\ttfamily (x, y, z)} lies inside, outside, or on the boundary of the Stern layer for a given direction. The evaluation uses precomputed ray intersections stored in a ray cache.
+
+
+\begin{DoxyParams}{Parameters}
+{\em ray\+\_\+cache} & A reference to the ray tracing cache that stores intersection data and handles ray operations. \\
+\hline
+{\em x} & The x-\/coordinate of the point. \\
+\hline
+{\em y} & The y-\/coordinate of the point. \\
+\hline
+{\em z} & The z-\/coordinate of the point. \\
+\hline
+{\em dir} & The direction of the evaluation\+:
+\begin{DoxyItemize}
+\item {\ttfamily 0}\+: Evaluate in the yz-\/plane.
+\item {\ttfamily 1}\+: Evaluate in the xz-\/plane.
+\item {\ttfamily 2}\+: Evaluate in the xy-\/plane.
+\end{DoxyItemize}\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+A value indicating the position of the point relative to the Stern layer\+:
+\begin{DoxyItemize}
+\item {\ttfamily 0.\+0}\+: The point is outside the Stern layer.
+\item {\ttfamily 1.\+0}\+: The point is inside the Stern layer.
+\item {\ttfamily -\/1.\+0}\+: The point requires additional ray tracing or data is unavailable.
+\end{DoxyItemize}
+\end{DoxyReturn}
+\hypertarget{structpoisson__boltzmann_autotoc_md2}{}\doxysubsubsubsection{\texorpdfstring{Algorithm Details}{Algorithm Details}}\label{structpoisson__boltzmann_autotoc_md2}
+
+\begin{DoxyItemize}
+\item Coordinates {\ttfamily (x, y, z)} are reordered based on the evaluation direction ({\ttfamily dir}).
+\item Intersections along the specified direction are retrieved from the ray cache.
+\item If the point lies outside all intersections, it is marked as outside.
+\item Iteratively evaluates whether the point alternates between inside and outside based on the intersection list, accounting for the Stern layer thickness.
+\end{DoxyItemize}\hypertarget{structpoisson__boltzmann_autotoc_md3}{}\doxysubsubsubsection{\texorpdfstring{Notes}{Notes}}\label{structpoisson__boltzmann_autotoc_md3}
+
+\begin{DoxyItemize}
+\item Requires the {\ttfamily ray\+\_\+cache} to be properly initialized and populated with intersection data.
+\item Assumes a uniform thickness for the Stern layer, defined as {\ttfamily stern\+\_\+layer}.
+\item The {\ttfamily sign} variable alternates to evaluate the nesting of intersections. 
+\end{DoxyItemize}\Hypertarget{structpoisson__boltzmann_acd6c0a18c7a8beeb8a608c479b006ed2}\index{poisson\_boltzmann@{poisson\_boltzmann}!is\_in\_ref@{is\_in\_ref}}
+\index{is\_in\_ref@{is\_in\_ref}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{is\_in\_ref()}{is\_in\_ref()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_acd6c0a18c7a8beeb8a608c479b006ed2} 
+bool poisson\+\_\+boltzmann\+::is\+\_\+in\+\_\+ref (\begin{DoxyParamCaption}\item[{const NS\+::\+Atom \&}]{i}{, }\item[{tmesh\+\_\+3d\+::quadrant\+\_\+iterator}]{q}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a6c5b54f4a40fe7b43914052f2bd4c691}\index{poisson\_boltzmann@{poisson\_boltzmann}!levelsetfun@{levelsetfun}}
+\index{levelsetfun@{levelsetfun}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{levelsetfun()}{levelsetfun()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a6c5b54f4a40fe7b43914052f2bd4c691} 
+double poisson\+\_\+boltzmann\+::levelsetfun (\begin{DoxyParamCaption}\item[{double}]{x}{, }\item[{double}]{y}{, }\item[{double}]{z}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a1f55d99ffedad9266bf860bdacc03b61}\index{poisson\_boltzmann@{poisson\_boltzmann}!lis\_compute\_electric\_potential@{lis\_compute\_electric\_potential}}
+\index{lis\_compute\_electric\_potential@{lis\_compute\_electric\_potential}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{lis\_compute\_electric\_potential()}{lis\_compute\_electric\_potential()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a1f55d99ffedad9266bf860bdacc03b61} 
+void poisson\+\_\+boltzmann\+::lis\+\_\+compute\+\_\+electric\+\_\+potential (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a804c4eaed5e1621c7e847403a0f6cd94}\index{poisson\_boltzmann@{poisson\_boltzmann}!mumps\_compute\_electric\_potential@{mumps\_compute\_electric\_potential}}
+\index{mumps\_compute\_electric\_potential@{mumps\_compute\_electric\_potential}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{mumps\_compute\_electric\_potential()}{mumps\_compute\_electric\_potential()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a804c4eaed5e1621c7e847403a0f6cd94} 
+void poisson\+\_\+boltzmann\+::mumps\+\_\+compute\+\_\+electric\+\_\+potential (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a78705d85fb2c017a0c29e042f7fd13b0}\index{poisson\_boltzmann@{poisson\_boltzmann}!normal\_intersection@{normal\_intersection}}
+\index{normal\_intersection@{normal\_intersection}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{normal\_intersection()}{normal\_intersection()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a78705d85fb2c017a0c29e042f7fd13b0} 
+void poisson\+\_\+boltzmann\+::normal\+\_\+intersection (\begin{DoxyParamCaption}\item[{tmesh\+\_\+3d\+::quadrant\+\_\+iterator \&}]{quadrant}{, }\item[{const \mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{, }\item[{int}]{edge}{, }\item[{std\+::array$<$ double, 3 $>$ \&}]{norm}{, }\item[{double \&}]{frac}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a089bd6acbb0d02d356aec241c2b5b231}\index{poisson\_boltzmann@{poisson\_boltzmann}!parse\_options@{parse\_options}}
+\index{parse\_options@{parse\_options}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{parse\_options()}{parse\_options()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a089bd6acbb0d02d356aec241c2b5b231} 
+int poisson\+\_\+boltzmann\+::parse\+\_\+options (\begin{DoxyParamCaption}\item[{int}]{argc}{, }\item[{char \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}}]{argv}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a003cd682f654be8009b2287758d72bf5}\index{poisson\_boltzmann@{poisson\_boltzmann}!print\_options@{print\_options}}
+\index{print\_options@{print\_options}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{print\_options()}{print\_options()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a003cd682f654be8009b2287758d72bf5} 
+void poisson\+\_\+boltzmann\+::print\+\_\+options (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a86beea6d47af16e2d2d5cbdeaa713be1}\index{poisson\_boltzmann@{poisson\_boltzmann}!read\_atoms\_from\_class@{read\_atoms\_from\_class}}
+\index{read\_atoms\_from\_class@{read\_atoms\_from\_class}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{read\_atoms\_from\_class()}{read\_atoms\_from\_class()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a86beea6d47af16e2d2d5cbdeaa713be1} 
+void poisson\+\_\+boltzmann\+::read\+\_\+atoms\+\_\+from\+\_\+class (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_ac6808467c1c2d595fdd958a6f31a12b4}\index{poisson\_boltzmann@{poisson\_boltzmann}!read\_atoms\_from\_pqr@{read\_atoms\_from\_pqr}}
+\index{read\_atoms\_from\_pqr@{read\_atoms\_from\_pqr}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{read\_atoms\_from\_pqr()}{read\_atoms\_from\_pqr()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ac6808467c1c2d595fdd958a6f31a12b4} 
+void poisson\+\_\+boltzmann\+::read\+\_\+atoms\+\_\+from\+\_\+pqr (\begin{DoxyParamCaption}\item[{std\+::basic\+\_\+istream$<$ char $>$ \&}]{inputfile}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a404432e4e36b22fa22c7bb0c92f9487d}\index{poisson\_boltzmann@{poisson\_boltzmann}!refine\_only\_surface@{refine\_only\_surface}}
+\index{refine\_only\_surface@{refine\_only\_surface}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{refine\_only\_surface()}{refine\_only\_surface()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a404432e4e36b22fa22c7bb0c92f9487d} 
+void poisson\+\_\+boltzmann\+::refine\+\_\+only\+\_\+surface (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_abd0234d354952b2c942ca3ec211804be}\index{poisson\_boltzmann@{poisson\_boltzmann}!refine\_surface@{refine\_surface}}
+\index{refine\_surface@{refine\_surface}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{refine\_surface()}{refine\_surface()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_abd0234d354952b2c942ca3ec211804be} 
+void poisson\+\_\+boltzmann\+::refine\+\_\+surface (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_adb158be89b73d31e6703b5cab7472027}\index{poisson\_boltzmann@{poisson\_boltzmann}!search\_points@{search\_points}}
+\index{search\_points@{search\_points}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{search\_points()}{search\_points()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_adb158be89b73d31e6703b5cab7472027} 
+void poisson\+\_\+boltzmann\+::search\+\_\+points (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_ab24c0340bc5067b9eeb04c62e476889e}\index{poisson\_boltzmann@{poisson\_boltzmann}!uniform\_refinement@{uniform\_refinement}}
+\index{uniform\_refinement@{uniform\_refinement}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{uniform\_refinement()}{uniform\_refinement()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ab24c0340bc5067b9eeb04c62e476889e} 
+static int poisson\+\_\+boltzmann\+::uniform\+\_\+refinement (\begin{DoxyParamCaption}\item[{tmesh\+\_\+3d\+::quadrant\+\_\+iterator}]{quadrant}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}
+
+\Hypertarget{structpoisson__boltzmann_aec61a2906caa3cc5d599e76bc7b28f1c}\index{poisson\_boltzmann@{poisson\_boltzmann}!write\_atoms\_to\_pqr@{write\_atoms\_to\_pqr}}
+\index{write\_atoms\_to\_pqr@{write\_atoms\_to\_pqr}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{write\_atoms\_to\_pqr()}{write\_atoms\_to\_pqr()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_aec61a2906caa3cc5d599e76bc7b28f1c} 
+void poisson\+\_\+boltzmann\+::write\+\_\+atoms\+\_\+to\+\_\+pqr (\begin{DoxyParamCaption}\item[{std\+::basic\+\_\+ostream$<$ char $>$ \&}]{outputfile}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_ac4b08e11c8bdbeb0f23bb9b8f7f94dd6}\index{poisson\_boltzmann@{poisson\_boltzmann}!write\_potential\_on\_atoms@{write\_potential\_on\_atoms}}
+\index{write\_potential\_on\_atoms@{write\_potential\_on\_atoms}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{write\_potential\_on\_atoms()}{write\_potential\_on\_atoms()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ac4b08e11c8bdbeb0f23bb9b8f7f94dd6} 
+void poisson\+\_\+boltzmann\+::write\+\_\+potential\+\_\+on\+\_\+atoms (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a6bfe0b0a6cd30aedeab72978e845b99c}\index{poisson\_boltzmann@{poisson\_boltzmann}!write\_potential\_on\_atoms\_fast@{write\_potential\_on\_atoms\_fast}}
+\index{write\_potential\_on\_atoms\_fast@{write\_potential\_on\_atoms\_fast}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{write\_potential\_on\_atoms\_fast()}{write\_potential\_on\_atoms\_fast()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a6bfe0b0a6cd30aedeab72978e845b99c} 
+void poisson\+\_\+boltzmann\+::write\+\_\+potential\+\_\+on\+\_\+atoms\+\_\+fast (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+\Hypertarget{structpoisson__boltzmann_a97e49efcfc205f254c0cf82496014a0c}\index{poisson\_boltzmann@{poisson\_boltzmann}!write\_potential\_on\_surface@{write\_potential\_on\_surface}}
+\index{write\_potential\_on\_surface@{write\_potential\_on\_surface}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{write\_potential\_on\_surface()}{write\_potential\_on\_surface()}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a97e49efcfc205f254c0cf82496014a0c} 
+void poisson\+\_\+boltzmann\+::write\+\_\+potential\+\_\+on\+\_\+surface (\begin{DoxyParamCaption}\item[{\mbox{\hyperlink{structray__cache__t}{ray\+\_\+cache\+\_\+t}} \&}]{ray\+\_\+cache}{}\end{DoxyParamCaption})}
+
+
+
+\doxysubsection{Friends And Related Symbol Documentation}
+\Hypertarget{structpoisson__boltzmann_a54fc217eeb0c8b26e9b494bad1422bdd}\index{poisson\_boltzmann@{poisson\_boltzmann}!operator$>$$>$@{operator$>$$>$}}
+\index{operator$>$$>$@{operator$>$$>$}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{operator$>$$>$}{operator>>}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a54fc217eeb0c8b26e9b494bad1422bdd} 
+std\+::basic\+\_\+istream$<$ char $>$ \& operator$>$$>$ (\begin{DoxyParamCaption}\item[{std\+::basic\+\_\+istream$<$ char $>$ \&}]{inputfile}{, }\item[{NS\+::\+Atom \&}]{a}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [friend]}}
+
+\Hypertarget{structpoisson__boltzmann_aa050ae9c3805d8ecae282994091cbc3d}\index{poisson\_boltzmann@{poisson\_boltzmann}!operator$>$$>$@{operator$>$$>$}}
+\index{operator$>$$>$@{operator$>$$>$}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{operator$>$$>$}{operator>>}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_aa050ae9c3805d8ecae282994091cbc3d} 
+std\+::basic\+\_\+istream$<$ char $>$ \& operator$>$$>$ (\begin{DoxyParamCaption}\item[{std\+::basic\+\_\+istream$<$ char $>$ \&}]{inputfile}{, }\item[{std\+::array$<$ float, 5 $>$ \&}]{a}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [friend]}}
+
+
+
+\doxysubsection{Member Data Documentation}
+\Hypertarget{structpoisson__boltzmann_aaf0802ca2d2e4c159b03246f50cd1b33}\index{poisson\_boltzmann@{poisson\_boltzmann}!atoms@{atoms}}
+\index{atoms@{atoms}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{atoms}{atoms}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_aaf0802ca2d2e4c159b03246f50cd1b33} 
+std\+::vector$<$NS\+::\+Atom$>$ poisson\+\_\+boltzmann\+::atoms}
+
+\Hypertarget{structpoisson__boltzmann_a07099aa2c65afcf1badd04105fb3a9d2}\index{poisson\_boltzmann@{poisson\_boltzmann}!atoms\_write@{atoms\_write}}
+\index{atoms\_write@{atoms\_write}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{atoms\_write}{atoms\_write}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a07099aa2c65afcf1badd04105fb3a9d2} 
+int poisson\+\_\+boltzmann\+::atoms\+\_\+write}
+
+\Hypertarget{structpoisson__boltzmann_ab66e7d15f0a17db0a01fd36a8e1ad928}\index{poisson\_boltzmann@{poisson\_boltzmann}!bc@{bc}}
+\index{bc@{bc}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{bc}{bc}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ab66e7d15f0a17db0a01fd36a8e1ad928} 
+int poisson\+\_\+boltzmann\+::bc}
+
+\Hypertarget{structpoisson__boltzmann_a0ce1800e0a54eabd9bd638d5434e063a}\index{poisson\_boltzmann@{poisson\_boltzmann}!bcells@{bcells}}
+\index{bcells@{bcells}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{bcells}{bcells}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a0ce1800e0a54eabd9bd638d5434e063a} 
+std\+::vector$<$std\+::pair$<$p4est\+\_\+topidx\+\_\+t, p4est\+\_\+topidx\+\_\+t$>$ $>$ poisson\+\_\+boltzmann\+::bcells}
+
+\Hypertarget{structpoisson__boltzmann_abb0a067ea4ad9a1738bd7b9744095e1a}\index{poisson\_boltzmann@{poisson\_boltzmann}!border\_quad@{border\_quad}}
+\index{border\_quad@{border\_quad}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{border\_quad}{border\_quad}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_abb0a067ea4ad9a1738bd7b9744095e1a} 
+std\+::vector$<$int$>$ poisson\+\_\+boltzmann\+::border\+\_\+quad}
+
+\Hypertarget{structpoisson__boltzmann_adb2fab7915f075ead209ccbdec9f92a0}\index{poisson\_boltzmann@{poisson\_boltzmann}!calc\_energy@{calc\_energy}}
+\index{calc\_energy@{calc\_energy}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{calc\_energy}{calc\_energy}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_adb2fab7915f075ead209ccbdec9f92a0} 
+int poisson\+\_\+boltzmann\+::calc\+\_\+energy}
+
+\Hypertarget{structpoisson__boltzmann_a3bdf63e7b7cab2be4cf74a017ae37e38}\index{poisson\_boltzmann@{poisson\_boltzmann}!cc@{cc}}
+\index{cc@{cc}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{cc}{cc}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a3bdf63e7b7cab2be4cf74a017ae37e38} 
+double poisson\+\_\+boltzmann\+::cc\mbox{[}3\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_a57fb6001bdb751988612ba000b72e6e4}\index{poisson\_boltzmann@{poisson\_boltzmann}!cc\_focusing@{cc\_focusing}}
+\index{cc\_focusing@{cc\_focusing}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{cc\_focusing}{cc\_focusing}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a57fb6001bdb751988612ba000b72e6e4} 
+double poisson\+\_\+boltzmann\+::cc\+\_\+focusing\mbox{[}3\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_af998f20b72a695f7b080116dbee90c95}\index{poisson\_boltzmann@{poisson\_boltzmann}!charge\_atoms@{charge\_atoms}}
+\index{charge\_atoms@{charge\_atoms}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{charge\_atoms}{charge\_atoms}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_af998f20b72a695f7b080116dbee90c95} 
+std\+::vector$<$double$>$ poisson\+\_\+boltzmann\+::charge\+\_\+atoms}
+
+\Hypertarget{structpoisson__boltzmann_a3469f7059f33dca08462398e264b3ee8}\index{poisson\_boltzmann@{poisson\_boltzmann}!e\_in@{e\_in}}
+\index{e\_in@{e\_in}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{e\_in}{e\_in}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a3469f7059f33dca08462398e264b3ee8} 
+double poisson\+\_\+boltzmann\+::e\+\_\+in}
+
+\Hypertarget{structpoisson__boltzmann_a46317d7e6285ea7ee3399fd55f8a0e01}\index{poisson\_boltzmann@{poisson\_boltzmann}!e\_out@{e\_out}}
+\index{e\_out@{e\_out}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{e\_out}{e\_out}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a46317d7e6285ea7ee3399fd55f8a0e01} 
+double poisson\+\_\+boltzmann\+::e\+\_\+out}
+
+\Hypertarget{structpoisson__boltzmann_ab5dccc00e94971b70343d94dee05536c}\index{poisson\_boltzmann@{poisson\_boltzmann}!edge2nodes@{edge2nodes}}
+\index{edge2nodes@{edge2nodes}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{edge2nodes}{edge2nodes}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ab5dccc00e94971b70343d94dee05536c} 
+std\+::array$<$int, 24$>$ poisson\+\_\+boltzmann\+::edge2nodes\hspace{0.3cm}{\ttfamily [static]}, {\ttfamily [constexpr]}}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{=\ \{}
+\DoxyCodeLine{\ \ \ \ 0,\ 1,}
+\DoxyCodeLine{\ \ \ \ 1,\ 3,}
+\DoxyCodeLine{\ \ \ \ 2,\ 3,}
+\DoxyCodeLine{\ \ \ \ 0,\ 2,}
+\DoxyCodeLine{\ \ \ \ 4,\ 5,}
+\DoxyCodeLine{\ \ \ \ 5,\ 7,}
+\DoxyCodeLine{\ \ \ \ 6,\ 7,}
+\DoxyCodeLine{\ \ \ \ 4,\ 6,}
+\DoxyCodeLine{\ \ \ \ 0,\ 4,}
+\DoxyCodeLine{\ \ \ \ 1,\ 5,}
+\DoxyCodeLine{\ \ \ \ 3,\ 7,}
+\DoxyCodeLine{\ \ \ \ 2,\ 6}
+\DoxyCodeLine{\ \ \}}
+
+\end{DoxyCode}
+\Hypertarget{structpoisson__boltzmann_abcedb80e032b9a99412347bb403461aa}\index{poisson\_boltzmann@{poisson\_boltzmann}!edge\_axis@{edge\_axis}}
+\index{edge\_axis@{edge\_axis}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{edge\_axis}{edge\_axis}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_abcedb80e032b9a99412347bb403461aa} 
+std\+::array$<$int, 12$>$ poisson\+\_\+boltzmann\+::edge\+\_\+axis = \{0,1,0,1,0,1,0,1,2,2,2,2\}\hspace{0.3cm}{\ttfamily [static]}, {\ttfamily [constexpr]}}
+
+\Hypertarget{structpoisson__boltzmann_aa35119e0c17eb7f90b4136d57bb5b5a8}\index{poisson\_boltzmann@{poisson\_boltzmann}!edgeTable@{edgeTable}}
+\index{edgeTable@{edgeTable}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{edgeTable}{edgeTable}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_aa35119e0c17eb7f90b4136d57bb5b5a8} 
+int poisson\+\_\+boltzmann\+::edge\+Table\mbox{[}256\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_a579dd0c47dcafe074e0b60925e77ccad}\index{poisson\_boltzmann@{poisson\_boltzmann}!eps\_map@{eps\_map}}
+\index{eps\_map@{eps\_map}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{eps\_map}{eps\_map}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a579dd0c47dcafe074e0b60925e77ccad} 
+int poisson\+\_\+boltzmann\+::eps\+\_\+map}
+
+\Hypertarget{structpoisson__boltzmann_a84d44521fbde6ddad9c133ae5a03e957}\index{poisson\_boltzmann@{poisson\_boltzmann}!epsilon@{epsilon}}
+\index{epsilon@{epsilon}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{epsilon}{epsilon}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a84d44521fbde6ddad9c133ae5a03e957} 
+std\+::vector$<$double$>$ poisson\+\_\+boltzmann\+::epsilon}
+
+\Hypertarget{structpoisson__boltzmann_a7b510f8e7f268c325e075d882ec29da3}\index{poisson\_boltzmann@{poisson\_boltzmann}!epsilon\_in@{epsilon\_in}}
+\index{epsilon\_in@{epsilon\_in}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{epsilon\_in}{epsilon\_in}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a7b510f8e7f268c325e075d882ec29da3} 
+std\+::vector$<$double$>$ poisson\+\_\+boltzmann\+::epsilon\+\_\+in}
+
+\Hypertarget{structpoisson__boltzmann_aedaed5a229714981786df08d60809b77}\index{poisson\_boltzmann@{poisson\_boltzmann}!epsilon\_nodes@{epsilon\_nodes}}
+\index{epsilon\_nodes@{epsilon\_nodes}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{epsilon\_nodes}{epsilon\_nodes}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_aedaed5a229714981786df08d60809b77} 
+std\+::unique\+\_\+ptr$<$distributed\+\_\+vector$>$ poisson\+\_\+boltzmann\+::epsilon\+\_\+nodes}
+
+\Hypertarget{structpoisson__boltzmann_a698245e830f0274771d2e08f3ae5879f}\index{poisson\_boltzmann@{poisson\_boltzmann}!epsilon\_out@{epsilon\_out}}
+\index{epsilon\_out@{epsilon\_out}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{epsilon\_out}{epsilon\_out}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a698245e830f0274771d2e08f3ae5879f} 
+std\+::vector$<$double$>$ poisson\+\_\+boltzmann\+::epsilon\+\_\+out}
+
+\Hypertarget{structpoisson__boltzmann_af840403e584d64807c3d6ddcff9b792a}\index{poisson\_boltzmann@{poisson\_boltzmann}!int\_nodes@{int\_nodes}}
+\index{int\_nodes@{int\_nodes}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{int\_nodes}{int\_nodes}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_af840403e584d64807c3d6ddcff9b792a} 
+std\+::set$<$std\+::array$<$int, 2$>$ $>$ poisson\+\_\+boltzmann\+::int\+\_\+nodes}
+
+\Hypertarget{structpoisson__boltzmann_a709782bede1a2ca45a069bd522241782}\index{poisson\_boltzmann@{poisson\_boltzmann}!ionic\_strength@{ionic\_strength}}
+\index{ionic\_strength@{ionic\_strength}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{ionic\_strength}{ionic\_strength}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a709782bede1a2ca45a069bd522241782} 
+double poisson\+\_\+boltzmann\+::ionic\+\_\+strength}
+
+\Hypertarget{structpoisson__boltzmann_af71100dfe72d7c718bd7a5e0a3ea4d29}\index{poisson\_boltzmann@{poisson\_boltzmann}!l\_box@{l\_box}}
+\index{l\_box@{l\_box}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{l\_box}{l\_box}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_af71100dfe72d7c718bd7a5e0a3ea4d29} 
+double poisson\+\_\+boltzmann\+::l\+\_\+box\mbox{[}3\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_a1275e62a9fdcd4d2122886c9b389e9f7}\index{poisson\_boltzmann@{poisson\_boltzmann}!l\_c@{l\_c}}
+\index{l\_c@{l\_c}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{l\_c}{l\_c}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a1275e62a9fdcd4d2122886c9b389e9f7} 
+double poisson\+\_\+boltzmann\+::l\+\_\+c\mbox{[}3\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_ad1a35cfa08a4182b5ed26a69e811e2bd}\index{poisson\_boltzmann@{poisson\_boltzmann}!l\_cr@{l\_cr}}
+\index{l\_cr@{l\_cr}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{l\_cr}{l\_cr}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ad1a35cfa08a4182b5ed26a69e811e2bd} 
+double poisson\+\_\+boltzmann\+::l\+\_\+cr\mbox{[}3\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_a088f38c3a9053599fa9c211707327fde}\index{poisson\_boltzmann@{poisson\_boltzmann}!len@{len}}
+\index{len@{len}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{len}{len}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a088f38c3a9053599fa9c211707327fde} 
+double poisson\+\_\+boltzmann\+::len}
+
+\Hypertarget{structpoisson__boltzmann_a2a13fa4678d6fd832174e499c2274b13}\index{poisson\_boltzmann@{poisson\_boltzmann}!linear\_solver\_name@{linear\_solver\_name}}
+\index{linear\_solver\_name@{linear\_solver\_name}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{linear\_solver\_name}{linear\_solver\_name}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a2a13fa4678d6fd832174e499c2274b13} 
+std\+::string poisson\+\_\+boltzmann\+::linear\+\_\+solver\+\_\+name}
+
+\Hypertarget{structpoisson__boltzmann_a2be1899b67868330e25315c7d84a4974}\index{poisson\_boltzmann@{poisson\_boltzmann}!linear\_solver\_options@{linear\_solver\_options}}
+\index{linear\_solver\_options@{linear\_solver\_options}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{linear\_solver\_options}{linear\_solver\_options}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a2be1899b67868330e25315c7d84a4974} 
+std\+::string poisson\+\_\+boltzmann\+::linear\+\_\+solver\+\_\+options}
+
+\Hypertarget{structpoisson__boltzmann_ad8b0b210be7ff7fc926789b39b2f4d5f}\index{poisson\_boltzmann@{poisson\_boltzmann}!linearized@{linearized}}
+\index{linearized@{linearized}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{linearized}{linearized}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ad8b0b210be7ff7fc926789b39b2f4d5f} 
+int poisson\+\_\+boltzmann\+::linearized}
+
+\Hypertarget{structpoisson__boltzmann_a513627682a26668ae6b81b8423fc3aab}\index{poisson\_boltzmann@{poisson\_boltzmann}!ll@{ll}}
+\index{ll@{ll}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{ll}{ll}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a513627682a26668ae6b81b8423fc3aab} 
+double poisson\+\_\+boltzmann\+::ll\mbox{[}3\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_aa192b55665beeeafcbab572a7338c05f}\index{poisson\_boltzmann@{poisson\_boltzmann}!loc\_ref@{loc\_ref}}
+\index{loc\_ref@{loc\_ref}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{loc\_ref}{loc\_ref}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_aa192b55665beeeafcbab572a7338c05f} 
+int poisson\+\_\+boltzmann\+::loc\+\_\+ref = 0}
+
+\Hypertarget{structpoisson__boltzmann_aab6588d46efea99997cf8cb96744cc84}\index{poisson\_boltzmann@{poisson\_boltzmann}!loc\_refinement@{loc\_refinement}}
+\index{loc\_refinement@{loc\_refinement}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{loc\_refinement}{loc\_refinement}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_aab6588d46efea99997cf8cb96744cc84} 
+int poisson\+\_\+boltzmann\+::loc\+\_\+refinement}
+
+\Hypertarget{structpoisson__boltzmann_a3a25c156728a7294f90b17cafba125f2}\index{poisson\_boltzmann@{poisson\_boltzmann}!lookup\_table@{lookup\_table}}
+\index{lookup\_table@{lookup\_table}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{lookup\_table}{lookup\_table}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a3a25c156728a7294f90b17cafba125f2} 
+std\+::map$<$int, tmesh\+\_\+3d\+::quadrant\+\_\+t$>$ poisson\+\_\+boltzmann\+::lookup\+\_\+table}
+
+\Hypertarget{structpoisson__boltzmann_aaac1686e5e2b30f68356cffd4589d983}\index{poisson\_boltzmann@{poisson\_boltzmann}!map\_type@{map\_type}}
+\index{map\_type@{map\_type}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{map\_type}{map\_type}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_aaac1686e5e2b30f68356cffd4589d983} 
+std\+::string poisson\+\_\+boltzmann\+::map\+\_\+type}
+
+\Hypertarget{structpoisson__boltzmann_ae0ceaa5f2aa5ce801c3d4c0d5223c06b}\index{poisson\_boltzmann@{poisson\_boltzmann}!marker@{marker}}
+\index{marker@{marker}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{marker}{marker}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ae0ceaa5f2aa5ce801c3d4c0d5223c06b} 
+std\+::vector$<$double$>$ poisson\+\_\+boltzmann\+::marker}
+
+\Hypertarget{structpoisson__boltzmann_ad2d97878a54ee20cd1530b21c9e11400}\index{poisson\_boltzmann@{poisson\_boltzmann}!marker\_k@{marker\_k}}
+\index{marker\_k@{marker\_k}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{marker\_k}{marker\_k}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ad2d97878a54ee20cd1530b21c9e11400} 
+std\+::vector$<$double$>$ poisson\+\_\+boltzmann\+::marker\+\_\+k}
+
+\Hypertarget{structpoisson__boltzmann_a6e57b67794fb48c5f9c2df7b7c82aae9}\index{poisson\_boltzmann@{poisson\_boltzmann}!markerfilename@{markerfilename}}
+\index{markerfilename@{markerfilename}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{markerfilename}{markerfilename}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a6e57b67794fb48c5f9c2df7b7c82aae9} 
+std\+::string poisson\+\_\+boltzmann\+::markerfilename}
+
+\Hypertarget{structpoisson__boltzmann_ab3daea492c5690b67e91e033ac2f6085}\index{poisson\_boltzmann@{poisson\_boltzmann}!markn@{markn}}
+\index{markn@{markn}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{markn}{markn}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ab3daea492c5690b67e91e033ac2f6085} 
+std\+::unique\+\_\+ptr$<$distributed\+\_\+vector$>$ poisson\+\_\+boltzmann\+::markn}
+
+\Hypertarget{structpoisson__boltzmann_ada70a8b8390e0a273d44ea1be8b12237}\index{poisson\_boltzmann@{poisson\_boltzmann}!maxlevel@{maxlevel}}
+\index{maxlevel@{maxlevel}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{maxlevel}{maxlevel}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ada70a8b8390e0a273d44ea1be8b12237} 
+int poisson\+\_\+boltzmann\+::maxlevel}
+
+\Hypertarget{structpoisson__boltzmann_a843d3fb2db009524e498a0c26168c936}\index{poisson\_boltzmann@{poisson\_boltzmann}!mesh\_shape@{mesh\_shape}}
+\index{mesh\_shape@{mesh\_shape}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{mesh\_shape}{mesh\_shape}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a843d3fb2db009524e498a0c26168c936} 
+int poisson\+\_\+boltzmann\+::mesh\+\_\+shape}
+
+\Hypertarget{structpoisson__boltzmann_a8d0fbc088f8db88c9e68b680a048169b}\index{poisson\_boltzmann@{poisson\_boltzmann}!minlevel@{minlevel}}
+\index{minlevel@{minlevel}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{minlevel}{minlevel}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a8d0fbc088f8db88c9e68b680a048169b} 
+int poisson\+\_\+boltzmann\+::minlevel}
+
+\Hypertarget{structpoisson__boltzmann_ac58228995612efdf2076c3606cf1c2a0}\index{poisson\_boltzmann@{poisson\_boltzmann}!mpicomm@{mpicomm}}
+\index{mpicomm@{mpicomm}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{mpicomm}{mpicomm}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ac58228995612efdf2076c3606cf1c2a0} 
+MPI\+\_\+\+Comm poisson\+\_\+boltzmann\+::mpicomm}
+
+\Hypertarget{structpoisson__boltzmann_a4094f5d90666822dc20feb754d2a7779}\index{poisson\_boltzmann@{poisson\_boltzmann}!n\_grid@{n\_grid}}
+\index{n\_grid@{n\_grid}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{n\_grid}{n\_grid}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a4094f5d90666822dc20feb754d2a7779} 
+int poisson\+\_\+boltzmann\+::n\+\_\+grid}
+
+\Hypertarget{structpoisson__boltzmann_afbf780d4c02a0233c0ccccaaf2afbe39}\index{poisson\_boltzmann@{poisson\_boltzmann}!num\_threads@{num\_threads}}
+\index{num\_threads@{num\_threads}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{num\_threads}{num\_threads}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_afbf780d4c02a0233c0ccccaaf2afbe39} 
+unsigned poisson\+\_\+boltzmann\+::num\+\_\+threads}
+
+\Hypertarget{structpoisson__boltzmann_a8ff44147adfe9489114a7ee804cc7c54}\index{poisson\_boltzmann@{poisson\_boltzmann}!num\_trees@{num\_trees}}
+\index{num\_trees@{num\_trees}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{num\_trees}{num\_trees}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a8ff44147adfe9489114a7ee804cc7c54} 
+p4est\+\_\+topidx\+\_\+t poisson\+\_\+boltzmann\+::num\+\_\+trees\mbox{[}3\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_acd4e8ee8e42b10514e17fa886a4e0286}\index{poisson\_boltzmann@{poisson\_boltzmann}!ones\_in@{ones\_in}}
+\index{ones\_in@{ones\_in}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{ones\_in}{ones\_in}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_acd4e8ee8e42b10514e17fa886a4e0286} 
+std\+::vector$<$double$>$ poisson\+\_\+boltzmann\+::ones\+\_\+in}
+
+\Hypertarget{structpoisson__boltzmann_a1f0f3333c358e84de8b0d5578a73ff6f}\index{poisson\_boltzmann@{poisson\_boltzmann}!optionsfilename@{optionsfilename}}
+\index{optionsfilename@{optionsfilename}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{optionsfilename}{optionsfilename}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a1f0f3333c358e84de8b0d5578a73ff6f} 
+std\+::string poisson\+\_\+boltzmann\+::optionsfilename}
+
+\Hypertarget{structpoisson__boltzmann_a70ab9b61836e45760a0449ebfb140dd4}\index{poisson\_boltzmann@{poisson\_boltzmann}!outlevel@{outlevel}}
+\index{outlevel@{outlevel}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{outlevel}{outlevel}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a70ab9b61836e45760a0449ebfb140dd4} 
+int poisson\+\_\+boltzmann\+::outlevel}
+
+\Hypertarget{structpoisson__boltzmann_a9edca2ad6b750e50cae0d7be793741a5}\index{poisson\_boltzmann@{poisson\_boltzmann}!p4estfilename@{p4estfilename}}
+\index{p4estfilename@{p4estfilename}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{p4estfilename}{p4estfilename}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a9edca2ad6b750e50cae0d7be793741a5} 
+std\+::string poisson\+\_\+boltzmann\+::p4estfilename}
+
+\Hypertarget{structpoisson__boltzmann_a72ae4e7e3a980f8692a81704b74a7417}\index{poisson\_boltzmann@{poisson\_boltzmann}!perfil1@{perfil1}}
+\index{perfil1@{perfil1}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{perfil1}{perfil1}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a72ae4e7e3a980f8692a81704b74a7417} 
+double poisson\+\_\+boltzmann\+::perfil1}
+
+\Hypertarget{structpoisson__boltzmann_a599f98621e7b94d2a3ae326fc16fe1f3}\index{poisson\_boltzmann@{poisson\_boltzmann}!perfil2@{perfil2}}
+\index{perfil2@{perfil2}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{perfil2}{perfil2}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a599f98621e7b94d2a3ae326fc16fe1f3} 
+double poisson\+\_\+boltzmann\+::perfil2}
+
+\Hypertarget{structpoisson__boltzmann_a36064372d1201f079e8441c94929cc75}\index{poisson\_boltzmann@{poisson\_boltzmann}!phi@{phi}}
+\index{phi@{phi}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{phi}{phi}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a36064372d1201f079e8441c94929cc75} 
+std\+::unique\+\_\+ptr$<$distributed\+\_\+vector$>$ poisson\+\_\+boltzmann\+::phi}
+
+\Hypertarget{structpoisson__boltzmann_a266ad49c8e38bbe7034893b7de213a23}\index{poisson\_boltzmann@{poisson\_boltzmann}!pos\_atoms@{pos\_atoms}}
+\index{pos\_atoms@{pos\_atoms}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{pos\_atoms}{pos\_atoms}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a266ad49c8e38bbe7034893b7de213a23} 
+std\+::vector$<$std\+::array$<$double,3$>$ $>$ poisson\+\_\+boltzmann\+::pos\+\_\+atoms}
+
+\Hypertarget{structpoisson__boltzmann_a47c4338d64840074317ec42e22c00170}\index{poisson\_boltzmann@{poisson\_boltzmann}!potential\_map@{potential\_map}}
+\index{potential\_map@{potential\_map}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{potential\_map}{potential\_map}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a47c4338d64840074317ec42e22c00170} 
+int poisson\+\_\+boltzmann\+::potential\+\_\+map}
+
+\Hypertarget{structpoisson__boltzmann_a1d758b0108160763dddf3e4306b30f50}\index{poisson\_boltzmann@{poisson\_boltzmann}!pqr\_atoms@{pqr\_atoms}}
+\index{pqr\_atoms@{pqr\_atoms}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{pqr\_atoms}{pqr\_atoms}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a1d758b0108160763dddf3e4306b30f50} 
+std\+::string poisson\+\_\+boltzmann\+::pqr\+\_\+atoms}
+
+\Hypertarget{structpoisson__boltzmann_a65c8927f049a59d175799bfbb31ab250}\index{poisson\_boltzmann@{poisson\_boltzmann}!pqrfilename@{pqrfilename}}
+\index{pqrfilename@{pqrfilename}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{pqrfilename}{pqrfilename}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a65c8927f049a59d175799bfbb31ab250} 
+std\+::string poisson\+\_\+boltzmann\+::pqrfilename}
+
+\Hypertarget{structpoisson__boltzmann_a0e7a690caa1f6e499f2c23febb2e9e56}\index{poisson\_boltzmann@{poisson\_boltzmann}!prb\_radius@{prb\_radius}}
+\index{prb\_radius@{prb\_radius}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{prb\_radius}{prb\_radius}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a0e7a690caa1f6e499f2c23febb2e9e56} 
+double poisson\+\_\+boltzmann\+::prb\+\_\+radius = 1.\+4}
+
+\Hypertarget{structpoisson__boltzmann_ae687636e97546958daadd62f42999c9a}\index{poisson\_boltzmann@{poisson\_boltzmann}!r\_atoms@{r\_atoms}}
+\index{r\_atoms@{r\_atoms}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{r\_atoms}{r\_atoms}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ae687636e97546958daadd62f42999c9a} 
+std\+::vector$<$double$>$ poisson\+\_\+boltzmann\+::r\+\_\+atoms}
+
+\Hypertarget{structpoisson__boltzmann_a26e7a54f5e19ba2c3dc56f1ad8f5743c}\index{poisson\_boltzmann@{poisson\_boltzmann}!r\_box@{r\_box}}
+\index{r\_box@{r\_box}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{r\_box}{r\_box}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a26e7a54f5e19ba2c3dc56f1ad8f5743c} 
+double poisson\+\_\+boltzmann\+::r\+\_\+box\mbox{[}3\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_a5de7c54d4190b7af042e18fcd2cf3670}\index{poisson\_boltzmann@{poisson\_boltzmann}!r\_c@{r\_c}}
+\index{r\_c@{r\_c}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{r\_c}{r\_c}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a5de7c54d4190b7af042e18fcd2cf3670} 
+double poisson\+\_\+boltzmann\+::r\+\_\+c\mbox{[}3\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_a0d7619ed5365bfea50b68133b3534545}\index{poisson\_boltzmann@{poisson\_boltzmann}!r\_cr@{r\_cr}}
+\index{r\_cr@{r\_cr}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{r\_cr}{r\_cr}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a0d7619ed5365bfea50b68133b3534545} 
+double poisson\+\_\+boltzmann\+::r\+\_\+cr\mbox{[}3\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_a6c880680bf2608788374a5bfd77f1591}\index{poisson\_boltzmann@{poisson\_boltzmann}!reaction@{reaction}}
+\index{reaction@{reaction}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{reaction}{reaction}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a6c880680bf2608788374a5bfd77f1591} 
+std\+::vector$<$double$>$ poisson\+\_\+boltzmann\+::reaction}
+
+\Hypertarget{structpoisson__boltzmann_acdf7e0afa452648bb77e20653f30cc4a}\index{poisson\_boltzmann@{poisson\_boltzmann}!reaction\_nodes@{reaction\_nodes}}
+\index{reaction\_nodes@{reaction\_nodes}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{reaction\_nodes}{reaction\_nodes}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_acdf7e0afa452648bb77e20653f30cc4a} 
+std\+::unique\+\_\+ptr$<$distributed\+\_\+vector$>$ poisson\+\_\+boltzmann\+::reaction\+\_\+nodes}
+
+\Hypertarget{structpoisson__boltzmann_a24f1f30ab3b65b947a32cc2c0427880e}\index{poisson\_boltzmann@{poisson\_boltzmann}!refine\_box@{refine\_box}}
+\index{refine\_box@{refine\_box}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{refine\_box}{refine\_box}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a24f1f30ab3b65b947a32cc2c0427880e} 
+int poisson\+\_\+boltzmann\+::refine\+\_\+box}
+
+\Hypertarget{structpoisson__boltzmann_a26443a3b714ac95b374d26221d317b99}\index{poisson\_boltzmann@{poisson\_boltzmann}!rho\_fixed@{rho\_fixed}}
+\index{rho\_fixed@{rho\_fixed}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{rho\_fixed}{rho\_fixed}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a26443a3b714ac95b374d26221d317b99} 
+std\+::unique\+\_\+ptr$<$distributed\+\_\+vector$>$ poisson\+\_\+boltzmann\+::rho\+\_\+fixed}
+
+\Hypertarget{structpoisson__boltzmann_a20ec98e36fcfec6afbe072a8f1f4bf65}\index{poisson\_boltzmann@{poisson\_boltzmann}!rr@{rr}}
+\index{rr@{rr}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{rr}{rr}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a20ec98e36fcfec6afbe072a8f1f4bf65} 
+double poisson\+\_\+boltzmann\+::rr\mbox{[}3\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_a6645595cafb6442ba9d968a328b350ee}\index{poisson\_boltzmann@{poisson\_boltzmann}!scale@{scale}}
+\index{scale@{scale}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{scale}{scale}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a6645595cafb6442ba9d968a328b350ee} 
+double poisson\+\_\+boltzmann\+::scale}
+
+\Hypertarget{structpoisson__boltzmann_a230d04b7ead695aca162c51c8526a788}\index{poisson\_boltzmann@{poisson\_boltzmann}!scale\_level@{scale\_level}}
+\index{scale\_level@{scale\_level}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{scale\_level}{scale\_level}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a230d04b7ead695aca162c51c8526a788} 
+int poisson\+\_\+boltzmann\+::scale\+\_\+level}
+
+\Hypertarget{structpoisson__boltzmann_ac9ccf3d2e3f523d1f70c716d0023f147}\index{poisson\_boltzmann@{poisson\_boltzmann}!scale\_level\_min\_box@{scale\_level\_min\_box}}
+\index{scale\_level\_min\_box@{scale\_level\_min\_box}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{scale\_level\_min\_box}{scale\_level\_min\_box}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ac9ccf3d2e3f523d1f70c716d0023f147} 
+int poisson\+\_\+boltzmann\+::scale\+\_\+level\+\_\+min\+\_\+box}
+
+\Hypertarget{structpoisson__boltzmann_ad5aaf8bf529d89fe67e18ffb446bdb60}\index{poisson\_boltzmann@{poisson\_boltzmann}!scale\_max@{scale\_max}}
+\index{scale\_max@{scale\_max}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{scale\_max}{scale\_max}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ad5aaf8bf529d89fe67e18ffb446bdb60} 
+double poisson\+\_\+boltzmann\+::scale\+\_\+max}
+
+\Hypertarget{structpoisson__boltzmann_ad353d781f1f1a3b90f7e460755d4c400}\index{poisson\_boltzmann@{poisson\_boltzmann}!scale\_min@{scale\_min}}
+\index{scale\_min@{scale\_min}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{scale\_min}{scale\_min}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ad353d781f1f1a3b90f7e460755d4c400} 
+double poisson\+\_\+boltzmann\+::scale\+\_\+min}
+
+\Hypertarget{structpoisson__boltzmann_ada6750bc870ae1c3815c824b96c4a481}\index{poisson\_boltzmann@{poisson\_boltzmann}!simple\_conn\_num\_trees@{simple\_conn\_num\_trees}}
+\index{simple\_conn\_num\_trees@{simple\_conn\_num\_trees}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{simple\_conn\_num\_trees}{simple\_conn\_num\_trees}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ada6750bc870ae1c3815c824b96c4a481} 
+p4est\+\_\+topidx\+\_\+t poisson\+\_\+boltzmann\+::simple\+\_\+conn\+\_\+num\+\_\+trees}
+
+\Hypertarget{structpoisson__boltzmann_ad4080b9b085cddcbb3ed8254ff566870}\index{poisson\_boltzmann@{poisson\_boltzmann}!simple\_conn\_num\_vertices@{simple\_conn\_num\_vertices}}
+\index{simple\_conn\_num\_vertices@{simple\_conn\_num\_vertices}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{simple\_conn\_num\_vertices}{simple\_conn\_num\_vertices}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ad4080b9b085cddcbb3ed8254ff566870} 
+p4est\+\_\+topidx\+\_\+t poisson\+\_\+boltzmann\+::simple\+\_\+conn\+\_\+num\+\_\+vertices}
+
+\Hypertarget{structpoisson__boltzmann_ae35f28b2f60817065b11a6ca7e0a5a77}\index{poisson\_boltzmann@{poisson\_boltzmann}!simple\_conn\_p@{simple\_conn\_p}}
+\index{simple\_conn\_p@{simple\_conn\_p}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{simple\_conn\_p}{simple\_conn\_p}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ae35f28b2f60817065b11a6ca7e0a5a77} 
+std\+::unique\+\_\+ptr$<$double\mbox{[}$\,$\mbox{]}$>$ poisson\+\_\+boltzmann\+::simple\+\_\+conn\+\_\+p}
+
+\Hypertarget{structpoisson__boltzmann_a8c46bf974c4b145df7d331388f840c7d}\index{poisson\_boltzmann@{poisson\_boltzmann}!simple\_conn\_t@{simple\_conn\_t}}
+\index{simple\_conn\_t@{simple\_conn\_t}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{simple\_conn\_t}{simple\_conn\_t}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a8c46bf974c4b145df7d331388f840c7d} 
+std\+::unique\+\_\+ptr$<$p4est\+\_\+topidx\+\_\+t\mbox{[}$\,$\mbox{]}$>$ poisson\+\_\+boltzmann\+::simple\+\_\+conn\+\_\+t}
+
+\Hypertarget{structpoisson__boltzmann_ac92de7cf4d19bb910098b007817403af}\index{poisson\_boltzmann@{poisson\_boltzmann}!stern\_layer@{stern\_layer}}
+\index{stern\_layer@{stern\_layer}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{stern\_layer}{stern\_layer}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_ac92de7cf4d19bb910098b007817403af} 
+double poisson\+\_\+boltzmann\+::stern\+\_\+layer}
+
+\Hypertarget{structpoisson__boltzmann_a712206ec0622882bd66649ec89aaa246}\index{poisson\_boltzmann@{poisson\_boltzmann}!stern\_layer\_surf@{stern\_layer\_surf}}
+\index{stern\_layer\_surf@{stern\_layer\_surf}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{stern\_layer\_surf}{stern\_layer\_surf}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a712206ec0622882bd66649ec89aaa246} 
+int poisson\+\_\+boltzmann\+::stern\+\_\+layer\+\_\+surf}
+
+\Hypertarget{structpoisson__boltzmann_aff5baddd56f7f2eb414ab76188c1b764}\index{poisson\_boltzmann@{poisson\_boltzmann}!surf\_param@{surf\_param}}
+\index{surf\_param@{surf\_param}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{surf\_param}{surf\_param}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_aff5baddd56f7f2eb414ab76188c1b764} 
+double poisson\+\_\+boltzmann\+::surf\+\_\+param}
+
+\Hypertarget{structpoisson__boltzmann_af4f5f24416210800beb58c2ceceaf806}\index{poisson\_boltzmann@{poisson\_boltzmann}!surf\_type@{surf\_type}}
+\index{surf\_type@{surf\_type}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{surf\_type}{surf\_type}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_af4f5f24416210800beb58c2ceceaf806} 
+NS\+::surface\+\_\+type poisson\+\_\+boltzmann\+::surf\+\_\+type}
+
+\Hypertarget{structpoisson__boltzmann_a89f91065362b2f1910da5873b531138b}\index{poisson\_boltzmann@{poisson\_boltzmann}!surf\_write@{surf\_write}}
+\index{surf\_write@{surf\_write}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{surf\_write}{surf\_write}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a89f91065362b2f1910da5873b531138b} 
+int poisson\+\_\+boltzmann\+::surf\+\_\+write}
+
+\Hypertarget{structpoisson__boltzmann_a6013c2e73a20caab51bfd8c2f25480e0}\index{poisson\_boltzmann@{poisson\_boltzmann}!surffilename@{surffilename}}
+\index{surffilename@{surffilename}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{surffilename}{surffilename}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a6013c2e73a20caab51bfd8c2f25480e0} 
+std\+::string poisson\+\_\+boltzmann\+::surffilename}
+
+\Hypertarget{structpoisson__boltzmann_a0ce6946c5e7845bbd5209e643d95eb7d}\index{poisson\_boltzmann@{poisson\_boltzmann}!T@{T}}
+\index{T@{T}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{T}{T}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a0ce6946c5e7845bbd5209e643d95eb7d} 
+double poisson\+\_\+boltzmann\+::T}
+
+\Hypertarget{structpoisson__boltzmann_a1c8953fea663682856648664b6e99160}\index{poisson\_boltzmann@{poisson\_boltzmann}!tmsh@{tmsh}}
+\index{tmsh@{tmsh}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{tmsh}{tmsh}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a1c8953fea663682856648664b6e99160} 
+tmesh\+\_\+3d poisson\+\_\+boltzmann\+::tmsh}
+
+\Hypertarget{structpoisson__boltzmann_a382dc91094274230d1c1806458aff65c}\index{poisson\_boltzmann@{poisson\_boltzmann}!triangles@{triangles}}
+\index{triangles@{triangles}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{triangles}{triangles}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a382dc91094274230d1c1806458aff65c} 
+std\+::array$<$std\+::array$<$int,3$>$,5$>$ poisson\+\_\+boltzmann\+::triangles}
+
+\Hypertarget{structpoisson__boltzmann_a8b156cadd55549da0cb9f3dce56836ae}\index{poisson\_boltzmann@{poisson\_boltzmann}!triTable@{triTable}}
+\index{triTable@{triTable}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{triTable}{triTable}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a8b156cadd55549da0cb9f3dce56836ae} 
+int poisson\+\_\+boltzmann\+::tri\+Table\mbox{[}256\mbox{]}\mbox{[}16\mbox{]}}
+
+\Hypertarget{structpoisson__boltzmann_a7e5cb352275e0121b15fedc4439c9ad9}\index{poisson\_boltzmann@{poisson\_boltzmann}!unilevel@{unilevel}}
+\index{unilevel@{unilevel}!poisson\_boltzmann@{poisson\_boltzmann}}
+\doxysubsubsection{\texorpdfstring{unilevel}{unilevel}}
+{\footnotesize\ttfamily \label{structpoisson__boltzmann_a7e5cb352275e0121b15fedc4439c9ad9} 
+int poisson\+\_\+boltzmann\+::unilevel}
+
+
+
+The documentation for this struct was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/\+Users/vincenzo/\+Documents/\+Ph\+D/\+PBE/\+LPBe/nextgen\+PB/include/\mbox{\hyperlink{pb__class_8h}{pb\+\_\+class.\+h}}\item 
+/\+Users/vincenzo/\+Documents/\+Ph\+D/\+PBE/\+LPBe/nextgen\+PB/src/\mbox{\hyperlink{pb__class_8cpp}{pb\+\_\+class.\+cpp}}\end{DoxyCompactItemize}

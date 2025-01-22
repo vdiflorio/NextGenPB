@@ -1,0 +1,125 @@
+\doxysection{/\+Users/vincenzo/\+Documents/\+Ph\+D/\+PBE/\+LPBe/nextgen\+PB/include/pb\+\_\+class.h File Reference}
+\hypertarget{pb__class_8h}{}\label{pb__class_8h}\index{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/pb\_class.h@{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/pb\_class.h}}
+{\ttfamily \#include $<$bim\+\_\+timing.\+h$>$}\newline
+{\ttfamily \#include $<$tmesh\+\_\+3d.\+h$>$}\newline
+{\ttfamily \#include $<$cmath$>$}\newline
+{\ttfamily \#include $<$array$>$}\newline
+{\ttfamily \#include $<$string$>$}\newline
+{\ttfamily \#include $<$vector$>$}\newline
+{\ttfamily \#include $<$fstream$>$}\newline
+{\ttfamily \#include $<$iostream$>$}\newline
+{\ttfamily \#include $<$memory$>$}\newline
+{\ttfamily \#include "{}raytracer.\+h"{}}\newline
+{\ttfamily \#include $<$nanoshaper.\+h$>$}\newline
+{\ttfamily \#include "{}wrapper\+\_\+search.\+h"{}}\newline
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \mbox{\hyperlink{structpoisson__boltzmann}{poisson\+\_\+boltzmann}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \mbox{\hyperlink{pb__class_8h_a046212080fd3cbbb99446176a986d1b7}{TIC}}()~MPI\+\_\+\+Barrier (MPI\+\_\+\+COMM\+\_\+\+WORLD); if (rank == 0) \{ tic (); \}
+\item 
+\#define \mbox{\hyperlink{pb__class_8h_a6198d789c66286afb5962108da501d33}{TOC}}(S)~MPI\+\_\+\+Barrier (MPI\+\_\+\+COMM\+\_\+\+WORLD); if (rank == 0) \{ toc (S); \}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+std\+::basic\+\_\+istream$<$ char $>$ \& \mbox{\hyperlink{pb__class_8h_a54fc217eeb0c8b26e9b494bad1422bdd}{operator$>$$>$}} (std\+::basic\+\_\+istream$<$ char $>$ \&inputfile, NS\+::\+Atom \&a)
+\item 
+std\+::basic\+\_\+istream$<$ char $>$ \& \mbox{\hyperlink{pb__class_8h_aa050ae9c3805d8ecae282994091cbc3d}{operator$>$$>$}} (std\+::basic\+\_\+istream$<$ char $>$ \&inputfile, std\+::array$<$ float, 5 $>$ \&a)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+const double \mbox{\hyperlink{pb__class_8h_ad09fa89526f50d4b4a031f43a211319e}{p4esttol}} = 1 / std\+::pow (2, P8\+EST\+\_\+\+QMAXLEVEL)
+\item 
+constexpr double \mbox{\hyperlink{pb__class_8h_ab8852654a6f05fe1dcec3a1a5725f1cd}{e\+\_\+0}} = 8.\+85418781762\mbox{\hyperlink{pb__class_8h_ab1b5243878365dc4acdd37a1dce0d976}{e}}-\/12
+\item 
+constexpr double \mbox{\hyperlink{pb__class_8h_a20c343545bb88a9206285e5d0d8b2b1b}{kb}} = 1.\+380649\mbox{\hyperlink{pb__class_8h_ab1b5243878365dc4acdd37a1dce0d976}{e}}-\/23
+\item 
+constexpr double \mbox{\hyperlink{pb__class_8h_ab1b5243878365dc4acdd37a1dce0d976}{e}} = 1.\+602176634e-\/19
+\item 
+constexpr double \mbox{\hyperlink{pb__class_8h_a6b179ba3e597a3a8ed8a1dabbec390dd}{N\+\_\+av}} = 6.\+022e23
+\item 
+constexpr double \mbox{\hyperlink{pb__class_8h_a82d27cee63b25cc1b380ad8299586fb2}{Angs}} = 1\mbox{\hyperlink{pb__class_8h_ab1b5243878365dc4acdd37a1dce0d976}{e}}-\/10
+\item 
+constexpr double \mbox{\hyperlink{pb__class_8h_ad172e8d1a294401209781f9aeaa77410}{pi}} = 3.\+14159265358979323846
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Macro Definition Documentation}
+\Hypertarget{pb__class_8h_a046212080fd3cbbb99446176a986d1b7}\index{pb\_class.h@{pb\_class.h}!TIC@{TIC}}
+\index{TIC@{TIC}!pb\_class.h@{pb\_class.h}}
+\doxysubsubsection{\texorpdfstring{TIC}{TIC}}
+{\footnotesize\ttfamily \label{pb__class_8h_a046212080fd3cbbb99446176a986d1b7} 
+\#define TIC(\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})~MPI\+\_\+\+Barrier (MPI\+\_\+\+COMM\+\_\+\+WORLD); if (rank == 0) \{ tic (); \}}
+
+\Hypertarget{pb__class_8h_a6198d789c66286afb5962108da501d33}\index{pb\_class.h@{pb\_class.h}!TOC@{TOC}}
+\index{TOC@{TOC}!pb\_class.h@{pb\_class.h}}
+\doxysubsubsection{\texorpdfstring{TOC}{TOC}}
+{\footnotesize\ttfamily \label{pb__class_8h_a6198d789c66286afb5962108da501d33} 
+\#define TOC(\begin{DoxyParamCaption}\item[{}]{S}{}\end{DoxyParamCaption})~MPI\+\_\+\+Barrier (MPI\+\_\+\+COMM\+\_\+\+WORLD); if (rank == 0) \{ toc (S); \}}
+
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{pb__class_8h_a54fc217eeb0c8b26e9b494bad1422bdd}\index{pb\_class.h@{pb\_class.h}!operator$>$$>$@{operator$>$$>$}}
+\index{operator$>$$>$@{operator$>$$>$}!pb\_class.h@{pb\_class.h}}
+\doxysubsubsection{\texorpdfstring{operator$>$$>$()}{operator>>()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{pb__class_8h_a54fc217eeb0c8b26e9b494bad1422bdd} 
+std\+::basic\+\_\+istream$<$ char $>$ \& operator$>$$>$ (\begin{DoxyParamCaption}\item[{std\+::basic\+\_\+istream$<$ char $>$ \&}]{inputfile}{, }\item[{NS\+::\+Atom \&}]{a}{}\end{DoxyParamCaption})}
+
+\Hypertarget{pb__class_8h_aa050ae9c3805d8ecae282994091cbc3d}\index{pb\_class.h@{pb\_class.h}!operator$>$$>$@{operator$>$$>$}}
+\index{operator$>$$>$@{operator$>$$>$}!pb\_class.h@{pb\_class.h}}
+\doxysubsubsection{\texorpdfstring{operator$>$$>$()}{operator>>()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{pb__class_8h_aa050ae9c3805d8ecae282994091cbc3d} 
+std\+::basic\+\_\+istream$<$ char $>$ \& operator$>$$>$ (\begin{DoxyParamCaption}\item[{std\+::basic\+\_\+istream$<$ char $>$ \&}]{inputfile}{, }\item[{std\+::array$<$ float, 5 $>$ \&}]{a}{}\end{DoxyParamCaption})}
+
+
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{pb__class_8h_a82d27cee63b25cc1b380ad8299586fb2}\index{pb\_class.h@{pb\_class.h}!Angs@{Angs}}
+\index{Angs@{Angs}!pb\_class.h@{pb\_class.h}}
+\doxysubsubsection{\texorpdfstring{Angs}{Angs}}
+{\footnotesize\ttfamily \label{pb__class_8h_a82d27cee63b25cc1b380ad8299586fb2} 
+double Angs = 1\mbox{\hyperlink{pb__class_8h_ab1b5243878365dc4acdd37a1dce0d976}{e}}-\/10\hspace{0.3cm}{\ttfamily [constexpr]}}
+
+\Hypertarget{pb__class_8h_ab1b5243878365dc4acdd37a1dce0d976}\index{pb\_class.h@{pb\_class.h}!e@{e}}
+\index{e@{e}!pb\_class.h@{pb\_class.h}}
+\doxysubsubsection{\texorpdfstring{e}{e}}
+{\footnotesize\ttfamily \label{pb__class_8h_ab1b5243878365dc4acdd37a1dce0d976} 
+double e = 1.\+602176634e-\/19\hspace{0.3cm}{\ttfamily [constexpr]}}
+
+\Hypertarget{pb__class_8h_ab8852654a6f05fe1dcec3a1a5725f1cd}\index{pb\_class.h@{pb\_class.h}!e\_0@{e\_0}}
+\index{e\_0@{e\_0}!pb\_class.h@{pb\_class.h}}
+\doxysubsubsection{\texorpdfstring{e\_0}{e\_0}}
+{\footnotesize\ttfamily \label{pb__class_8h_ab8852654a6f05fe1dcec3a1a5725f1cd} 
+double e\+\_\+0 = 8.\+85418781762\mbox{\hyperlink{pb__class_8h_ab1b5243878365dc4acdd37a1dce0d976}{e}}-\/12\hspace{0.3cm}{\ttfamily [constexpr]}}
+
+\Hypertarget{pb__class_8h_a20c343545bb88a9206285e5d0d8b2b1b}\index{pb\_class.h@{pb\_class.h}!kb@{kb}}
+\index{kb@{kb}!pb\_class.h@{pb\_class.h}}
+\doxysubsubsection{\texorpdfstring{kb}{kb}}
+{\footnotesize\ttfamily \label{pb__class_8h_a20c343545bb88a9206285e5d0d8b2b1b} 
+double kb = 1.\+380649\mbox{\hyperlink{pb__class_8h_ab1b5243878365dc4acdd37a1dce0d976}{e}}-\/23\hspace{0.3cm}{\ttfamily [constexpr]}}
+
+\Hypertarget{pb__class_8h_a6b179ba3e597a3a8ed8a1dabbec390dd}\index{pb\_class.h@{pb\_class.h}!N\_av@{N\_av}}
+\index{N\_av@{N\_av}!pb\_class.h@{pb\_class.h}}
+\doxysubsubsection{\texorpdfstring{N\_av}{N\_av}}
+{\footnotesize\ttfamily \label{pb__class_8h_a6b179ba3e597a3a8ed8a1dabbec390dd} 
+double N\+\_\+av = 6.\+022e23\hspace{0.3cm}{\ttfamily [constexpr]}}
+
+\Hypertarget{pb__class_8h_ad09fa89526f50d4b4a031f43a211319e}\index{pb\_class.h@{pb\_class.h}!p4esttol@{p4esttol}}
+\index{p4esttol@{p4esttol}!pb\_class.h@{pb\_class.h}}
+\doxysubsubsection{\texorpdfstring{p4esttol}{p4esttol}}
+{\footnotesize\ttfamily \label{pb__class_8h_ad09fa89526f50d4b4a031f43a211319e} 
+const double p4esttol = 1 / std\+::pow (2, P8\+EST\+\_\+\+QMAXLEVEL)}
+
+\Hypertarget{pb__class_8h_ad172e8d1a294401209781f9aeaa77410}\index{pb\_class.h@{pb\_class.h}!pi@{pi}}
+\index{pi@{pi}!pb\_class.h@{pb\_class.h}}
+\doxysubsubsection{\texorpdfstring{pi}{pi}}
+{\footnotesize\ttfamily \label{pb__class_8h_ad172e8d1a294401209781f9aeaa77410} 
+double pi = 3.\+14159265358979323846\hspace{0.3cm}{\ttfamily [constexpr]}}
+

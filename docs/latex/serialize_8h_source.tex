@@ -1,0 +1,172 @@
+\doxysection{serialize.\+h}
+\hypertarget{serialize_8h_source}{}\label{serialize_8h_source}\index{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/serialize.h@{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/serialize.h}}
+\mbox{\hyperlink{serialize_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#include\ <algorithm>}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#include\ <iostream>}}
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <map>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <numeric>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <set>}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{raytracer_8h}{raytracer.h}}"{}}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{keyword}{namespace\ }\mbox{\hyperlink{namespaceserialize}{serialize}}\ \{}
+\DoxyCodeLine{00014\ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}\ T>}
+\DoxyCodeLine{00015\ std::vector<unsigned\ char>}
+\DoxyCodeLine{00016\ \mbox{\hyperlink{namespaceserialize_af50fc00ac1675cfac88d6a7df862b4b8}{write}}\ (\textcolor{keyword}{const}\ std::vector<T>\&\ container)\ \{}
+\DoxyCodeLine{00017\ \ \ \textcolor{keyword}{static\_assert}\ (std::is\_trivial<T>::value,}
+\DoxyCodeLine{00018\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}Cannot\ serialize\ vector\ of\ this\ type"{}});}
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00020\ \ \ \textcolor{keywordtype}{size\_t}\ numel\ =\ container.size\ ();}
+\DoxyCodeLine{00021\ \ \ \textcolor{keywordtype}{size\_t}\ size\ =\ \textcolor{keyword}{sizeof}\ (T)\ *\ numel;}
+\DoxyCodeLine{00022\ \ \ std::vector<unsigned\ char>\ res\ (size,\ 0);}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00024\ \ \ std::copy\ (container.begin\ (),\ container.end\ (),}
+\DoxyCodeLine{00025\ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{reinterpret\_cast<}T*\textcolor{keyword}{>}\ (\&\ (res[0])));}
+\DoxyCodeLine{00026\ }
+\DoxyCodeLine{00027\ \ \ \textcolor{keywordflow}{return}\ res;}
+\DoxyCodeLine{00028\ \}}
+\DoxyCodeLine{00029\ }
+\DoxyCodeLine{00032\ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}\ T>}
+\DoxyCodeLine{00033\ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00034\ \mbox{\hyperlink{namespaceserialize_a7b8b28f42b64c8c39992d74892eb6b55}{read}}\ (\textcolor{keyword}{const}\ std::vector<unsigned\ char>\&\ data,}
+\DoxyCodeLine{00035\ \ \ \ \ \ \ std::vector<T>\ \&container)\ \{}
+\DoxyCodeLine{00036\ \ \ \textcolor{keyword}{static\_assert}\ (std::is\_trivial<T>::value,}
+\DoxyCodeLine{00037\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}Cannot\ serialize\ vector\ of\ this\ type"{}});}
+\DoxyCodeLine{00038\ }
+\DoxyCodeLine{00039\ \ \ \textcolor{keywordtype}{size\_t}\ size\ =\ \textcolor{keyword}{sizeof}\ (T);}
+\DoxyCodeLine{00040\ \ \ \textcolor{keywordtype}{size\_t}\ numel\ =\ data.size\ ()\ *\ \textcolor{keyword}{sizeof}\ (\textcolor{keywordtype}{unsigned}\ char)\ /\ size;}
+\DoxyCodeLine{00041\ \ \ container.resize\ (numel);}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00043\ \ \ std::copy\ (data.begin\ (),\ data.end\ (),}
+\DoxyCodeLine{00044\ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{reinterpret\_cast<}\textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{char}*\textcolor{keyword}{>}\ (\&\ (container[0])));}
+\DoxyCodeLine{00045\ \}}
+\DoxyCodeLine{00046\ }
+\DoxyCodeLine{00051\ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}\ F,\ \textcolor{keyword}{class}\ S>}
+\DoxyCodeLine{00052\ std::vector<unsigned\ char>}
+\DoxyCodeLine{00053\ \mbox{\hyperlink{namespaceserialize_af50fc00ac1675cfac88d6a7df862b4b8}{write}}\ (\textcolor{keyword}{const}\ std::map<F,S>\&\ container)\ \{}
+\DoxyCodeLine{00054\ \ \ \textcolor{keyword}{static\_assert}\ (std::is\_trivial<F>::value}
+\DoxyCodeLine{00055\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \&\&\ std::is\_trivial<S>::value,}
+\DoxyCodeLine{00056\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}Cannot\ serialize\ map\ of\ this\ type"{}});}
+\DoxyCodeLine{00057\ \ \ \textcolor{keywordtype}{size\_t}\ numel\ =\ container.size\ ();}
+\DoxyCodeLine{00058\ \ \ \textcolor{keywordtype}{size\_t}\ size\ =\ (\textcolor{keyword}{sizeof}\ (F)\ +\ \textcolor{keyword}{sizeof}\ (S))\ *\ numel;}
+\DoxyCodeLine{00059\ \ \ std::vector<unsigned\ char>\ res\ (size,\ 0);}
+\DoxyCodeLine{00060\ }
+\DoxyCodeLine{00061\ \ \ \textcolor{keyword}{auto}\ destf\ =\ \textcolor{keyword}{reinterpret\_cast<}F*\textcolor{keyword}{>}\ (\&\ (res[0]));}
+\DoxyCodeLine{00062\ }
+\DoxyCodeLine{00063\ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keyword}{auto}\ ii\ =\ container.begin\ ();}
+\DoxyCodeLine{00064\ \ \ \ \ \ \ \ ii\ !=\ container.end\ ();\ ++ii,\ ++destf)}
+\DoxyCodeLine{00065\ \ \ \ \ *destf\ =\ ii-\/>first;}
+\DoxyCodeLine{00066\ }
+\DoxyCodeLine{00067\ \ \ \textcolor{keyword}{auto}\ dests\ =\ \textcolor{keyword}{reinterpret\_cast<}S*\textcolor{keyword}{>}\ (destf);}
+\DoxyCodeLine{00068\ }
+\DoxyCodeLine{00069\ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keyword}{auto}\ ii\ =\ container.begin\ ();}
+\DoxyCodeLine{00070\ \ \ \ \ \ \ \ ii\ !=\ container.end\ ();\ ++ii,\ ++dests)}
+\DoxyCodeLine{00071\ \ \ \ \ *dests\ =\ ii-\/>second;}
+\DoxyCodeLine{00072\ }
+\DoxyCodeLine{00073\ \ \ \textcolor{keywordflow}{return}\ res;}
+\DoxyCodeLine{00074\ \}}
+\DoxyCodeLine{00075\ }
+\DoxyCodeLine{00078\ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}\ F,\ \textcolor{keyword}{class}\ S,\ \textcolor{keyword}{class}\ C>}
+\DoxyCodeLine{00079\ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00080\ \mbox{\hyperlink{namespaceserialize_a7b8b28f42b64c8c39992d74892eb6b55}{read}}\ (\textcolor{keyword}{const}\ std::vector<unsigned\ char>\&\ data,}
+\DoxyCodeLine{00081\ \ \ \ \ \ \ std::map<F,S,C>\ \&container)\ \{}
+\DoxyCodeLine{00082\ \ \ \textcolor{keyword}{static\_assert}\ (std::is\_trivial<F>::value}
+\DoxyCodeLine{00083\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \&\&\ std::is\_trivial<S>::value,}
+\DoxyCodeLine{00084\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}Cannot\ serialize\ map\ of\ this\ type"{}});}
+\DoxyCodeLine{00085\ }
+\DoxyCodeLine{00086\ \ \ \textcolor{keywordtype}{size\_t}\ size\ =\ (\textcolor{keyword}{sizeof}\ (F)\ +\ \textcolor{keyword}{sizeof}\ (S));}
+\DoxyCodeLine{00087\ \ \ \textcolor{keywordtype}{size\_t}\ numel\ =\ data.size\ ()\ *\ \textcolor{keyword}{sizeof}\ (\textcolor{keywordtype}{unsigned}\ char)\ /\ size;}
+\DoxyCodeLine{00088\ }
+\DoxyCodeLine{00089\ \ \ \textcolor{keyword}{auto}\ destf\ =\ \textcolor{keyword}{reinterpret\_cast<}\textcolor{keyword}{const\ }F*\textcolor{keyword}{>}\ (\&\ (data[0]));}
+\DoxyCodeLine{00090\ }
+\DoxyCodeLine{00091\ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keyword}{auto}\ ii\ =\ 0;\ ii\ <\ numel;\ ++ii,\ ++destf)}
+\DoxyCodeLine{00092\ \ \ \ \ container[*destf];}
+\DoxyCodeLine{00093\ }
+\DoxyCodeLine{00094\ \ \ \textcolor{keyword}{auto}\ dests\ =\ \textcolor{keyword}{reinterpret\_cast<}\textcolor{keyword}{const\ }S*\textcolor{keyword}{>}\ (destf);}
+\DoxyCodeLine{00095\ }
+\DoxyCodeLine{00096\ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keyword}{auto}\ ii\ =\ container.begin\ ();}
+\DoxyCodeLine{00097\ \ \ \ \ \ \ \ ii\ !=\ container.end\ ();\ ++ii,\ ++dests)}
+\DoxyCodeLine{00098\ \ \ \ \ ii-\/>second\ =\ *dests;}
+\DoxyCodeLine{00099\ \}}
+\DoxyCodeLine{00100\ }
+\DoxyCodeLine{00105\ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}\ F,\ \textcolor{keyword}{class}\ S,\ \textcolor{keyword}{class}\ C>}
+\DoxyCodeLine{00106\ std::vector<unsigned\ char>}
+\DoxyCodeLine{00107\ \mbox{\hyperlink{namespaceserialize_af50fc00ac1675cfac88d6a7df862b4b8}{write}}\ (\textcolor{keyword}{const}\ std::vector<std::map<F,\ S,C>>\&\ container)\ \{}
+\DoxyCodeLine{00108\ }
+\DoxyCodeLine{00109\ \ \ \textcolor{comment}{//\ sizeof\ (F)\ =\ nF}}
+\DoxyCodeLine{00110\ \ \ \textcolor{comment}{//\ sizeof\ (S)\ =\ nS}}
+\DoxyCodeLine{00111\ \ \ \textcolor{comment}{//\ sizeof\ (size\_t)\ =\ nst}}
+\DoxyCodeLine{00112\ \ \ \textcolor{comment}{//\ container.size\ ()\ =\ N}}
+\DoxyCodeLine{00113\ \ \ \textcolor{comment}{//\ container[i].size\ ()\ =\ Ni}}
+\DoxyCodeLine{00114\ \ \ \textcolor{comment}{//}}
+\DoxyCodeLine{00115\ \ \ \textcolor{comment}{//\ memory\ layout:}}
+\DoxyCodeLine{00116\ \ \ \textcolor{comment}{//\ nst\ \ \ \ \ \ \ \ N\ x\ nst\ \ \ \ \ \ \ sum\ (Ni\ *\ (nF\ +\ nS),\ \ \ i=0..N)}}
+\DoxyCodeLine{00117\ \ \ \textcolor{comment}{//\ -\/-\/-\/-\/-\/-\/-\/\ \ \ -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/\ \ \ -\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/-\/}}
+\DoxyCodeLine{00118\ \ \ \textcolor{comment}{//\ N\ \ \ \ \ \ \ Ni,\ i=0..N\ \ \ \ \ \ \ \ \ \ container[i],\ \ i=0..N}}
+\DoxyCodeLine{00119\ \ \ \textcolor{comment}{//}}
+\DoxyCodeLine{00120\ \ \ \textcolor{keyword}{static\_assert}\ (std::is\_trivial<F>::value}
+\DoxyCodeLine{00121\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \&\&\ std::is\_trivial<S>::value,}
+\DoxyCodeLine{00122\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}Cannot\ serialize\ map\ of\ this\ type"{}});}
+\DoxyCodeLine{00123\ }
+\DoxyCodeLine{00124\ \ \ \textcolor{keywordtype}{size\_t}\ N\ =\ container.size\ ();}
+\DoxyCodeLine{00125\ \ \ std::vector<size\_t>\ tmp\ (N\ +\ 1);}
+\DoxyCodeLine{00126\ \ \ tmp[0]\ =\ (N);\ \textcolor{comment}{//\ N}}
+\DoxyCodeLine{00127\ }
+\DoxyCodeLine{00128\ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ ii\ =\ 1;\ ii\ <\ N\ +\ 1;\ ++ii)}
+\DoxyCodeLine{00129\ \ \ \ \ tmp[ii]=\ container[ii-\/1].size\ ();\ \textcolor{comment}{//\ Ni}}
+\DoxyCodeLine{00130\ }
+\DoxyCodeLine{00131\ \ \ \textcolor{keywordtype}{size\_t}\ ntotel\ =\ std::accumulate\ (tmp.begin\ ()\ +\ 1,}
+\DoxyCodeLine{00132\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ tmp.end\ (),\ 0);}
+\DoxyCodeLine{00133\ }
+\DoxyCodeLine{00134\ \ \ std::vector<unsigned\ char>\ res\ =\ \mbox{\hyperlink{namespaceserialize_af50fc00ac1675cfac88d6a7df862b4b8}{write}}\ (tmp);}
+\DoxyCodeLine{00135\ \ \ res.reserve\ (ntotel\ *\ (\textcolor{keyword}{sizeof}\ (F)\ +\ \textcolor{keyword}{sizeof}\ (S)));}
+\DoxyCodeLine{00136\ }
+\DoxyCodeLine{00137\ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{int}\ ii\ =\ 1;\ ii\ <\ N\ +\ 1;\ ++ii)\ \{}
+\DoxyCodeLine{00138\ \ \ \ \ std::vector<unsigned\ char>\ tmp2\ =\ \mbox{\hyperlink{namespaceserialize_af50fc00ac1675cfac88d6a7df862b4b8}{write}}\ (container[ii-\/1]);}
+\DoxyCodeLine{00139\ \ \ \ \ res.insert\ (res.end\ (),\ tmp2.begin\ (),\ tmp2.end\ ());}
+\DoxyCodeLine{00140\ \ \ \}}
+\DoxyCodeLine{00141\ }
+\DoxyCodeLine{00142\ \ \ \textcolor{keywordflow}{return}\ res;}
+\DoxyCodeLine{00143\ \}}
+\DoxyCodeLine{00144\ }
+\DoxyCodeLine{00147\ \textcolor{keyword}{template}\ <\textcolor{keyword}{class}\ F,\ \textcolor{keyword}{class}\ S>}
+\DoxyCodeLine{00148\ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00149\ \mbox{\hyperlink{namespaceserialize_a7b8b28f42b64c8c39992d74892eb6b55}{read}}\ (\textcolor{keyword}{const}\ std::vector<unsigned\ char>\&\ data,}
+\DoxyCodeLine{00150\ \ \ \ \ \ \ std::vector<std::map<F,S>>\ \&container)\ \{}
+\DoxyCodeLine{00151\ \ \ \textcolor{keyword}{static\_assert}\ (std::is\_trivial<F>::value}
+\DoxyCodeLine{00152\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \&\&\ std::is\_trivial<S>::value,}
+\DoxyCodeLine{00153\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{stringliteral}{"{}Cannot\ serialize\ map\ of\ this\ type"{}});}
+\DoxyCodeLine{00154\ }
+\DoxyCodeLine{00155\ \ \ \textcolor{keywordtype}{size\_t}\ pair\_size\ =\ (\textcolor{keyword}{sizeof}\ (F)\ +\ \textcolor{keyword}{sizeof}\ (S));}
+\DoxyCodeLine{00156\ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{size\_t}\ *psize\ =}
+\DoxyCodeLine{00157\ \ \ \ \ (\textcolor{keyword}{reinterpret\_cast<}\textcolor{keyword}{const\ }\textcolor{keywordtype}{size\_t}*\textcolor{keyword}{>}\ (\&\ (data[0])));}
+\DoxyCodeLine{00158\ \ \ \textcolor{keywordtype}{size\_t}\ num\_maps\ =\ *psize;}
+\DoxyCodeLine{00159\ }
+\DoxyCodeLine{00160\ \ \ container.resize\ (num\_maps);}
+\DoxyCodeLine{00161\ \ \ std::vector<size\_t>\ size\_vec\ (num\_maps);}
+\DoxyCodeLine{00162\ }
+\DoxyCodeLine{00163\ \ \ \textcolor{keywordtype}{size\_t}\ ii\ =\ 0;}
+\DoxyCodeLine{00164\ }
+\DoxyCodeLine{00165\ \ \ \textcolor{keywordflow}{for}\ (ii\ =\ 0,\ ++psize;\ ii\ <\ num\_maps;\ ++ii,\ ++psize)}
+\DoxyCodeLine{00166\ \ \ \ \ size\_vec[ii]\ =\ (*psize);}
+\DoxyCodeLine{00167\ }
+\DoxyCodeLine{00168\ \ \ \textcolor{keyword}{auto}\ dests\ =\ \textcolor{keyword}{reinterpret\_cast<}\textcolor{keyword}{const\ }S*\textcolor{keyword}{>}\ (psize);}
+\DoxyCodeLine{00169\ }
+\DoxyCodeLine{00170\ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keywordtype}{size\_t}\ kk\ =\ 0;\ kk\ <\ num\_maps;\ ++kk)\ \{}
+\DoxyCodeLine{00171\ \ \ \ \ \textcolor{keyword}{auto}\ destf\ =\ \textcolor{keyword}{reinterpret\_cast<}\textcolor{keyword}{const\ }F*\textcolor{keyword}{>}\ (dests);}
+\DoxyCodeLine{00172\ }
+\DoxyCodeLine{00173\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keyword}{auto}\ ii\ =\ 0;\ ii\ <\ size\_vec[kk];\ ++ii,\ ++destf)}
+\DoxyCodeLine{00174\ \ \ \ \ \ \ container[kk][*destf];}
+\DoxyCodeLine{00175\ }
+\DoxyCodeLine{00176\ \ \ \ \ dests\ =\ \textcolor{keyword}{reinterpret\_cast<}\textcolor{keyword}{const\ }S*\textcolor{keyword}{>}\ (destf);}
+\DoxyCodeLine{00177\ }
+\DoxyCodeLine{00178\ \ \ \ \ \textcolor{keywordflow}{for}\ (\textcolor{keyword}{auto}\ ii\ =\ container[kk].begin\ ();}
+\DoxyCodeLine{00179\ \ \ \ \ \ \ \ \ \ ii\ !=\ container[kk].end\ ();\ ++ii,\ ++dests)}
+\DoxyCodeLine{00180\ \ \ \ \ \ \ ii-\/>second\ =\ *dests;}
+\DoxyCodeLine{00181\ \ \ \}}
+\DoxyCodeLine{00182\ \}}
+\DoxyCodeLine{00183\ \}}
+\DoxyCodeLine{00184\ }
+
+\end{DoxyCode}
