@@ -1333,6 +1333,42 @@ poisson_boltzmann::levelsetfun (double x, double y, double z)
   return dist;
 }
 
+
+/**
+ * @brief Determines whether a point is inside a molecular surface along a specified direction.
+ * 
+ * This function evaluates whether a point defined by coordinates `(x, y, z)` lies 
+ * inside, outside, or on the boundary of a molecular surface based on ray intersections 
+ * retrieved from a ray cache.
+ * 
+ * @param ray_cache A reference to the ray tracing cache that stores intersection 
+ *                  data and manages ray operations.
+ * @param x The x-coordinate of the point.
+ * @param y The y-coordinate of the point.
+ * @param z The z-coordinate of the point.
+ * @param dir The direction of the evaluation:
+ *            - `0`: Evaluate in the yz-plane.
+ *            - `1`: Evaluate in the xz-plane.
+ *            - `2`: Evaluate in the xy-plane.
+ * 
+ * @return A value indicating the position of the point relative to the molecular surface:
+ *         - `0.0`: The point is outside the surface.
+ *         - `1.0`: The point is inside the surface.
+ *         - `-1.0`: The point requires additional ray tracing or data is unavailable.
+ * 
+ * ### Algorithm Details
+ * - Coordinates `(x, y, z)` are reordered based on the specified evaluation direction (`dir`).
+ * - Intersections along the specified direction are retrieved from the ray cache.
+ * - If no intersections are found, or the point lies before the first intersection, it is marked as outside.
+ * - Iteratively evaluates whether the point alternates between inside and outside based on intersection crossings.
+ * - Returns `1.0` if the number of intersections passed is odd (inside) and `0.0` if even (outside).
+ * 
+ * ### Notes
+ * - Requires the `ray_cache` to be properly initialized and populated with 
+ *   intersection data.
+ * - Assumes that intersections are sorted and stored in the ray cache.
+ * - This function is intended to be used within an MPI-based parallel environment.
+ */
 double
 poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir)
 {
@@ -1570,8 +1606,6 @@ poisson_boltzmann::print_options ()
     std::cout << "Stern layer thickness: " << stern_layer << std::endl;
 
   std::cout << "Number of threads for nanoshaper: " << num_threads << std::endl;
-
-
 }
 
 void
@@ -2148,10 +2182,41 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 }
 
 
-
-
-// modifiche per nuovo NS
-
+/**
+ * @brief Determines whether a point is inside the Stern layer along a specified direction.
+ * 
+ * This function evaluates whether a point defined by coordinates `(x, y, z)` lies 
+ * inside, outside, or on the boundary of the Stern layer for a given direction. 
+ * The evaluation uses precomputed ray intersections stored in a ray cache.
+ * 
+ * @param ray_cache A reference to the ray tracing cache that stores intersection 
+ *                  data and handles ray operations.
+ * @param x The x-coordinate of the point.
+ * @param y The y-coordinate of the point.
+ * @param z The z-coordinate of the point.
+ * @param dir The direction of the evaluation:
+ *            - `0`: Evaluate in the yz-plane.
+ *            - `1`: Evaluate in the xz-plane.
+ *            - `2`: Evaluate in the xy-plane.
+ * 
+ * @return A value indicating the position of the point relative to the Stern layer:
+ *         - `0.0`: The point is outside the Stern layer.
+ *         - `1.0`: The point is inside the Stern layer.
+ *         - `-1.0`: The point requires additional ray tracing or data is unavailable.
+ * 
+ * ### Algorithm Details
+ * - Coordinates `(x, y, z)` are reordered based on the evaluation direction (`dir`).
+ * - Intersections along the specified direction are retrieved from the ray cache.
+ * - If the point lies outside all intersections, it is marked as outside.
+ * - Iteratively evaluates whether the point alternates between inside and outside 
+ *   based on the intersection list, accounting for the Stern layer thickness.
+ * 
+ * ### Notes
+ * - Requires the `ray_cache` to be properly initialized and populated with 
+ *   intersection data.
+ * - Assumes a uniform thickness for the Stern layer, defined as `stern_layer`.
+ * - The `sign` variable alternates to evaluate the nesting of intersections.
+ */
 double
 poisson_boltzmann::is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, double y, double z, int dir)
 {
