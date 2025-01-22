@@ -487,9 +487,79 @@ struct
   double
   levelsetfun (double x, double y, double z);
 
+  /**
+   * @brief Determines whether a point is inside a molecular surface along a specified direction.
+   * 
+   * This function evaluates whether a point defined by coordinates `(x, y, z)` lies 
+   * inside, outside, or on the boundary of a molecular surface based on ray intersections 
+   * retrieved from a ray cache.
+   * 
+   * @param ray_cache A reference to the ray tracing cache that stores intersection 
+   *                  data and manages ray operations.
+   * @param x The x-coordinate of the point.
+   * @param y The y-coordinate of the point.
+   * @param z The z-coordinate of the point.
+   * @param dir The direction of the evaluation:
+   *            - `0`: Evaluate in the yz-plane.
+   *            - `1`: Evaluate in the xz-plane.
+   *            - `2`: Evaluate in the xy-plane.
+   * 
+   * @return A value indicating the position of the point relative to the molecular surface:
+   *         - `0.0`: The point is outside the surface.
+   *         - `1.0`: The point is inside the surface.
+   *         - `-1.0`: The point requires additional ray tracing or data is unavailable.
+   * 
+   * ### Algorithm Details
+   * - Coordinates `(x, y, z)` are reordered based on the specified evaluation direction (`dir`).
+   * - Intersections along the specified direction are retrieved from the ray cache.
+   * - If no intersections are found, or the point lies before the first intersection, it is marked as outside.
+   * - Iteratively evaluates whether the point alternates between inside and outside based on intersection crossings.
+   * - Returns `1.0` if the number of intersections passed is odd (inside) and `0.0` if even (outside).
+   * 
+   * ### Notes
+   * - Requires the `ray_cache` to be properly initialized and populated with 
+   *   intersection data.
+   * - Assumes that intersections are sorted and stored in the ray cache.
+   * - This function is intended to be used within an MPI-based parallel environment.
+   */
   double
   is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir);
-
+  
+  /**
+   * @brief Determines whether a point is inside the Stern layer along a specified direction.
+   * 
+   * This function evaluates whether a point defined by coordinates `(x, y, z)` lies 
+   * inside, outside, or on the boundary of the Stern layer for a given direction. 
+   * The evaluation uses precomputed ray intersections stored in a ray cache.
+   * 
+   * @param ray_cache A reference to the ray tracing cache that stores intersection 
+   *                  data and handles ray operations.
+   * @param x The x-coordinate of the point.
+   * @param y The y-coordinate of the point.
+   * @param z The z-coordinate of the point.
+   * @param dir The direction of the evaluation:
+   *            - `0`: Evaluate in the yz-plane.
+   *            - `1`: Evaluate in the xz-plane.
+   *            - `2`: Evaluate in the xy-plane.
+   * 
+   * @return A value indicating the position of the point relative to the Stern layer:
+   *         - `0.0`: The point is outside the Stern layer.
+   *         - `1.0`: The point is inside the Stern layer.
+   *         - `-1.0`: The point requires additional ray tracing or data is unavailable.
+   * 
+   * ### Algorithm Details
+   * - Coordinates `(x, y, z)` are reordered based on the evaluation direction (`dir`).
+   * - Intersections along the specified direction are retrieved from the ray cache.
+   * - If the point lies outside all intersections, it is marked as outside.
+   * - Iteratively evaluates whether the point alternates between inside and outside 
+   *   based on the intersection list, accounting for the Stern layer thickness.
+   * 
+   * ### Notes
+   * - Requires the `ray_cache` to be properly initialized and populated with 
+   *   intersection data.
+   * - Assumes a uniform thickness for the Stern layer, defined as `stern_layer`.
+   * - The `sign` variable alternates to evaluate the nesting of intersections.
+   */
   double
   is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, double y, double z, int dir);
 
@@ -560,6 +630,47 @@ struct
   void
   refine_only_surface (ray_cache_t & ray_cache);
 
+  /**
+   * @brief Initializes and updates markers for quadrants in a forest mesh.
+   * 
+   * This function sets up markers for quadrants within a forest mesh to distinguish 
+   * whether they are inside, outside, or on the boundary of a molecule. It also 
+   * computes dielectric properties and reaction rates for the nodes based on their 
+   * location relative to the molecule and optional Stern layer.
+   * 
+   * @param ray_cache A reference to a ray tracing cache structure that holds
+   *                  information on required rays and their intersections.
+   * 
+   * This function performs the following:
+   * - Initializes the dielectric constants (`epsilon`) for the inside and outside 
+   *   regions.
+   * - Computes reaction rates based on ionic strength and other physical parameters.
+   * - Loops over quadrants in the mesh, evaluating the position of nodes relative to 
+   *   the molecule and Stern layer (if present).
+   * - Updates markers for quadrants and nodes based on their location:
+   *     - `0.0`: Inside the molecule.
+   *     - `0.5`: On the boundary of the molecule.
+   *     - `1.0`: Outside the molecule.
+   * - Updates reaction and dielectric properties for nodes inside the molecule or 
+   *   Stern layer.
+   * - Handles MPI-based parallelism, including barrier synchronization and data 
+   *   exchange.
+   * - Ensures rays are calculated and cached for points near molecular boundaries.
+   * 
+   * ### Stern Layer Handling
+   * If `stern_layer_surf` is set to `1`, the function also processes Stern layer 
+   * interactions, updating markers and reaction values accordingly.
+   * 
+   * ### Constants
+   * - Dielectric constants for inside (`eps_in`) and outside (`eps_out`) regions.
+   * - Reaction rate constant based on ionic strength (`k2`).
+   * 
+   * ### Notes
+   * - The function assumes that the mesh and ray tracing cache are correctly 
+   *   initialized before calling.
+   * - It performs two cycles of refinement for multi-process configurations and 
+   *   one cycle for single-process configurations.
+   */
   void
   create_markers (ray_cache_t & ray_cache);
 
