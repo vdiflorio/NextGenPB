@@ -2194,6 +2194,48 @@ poisson_boltzmann::is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, doubl
   return (i % 2);
 }
 
+
+/**
+ * @brief Initializes and updates markers for quadrants in a forest mesh.
+ * 
+ * This function sets up markers for quadrants within a forest mesh to distinguish 
+ * whether they are inside, outside, or on the boundary of a molecule. It also 
+ * computes dielectric properties and reaction rates for the nodes based on their 
+ * location relative to the molecule and optional Stern layer.
+ * 
+ * @param ray_cache A reference to a ray tracing cache structure that holds
+ *                  information on required rays and their intersections.
+ * 
+ * This function performs the following:
+ * - Initializes the dielectric constants (`epsilon`) for the inside and outside 
+ *   regions.
+ * - Computes reaction rates based on ionic strength and other physical parameters.
+ * - Loops over quadrants in the mesh, evaluating the position of nodes relative to 
+ *   the molecule and Stern layer (if present).
+ * - Updates markers for quadrants and nodes based on their location:
+ *     - `0.0`: Inside the molecule.
+ *     - `0.5`: On the boundary of the molecule.
+ *     - `1.0`: Outside the molecule.
+ * - Updates reaction and dielectric properties for nodes inside the molecule or 
+ *   Stern layer.
+ * - Handles MPI-based parallelism, including barrier synchronization and data 
+ *   exchange.
+ * - Ensures rays are calculated and cached for points near molecular boundaries.
+ * 
+ * ### Stern Layer Handling
+ * If `stern_layer_surf` is set to `1`, the function also processes Stern layer 
+ * interactions, updating markers and reaction values accordingly.
+ * 
+ * ### Constants
+ * - Dielectric constants for inside (`eps_in`) and outside (`eps_out`) regions.
+ * - Reaction rate constant based on ionic strength (`k2`).
+ * 
+ * ### Notes
+ * - The function assumes that the mesh and ray tracing cache are correctly 
+ *   initialized before calling.
+ * - It performs two cycles of refinement for multi-process configurations and 
+ *   one cycle for single-process configurations.
+ */
 void
 poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
 {
