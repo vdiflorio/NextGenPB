@@ -89,7 +89,6 @@ main (int argc, char **argv)
 
   if (rank == 0) {
     ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
-    // ray_cache.ns->clean();
     std::vector<NS::Atom> ().swap (pb.atoms);
   }
 
@@ -136,7 +135,7 @@ main (int argc, char **argv)
 
 
   TIC ();
-
+  ray_cache.ns->clean();   // clear nanoshaper structures
   if (pb.linear_solver_name == "mumps")
     pb.mumps_compute_electric_potential (ray_cache);
   else if (pb.linear_solver_name == "lis")
