@@ -2486,10 +2486,12 @@ poisson_boltzmann::export_p4est ()
 
 
 
+/*
 void
 poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
 {
-  int rank;
+  int rank, size;
+  MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
 
   if (rank == 0)
@@ -2685,6 +2687,214 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
   phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
   (*phi) = mumps_solver.get_distributed_solution ();
   bim3a_solution_with_ghosts (tmsh, (*phi), replace_op);
+
+  ///////
+
+  mumps_solver.cleanup ();
+}
+*/
+
+void
+poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
+{
+  int rank, size;
+  MPI_Comm_size (mpicomm, &size);
+  MPI_Comm_rank (mpicomm, &rank);
+
+  if (rank == 0)
+    std::cout << "\nStarting MUMPS solution" << std::endl;
+
+  // diffusion
+  double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
+  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+
+  /////////////////////////////////////////////////////////
+  //reactions
+  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
+
+
+  if (size >1) {
+    bim3a_solution_with_ghosts (tmsh, *epsilon_nodes, replace_op);
+
+    if (stern_layer_surf == 0)
+      bim3a_solution_with_ghosts (tmsh, (*reaction_nodes), replace_op);
+  }
+
+
+  //////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////
+
+  rho_fixed = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+  rho_fixed->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0);
+
+  std::unique_ptr<distributed_vector> ones =
+    std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
+  ones->get_owned_data ().assign (tmsh.num_local_quadrants (), 1.0);
+
+  std::vector<double> const_ones (tmsh.num_local_quadrants (), 1.0);
+
+  std::unique_ptr<distributed_vector> vol_patch =
+    std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
+
+  if (size >1)
+    bim3a_solution_with_ghosts (tmsh, *ones, replace_op);
+
+  bim3a_rhs (tmsh, const_ones, *ones, *vol_patch);
+
+  if (size >1)
+    vol_patch->assemble ();
+
+  MPI_Barrier (mpicomm);
+  auto start_rho = std::chrono::steady_clock::now ();
+
+
+  search_points ();
+
+  for (auto it = lookup_table.begin (); it!=lookup_table.end (); ++it) {
+    //linear approx:
+    double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
+                    (it->second.p (1, 7) - it->second.p (1, 0)) *
+                    (it->second.p (2, 7) - it->second.p (2, 0)); //volume
+
+
+    {
+      for (int ii = 0; ii < 8; ++ii) {
+        double weigth = std::abs ( (pos_atoms[it->first][0] - it->second.p (0, 7-ii))*
+                                   (pos_atoms[it->first][1] - it->second.p (1, 7-ii))*
+                                   (pos_atoms[it->first][2] - it->second.p (2, 7-ii))) / volume;
+
+        if (! it->second.is_hanging (ii))
+          (*rho_fixed)[it->second.gt (ii)] += charge_atoms[it->first]*4.0*pi*weigth / (*vol_patch)[it->second.gt (ii)];
+        else
+          for (int jj = 0; jj < it->second.num_parents (ii); ++jj) {
+            double denom = it->second.num_parents (ii) * (*vol_patch)[it->second.gparent (jj, ii)];
+            (*rho_fixed)[it->second.gparent (jj, ii)] += charge_atoms[it->first]*4.0*pi*weigth / denom;
+          }
+
+      }
+    }
+  }
+
+  vol_patch.reset ();
+
+  MPI_Barrier (mpicomm);
+  auto end_rho = std::chrono::steady_clock::now ();
+
+  if (rank==0) {
+    std::cout << "\nTime to calculate rho:  "
+              << std::chrono::duration_cast<std::chrono::milliseconds> (end_rho- start_rho).count ()
+              << " ms"
+              <<std::endl;
+  }
+
+  //////////////////////////////////////////////////////////////////
+  auto func_frac = [&] (tmesh_3d::quadrant_iterator& quadrant) {
+    return cube_fraction_intersection (quadrant,ray_cache);
+  };
+
+  std::unique_ptr<distributed_sparse_matrix> A =
+    std::make_unique<distributed_sparse_matrix> (mpicomm);
+  A->set_ranges (tmsh.num_owned_nodes ());
+  std::unique_ptr<distributed_vector> rhs =
+    std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+
+  bim3a_laplacian_frac (tmsh, *epsilon_nodes, *A, func_frac);
+
+
+  if (stern_layer_surf == 1) { //se c'è lo stern leyer
+    bim3a_reaction (tmsh, reaction, *ones, *A);
+  } else {
+    bim3a_reaction_frac (tmsh, (*reaction_nodes), *ones, *A, func_frac);
+  }
+
+  if (size >1) {
+    bim3a_solution_with_ghosts (tmsh, *rho_fixed);
+  }
+
+  bim3a_rhs (tmsh, const_ones, *rho_fixed, *rhs);
+
+  rho_fixed.reset ();
+  reaction_nodes.reset ();
+  ones.reset ();
+  std::vector<double> ().swap (const_ones);
+  std::vector<double> ().swap (reaction);
+  std::vector<double> ().swap (marker);
+
+  // Set boundary conditions.
+  dirichlet_bcs3 bcs;
+
+  if (bc == 1) { //hom Dir bc
+    for (auto const & ibc : bcells) {
+      auto cella = ibc.first;
+      auto lato = ibc.second;
+      bcs.push_back (std::make_tuple (cella, lato,
+      [] (double x, double y, double z) {
+        return 0;
+      }));
+    }
+
+    bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs);
+  }
+
+  if (bc == 2) { //coulombic Dir bc
+    for (auto const & ibc : bcells) {
+      auto cella = ibc.first;
+      auto lato = ibc.second;
+      bcs.push_back (std::make_tuple (cella, lato,
+      [&] (double x, double y, double z) {
+        return coulomb_boundary_conditions (x,y,z);
+      }));
+    }
+
+    bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs);
+  }
+
+  if (bc == 3) { //analytic Dir bc for a sphere of R = 2AA and q=1
+    for (auto const & ibc : bcells) {
+      auto cella = ibc.first;
+      auto lato = ibc.second;
+      bcs.push_back (std::make_tuple (cella, lato,
+      [&] (double x, double y, double z) {
+        return analytic_solution (x,y,z);
+      }));
+    }
+
+    bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs);
+  }
+
+  if (size > 1) {
+    A->assemble ();
+    rhs->assemble ();
+  }
+
+  mumps mumps_solver;
+
+  std::vector<double> vals;
+  std::vector<int> irow, jcol;
+
+  (*A).aij (vals, irow, jcol, mumps_solver.get_index_base ());
+
+  mumps_solver.set_lhs_distributed ();
+  mumps_solver.set_distributed_lhs_structure (tmsh.num_global_nodes (), irow, jcol);
+  mumps_solver.set_distributed_lhs_data (vals);
+  mumps_solver.set_rhs_distributed (*rhs);
+  rhs.reset ();
+  A.reset ();
+  std::cout << "mumps_solver.analyze () = "
+            << mumps_solver.analyze ()
+            << std::endl;
+  std::cout << "mumps_solver.factorize () = "
+            << mumps_solver.factorize ()
+            << std::endl;
+  std::cout << "mumps_solver.solve () = "
+            << mumps_solver.solve ()
+            << std::endl;
+
+  phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
+  (*phi) = mumps_solver.get_distributed_solution ();
+  if (size > 1)
+    bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
 
   ///////
 
