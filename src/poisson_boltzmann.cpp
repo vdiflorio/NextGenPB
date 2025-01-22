@@ -106,14 +106,7 @@ main (int argc, char **argv)
 
   TOC ("init_tmesh");
 
-  // TIC ();
 
-  // if ( rank == 0) {
-  // ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
-  // }
-
-  // TOC ("init analytical surf");
-  // MPI_Barrier (mpicomm);
   TIC ();
 
   if (pb.loc_refinement == 1 || pb.mesh_shape == 4)
@@ -124,13 +117,12 @@ main (int argc, char **argv)
 
   TIC ();
   pb.create_markers (ray_cache);
-  // pb.create_markers_prova (ray_cache);
   TOC ("create element markers");
 
 
 
   if ( rank == 0) ray_cache.ns->clean();
-  
+
   TIC ();
   if (pb.linear_solver_name == "mumps")
     pb.mumps_compute_electric_potential (ray_cache);

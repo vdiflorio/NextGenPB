@@ -1,5 +1,3 @@
-//Prova del calcolo dell'energia
-
 #ifndef HAVE_PB_CLASS_H
 #define HAVE_PB_CLASS_H
 
@@ -564,12 +562,6 @@ struct
 
   void
   create_markers (ray_cache_t & ray_cache);
-
-  void
-  create_markers_k (ray_cache_t & ray_cache);
-
-  void
-  create_markers_prova (ray_cache_t & ray_cache);
 
   void
   export_tmesh (ray_cache_t & ray_cache);
