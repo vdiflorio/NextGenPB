@@ -121,10 +121,6 @@ main (int argc, char **argv)
 
   TOC ("refine the box");
 
-  // if ( rank == 0)
-  // ray_cache.ns->clean();
-
-
 
   TIC ();
   pb.create_markers (ray_cache);
@@ -133,9 +129,9 @@ main (int argc, char **argv)
 
 
 
-
+  if ( rank == 0) ray_cache.ns->clean();
+  
   TIC ();
-  ray_cache.ns->clean();   // clear nanoshaper structures
   if (pb.linear_solver_name == "mumps")
     pb.mumps_compute_electric_potential (ray_cache);
   else if (pb.linear_solver_name == "lis")
