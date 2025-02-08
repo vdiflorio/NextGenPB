@@ -112,7 +112,7 @@ RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/v${OCT
 WORKDIR /opt
 ENV pkgname=bimpp
 ENV pkgver=patch
-RUN git clone --branch nextgenPB https://github.com/vdiflorio/bimpp.git $pkgname-$pkgver
+RUN git clone --branch NextGenPB https://github.com/carlodefalco/bimpp.git $pkgname-$pkgver
 WORKDIR /opt/$pkgname-$pkgver
 RUN mkdir build
 RUN ./autogen.sh
