@@ -22,10 +22,6 @@ RUN apt-get update && apt-get upgrade -y && \
     libp4est-2.3 libp4est-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Set my token (must remove)
-RUN git config --global \
-  url."https://vdiflorio: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@github.com/".insteadOf \
-  "https://github.com/"
 
 ### NanoShaper ###
 WORKDIR /opt
@@ -64,7 +60,7 @@ RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/v${OCT
 
 ### BIMPP ###
 WORKDIR /opt
-RUN git clone --branch nextgenPB https://github.com/vdiflorio/bimpp.git bimpp-patch && \
+RUN git clone --branch NextGenPB https://github.com/carlodefalco/bimpp.git bimpp-patch && \
     cd bimpp-patch && ./autogen.sh && mkdir build && cd build && \
     ../configure --prefix=/opt/bimpp/ \
                  CPPFLAGS="-I/usr/include -I/usr/include/octave-8.4.0/octave/8.4.0 -DOMPI_SKIP_MPICXX -DHAVE_OCTAVE_44 -DBIM_TIMING" \
