@@ -25,13 +25,6 @@ RUN dnf upgrade -y && \
     dnf clean all
 
 
-
-
-# Set my token (must remove)
-RUN git config --global \
-  url."https://vdiflorio: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@github.com/".insteadOf \
-  "https://github.com/"
-
 ###OPENMPI (if you want a specific version of openmpi to match local verion of openmpi)
 RUN wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.0.tar.bz2 && \
     tar xf openmpi-4.0.0.tar.bz2 && \
