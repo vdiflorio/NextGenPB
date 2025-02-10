@@ -1,0 +1,76 @@
+\doxysection{/\+Users/vincenzo/\+Documents/\+Ph\+D/\+PBE/\+LPBe/nextgen\+PB/src/pb\+\_\+class.cpp File Reference}
+\hypertarget{pb__class_8cpp}{}\label{pb__class_8cpp}\index{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/src/pb\_class.cpp@{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/src/pb\_class.cpp}}
+{\ttfamily \#include "{}pb\+\_\+class.\+h"{}}\newline
+{\ttfamily \#include "{}Get\+Pot"{}}\newline
+{\ttfamily \#include $<$bim\+\_\+distributed\+\_\+vector.\+h$>$}\newline
+{\ttfamily \#include $<$quad\+\_\+operators\+\_\+3d.\+h$>$}\newline
+{\ttfamily \#include $<$mumps\+\_\+class.\+h$>$}\newline
+{\ttfamily \#include $<$lis\+\_\+class.\+h$>$}\newline
+{\ttfamily \#include $<$cmath$>$}\newline
+{\ttfamily \#include $<$cstdio$>$}\newline
+{\ttfamily \#include $<$fstream$>$}\newline
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$p8est.\+h$>$}\newline
+{\ttfamily \#include $<$random$>$}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+std\+::basic\+\_\+istream$<$ char $>$ \& \mbox{\hyperlink{pb__class_8cpp_a54fc217eeb0c8b26e9b494bad1422bdd}{operator$>$$>$}} (std\+::basic\+\_\+istream$<$ char $>$ \&inputfile, NS\+::\+Atom \&a)
+\item 
+std\+::basic\+\_\+istream$<$ char $>$ \& \mbox{\hyperlink{pb__class_8cpp_aa050ae9c3805d8ecae282994091cbc3d}{operator$>$$>$}} (std\+::basic\+\_\+istream$<$ char $>$ \&inputfile, std\+::array$<$ float, 5 $>$ \&a)
+\item 
+double \mbox{\hyperlink{pb__class_8cpp_a990806769cdf70b9e194284c2aed6128}{wha}} (double eps1, double eps2, double frac)
+\item 
+double \mbox{\hyperlink{pb__class_8cpp_a307c0136bfe5434b19e7b420dc2bc1e1}{flux\+\_\+dir}} (double eps1, double eps2)
+\item 
+double \mbox{\hyperlink{pb__class_8cpp_a8241c272ad2eaa13a0f1e95b9c96c364}{phi0}} (double eps1, double eps2, double phi1, double phi2, double frac)
+\item 
+double \mbox{\hyperlink{pb__class_8cpp_a9eb73895be67d8d547fa172a4de1e5b8}{area\+Triangle}} (const std\+::array$<$ std\+::array$<$ double, 3 $>$, 3 $>$ \&triangle)
+\item 
+double \mbox{\hyperlink{pb__class_8cpp_a4df98aa1bd83e36d2706adb0a781ff5a}{Sphercal\+Area\+Triangle}} (const std\+::array$<$ std\+::array$<$ double, 3 $>$, 3 $>$ \&triangle)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{pb__class_8cpp_a9eb73895be67d8d547fa172a4de1e5b8}\index{pb\_class.cpp@{pb\_class.cpp}!areaTriangle@{areaTriangle}}
+\index{areaTriangle@{areaTriangle}!pb\_class.cpp@{pb\_class.cpp}}
+\doxysubsubsection{\texorpdfstring{areaTriangle()}{areaTriangle()}}
+{\footnotesize\ttfamily \label{pb__class_8cpp_a9eb73895be67d8d547fa172a4de1e5b8} 
+double area\+Triangle (\begin{DoxyParamCaption}\item[{const std\+::array$<$ std\+::array$<$ double, 3 $>$, 3 $>$ \&}]{triangle}{}\end{DoxyParamCaption})}
+
+\Hypertarget{pb__class_8cpp_a307c0136bfe5434b19e7b420dc2bc1e1}\index{pb\_class.cpp@{pb\_class.cpp}!flux\_dir@{flux\_dir}}
+\index{flux\_dir@{flux\_dir}!pb\_class.cpp@{pb\_class.cpp}}
+\doxysubsubsection{\texorpdfstring{flux\_dir()}{flux\_dir()}}
+{\footnotesize\ttfamily \label{pb__class_8cpp_a307c0136bfe5434b19e7b420dc2bc1e1} 
+double flux\+\_\+dir (\begin{DoxyParamCaption}\item[{double}]{eps1}{, }\item[{double}]{eps2}{}\end{DoxyParamCaption})}
+
+\Hypertarget{pb__class_8cpp_a54fc217eeb0c8b26e9b494bad1422bdd}\index{pb\_class.cpp@{pb\_class.cpp}!operator$>$$>$@{operator$>$$>$}}
+\index{operator$>$$>$@{operator$>$$>$}!pb\_class.cpp@{pb\_class.cpp}}
+\doxysubsubsection{\texorpdfstring{operator$>$$>$()}{operator>>()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily \label{pb__class_8cpp_a54fc217eeb0c8b26e9b494bad1422bdd} 
+std\+::basic\+\_\+istream$<$ char $>$ \& operator$>$$>$ (\begin{DoxyParamCaption}\item[{std\+::basic\+\_\+istream$<$ char $>$ \&}]{inputfile}{, }\item[{NS\+::\+Atom \&}]{a}{}\end{DoxyParamCaption})}
+
+\Hypertarget{pb__class_8cpp_aa050ae9c3805d8ecae282994091cbc3d}\index{pb\_class.cpp@{pb\_class.cpp}!operator$>$$>$@{operator$>$$>$}}
+\index{operator$>$$>$@{operator$>$$>$}!pb\_class.cpp@{pb\_class.cpp}}
+\doxysubsubsection{\texorpdfstring{operator$>$$>$()}{operator>>()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily \label{pb__class_8cpp_aa050ae9c3805d8ecae282994091cbc3d} 
+std\+::basic\+\_\+istream$<$ char $>$ \& operator$>$$>$ (\begin{DoxyParamCaption}\item[{std\+::basic\+\_\+istream$<$ char $>$ \&}]{inputfile}{, }\item[{std\+::array$<$ float, 5 $>$ \&}]{a}{}\end{DoxyParamCaption})}
+
+\Hypertarget{pb__class_8cpp_a8241c272ad2eaa13a0f1e95b9c96c364}\index{pb\_class.cpp@{pb\_class.cpp}!phi0@{phi0}}
+\index{phi0@{phi0}!pb\_class.cpp@{pb\_class.cpp}}
+\doxysubsubsection{\texorpdfstring{phi0()}{phi0()}}
+{\footnotesize\ttfamily \label{pb__class_8cpp_a8241c272ad2eaa13a0f1e95b9c96c364} 
+double phi0 (\begin{DoxyParamCaption}\item[{double}]{eps1}{, }\item[{double}]{eps2}{, }\item[{double}]{phi1}{, }\item[{double}]{phi2}{, }\item[{double}]{frac}{}\end{DoxyParamCaption})}
+
+\Hypertarget{pb__class_8cpp_a4df98aa1bd83e36d2706adb0a781ff5a}\index{pb\_class.cpp@{pb\_class.cpp}!SphercalAreaTriangle@{SphercalAreaTriangle}}
+\index{SphercalAreaTriangle@{SphercalAreaTriangle}!pb\_class.cpp@{pb\_class.cpp}}
+\doxysubsubsection{\texorpdfstring{SphercalAreaTriangle()}{SphercalAreaTriangle()}}
+{\footnotesize\ttfamily \label{pb__class_8cpp_a4df98aa1bd83e36d2706adb0a781ff5a} 
+double Sphercal\+Area\+Triangle (\begin{DoxyParamCaption}\item[{const std\+::array$<$ std\+::array$<$ double, 3 $>$, 3 $>$ \&}]{triangle}{}\end{DoxyParamCaption})}
+
+\Hypertarget{pb__class_8cpp_a990806769cdf70b9e194284c2aed6128}\index{pb\_class.cpp@{pb\_class.cpp}!wha@{wha}}
+\index{wha@{wha}!pb\_class.cpp@{pb\_class.cpp}}
+\doxysubsubsection{\texorpdfstring{wha()}{wha()}}
+{\footnotesize\ttfamily \label{pb__class_8cpp_a990806769cdf70b9e194284c2aed6128} 
+double wha (\begin{DoxyParamCaption}\item[{double}]{eps1}{, }\item[{double}]{eps2}{, }\item[{double}]{frac}{}\end{DoxyParamCaption})}
+

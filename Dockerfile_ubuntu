@@ -1,0 +1,93 @@
+FROM ubuntu:24.04
+
+LABEL maintainer="vincenzo.diflorio@iit.it"
+
+RUN echo "Installing NextGenPB 0.0"
+
+# Set compilation flags
+ENV CFLAGS="-O2 -mtune=generic"
+ENV CXXFLAGS="$CFLAGS"
+ENV FCFLAGS="$CFLAGS"
+
+
+# Install dependencies
+RUN apt-get update && apt-get upgrade -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    build-essential gfortran cmake make python3 texinfo nano \
+    gawk procps wget openssh-client diffutils git rsync zip unzip bzip2 \
+    patch xz-utils perl libboost-all-dev zlib1g-dev libjson-c-dev openmpi-bin libopenmpi-dev \
+    libjansson-dev libgmp-dev libmpfr-dev libssl-dev libblas-dev liblapack-dev \
+    libopenblas-dev autoconf automake libtool libqhull-dev \
+    libarpack2-dev octave octave-dev libscotch-dev libbz2-dev glpk-utils bison libtbb-dev libmumps-dev libcgal-dev \
+    libp4est-2.3 libp4est-dev && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+
+### NanoShaper ###
+WORKDIR /opt
+RUN git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
+    cd nanoshaper && \
+    cp CMakeLists_so.txt CMakeLists.txt && \
+    cd build_lib && \
+    cmake .. -DCMAKE_BUILD_TYPE="Release" && \
+    make -j$(nproc)
+
+### LIS ###
+WORKDIR /opt
+ENV LIS_VERSION="2.1.6"
+RUN wget https://www.ssisc.org/lis/dl/lis-${LIS_VERSION}.zip && \
+    unzip lis-${LIS_VERSION}.zip && cd lis-${LIS_VERSION} && \
+    chmod 755 configure config/install-sh && \
+    ./configure --prefix="/opt/lis" --enable-mpi --enable-shared --disable-static && \
+    make -j$(nproc) && make install && \
+    cd /opt && rm -rf lis-${LIS_VERSION} lis-${LIS_VERSION}.zip
+
+### Octave-File-IO ###
+WORKDIR /opt
+ENV OCTAVE_FILE_IO_VERSION="1.0.91"
+RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/v${OCTAVE_FILE_IO_VERSION}.tar.gz && \
+    tar -xf v${OCTAVE_FILE_IO_VERSION}.tar.gz && \
+    rm -rf v${OCTAVE_FILE_IO_VERSION}.tar.gz && \
+    cd octave_file_io-${OCTAVE_FILE_IO_VERSION} && \
+    ./autogen.sh && mkdir build && cd build && \
+    ../configure --prefix="/opt/octave_file_io" \
+                 LDFLAGS="-L/usr/lib/x86_64-linux-gnu/octave/8.4.0/ \
+                 -Wl,-rpath,/usr/lib/x86_64-linux-gnu/octave/8.4.0/" \
+                 --with-octave-home=/usr/bin \
+                 CC=mpicc CXX=mpicxx && \
+    make -j$(nproc) && make install && \
+    cd /opt && rm -rf octave_file_io-${OCTAVE_FILE_IO_VERSION}
+
+### BIMPP ###
+WORKDIR /opt
+RUN git clone --branch NextGenPB https://github.com/carlodefalco/bimpp.git bimpp-patch && \
+    cd bimpp-patch && ./autogen.sh && mkdir build && cd build && \
+    ../configure --prefix=/opt/bimpp/ \
+                 CPPFLAGS="-I/usr/include -I/usr/include/octave-8.4.0/octave/8.4.0 -DOMPI_SKIP_MPICXX -DHAVE_OCTAVE_44 -DBIM_TIMING" \
+                 LDFLAGS="-L/usr/lib/x86_64-linux-gnu -L/lib -L/lib64 -L/usr/lib/x86_64-linux-gnu/octave/8.4.0/ \
+                 -Wl,-rpath,/usr/lib/x86_64-linux-gnu/octave/8.4.0/" \
+                 --with-blas-lapack="-lopenblas"  \
+                 --with-octave_file_io-home=/opt/octave_file_io \
+                 --with-octave-home=/usr/bin \
+                 --with-p4est-home=/usr/lib/x86_64-linux-gnu \
+                 --with-lis-home=/opt/lis \
+                 --with-mumps-home=/usr/lib/x86_64-linux-gnu \
+                 F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc \
+                 --with-mumps-extra-libs="-L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64/lib -lscotch -lmpi \
+                 -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lmpi -lopenblas  -lgfortran" && \
+    make -j$(nproc) && make install && \
+    cd /opt && rm -rf bimpp-patch
+
+### NextGenPB ###
+WORKDIR /usr/local/nextgenPB
+RUN git clone --branch main https://github.com/vdiflorio/nextgenPB.git . && \
+    cp /usr/local/nextgenPB/local_setting/local_settings_ubuntu.mk /usr/local/nextgenPB/src/local_settings.mk && \
+    cd src && make clean all
+
+# Clean up unnecessary files
+RUN rm -rf /opt/nanoshaper/{example,src_client,test}
+
+### Final Setup ###
+ENV PATH="/usr/local/nextgenPB/src:$PATH"
+VOLUME ["/App"]
+WORKDIR /App

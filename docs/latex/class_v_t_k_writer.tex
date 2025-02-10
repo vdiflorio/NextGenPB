@@ -1,0 +1,61 @@
+\doxysection{VTKWriter Class Reference}
+\hypertarget{class_v_t_k_writer}{}\label{class_v_t_k_writer}\index{VTKWriter@{VTKWriter}}
+
+
+{\ttfamily \#include $<$vtk\+\_\+class.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{class_v_t_k_writer_a062468d679a3eae7698a78924a95f308}{VTKWriter}} (std\+::string basename\+\_\+="{}default"{}, int rank\+\_\+=0)
+\item 
+void \mbox{\hyperlink{class_v_t_k_writer_a0e7d0f785abe530ec6441c005d8d184f}{set\+Base\+Name}} (std\+::string basename\+\_\+, int rank\+\_\+)
+\item 
+void \mbox{\hyperlink{class_v_t_k_writer_a9ca43853a2b0bff84260cf1a540b46a0}{write\+Field\+Vtu\+Binary}} (tmesh\+\_\+3d \&tmsh, const distributed\+\_\+vector \&field, std\+::string \&fieldname\+\_\+)
+\item 
+void \mbox{\hyperlink{class_v_t_k_writer_afa78a1e9b30cc7d4ee62f43e8173ae6d}{write\+Field\+Vtu\+Binary\+\_\+local}} (tmesh\+\_\+3d \&tmsh, const distributed\+\_\+vector \&field, std\+::string \&fieldname\+\_\+, double \texorpdfstring{$\ast$}{*}l\+\_\+cr, double \texorpdfstring{$\ast$}{*}r\+\_\+cr)
+\item 
+void \mbox{\hyperlink{class_v_t_k_writer_abaedbe56ea82117c4c1c00e646f12726}{create\+Pvtu\+File}} (std\+::vector$<$ std\+::string $>$ \&field\+Names, std\+::vector$<$ std\+::string $>$ \&base\+Names, int num\+Ranks)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{class_v_t_k_writer_a062468d679a3eae7698a78924a95f308}\index{VTKWriter@{VTKWriter}!VTKWriter@{VTKWriter}}
+\index{VTKWriter@{VTKWriter}!VTKWriter@{VTKWriter}}
+\doxysubsubsection{\texorpdfstring{VTKWriter()}{VTKWriter()}}
+{\footnotesize\ttfamily \label{class_v_t_k_writer_a062468d679a3eae7698a78924a95f308} 
+VTKWriter\+::\+VTKWriter (\begin{DoxyParamCaption}\item[{std\+::string}]{basename\+\_\+}{ = {\ttfamily "{}default"{}}, }\item[{int}]{rank\+\_\+}{ = {\ttfamily 0}}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_v_t_k_writer_abaedbe56ea82117c4c1c00e646f12726}\index{VTKWriter@{VTKWriter}!createPvtuFile@{createPvtuFile}}
+\index{createPvtuFile@{createPvtuFile}!VTKWriter@{VTKWriter}}
+\doxysubsubsection{\texorpdfstring{createPvtuFile()}{createPvtuFile()}}
+{\footnotesize\ttfamily \label{class_v_t_k_writer_abaedbe56ea82117c4c1c00e646f12726} 
+void VTKWriter\+::create\+Pvtu\+File (\begin{DoxyParamCaption}\item[{std\+::vector$<$ std\+::string $>$ \&}]{field\+Names}{, }\item[{std\+::vector$<$ std\+::string $>$ \&}]{base\+Names}{, }\item[{int}]{num\+Ranks}{}\end{DoxyParamCaption})}
+
+\Hypertarget{class_v_t_k_writer_a0e7d0f785abe530ec6441c005d8d184f}\index{VTKWriter@{VTKWriter}!setBaseName@{setBaseName}}
+\index{setBaseName@{setBaseName}!VTKWriter@{VTKWriter}}
+\doxysubsubsection{\texorpdfstring{setBaseName()}{setBaseName()}}
+{\footnotesize\ttfamily \label{class_v_t_k_writer_a0e7d0f785abe530ec6441c005d8d184f} 
+void VTKWriter\+::set\+Base\+Name (\begin{DoxyParamCaption}\item[{std\+::string}]{basename\+\_\+}{, }\item[{int}]{rank\+\_\+}{}\end{DoxyParamCaption})}
+
+\Hypertarget{class_v_t_k_writer_a9ca43853a2b0bff84260cf1a540b46a0}\index{VTKWriter@{VTKWriter}!writeFieldVtuBinary@{writeFieldVtuBinary}}
+\index{writeFieldVtuBinary@{writeFieldVtuBinary}!VTKWriter@{VTKWriter}}
+\doxysubsubsection{\texorpdfstring{writeFieldVtuBinary()}{writeFieldVtuBinary()}}
+{\footnotesize\ttfamily \label{class_v_t_k_writer_a9ca43853a2b0bff84260cf1a540b46a0} 
+void VTKWriter\+::write\+Field\+Vtu\+Binary (\begin{DoxyParamCaption}\item[{tmesh\+\_\+3d \&}]{tmsh}{, }\item[{const distributed\+\_\+vector \&}]{field}{, }\item[{std\+::string \&}]{fieldname\+\_\+}{}\end{DoxyParamCaption})}
+
+\Hypertarget{class_v_t_k_writer_afa78a1e9b30cc7d4ee62f43e8173ae6d}\index{VTKWriter@{VTKWriter}!writeFieldVtuBinary\_local@{writeFieldVtuBinary\_local}}
+\index{writeFieldVtuBinary\_local@{writeFieldVtuBinary\_local}!VTKWriter@{VTKWriter}}
+\doxysubsubsection{\texorpdfstring{writeFieldVtuBinary\_local()}{writeFieldVtuBinary\_local()}}
+{\footnotesize\ttfamily \label{class_v_t_k_writer_afa78a1e9b30cc7d4ee62f43e8173ae6d} 
+void VTKWriter\+::write\+Field\+Vtu\+Binary\+\_\+local (\begin{DoxyParamCaption}\item[{tmesh\+\_\+3d \&}]{tmsh}{, }\item[{const distributed\+\_\+vector \&}]{field}{, }\item[{std\+::string \&}]{fieldname\+\_\+}{, }\item[{double \texorpdfstring{$\ast$}{*}}]{l\+\_\+cr}{, }\item[{double \texorpdfstring{$\ast$}{*}}]{r\+\_\+cr}{}\end{DoxyParamCaption})}
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+/\+Users/vincenzo/\+Documents/\+Ph\+D/\+PBE/\+LPBe/nextgen\+PB/include/\mbox{\hyperlink{vtk__class_8h}{vtk\+\_\+class.\+h}}\item 
+/\+Users/vincenzo/\+Documents/\+Ph\+D/\+PBE/\+LPBe/nextgen\+PB/src/\mbox{\hyperlink{vtk__class_8cpp}{vtk\+\_\+class.\+cpp}}\end{DoxyCompactItemize}

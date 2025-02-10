@@ -1,0 +1,52 @@
+\doxysection{/\+Users/vincenzo/\+Documents/\+Ph\+D/\+PBE/\+LPBe/nextgen\+PB/src/poisson\+\_\+boltzmann.cpp File Reference}
+\hypertarget{poisson__boltzmann_8cpp}{}\label{poisson__boltzmann_8cpp}\index{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/src/poisson\_boltzmann.cpp@{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/src/poisson\_boltzmann.cpp}}
+{\ttfamily \#include $<$mpi.\+h$>$}\newline
+{\ttfamily \#include "{}pb\+\_\+class.\+h"{}}\newline
+{\ttfamily \#include "{}vtk\+\_\+class.\+h"{}}\newline
+{\ttfamily \#include "{}wrapper\+\_\+search.\+h"{}}\newline
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{poisson__boltzmann_8cpp_a0ffcd13bdb7d47ed0b7b0a67b4591269}{cerca\+\_\+atomo\+\_\+wrapper}} (p8est\+\_\+t \texorpdfstring{$\ast$}{*}p4est, p4est\+\_\+topidx\+\_\+t which\+\_\+tree, p8est\+\_\+quadrant\+\_\+t \texorpdfstring{$\ast$}{*}quadrant, p4est\+\_\+locidx\+\_\+t local\+\_\+num, void \texorpdfstring{$\ast$}{*}point)
+\item 
+void \mbox{\hyperlink{poisson__boltzmann_8cpp_aa7d751b1299798f2ae3bef8f216751c5}{print\+\_\+map}} (const std\+::array$<$ std\+::map$<$ std\+::array$<$ double, 2 $>$, crossings\+\_\+t, map\+\_\+compare $>$, 3 $>$ \&r)
+\item 
+void \mbox{\hyperlink{poisson__boltzmann_8cpp_a3b54db4b0bf2991bd924c4fe57d3c02f}{print\+\_\+point}} (const std\+::array$<$ std\+::vector$<$ std\+::array$<$ double, 2 $>$ $>$, 3 $>$ \&r)
+\item 
+void \mbox{\hyperlink{poisson__boltzmann_8cpp_a6e81390a7ad0f5160d79f689c58cd432}{save\+\_\+ray\+\_\+cache}} (nlohmann\+::json \&j, const std\+::map$<$ std\+::array$<$ double, 2 $>$, crossings\+\_\+t, map\+\_\+compare $>$ \&r)
+\item 
+int \mbox{\hyperlink{poisson__boltzmann_8cpp_a3c04138a5bfe5d72780bb7e82a18e627}{main}} (int argc, char \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}argv)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Function Documentation}
+\Hypertarget{poisson__boltzmann_8cpp_a0ffcd13bdb7d47ed0b7b0a67b4591269}\index{poisson\_boltzmann.cpp@{poisson\_boltzmann.cpp}!cerca\_atomo\_wrapper@{cerca\_atomo\_wrapper}}
+\index{cerca\_atomo\_wrapper@{cerca\_atomo\_wrapper}!poisson\_boltzmann.cpp@{poisson\_boltzmann.cpp}}
+\doxysubsubsection{\texorpdfstring{cerca\_atomo\_wrapper()}{cerca\_atomo\_wrapper()}}
+{\footnotesize\ttfamily \label{poisson__boltzmann_8cpp_a0ffcd13bdb7d47ed0b7b0a67b4591269} 
+int cerca\+\_\+atomo\+\_\+wrapper (\begin{DoxyParamCaption}\item[{p8est\+\_\+t \texorpdfstring{$\ast$}{*}}]{p4est}{, }\item[{p4est\+\_\+topidx\+\_\+t}]{which\+\_\+tree}{, }\item[{p8est\+\_\+quadrant\+\_\+t \texorpdfstring{$\ast$}{*}}]{quadrant}{, }\item[{p4est\+\_\+locidx\+\_\+t}]{local\+\_\+num}{, }\item[{void \texorpdfstring{$\ast$}{*}}]{point}{}\end{DoxyParamCaption})}
+
+\Hypertarget{poisson__boltzmann_8cpp_a3c04138a5bfe5d72780bb7e82a18e627}\index{poisson\_boltzmann.cpp@{poisson\_boltzmann.cpp}!main@{main}}
+\index{main@{main}!poisson\_boltzmann.cpp@{poisson\_boltzmann.cpp}}
+\doxysubsubsection{\texorpdfstring{main()}{main()}}
+{\footnotesize\ttfamily \label{poisson__boltzmann_8cpp_a3c04138a5bfe5d72780bb7e82a18e627} 
+int main (\begin{DoxyParamCaption}\item[{int}]{argc}{, }\item[{char \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}}]{argv}{}\end{DoxyParamCaption})}
+
+\Hypertarget{poisson__boltzmann_8cpp_aa7d751b1299798f2ae3bef8f216751c5}\index{poisson\_boltzmann.cpp@{poisson\_boltzmann.cpp}!print\_map@{print\_map}}
+\index{print\_map@{print\_map}!poisson\_boltzmann.cpp@{poisson\_boltzmann.cpp}}
+\doxysubsubsection{\texorpdfstring{print\_map()}{print\_map()}}
+{\footnotesize\ttfamily \label{poisson__boltzmann_8cpp_aa7d751b1299798f2ae3bef8f216751c5} 
+void print\+\_\+map (\begin{DoxyParamCaption}\item[{const std\+::array$<$ std\+::map$<$ std\+::array$<$ double, 2 $>$, crossings\+\_\+t, map\+\_\+compare $>$, 3 $>$ \&}]{r}{}\end{DoxyParamCaption})}
+
+\Hypertarget{poisson__boltzmann_8cpp_a3b54db4b0bf2991bd924c4fe57d3c02f}\index{poisson\_boltzmann.cpp@{poisson\_boltzmann.cpp}!print\_point@{print\_point}}
+\index{print\_point@{print\_point}!poisson\_boltzmann.cpp@{poisson\_boltzmann.cpp}}
+\doxysubsubsection{\texorpdfstring{print\_point()}{print\_point()}}
+{\footnotesize\ttfamily \label{poisson__boltzmann_8cpp_a3b54db4b0bf2991bd924c4fe57d3c02f} 
+void print\+\_\+point (\begin{DoxyParamCaption}\item[{const std\+::array$<$ std\+::vector$<$ std\+::array$<$ double, 2 $>$ $>$, 3 $>$ \&}]{r}{}\end{DoxyParamCaption})}
+
+\Hypertarget{poisson__boltzmann_8cpp_a6e81390a7ad0f5160d79f689c58cd432}\index{poisson\_boltzmann.cpp@{poisson\_boltzmann.cpp}!save\_ray\_cache@{save\_ray\_cache}}
+\index{save\_ray\_cache@{save\_ray\_cache}!poisson\_boltzmann.cpp@{poisson\_boltzmann.cpp}}
+\doxysubsubsection{\texorpdfstring{save\_ray\_cache()}{save\_ray\_cache()}}
+{\footnotesize\ttfamily \label{poisson__boltzmann_8cpp_a6e81390a7ad0f5160d79f689c58cd432} 
+void save\+\_\+ray\+\_\+cache (\begin{DoxyParamCaption}\item[{nlohmann\+::json \&}]{j}{, }\item[{const std\+::map$<$ std\+::array$<$ double, 2 $>$, crossings\+\_\+t, map\+\_\+compare $>$ \&}]{r}{}\end{DoxyParamCaption})}
+

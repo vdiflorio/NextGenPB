@@ -1,0 +1,74 @@
+\doxysection{raytracer.\+h}
+\hypertarget{raytracer_8h_source}{}\label{raytracer_8h_source}\index{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/raytracer.h@{/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/raytracer.h}}
+\mbox{\hyperlink{raytracer_8h}{Go to the documentation of this file.}}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#ifndef\ RAYTRACER\_H}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#define\ RAYTRACER\_H}}
+\DoxyCodeLine{00003\ }
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <map>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <set>}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <array>}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ <mpi.h>}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ <nanoshaper.h>}}
+\DoxyCodeLine{00010\ \textcolor{comment}{//\ \#include\ <raytracer\_datatype.h>}}
+\DoxyCodeLine{00011\ }
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ "{}json.hpp"{}}}
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#include\ "{}\mbox{\hyperlink{serialize_8h}{serialize.h}}"{}}}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{keyword}{using\ }\mbox{\hyperlink{raytracer_8h_a4efe5052ed87980f656ce822f0b7c417}{int\_coord\_t}}\ =\ \textcolor{keywordtype}{unsigned}\ \textcolor{keywordtype}{long}\ \textcolor{keywordtype}{long}\ int;}
+\DoxyCodeLine{00016\ }
+\DoxyCodeLine{00017\ }
+\DoxyCodeLine{00018\ \textcolor{keyword}{struct}}
+\DoxyCodeLine{00019\ \ \ \mbox{\hyperlink{structray__cache__t}{ray\_cache\_t}}\ \{}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00021\ \ \ rays\_t\ \mbox{\hyperlink{structray__cache__t_a8f183b5ad6cfb287f5c05a7bad3511d2}{rays}};\ \textcolor{comment}{//map\ that\ contains\ all\ the\ rays\ in\ the\ 3\ direction}}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00023\ \ \ \textcolor{keyword}{static}\ \mbox{\hyperlink{raytracer_8h_a4efe5052ed87980f656ce822f0b7c417}{int\_coord\_t}}\ \mbox{\hyperlink{structray__cache__t_afd2e09aac421e258422871f84f2b12e8}{count\_cache}};}
+\DoxyCodeLine{00024\ \ \ \textcolor{keyword}{static}\ \mbox{\hyperlink{raytracer_8h_a4efe5052ed87980f656ce822f0b7c417}{int\_coord\_t}}\ \mbox{\hyperlink{structray__cache__t_a06b96a2fa16ca51b29bcd7196b9199ec}{count\_new}};}
+\DoxyCodeLine{00025\ \ \ \textcolor{keywordtype}{int}\ count\_new\_dir[3]\ =\ \{0,\ 0,\ 0\};}
+\DoxyCodeLine{00026\ \ \ \textcolor{keywordtype}{int}\ count\_cache\_dir[3]\ =\ \{0,\ 0,\ 0\};}
+\DoxyCodeLine{00027\ \ \ \textcolor{keywordtype}{int}\ count\ =\ 0;}
+\DoxyCodeLine{00028\ \ \ \textcolor{comment}{//\ unsigned\ dir;\ //direction\ of\ the\ ray}}
+\DoxyCodeLine{00029\ \ \ std::unique\_ptr<NS::NanoShaper>\ \mbox{\hyperlink{structray__cache__t_ad5a36bcb8f72c501804c1cde4d70fb59}{ns}};}
+\DoxyCodeLine{00030\ \ \ \textcolor{comment}{//\ NS::NanoShaper\ ns;}}
+\DoxyCodeLine{00031\ \ \ \textcolor{keywordtype}{double}\ l\_c[3]\ =\ \{0,\ 0,\ 0\};}
+\DoxyCodeLine{00032\ \ \ \textcolor{keywordtype}{double}\ r\_c[3]\ =\ \{0,\ 0,\ 0\};}
+\DoxyCodeLine{00033\ \ \ \textcolor{comment}{//\ int\ num\_req\_rays\ =\ 0;}}
+\DoxyCodeLine{00034\ \ \ \textcolor{keywordtype}{int}\ num\_req\_rays[3]\ =\ \{0,\ 0,\ 0\};}
+\DoxyCodeLine{00035\ \ \ std::array<std::set<std::array<double,\ 2>,\ map\_compare>,\ 3>\ \mbox{\hyperlink{structray__cache__t_a0860b6d780679710232774fc2a8613a5}{rays\_list}};\ \textcolor{comment}{//list\ of\ req\ rays}}
+\DoxyCodeLine{00036\ }
+\DoxyCodeLine{00037\ \ \ crossings\_t\ \&}
+\DoxyCodeLine{00038\ \ \ operator\ ()\ (\textcolor{keywordtype}{double}\ x0,\ \textcolor{keywordtype}{double}\ x1,\ \textcolor{keywordtype}{unsigned}\ dir\ =\ 1);}
+\DoxyCodeLine{00039\ }
+\DoxyCodeLine{00040\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00041\ \ \ fill\_cache\ ();}
+\DoxyCodeLine{00042\ }
+\DoxyCodeLine{00043\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00044\ \ \ \mbox{\hyperlink{structray__cache__t_afb901f898cfabddff806fd1fc5ea9d4a}{init\_analytical\_surf}}\ (\textcolor{keyword}{const}\ std::vector<NS::Atom>\ \&\ atoms,\ \textcolor{keyword}{const}\ NS::surface\_type\ \&\ surf\_type,}
+\DoxyCodeLine{00045\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{double}\ \&\ surf\_param,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{double}\ \&\ stern\_layer,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{unsigned}\ \&\ num\_threads,\textcolor{keyword}{const}\ std::string*\ configFile=\textcolor{keyword}{nullptr});}
+\DoxyCodeLine{00046\ }
+\DoxyCodeLine{00047\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00048\ \ \ init\_analytical\_surf\_ns\ (\textcolor{keyword}{const}\ std::vector<NS::Atom>\ \&\ atoms,\ \textcolor{keyword}{const}\ NS::surface\_type\ \&\ surf\_type,}
+\DoxyCodeLine{00049\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ \textcolor{keywordtype}{double}\ \&\ surf\_param,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{double}\ \&\ stern\_layer,\ \textcolor{keyword}{const}\ \textcolor{keywordtype}{unsigned}\ \&\ num\_threads,}
+\DoxyCodeLine{00050\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{double}*\ l\_cr,\ \textcolor{keywordtype}{double}*\ r\_cr,\ \textcolor{keywordtype}{double}\ scale,\textcolor{keyword}{const}\ std::string*\ configFile=\textcolor{keyword}{nullptr});}
+\DoxyCodeLine{00051\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00052\ \ \ compute\_ns\_inters\ (crossings\_t\ \&\ ct);}
+\DoxyCodeLine{00053\ }
+\DoxyCodeLine{00054\ \ \ std::vector<unsigned\ char>}
+\DoxyCodeLine{00055\ \ \ write\_map\ (\textcolor{keyword}{const}\ std::map<std::array<double,\ 2>,\ crossings\_t,\ map\_compare>\&\ container);}
+\DoxyCodeLine{00056\ }
+\DoxyCodeLine{00057\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00058\ \ \ read\_map\ (\textcolor{keyword}{const}\ std::vector<unsigned\ char>\&\ data,}
+\DoxyCodeLine{00059\ \ \ \ \ \ \ \ \ \ \ \ \ std::map<std::array<double,\ 2>,\ crossings\_t,\ map\_compare>\&\ container);}
+\DoxyCodeLine{00060\ }
+\DoxyCodeLine{00061\ \ \ std::vector<unsigned\ char>}
+\DoxyCodeLine{00062\ \ \ write\_ct\ (\textcolor{keyword}{const}\ crossings\_t\&\ ct);}
+\DoxyCodeLine{00063\ }
+\DoxyCodeLine{00064\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00065\ \ \ read\_ct\ (\textcolor{keyword}{const}\ std::vector<unsigned\ char>\&\ data,\ crossings\_t\&\ ct);}
+\DoxyCodeLine{00066\ \};}
+\DoxyCodeLine{00067\ }
+\DoxyCodeLine{00068\ \textcolor{preprocessor}{\#endif\ }\textcolor{comment}{//RAYTRACER\_H}}
+
+\end{DoxyCode}
