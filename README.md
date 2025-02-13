@@ -1,6 +1,5 @@
 # NextGenPB 
-=========================================
-  
+-----------  
    Copyright (C) 2019-2025 Carlo de Falco
    Copyright (C) 2020-2021 Martina Politi
    Copyright (C) 2021-2025 Vincenzo Di Florio
