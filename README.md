@@ -1,6 +1,17 @@
 # NextGenPB 
+=========================================
+  
+   Copyright (C) 2019-2025 Carlo de Falco
+   Copyright (C) 2020-2021 Martina Politi
+   Copyright (C) 2021-2025 Vincenzo Di Florio
+   
+   This software is distributed under the terms
+   the terms of the GNU/GPL licence v3
 
-Linearized Poisson-Boltzmann solver on Octree mesh.
+# Overview
+----------
+
+NextGenPB is linearized Poisson-Boltzmann solver on Octree mesh.
 
 Solves the linearized PBE 
 
@@ -13,6 +24,8 @@ on a rectangular domain.
 ---
 
 # Table of Contents
+-------------------
+
 1. [Installation](#installation)  
    1.1 [Dependencies](#dependencies)  
    1.2 [For the Impatient](#impatient)  
@@ -24,6 +37,7 @@ on a rectangular domain.
 
 ---
 # Installation
+--------------
 
 ## Dependencies
 The following dependencies are required to build and run the program:  
@@ -150,6 +164,7 @@ export FCFLAGS="-O3 -mtune=native -march=native"
 
 
 # Usage
+-------
 
 To run the code you need an options file (e.g. `data/options.pot`)  file and a pqr file (e.g. `data/1CCM.pqr`).
 To run yhe code in serial the command is:
@@ -161,7 +176,7 @@ To run yhe code in serial the command is:
 To run in parallel with MPI:
 
 ```bash
-/path/to/exec/ngpb --potfile options.pot --pqrfile pqrfile.pqr
+mpirun -np <number of processes> /path/to/exec/ngpb --potfile options.pot --pqrfile pqrfile.pqr
 ```
 
 with `<number of processes>` equal to the desired number of processors. 
@@ -193,6 +208,7 @@ must be replaced by the number of processors used for the simulation.
 The user can also decide to convert only some among the outputs according to his necessities. 
 
 # Projects
+----------
 
 Below an (unordered) list of improvement/fixes/new features that we expect to implement in the near future
 
