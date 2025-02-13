@@ -1,11 +1,11 @@
 # NextGenPB 
 -----------  
-   Copyright (C) 2019-2025 Carlo de Falco
-   Copyright (C) 2020-2021 Martina Politi
-   Copyright (C) 2021-2025 Vincenzo Di Florio
-   
-   This software is distributed under the terms
-   the terms of the GNU/GPL licence v3
+Copyright (C) 2019-2025 Carlo de Falco
+Copyright (C) 2020-2021 Martina Politi
+Copyright (C) 2021-2025 Vincenzo Di Florio
+
+This software is distributed under the terms
+the terms of the GNU/GPL licence v3
 
 # Overview
 ----------
@@ -55,11 +55,11 @@ The following dependencies are required to build and run the program:
 
 ## For the Impatient
 ### Very Impatient
-Precompiled Apptainer images with OpenMPI versions 4 or 5 are available [here](https://boh).
+Precompiled Apptainer images with OpenMPI versions 4  is available in the release.
 To run the Apptainer image, install Apptainer (or Singularity) and execute the following command:
 ```bash
-mpirun -np <number_of_processors> singularity exec --bind /path/to/files/:/App \
-  /path/to/sif/nextgenpb_latest.sif ngpb --potfile /App/options.pot --pqrfile /App/file.pqr
+mpirun -np <number_of_processors> apptainer exec --bind /path/to/files/:/App \
+  /path/to/sif/NextGenPB_generic_ompi4.sif ngpb --potfile /App/options.pot --pqrfile /App/file.pqr
 ```
 ### Less impatient
 If you have root permissions, you can build the Docker image. This approach allows customization of library versions and compiler flags (e.g. `CFLAGS="-O3 -mtune=native -march=native"`).
