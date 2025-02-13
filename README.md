@@ -1,6 +1,18 @@
 # NextGenPB 
+-----------  
+Copyright (C) 2019-2025 Carlo de Falco
 
-Linearized Poisson-Boltzmann solver on Octree mesh.
+Copyright (C) 2020-2021 Martina Politi
+
+Copyright (C) 2021-2025 Vincenzo Di Florio
+
+This software is distributed under the terms
+the terms of the GNU/GPL licence v3
+
+# Overview
+----------
+
+NextGenPB is linearized Poisson-Boltzmann solver on Octree mesh.
 
 Solves the linearized PBE 
 
@@ -13,6 +25,8 @@ on a rectangular domain.
 ---
 
 # Table of Contents
+-------------------
+
 1. [Installation](#installation)  
    1.1 [Dependencies](#dependencies)  
    1.2 [For the Impatient](#impatient)  
@@ -24,6 +38,7 @@ on a rectangular domain.
 
 ---
 # Installation
+--------------
 
 ## Dependencies
 The following dependencies are required to build and run the program:  
@@ -42,11 +57,11 @@ The following dependencies are required to build and run the program:
 
 ## For the Impatient
 ### Very Impatient
-Precompiled Apptainer images with OpenMPI versions 4 or 5 are available [here](https://boh).
+Precompiled Apptainer images with OpenMPI versions 4  is available in the release.
 To run the Apptainer image, install Apptainer (or Singularity) and execute the following command:
 ```bash
-mpirun -np <number_of_processors> singularity exec --bind /path/to/files/:/App \
-  /path/to/sif/nextgenpb_latest.sif ngpb --potfile /App/options.pot --pqrfile /App/file.pqr
+mpirun -np <number_of_processors> apptainer exec --bind /path/to/files/:/App \
+  /path/to/sif/NextGenPB_generic_ompi4.sif ngpb --potfile /App/options.pot --pqrfile /App/file.pqr
 ```
 ### Less impatient
 If you have root permissions, you can build the Docker image. This approach allows customization of library versions and compiler flags (e.g. `CFLAGS="-O3 -mtune=native -march=native"`).
@@ -150,6 +165,7 @@ export FCFLAGS="-O3 -mtune=native -march=native"
 
 
 # Usage
+-------
 
 To run the code you need an options file (e.g. `data/options.pot`)  file and a pqr file (e.g. `data/1CCM.pqr`).
 To run yhe code in serial the command is:
@@ -161,7 +177,7 @@ To run yhe code in serial the command is:
 To run in parallel with MPI:
 
 ```bash
-/path/to/exec/ngpb --potfile options.pot --pqrfile pqrfile.pqr
+mpirun -np <number of processes> /path/to/exec/ngpb --potfile options.pot --pqrfile pqrfile.pqr
 ```
 
 with `<number of processes>` equal to the desired number of processors. 
@@ -193,6 +209,7 @@ must be replaced by the number of processors used for the simulation.
 The user can also decide to convert only some among the outputs according to his necessities. 
 
 # Projects
+----------
 
 Below an (unordered) list of improvement/fixes/new features that we expect to implement in the near future
 
