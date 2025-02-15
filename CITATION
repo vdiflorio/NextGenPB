@@ -1,0 +1,23 @@
+To cite NextGenPB in publications use:
+
+  Di Florio, Vincenzo, Patrizio Ansalone, Sergii V. Siryk, Sergio Decherchi, Carlo de Falco, and Walter Rocchia. 2025. “NextGenPB: An Analytically-Enabled Super Resolution and Local (De)Refinement Poisson-Boltzmann Equation Solver.” arXiv. https://doi.org/10.48550/arXiv.2502.09323.
+
+A BibTeX entry for LaTeX users is:
+
+  @article{DiFlorio2025NextGenPB,
+    author    = {Di Florio, Vincenzo and Ansalone, Patrizio and Siryk, Sergii V. and Decherchi, Sergio and de Falco, Carlo and Rocchia, Walter},
+    title     = {{NextGenPB}: An Analytically-Enabled Super Resolution and Local (De)Refinement {Poisson-Boltzmann Equation} Solver},
+    journal   = {arXiv},
+    year      = {2025},
+    volume    = {},
+    number    = {},
+    pages     = {},
+    eprint    = {2502.09323},
+    archivePrefix = {arXiv},
+    primaryClass = {physics.comp-ph},
+    doi       = {10.48550/arXiv.2502.09323},
+    url       = {https://arxiv.org/abs/2502.09323},
+  }
+
+We have invested a lot of time and effort in creating NextGenPB, please
+cite it when using it. 
