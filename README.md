@@ -1,10 +1,10 @@
 # NextGenPB 
 -----------  
+Copyright (C) 2021-2025 Vincenzo Di Florio
+
 Copyright (C) 2019-2025 Carlo de Falco
 
 Copyright (C) 2020-2021 Martina Politi
-
-Copyright (C) 2021-2025 Vincenzo Di Florio
 
 This software is distributed under the terms
 the terms of the GNU/GPL licence v3
@@ -14,7 +14,7 @@ the terms of the GNU/GPL licence v3
 
 NextGenPB is linearized Poisson-Boltzmann solver on Octree mesh.
 
-Solves the linearized PBE 
+It solves the linearized Poisson-Boltzmann equation (PBE):
 
 $$
 -\mathrm{div} \left( \varepsilon_0 \varepsilon_r \nabla \varphi \right) + \kappa^2 \varphi = \rho^f
@@ -57,14 +57,15 @@ The following dependencies are required to build and run the program:
 
 ## For the Impatient
 ### Very Impatient
-Precompiled Apptainer images with OpenMPI versions 4  is available in the release.
+Precompiled Apptainer images with OpenMPI versions 4 or 5 are available in the release.
 To run the Apptainer image, install Apptainer (or Singularity) and execute the following command:
+
 ```bash
 mpirun -np <number_of_processors> apptainer exec --bind /path/to/files/:/App \
-  /path/to/sif/NextGenPB_generic_ompi4.sif ngpb --potfile /App/options.pot --pqrfile /App/file.pqr
+  /path/to/sif/NextGenPB_ompi4.sif ngpb --potfile /App/options.pot --pqrfile /App/file.pqr
 ```
 ### Less impatient
-If you have root permissions, you can build the Docker image. This approach allows customization of library versions and compiler flags (e.g. `CFLAGS="-O3 -mtune=native -march=native"`).
+If you have root permissions, you can build the Docker image. This approach allows customization of library versions and compiler flags (e.g., CFLAGS="-O3 -mtune=native -march=native").
 To build the Docker image:
 ```bash
 sudo docker build -f Dockerfile -t <name_of_image>:latest .
@@ -77,7 +78,7 @@ sudo docker run -v "$(pwd)":/App <name_of_image>:latest ngpb --potfile /App/opti
 ## Installation on macOS
 ### Prerequisites
 
-Use MacPorts (or Homebrew) to install the required packages: 
+Use MacPorts (or Homebrew) to install the required packages:
 
 ```bash
 sudo port install openmpi cmake onetbb boost cgal5 nlohmann-json jansson octave
@@ -167,8 +168,8 @@ export FCFLAGS="-O3 -mtune=native -march=native"
 # Usage
 -------
 
-To run the code you need an options file (e.g. `data/options.pot`)  file and a pqr file (e.g. `data/1CCM.pqr`).
-To run yhe code in serial the command is:
+To run the code, you need an options file (e.g. `data/options.pot`)  and a PQR file (e.g. `data/1CCM.pqr`).
+To run the code serially, use the following command:
 
 ```bash
 /path/to/exec/ngpb --potfile options.pot --pqrfile pqrfile.pqr
@@ -180,38 +181,33 @@ To run in parallel with MPI:
 mpirun -np <number of processes> /path/to/exec/ngpb --potfile options.pot --pqrfile pqrfile.pqr
 ```
 
-with `<number of processes>` equal to the desired number of processors. 
+Where `<number of processes>` is the desired number of processors.
 
 
-Files .pqr must not contain the optional feature `CHAIN_ID`, because the code cannot read that column. For example, `.pqr files` created with PDB2PQR and the –whitespace option are guaranteed to conform to the correct format:
+The .pqr files must not contain the optional `CHAIN_ID` feature, as the code cannot read that column. For example, .pqr files created with `PDB2PQR` are guaranteed to conform to the correct format:
 
 ```
 pdb2pqr --ff=charmm --whitespace 4ake.pdb 4ake.pqr
 ```
 
-without the option `--keep-chain`. Otherwise, if the user utilizes online website to generate the file .pqr, it has to be sure to un-tick the option `add/keep chain IDs in the PQR file`.
+without the option `--keep-chain`. If the .pqr file is generated using an online tool, ensure the `add/keep chain IDs` in the PQR file option is unchecked.
 
 ## Post-processing of Output Files (Octave)
 
-If you are using the option `map_type = oct`, the user can use the `GNU Octave` script called `export.m` and 
-distributed with `bimpp` (it is located in the  folder `script/m`)
-for the post-processing. When the user adopts the default names for the files, it 
-can write the following command line for the creation of a .vtu file that can be 
-opened using Paraview. 
+If you are using the option `map_type = oct`, you can use the `GNU Octave` script called `export.m`, distributed with bimpp (located in the `script/m` folder), for post-processing. When using the default names for the files, the following command will create a .vtu file that can be opened using Paraview:
 
 ```
 export_tmesh_data ("potential_map_%d_%4.4d", {"potential_map_%d_%4.4d", "eps_map_%d_%4.4d"}, { "phi", "eps"}, { }, {}, 'output_name', 0, processors_number)
 ```
 
-where `output_name` can be substituted with an arbitrary name for the `.vtu ` file and `processors_number` 
-must be replaced by the number of processors used for the simulation. 
+Here, `output_name` can be replaced with any desired name for the .vtu file, and processors_number should be replaced by the number of processors used for the simulation.
 
-The user can also decide to convert only some among the outputs according to his necessities. 
+The user can also choose to convert only selected outputs based on their needs.
+
 
 # Projects
 ----------
 
-Below an (unordered) list of improvement/fixes/new features that we expect to implement in the near future
-
-1. Nonlinear ionic density
-2. Allow more flexible format for *.pqr* files (in particular with or without ChainID column) or the use of *.pdb* files 
+Below is an (unordered) list of improvements/fixes/new features we expect to implement in the near future:
+	1.	Nonlinear ionic density
+	2.	Allow more flexible formats for *.pqr files (particularly with or without the ChainID column) or the use of *.pdb files
