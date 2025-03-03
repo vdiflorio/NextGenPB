@@ -2430,7 +2430,7 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
 
   std::unique_ptr<distributed_vector> ones =
     std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
-  ones->get_owned_data ().assign (tmsh.num_local_quadrants (), 1.0);
+  ones->get_owned_data ().assign (tmsh.num_owned_nodes (), 1.0);
 
   std::vector<double> const_ones (tmsh.num_local_quadrants (), 1.0);
 
@@ -2638,7 +2638,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   std::unique_ptr<distributed_vector> ones =
     std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
-  ones->get_owned_data ().assign (tmsh.num_local_quadrants (), 1.0);
+  ones->get_owned_data ().assign (tmsh.num_owned_nodes (), 1.0);
 
   std::vector<double> const_ones (tmsh.num_local_quadrants (), 1.0);
 
