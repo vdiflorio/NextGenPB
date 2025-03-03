@@ -2702,8 +2702,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
     return cube_fraction_intersection (quadrant,ray_cache);
   };
 
-  // distributed_sparse_matrix A;
-  // A.set_ranges (tmsh.num_owned_nodes ());
+  // MPI_Barrier (mpicomm);
+  // auto start_matrix = std::chrono::steady_clock::now ();
   std::unique_ptr<distributed_sparse_matrix> A =
     std::make_unique<distributed_sparse_matrix> (mpicomm);
   A->set_ranges (tmsh.num_owned_nodes ());
@@ -2779,11 +2779,18 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
     rhs->assemble ();
   }
 
-  std::cout << "\n\n matrix assembled"<< std::endl<<std::endl;
-
-
-
+  // std::cout << "\nMatrix and rhs assembled!"<< std::endl;
+  
   MPI_Barrier (mpicomm);
+  // auto end_matrix = std::chrono::steady_clock::now ();
+  // if (rank==0) {
+  //   std::cout << "\nTime to calculate Matrix and rhs:  "
+  //             << std::chrono::duration_cast<std::chrono::milliseconds> (end_matrix- start_matrix).count ()
+  //             << " ms"
+  //             <<std::endl<<std::endl;
+  // }
+
+
   auto start_sol = std::chrono::steady_clock::now ();
 
 

@@ -209,5 +209,7 @@ The user can also choose to convert only selected outputs based on their needs.
 ----------
 
 Below is an (unordered) list of improvements/fixes/new features we expect to implement in the near future:
+
 	1.	Nonlinear ionic density
+
 	2.	Allow more flexible formats for *.pqr files (particularly with or without the ChainID column) or the use of *.pdb files
