@@ -1600,6 +1600,45 @@ poisson_boltzmann::read_atoms_from_pqr (std::basic_istream<char> &inputfile)
 
   while (inputfile >> a)
     atoms.push_back (a);
+  
+  if (atoms.size() < 4) {
+    auto comp = [] (const NS::Atom &a1, const NS::Atom &a2) -> bool {
+      return a1.radius < a2.radius;
+    };
+
+    auto max_iter = std::max_element(atoms.begin(), atoms.end(), comp);
+    std::array<double, 3> max_pos = {
+      max_iter->pos[0],
+      max_iter->pos[1],
+      max_iter->pos[2]
+    };
+
+    const double epsilon = 0.001;
+
+    std::array<std::array<int, 3>, 6> directions = {{
+      {{-1, 0, 0}},
+      {{+1, 0, 0}},
+      {{0, -1, 0}},
+      {{0, +1, 0}},
+      {{0, 0, -1}},
+      {{0, 0, +1}}
+    }};
+
+    for (int ii = 0; ii < 6; ++ii) {
+      std::array<double, 3> new_pos = {
+        max_pos[0] + epsilon * directions[ii][0],
+        max_pos[1] + epsilon * directions[ii][1],
+        max_pos[2] + epsilon * directions[ii][2]
+      };
+      NS::Atom dummy;
+      dummy.pos[0] = new_pos[0];
+      dummy.pos[1] = new_pos[1];
+      dummy.pos[2] = new_pos[2];
+      dummy.charge = 0.0;
+      dummy.radius = 0.0;
+      atoms.push_back(dummy);
+    }
+  }
 }
 
 void
