@@ -714,9 +714,18 @@ struct
   int
   classifyCube (tmesh_3d::quadrant_iterator& quadrant,double isolevel);
 
-  std::tuple<std::array<double,8>, std::array<double,8>, std::vector<double>,std::vector<int>>
-  classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant);
+  int
+  classifyCube_fast (tmesh_3d::quadrant_iterator& quadrant,double isolevel);
 
+  std::tuple<std::array<double,8>, std::array<double,8>, std::vector<int>,std::vector<int>>
+  classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant,
+                     std::array<double,8>& tmp_phi,
+                     std::array<double,8>& tmp_eps);
+  
+  std::tuple<std::array<double,8>, std::array<double,8>, std::vector<int>,std::vector<int> >
+  classifyCube_flux_fast (tmesh_3d::quadrant_iterator& quadrant,
+                          std::array<double,8>& tmp_phi,
+                          std::array<double,8>& tmp_eps);
   void
   energy (ray_cache_t & ray_cache);
 
