@@ -4009,7 +4009,8 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   if (calc_energy==3) {
     for (const int ii : border_quad) {
       quadrant[ii];
-      cubeindex = classifyCube_fast (quadrant, eps_out);
+      cubeindex = classifyCube (quadrant, eps_out);
+      // cubeindex = classifyCube_fast (quadrant, eps_out);
       std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
       ntriang = getTriangles (cubeindex, triangles);
       /*std::tie (tmp_phi, tmp_eps, edg, fl_dir, ntriang) =
