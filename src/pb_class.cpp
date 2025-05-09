@@ -3880,22 +3880,22 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   const size_t num_atoms = pos_atoms_tmp.size();
 
   auto quadrant = this->tmsh.begin_quadrant_sweep ();
-  quadrant[border_quad[0]];
 
-  h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
-  h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
-  h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
-  area_h[0] = h[1]*h[2]/h[0] * 0.25;
-  area_h[1] = h[0]*h[2]/h[1] * 0.25;
-  area_h[2] = h[0]*h[1]/h[2] * 0.25;
-
-
+  if (!border_quad.empty ()) {
+    quadrant[border_quad[0]];
+    h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
+    h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
+    h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
+    area_h[0] = h[1]*h[2]/h[0] * 0.25;
+    area_h[1] = h[0]*h[2]/h[1] * 0.25;
+    area_h[2] = h[0]*h[1]/h[2] * 0.25;  
+  }
 
   // flux and polarization energy calculation
   if (calc_energy==1) {
     for (const int ii : border_quad) {
       quadrant[ii];
-      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant, tmp_phi, tmp_eps);
+      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
 
       for (int ip = 0; ip < edg.size (); ++ip) {
         tmp_flux = 0.0;
