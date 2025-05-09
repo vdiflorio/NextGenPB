@@ -3880,7 +3880,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   const size_t num_atoms = pos_atoms_tmp.size();
 
   auto quadrant = this->tmsh.begin_quadrant_sweep ();
-  quadrant[border_quad[5]];
+  quadrant[border_quad[0]];
 
   h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
   h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
@@ -3888,6 +3888,9 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   area_h[0] = h[1]*h[2]/h[0] * 0.25;
   area_h[1] = h[0]*h[2]/h[1] * 0.25;
   area_h[2] = h[0]*h[1]/h[2] * 0.25;
+
+  std::cout << "PDDDDDDDDDD!!!!!"<<std::endl << std::endl;
+
 
   // flux and polarization energy calculation
   if (calc_energy==1) {
