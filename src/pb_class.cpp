@@ -3889,14 +3889,13 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   area_h[1] = h[0]*h[2]/h[1] * 0.25;
   area_h[2] = h[0]*h[1]/h[2] * 0.25;
 
-  std::cout << "PDDDDDDDDDD!!!!!"<<std::endl << std::endl;
 
 
   // flux and polarization energy calculation
   if (calc_energy==1) {
     for (const int ii : border_quad) {
       quadrant[ii];
-      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
+      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant, tmp_phi, tmp_eps);
 
       for (int ip = 0; ip < edg.size (); ++ip) {
         tmp_flux = 0.0;
