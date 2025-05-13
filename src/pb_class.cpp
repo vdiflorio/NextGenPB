@@ -3736,7 +3736,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   MPI_Comm_rank (mpicomm, &rank);
 
   if (rank == 0)
-    std::cout << "\nStarting energy calculation with surface integrals" << std::endl;
+    std::cout << "\n================ [ Electrostatic Energy ] =================\n";
 
 
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
@@ -4080,50 +4080,35 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
                 mpicomm);
   }
 
-  // Print the result
   if (rank == 0) {
-    std::cout << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "Net charge: "
-              << std::setprecision (16)<<net_charge
-              << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << std::endl;
+    constexpr int label_width = 50;
+    constexpr int precision = 16;
 
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "Polarization charge: "
-              << std::setprecision (16)<<charge_pol/ (4.0*pi)
-              << "  Errore %:" << (charge_pol/ (4.0*pi) - net_charge)/net_charge*100
-              << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << std::endl;
+    std::cout << std::left << std::setw(label_width) << "  Net charge [e]:"
+              << std::setprecision(precision) << net_charge << "\n";
 
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "Polarization energy: "
-              << std::setprecision (16)<<energy_pol
-              << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << std::endl;
+    std::cout << std::left << std::setw(label_width) << "  Flux charge [e]:"
+              << std::setprecision(precision) << charge_pol / (4.0 * pi) << "\n";
 
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "Direct ionic energy: "
-              << std::setprecision (16)<<energy_react
-              << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << std::endl;
+    std::cout << std::left << std::setw(label_width)
+              << "  Relative error w.r.t. net charge [%]:"
+              << std::setprecision(6)
+              << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
 
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "Coulumbic energy: "
-              << std::setprecision (16)<<coul_energy
-              << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << std::endl;
+    std::cout << std::left << std::setw(label_width) << "  Polarization energy [kT]:"
+              << std::setprecision(precision) << energy_pol << "\n";
 
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "Total energy: "
-              << std::setprecision (16)<<energy_pol + energy_react + coul_energy
-              << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << std::left << std::setw(label_width) << "  Direct ionic (reaction field) energy [kT]:"
+              << std::setprecision(precision) << energy_react << "\n";
+
+    std::cout << std::left << std::setw(label_width) << "  Coulombic (direct) energy [kT]:"
+              << std::setprecision(precision) << coul_energy << "\n";
+
+    std::cout << std::left << std::setw(label_width) << "  Total electrostatic energy [kT]:"
+              << std::setprecision(precision)
+              << (energy_pol + energy_react + coul_energy) << "\n";
+
+    std::cout << "===========================================================\n";
   }
 }
 

@@ -136,6 +136,7 @@ main (int argc, char **argv)
   std::cout << "  [Rank " << rank << "] Local quadrants : " << pb.tmsh.num_local_quadrants() << '\n';
 
   // Print global mesh info only on rank 0
+  MPI_Barrier (mpicomm);
   if (rank == 0) {
       std::cout << "  [Global] Total nodes     : " << pb.tmsh.num_global_nodes() << '\n';
       std::cout << "  [Global] Total quadrants : " << pb.tmsh.num_global_quadrants() << '\n';
@@ -256,6 +257,7 @@ main (int argc, char **argv)
 
 
   if (rank == 0) {
+    std::cout<<std::endl;
     print_timing_report ();
 
     // if (pb.surf_type != 2)
