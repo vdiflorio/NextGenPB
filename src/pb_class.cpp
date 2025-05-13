@@ -700,6 +700,7 @@ poisson_boltzmann::create_mesh ()
   int nx, ny, nz;
   double scale_tmp, scale_x, scale_y, scale_z;
   double lmax = 0;
+  double max_len = 0;
   double l[3];
   scale_level = unilevel;
   double maxradius = *std::max_element (r_atoms.begin (), r_atoms.end ());
@@ -720,26 +721,18 @@ poisson_boltzmann::create_mesh ()
   auto minmax_z = std::minmax_element (pos_atoms.begin (), pos_atoms.end (), comp_pos_z);
 
 
-  l_c[0] = (*minmax_x.first)[0] - maxradius - 2*prb_radius;
-  l_c[1] = (*minmax_y.first)[1] - maxradius - 2*prb_radius;
-  l_c[2] = (*minmax_z.first)[2] - maxradius - 2*prb_radius;
-  r_c[0] = (*minmax_x.second)[0] + maxradius + 2*prb_radius;
-  r_c[1] = (*minmax_y.second)[1] + maxradius + 2*prb_radius;
-  r_c[2] = (*minmax_z.second)[2] + maxradius + 2*prb_radius;
-
-  for (int kk = 0; kk < 3; ++kk) {
-    l[kk] = (r_c[kk] - l_c[kk]);
-    cc[kk] = (r_c[kk] + l_c[kk])*0.5;
-    lmax = l[kk] > lmax ? l[kk] : lmax;
-  }
+  
   double net_charge = std::accumulate(charge_atoms.begin(), charge_atoms.end(), 0.0);
   int num_atoms = charge_atoms.size ();
 
   if (rank == 0) {
     std::cout << "\n========== [ System Information ] ==========\n";
     std::cout << "  Number of atoms    : " << num_atoms << '\n';
+    std::cout << "  Size protein [Å]   : ";
+    std::cout << "[" << (*minmax_x.second)[0] - (*minmax_x.first)[0] + 2*maxradius << ", " 
+                     << (*minmax_y.second)[0] - (*minmax_y.first)[0] + 2*maxradius << ", " 
+                     << (*minmax_z.second)[0] - (*minmax_z.first)[0] + 2*maxradius << "]\n"; 
     std::cout << "  Net charge         : " << std::scientific << net_charge << std::defaultfloat << '\n';
-    std::cout << "  Max length size    : " << lmax -4*prb_radius << " [Å]\n";
     std::cout << "  Epsilon solute     : " << e_in << '\n';
     std::cout << "  Epsilon solvent    : " << e_out << '\n';
     std::cout << "  Temperature        : " << T << " [K] \n";
@@ -748,7 +741,18 @@ poisson_boltzmann::create_mesh ()
   }
 
   if (mesh_shape !=2) {
+    l_c[0] = (*minmax_x.first)[0] - maxradius - 2*prb_radius;
+    l_c[1] = (*minmax_y.first)[1] - maxradius - 2*prb_radius;
+    l_c[2] = (*minmax_z.first)[2] - maxradius - 2*prb_radius;
+    r_c[0] = (*minmax_x.second)[0] + maxradius + 2*prb_radius;
+    r_c[1] = (*minmax_y.second)[1] + maxradius + 2*prb_radius;
+    r_c[2] = (*minmax_z.second)[2] + maxradius + 2*prb_radius;
 
+    for (int kk = 0; kk < 3; ++kk) {
+      l[kk] = (r_c[kk] - l_c[kk]);
+      cc[kk] = (r_c[kk] + l_c[kk])*0.5;
+      lmax = l[kk] > lmax ? l[kk] : lmax;
+    }
     // For random displacement of the grid
     //  if (false) {
     //   std::random_device rd; // Will be used to obtain a seed for the random number engine
@@ -831,21 +835,24 @@ poisson_boltzmann::create_mesh ()
 
     if (rank == 0) {
       std::cout << "========== [ Domain Information ] ==========\n";
+      std::cout << "  Scale:  " << scale << "\n";
 
       std::cout << "  Center of the System [Å]:";
       std::cout << "  [" << cc[0] << ", " << cc[1] << ", " << cc[2] << "]\n";
 
+      std::cout << "  Perfil outer box:  " << perfil2 << "\n";
       std::cout << "  Complete Domain Box Size [Å]:\n";
       std::cout << "      x = [" << ll[0] << ", " << rr[0] << "]\n";
       std::cout << "      y = [" << ll[1] << ", " << rr[1] << "]\n";
       std::cout << "      z = [" << ll[2] << ", " << rr[2] << "]\n";
-
+      
+      std::cout << "  Perfil uniform box:  " << perfil1 << "\n";
       std::cout << "  Uniform Box Size [Å]:\n";
       std::cout << "      x = [" << l_cr[0] << ", " << r_cr[0] << "]\n";
       std::cout << "      y = [" << l_cr[1] << ", " << r_cr[1] << "]\n";
       std::cout << "      z = [" << l_cr[2] << ", " << r_cr[2] << "]\n";
 
-      std::cout << "  Number of Subdivisions in the Uniform Box [Å]:";
+      std::cout << "  Number of Subdivisions in the Uniform Box:";
       std::cout << "  nx = " << nx * 2 << "  ny = " << ny * 2 << "  nz = " << nz * 2 << '\n';
 
       std::cout << "============================================\n";
@@ -906,15 +913,22 @@ poisson_boltzmann::create_mesh ()
     }
 
     if (rank == 0) {
-      std::cout << "\n Center of the system:" <<std::endl;
-      std::cout << "cx: " << cc[0]
-                << " , cy: " << cc[1]
-                << " , cz: " << cc[2] << std::endl;
+      std::cout << "========== [ Domain Information ] ==========\n";
+      std::cout << "  Scale:  " << scale << "\n";
 
-      std::cout << "\n Complete domain box size:" <<std::endl;
-      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
-      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
-      std::cout << "z: " << ll[2] << ", " << rr[2] << std::endl;
+      std::cout << "  Center of the System [Å]:";
+      std::cout << "  [" << cc[0] << ", " << cc[1] << ", " << cc[2] << "]\n";
+      
+      std::cout << "  Perfil box:  " << perfil1 << "\n";
+      std::cout << "  Complete Domain Box Size [Å]:\n";
+      std::cout << "      x = [" << ll[0] << ", " << rr[0] << "]\n";
+      std::cout << "      y = [" << ll[1] << ", " << rr[1] << "]\n";
+      std::cout << "      z = [" << ll[2] << ", " << rr[2] << "]\n";
+
+      std::cout << "  Number of Subdivisions:";
+      std::cout << "  nx = " << nx * 2 << "  ny = " << ny * 2 << "  nz = " << nz * 2 << '\n';
+
+      std::cout << "============================================\n";
     }
 
     simple_conn_num_vertices = 8;
@@ -940,24 +954,7 @@ poisson_boltzmann::create_mesh ()
     for (int i = 0; i<6; i++)
       bcells.push_back (std::make_pair (0, i));
   } else if (mesh_shape == 2) {
-    if (rank == 0) {
-      std::cout << "\n Center of the system:" <<std::endl;
-      std::cout << "cx: " << (r_c[0] + l_c[0])*0.5
-                << " , cy: " << (r_c[1] + l_c[1])*0.5
-                << " , cz: " << (r_c[2] + l_c[2])*0.5 << std::endl;
-
-      std::cout << "\n Complete domain box size:" <<std::endl;
-      std::cout << "x: " << l_c[0] << ", " << r_c[0] << std::endl;
-      std::cout << "y: " << l_c[1] << ", " << r_c[1] << std::endl;
-      std::cout << "z: " << l_c[2] << ", " << r_c[2] << "\n" << std::endl;
-
-      if (refine_box == 1) {
-        std::cout << "xb: " << l_cr[0] << ", " << r_cr[0] << std::endl;
-        std::cout << "yb: " << l_cr[1] << ", " << r_cr[1] << std::endl;
-        std::cout << "zb: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
-      }
-    }
-
+    
     l_cr[0] = l_c[0];
     l_cr[1] = l_c[1];
     l_cr[2] = l_c[2];
@@ -965,6 +962,27 @@ poisson_boltzmann::create_mesh ()
     r_cr[1] = r_c[1];
     r_cr[2] = r_c[2];
     scale = (1<<unilevel)/ (r_c[0]-l_c[0]);
+
+    if (rank == 0) {
+      std::cout << "========== [ Domain Information ] ==========\n";
+
+      std::cout << "  Scale:  " << scale << "\n";
+
+      std::cout << "  Center of the System [Å]:";
+      std::cout << "  [" << (r_c[0] + l_c[0])*0.5 << ", " 
+                << (r_c[1] + l_c[1])*0.5 << ", " 
+                << (r_c[2] + l_c[2])*0.5 << "]\n";
+      
+      std::cout << "  Complete Domain Box Size [Å]:\n";
+      std::cout << "      x = [" << l_cr[0] << ", " << r_cr[0] << "]\n";
+      std::cout << "      y = [" << l_cr[1] << ", " << r_cr[1] << "]\n";
+      std::cout << "      z = [" << l_cr[2] << ", " << r_cr[2] << "]\n";
+
+      std::cout << "  Number of Subdivisions:";
+      std::cout << "  nx = " << (1<<unilevel) << "  ny = " << (1<<unilevel) << "  nz = " << (1<<unilevel) << '\n';
+
+      std::cout << "============================================\n";
+    }
 
     if (refine_box == 1) {
       double nx_tmp, ny_tmp, nz_tmp;
@@ -1150,21 +1168,36 @@ poisson_boltzmann::create_mesh ()
     // outlevel = 1;
     ////////////////////////////////////////
 
+
     if (rank == 0) {
-      std::cout << "cx: " << cc_focusing[0]
-                << " , cy: " << cc_focusing[1]
-                << " , cz: " << cc_focusing[2] << std::endl;
+      std::cout << "========== [ Domain Information ] ==========\n";
 
-      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
-      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
-      std::cout << "z: " << ll[2] << ", " << rr[2] << std::endl;
 
-      std::cout << "xb: " << l_box[0] << ", " << r_box[0] << std::endl;
-      std::cout << "yb: " << l_box[1] << ", " << r_box[1] << std::endl;
-      std::cout << "zb: " << l_box[2] << ", " << r_box[2] << "\n" << std::endl;
+      std::cout << "  Center of the System [Å]:";
+      std::cout << "  [" << cc[0] << ", " << cc[1] << ", " << cc[2] << "]\n";
 
-      std::cout << "nx: " << nx*2 << "  ny: " << ny*2 << " nz: " << nz*2 << std::endl;
+      std::cout << "  Center of the focusing [Å]:";
+      std::cout << "  [" << cc_focusing[0] << ", " << cc_focusing[1] << ", " << cc_focusing[2] << "]\n";
+      
+      std::cout << "  Scale in the box focusing:  " << scale << "\n";
+
+      std::cout << "  Complete Domain Box Size [Å]:\n";
+      std::cout << "      x = [" << ll[0] << ", " << rr[0] << "]\n";
+      std::cout << "      y = [" << ll[1] << ", " << rr[1] << "]\n";
+      std::cout << "      z = [" << ll[2] << ", " << rr[2] << "]\n";
+      
+      std::cout << "  Focusing Box Size [Å]:\n";
+      std::cout << "      x = [" << l_box[0] << ", " << r_box[0] << "]\n";
+      std::cout << "      y = [" << l_box[1] << ", " << r_box[1] << "]\n";
+      std::cout << "      z = [" << l_box[2] << ", " << r_box[2] << "]\n";
+
+      
+      std::cout << "  Number of Subdivisions in the focusing Box:";
+      std::cout << "  nx = " << n_grid << "  ny = " << n_grid << "  nz = " << n_grid << '\n';
+
+      std::cout << "============================================\n";
     }
+    
 
     simple_conn_num_vertices = 8;
     simple_conn_num_trees = 1;
@@ -1501,7 +1534,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     cc_focusing[0] = g2 ( (mesh_options + "cx_foc").c_str (), 0.0);
     cc_focusing[1] = g2 ( (mesh_options + "cy_foc").c_str (), 0.0);
     cc_focusing[2] = g2 ( (mesh_options + "cz_foc").c_str (), 0.0);
-    n_grid = g2 ( (mesh_options + "n_grig").c_str (), 8);
+    n_grid = g2 ( (mesh_options + "n_grid").c_str (), 8);
   }
 
   if (mesh_shape == 4) {
@@ -4098,10 +4131,10 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
     std::cout << std::left << std::setw(label_width) << "  Polarization energy [kT]:"
               << std::setprecision(precision) << energy_pol << "\n";
 
-    std::cout << std::left << std::setw(label_width) << "  Direct ionic (reaction field) energy [kT]:"
+    std::cout << std::left << std::setw(label_width) << "  Direct ionic energy [kT]:"
               << std::setprecision(precision) << energy_react << "\n";
 
-    std::cout << std::left << std::setw(label_width) << "  Coulombic (direct) energy [kT]:"
+    std::cout << std::left << std::setw(label_width) << "  Coulombic energy [kT]:"
               << std::setprecision(precision) << coul_energy << "\n";
 
     std::cout << std::left << std::setw(label_width) << "  Total electrostatic energy [kT]:"
