@@ -4114,7 +4114,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   }
 
   if (rank == 0) {
-    constexpr int label_width = 50;
+    constexpr int label_width = 40;
     constexpr int precision = 16;
 
     std::cout << std::left << std::setw(label_width) << "  Net charge [e]:"
@@ -4124,7 +4124,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
               << std::setprecision(precision) << charge_pol / (4.0 * pi) << "\n";
 
     std::cout << std::left << std::setw(label_width)
-              << "  Relative error w.r.t. net charge [%]:"
+              << "    Error w.r.t. net charge [%]:"
               << std::setprecision(6)
               << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
 
