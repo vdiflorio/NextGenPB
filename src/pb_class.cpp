@@ -702,54 +702,69 @@ poisson_boltzmann::create_mesh ()
   double lmax = 0;
   double l[3];
   scale_level = unilevel;
+  double maxradius = *std::max_element (r_atoms.begin (), r_atoms.end ());
+
+  auto comp_pos_x = [] (const std::array<double, 3>& a1, const std::array<double, 3>& a2) -> bool {
+    return a1[0] < a2[0];
+  };
+  auto comp_pos_y = [] (const std::array<double, 3>& a1, const std::array<double, 3>& a2) -> bool {
+    return a1[1] < a2[1];
+  };
+  auto comp_pos_z = [] (const std::array<double, 3>& a1, const std::array<double, 3>& a2) -> bool {
+    return a1[2] < a2[2];
+  };
+
+
+  auto minmax_x = std::minmax_element (pos_atoms.begin (), pos_atoms.end (), comp_pos_x);
+  auto minmax_y = std::minmax_element (pos_atoms.begin (), pos_atoms.end (), comp_pos_y);
+  auto minmax_z = std::minmax_element (pos_atoms.begin (), pos_atoms.end (), comp_pos_z);
+
+
+  l_c[0] = (*minmax_x.first)[0] - maxradius - 2*prb_radius;
+  l_c[1] = (*minmax_y.first)[1] - maxradius - 2*prb_radius;
+  l_c[2] = (*minmax_z.first)[2] - maxradius - 2*prb_radius;
+  r_c[0] = (*minmax_x.second)[0] + maxradius + 2*prb_radius;
+  r_c[1] = (*minmax_y.second)[1] + maxradius + 2*prb_radius;
+  r_c[2] = (*minmax_z.second)[2] + maxradius + 2*prb_radius;
+
+  for (int kk = 0; kk < 3; ++kk) {
+    l[kk] = (r_c[kk] - l_c[kk]);
+    cc[kk] = (r_c[kk] + l_c[kk])*0.5;
+    lmax = l[kk] > lmax ? l[kk] : lmax;
+  }
+  double net_charge = std::accumulate(charge_atoms.begin(), charge_atoms.end(), 0.0);
+  int num_atoms = charge_atoms.size ();
+
+  if (rank == 0) {
+    std::cout << "\n========== [ System Information ] ==========\n";
+    std::cout << "  Number of atoms    : " << num_atoms << '\n';
+    std::cout << "  Net charge         : " << std::scientific << net_charge << std::defaultfloat << '\n';
+    std::cout << "  Max length size    : " << lmax -4*prb_radius << " [Å]\n";
+    std::cout << "  Epsilon solute     : " << e_in << '\n';
+    std::cout << "  Epsilon solvent    : " << e_out << '\n';
+    std::cout << "  Temperature        : " << T << " [K] \n";
+    std::cout << "  Ionic strenght     : " << ionic_strength << " [mol/L] \n";
+    std::cout << "============================================\n\n";
+  }
 
   if (mesh_shape !=2) {
-    double maxradius = *std::max_element (r_atoms.begin (), r_atoms.end ());
 
-    auto comp_pos_x = [] (const std::array<double, 3>& a1, const std::array<double, 3>& a2) -> bool {
-      return a1[0] < a2[0];
-    };
-    auto comp_pos_y = [] (const std::array<double, 3>& a1, const std::array<double, 3>& a2) -> bool {
-      return a1[1] < a2[1];
-    };
-    auto comp_pos_z = [] (const std::array<double, 3>& a1, const std::array<double, 3>& a2) -> bool {
-      return a1[2] < a2[2];
-    };
+    // For random displacement of the grid
+    //  if (false) {
+    //   std::random_device rd; // Will be used to obtain a seed for the random number engine
+    //   std::mt19937 gen (rd ()); // Standard mersenne_twister_engine seeded with rd()
+    //   std::uniform_real_distribution<> dis (-1./scale*0.5, 1./scale*0.5);
+    //   double tmp_cc[3];
 
+    //   for (int n = 0; n < 3; ++n) {
+    //     tmp_cc[n] = cc[n];
+    //     cc[n] = tmp_cc[n] + dis (gen);
+    //   }
 
-    auto minmax_x = std::minmax_element (pos_atoms.begin (), pos_atoms.end (), comp_pos_x);
-    auto minmax_y = std::minmax_element (pos_atoms.begin (), pos_atoms.end (), comp_pos_y);
-    auto minmax_z = std::minmax_element (pos_atoms.begin (), pos_atoms.end (), comp_pos_z);
-
-
-    l_c[0] = (*minmax_x.first)[0] - maxradius - 2*prb_radius;
-    l_c[1] = (*minmax_y.first)[1] - maxradius - 2*prb_radius;
-    l_c[2] = (*minmax_z.first)[2] - maxradius - 2*prb_radius;
-    r_c[0] = (*minmax_x.second)[0] + maxradius + 2*prb_radius;
-    r_c[1] = (*minmax_y.second)[1] + maxradius + 2*prb_radius;
-    r_c[2] = (*minmax_z.second)[2] + maxradius + 2*prb_radius;
-
-    for (int kk = 0; kk < 3; ++kk) {
-      l[kk] = (r_c[kk] - l_c[kk]);
-      cc[kk] = (r_c[kk] + l_c[kk])*0.5;
-      lmax = l[kk] > lmax ? l[kk] : lmax;
-    }
-
-    if (false) {
-      std::random_device rd; // Will be used to obtain a seed for the random number engine
-      std::mt19937 gen (rd ()); // Standard mersenne_twister_engine seeded with rd()
-      std::uniform_real_distribution<> dis (-1./scale*0.5, 1./scale*0.5);
-      double tmp_cc[3];
-
-      for (int n = 0; n < 3; ++n) {
-        tmp_cc[n] = cc[n];
-        cc[n] = tmp_cc[n] + dis (gen);
-      }
-
-      std::cout << tmp_cc[0] << "  " << cc[0] << "  " << std::abs (tmp_cc[0] -cc[0]) << std::endl;
-      std::cout << tmp_cc[1] << "  " << cc[1] << "  " << std::abs (tmp_cc[1] -cc[1]) << std::endl;
-      std::cout << tmp_cc[2] << "  " << cc[2] << "  " << std::abs (tmp_cc[2] -cc[2]) << std::endl;
-    }
+    //   std::cout << tmp_cc[0] << "  " << cc[0] << "  " << std::abs (tmp_cc[0] -cc[0]) << std::endl;
+    //   std::cout << tmp_cc[1] << "  " << cc[1] << "  " << std::abs (tmp_cc[1] -cc[1]) << std::endl;
+    //   std::cout << tmp_cc[2] << "  " << cc[2] << "  " << std::abs (tmp_cc[2] -cc[2]) << std::endl;
+    // }
 
     for (int kk = 0; kk < 3; ++kk) {
       ll[kk] = cc[kk] - lmax*0.5;
@@ -815,23 +830,25 @@ poisson_boltzmann::create_mesh ()
     r_cr[2] = cc[2] + nz*1.0/scale;
 
     if (rank == 0) {
-      std::cout << "\n Center of the system:" <<std::endl;
-      std::cout << "cx: " << cc[0]
-                << " , cy: " << cc[1]
-                << " , cz: " << cc[2] << std::endl;
+      std::cout << "========== [ Domain Information ] ==========\n";
 
-      std::cout << "\n Complete domain box size:" <<std::endl;
-      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
-      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
-      std::cout << "z: " << ll[2] << ", " << rr[2] << std::endl;
+      std::cout << "  Center of the System [Å]:";
+      std::cout << "  [" << cc[0] << ", " << cc[1] << ", " << cc[2] << "]\n";
 
-      std::cout << "\n Refined box size:" <<std::endl;
-      std::cout << "xb: " << l_cr[0] << ", " << r_cr[0] << std::endl;
-      std::cout << "yb: " << l_cr[1] << ", " << r_cr[1] << std::endl;
-      std::cout << "zb: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+      std::cout << "  Complete Domain Box Size [Å]:\n";
+      std::cout << "      x = [" << ll[0] << ", " << rr[0] << "]\n";
+      std::cout << "      y = [" << ll[1] << ", " << rr[1] << "]\n";
+      std::cout << "      z = [" << ll[2] << ", " << rr[2] << "]\n";
 
-      std::cout << "\n number of subdivision of the refined box:" <<std::endl;
-      std::cout << "nx: " << nx*2 << "  ny: " << ny*2 << " nz: " << nz*2 << std::endl;
+      std::cout << "  Uniform Box Size [Å]:\n";
+      std::cout << "      x = [" << l_cr[0] << ", " << r_cr[0] << "]\n";
+      std::cout << "      y = [" << l_cr[1] << ", " << r_cr[1] << "]\n";
+      std::cout << "      z = [" << l_cr[2] << ", " << r_cr[2] << "]\n";
+
+      std::cout << "  Number of Subdivisions in the Uniform Box [Å]:";
+      std::cout << "  nx = " << nx * 2 << "  ny = " << ny * 2 << "  nz = " << nz * 2 << '\n';
+
+      std::cout << "============================================\n";
     }
 
     simple_conn_num_vertices = 8;
@@ -2440,8 +2457,8 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
   MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
 
-  if (rank == 0)
-    std::cout << "\nStarting MUMPS solution" << std::endl;
+  // if (rank == 0)
+  //   std::cout << "\nStarting MUMPS solution" << std::endl;
 
   // diffusion
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
@@ -2649,8 +2666,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
 
-  if (rank == 0)
-    std::cout << "\nStarting LIS solution" << std::endl;
+  // if (rank == 0)
+  //   std::cout << "\nStarting LIS solution" << std::endl;
+    
 
   // diffusion
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in

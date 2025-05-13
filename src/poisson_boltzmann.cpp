@@ -97,45 +97,71 @@ main (int argc, char **argv)
 
   MPI_Barrier (mpicomm);
 
-  TIC ();
+  // TIC ();
   // pb.create_mesh_ns ();
   pb.create_mesh ();
-  TOC ("create_mesh");
+  // TOC ("create_mesh");
 
   std::vector<double> ().swap (pb.r_atoms);
 
   TIC ();
 
   if (rank == 0) {
+    std::cout << "\n=== [ Building Surface with NanoShaper ] ===\n";
     ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
     std::vector<NS::Atom> ().swap (pb.atoms);
+    std::cout << "\n============================================\n";
   }
 
-  TOC ("init analytical surf");
+  TOC ("Building Surface with NanoShaper");
+
   MPI_Barrier (mpicomm);
 
   TIC ();
+  if (rank == 0) {
+    std::cout << "\n============ [ Building Grid ] =============\n";
+  }
 
-  if (pb.mesh_shape == 0 || pb.refine_box == 1 ||pb.mesh_shape == 4)
-    pb.init_tmesh_with_refine_scale ();
-  else if (pb.mesh_shape == 3)
-    pb.init_tmesh_with_refine_box_scale ();
-  else
-    pb.init_tmesh ();
+  // Initialize the mesh depending on the settings
+  if (pb.mesh_shape == 0 || pb.refine_box == 1 || pb.mesh_shape == 4) {
+      pb.init_tmesh_with_refine_scale();
+  } else if (pb.mesh_shape == 3) {
+      pb.init_tmesh_with_refine_box_scale();
+  } else {
+      pb.init_tmesh();
+  }
 
-  TOC ("init_tmesh");
+  // Print rank-local mesh information
+  std::cout << "  [Rank " << rank << "] Local nodes     : " << pb.tmsh.num_local_nodes() << '\n';
+  std::cout << "  [Rank " << rank << "] Local quadrants : " << pb.tmsh.num_local_quadrants() << '\n';
+
+  // Print global mesh info only on rank 0
+  if (rank == 0) {
+      std::cout << "  [Global] Total nodes     : " << pb.tmsh.num_global_nodes() << '\n';
+      std::cout << "  [Global] Total quadrants : " << pb.tmsh.num_global_quadrants() << '\n';
+      std::cout << "============================================\n";
+  }
+
+  TOC ("Building Grid");
 
 
-  TIC ();
+  
 
-  if (pb.loc_refinement == 1 || pb.mesh_shape == 4)
+  if (pb.loc_refinement == 1 || pb.mesh_shape == 4){
+    TIC ();
     pb.refine_surface (ray_cache);
+    TOC ("refine the box");
+  }
 
-  TOC ("refine the box");
 
 
   TIC ();
+  if (rank == 0){
+    std::cout << "\n========= [ Building Epsilon Map ] =========\n";
+  }
   pb.create_markers (ray_cache);
+  if (rank == 0)
+    std::cout << "============================================\n";
   TOC ("create element markers");
 
 
@@ -143,16 +169,23 @@ main (int argc, char **argv)
   if ( rank == 0) ray_cache.ns->clean();
 
   TIC ();
-  if (pb.linear_solver_name == "mumps")
+  if (pb.linear_solver_name == "mumps"){
+    if (rank == 0)
+      std::cout << "\n======= [ Starting MUMPS solution ] ========\n";
     pb.mumps_compute_electric_potential (ray_cache);
-  else if (pb.linear_solver_name == "lis")
+  }
+  else if (pb.linear_solver_name == "lis") {
+    if (rank == 0)
+      std::cout << "\n======== [ Starting LIS solution ] =========\n";
     pb.lis_compute_electric_potential (ray_cache);
+  }
   else {
     std::cerr << "Invalid linear solver selected" << std::endl;
     return 1;
   }
-
-  TOC ("compute potential");
+  if (rank == 0)
+    std::cout << "============================================\n";
+  TOC ("Compute Potential");
 
   if (pb.atoms_write == 1) {
     TIC ();
