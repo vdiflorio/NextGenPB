@@ -176,8 +176,17 @@ main (int argc, char **argv)
     pb.mumps_compute_electric_potential (ray_cache);
   }
   else if (pb.linear_solver_name == "lis") {
-    if (rank == 0)
+    if (rank == 0){
       std::cout << "\n======== [ Starting LIS solution ] =========\n";
+      std::cout << "Selected BCs          : ";
+      if (pb.bc ==1)
+        std::cout << "Null";
+      else if (pb.bc ==2)
+        std::cout << "Coulombic";
+      else
+        std::cout << "Neumann";
+           
+    }
     pb.lis_compute_electric_potential (ray_cache);
   }
   else {

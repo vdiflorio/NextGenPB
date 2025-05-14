@@ -733,10 +733,10 @@ poisson_boltzmann::create_mesh ()
                      << (*minmax_y.second)[0] - (*minmax_y.first)[0] + 2*maxradius << ", " 
                      << (*minmax_z.second)[0] - (*minmax_z.first)[0] + 2*maxradius << "]\n"; 
     std::cout << "  Net charge         : " << std::scientific << net_charge << std::defaultfloat << '\n';
-    std::cout << "  Epsilon solute     : " << e_in << '\n';
-    std::cout << "  Epsilon solvent    : " << e_out << '\n';
+    std::cout << "  Solvent epsilon    : " << e_in << '\n';
+    std::cout << "  Solvent epsilon    : " << e_out << '\n';
     std::cout << "  Temperature        : " << T << " [K] \n";
-    std::cout << "  Ionic strenght     : " << ionic_strength << " [mol/L] \n";
+    std::cout << "  Ionic strength     : " << ionic_strength << " [mol/L] \n";
     std::cout << "============================================\n\n";
   }
 
@@ -846,13 +846,13 @@ poisson_boltzmann::create_mesh ()
       std::cout << "      y = [" << ll[1] << ", " << rr[1] << "]\n";
       std::cout << "      z = [" << ll[2] << ", " << rr[2] << "]\n";
       
-      std::cout << "  Perfil uniform box:  " << perfil1 << "\n";
-      std::cout << "  Uniform Box Size [Å]:\n";
+      std::cout << "  Perfil uniform grid:  " << perfil1 << "\n";
+      std::cout << "  Uniform grid Size [Å]:\n";
       std::cout << "      x = [" << l_cr[0] << ", " << r_cr[0] << "]\n";
       std::cout << "      y = [" << l_cr[1] << ", " << r_cr[1] << "]\n";
       std::cout << "      z = [" << l_cr[2] << ", " << r_cr[2] << "]\n";
 
-      std::cout << "  Number of Subdivisions in the Uniform Box:";
+      std::cout << "  Number of Subdivisions in the Uniform grid:";
       std::cout << "  nx = " << nx * 2 << "  ny = " << ny * 2 << "  nz = " << nz * 2 << '\n';
 
       std::cout << "============================================\n";
@@ -1461,7 +1461,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
 
   //Check that the pqr file exists
   if (rank == 0)
-    std::cout << "Selected pqr file: " << pqrfilename << std::endl;
+    std::cout << "Selected pqr file:        " << pqrfilename << std::endl;
 
   std::ifstream pqrfile (pqrfilename);
 
@@ -1474,7 +1474,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
 
   if (!g.search ("--potfile")) {
     if (rank == 0) {
-      std::cout << "Warning: No pot file selected, using the default one." <<
+      std::cout << "Warning: No parameters file selected, using the default one." <<
                 "\nTo select one use --potfile option followed by the desired one." << std::endl;
     }
   }
@@ -1483,7 +1483,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
 
   //Check that the pot file exists
   if (rank == 0)
-    std::cout << "Selected pot file: " << optionsfilename << std::endl;
+    std::cout << "Selected parameters file: " << optionsfilename << std::endl;
 
   std::ifstream optionsfile (optionsfilename);
 
@@ -2781,7 +2781,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   auto end_rho = std::chrono::steady_clock::now ();
 
   if (rank==0) {
-    std::cout << "\nTime to calculate rho:  "
+    std::cout << "\nTime to calculate rho : "
               << std::chrono::duration_cast<std::chrono::milliseconds> (end_rho- start_rho).count ()
               << " ms"
               <<std::endl;
@@ -4114,7 +4114,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   }
 
   if (rank == 0) {
-    constexpr int label_width = 40;
+    constexpr int label_width = 50;
     constexpr int precision = 16;
 
     std::cout << std::left << std::setw(label_width) << "  Net charge [e]:"
@@ -4137,7 +4137,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
     std::cout << std::left << std::setw(label_width) << "  Coulombic energy [kT]:"
               << std::setprecision(precision) << coul_energy << "\n";
 
-    std::cout << std::left << std::setw(label_width) << "  Total electrostatic energy [kT]:"
+    std::cout << std::left << std::setw(label_width) << "  Sum of electrostatic energy contributions [kT]:"
               << std::setprecision(precision)
               << (energy_pol + energy_react + coul_energy) << "\n";
 
