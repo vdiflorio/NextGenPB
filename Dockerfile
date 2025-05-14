@@ -1,11 +1,16 @@
+# Use Rocky Linux 9 as the base image
 FROM rockylinux:9
 
+# Set maintainer label
 LABEL maintainer="vincenzo.diflorio@iit.it"
 
-RUN echo "Installing NextGenPB 0.0"
+# Log message during image build
+RUN echo "Installing NextGenPB 1.0.1"
 
-#ENV CFLAGS="-Ofast -mtune=native -march=native"
+# Set compiler optimization flags for generic architecture
 ENV CFLAGS="-O2 -mtune=generic"
+# Uncomment the next line for better performance on a known local machine
+# ENV CFLAGS="-Ofast -mtune=native -march=native"
 ENV CXXFLAGS="$CFLAGS"
 ENV FCFLAGS="$CFLAGS"
 
@@ -25,7 +30,9 @@ RUN dnf upgrade -y && \
     dnf clean all
 
 
-###OPENMPI (if you want a specific version of openmpi to match local verion of openmpi)
+### === OpenMPI === ###
+# Build and install OpenMPI v4.0.0 from source.
+# This is useful when you need to match a specific OpenMPI version with your local environment
 RUN wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.0.tar.bz2 && \
     tar xf openmpi-4.0.0.tar.bz2 && \
     rm -rf openmpi-4.0.0.tar.bz2 && \
@@ -43,16 +50,21 @@ RUN wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.0.tar.b
     make install && \
     cd /opt && rm -rf openmpi-4.0.0
 
+# Set environment variables for OpenMPI
 ENV PATH=/opt/openmpi/bin:$PATH
 ENV LD_LIBRARY_PATH=/opt/openmpi/lib:$LD_LIBRARY_PATH
 
-### If you don't need to match the local verion of openmpi
+# === Alternative: use system-installed OpenMPI ===
+# If building from source is not required, you can save time and space by using DNF.
+# To do so, comment out the lines above (from the wget command to the rm -rf openmpi-4.0.0),
+# and uncomment the three lines below:
 
-#RUN dnf --enablerepo crb install -y openmpi openmpi-devel mpi
-#ENV PATH=/usr/lib64/openmpi/bin:$PATH
-#ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
+# RUN dnf --enablerepo=crb install -y openmpi openmpi-devel mpi
+# ENV PATH=/usr/lib64/openmpi/bin:$PATH
+# ENV LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH
 
-### NanoShaper ###
+### === NanoShaper === ###
+# Clone and build the NanoShaper surface generation library
 WORKDIR /opt
 RUN git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
     cd nanoshaper && \
@@ -61,7 +73,7 @@ RUN git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
     cmake .. -DCMAKE_BUILD_TYPE="Release" && \
     make -j$(nproc)
 
-### LIS ###
+### === LIS (Linear solver) === ###
 WORKDIR /opt
 ENV LIS_VERSION="2.1.6"
 RUN wget https://www.ssisc.org/lis/dl/lis-${LIS_VERSION}.zip && \
@@ -72,7 +84,7 @@ RUN wget https://www.ssisc.org/lis/dl/lis-${LIS_VERSION}.zip && \
     cd /opt && rm -rf lis-${LIS_VERSION} lis-${LIS_VERSION}.zip
 
 
-### P4EST ###
+### === P4EST (Adaptive Mesh Library) === ###
 ENV P4EST_VERSION="2.8.6"
 RUN wget https://p4est.github.io/release/p4est-${P4EST_VERSION}.tar.gz && \
     tar -xzf p4est-${P4EST_VERSION}.tar.gz && \
@@ -86,14 +98,14 @@ RUN wget https://p4est.github.io/release/p4est-${P4EST_VERSION}.tar.gz && \
                 --disable-static \
                 --disable-vtk-binary \
                 --without-blas \
-                CPPFLAGS="-I/opt/openmpi/include" && \
+                CPPFLAGS="-I/opt/openmpi/include -DSC_LOG_PRIORITY=SC_LP_ESSENTIAL" && \
     make -j$(nproc) && \
     make install && \
     cd /opt && rm -rf p4est-${P4EST_VERSION}
 
 
 
-### Octave-File-IO ###
+### === Octave File IO === ###
 WORKDIR /opt
 ENV OCTAVE_FILE_IO_VERSION="1.0.91"
 RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/v${OCTAVE_FILE_IO_VERSION}.tar.gz && \
@@ -108,15 +120,15 @@ RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/v${OCT
     cd /opt && rm -rf octave_file_io-${OCTAVE_FILE_IO_VERSION}
 
 
-###BIMPP###
+### === BIMPP === ###
+# Clone and build BIMPP from the NextGenPB branch
 WORKDIR /opt
-ENV pkgname=bimpp
-ENV pkgver=patch
-RUN git clone --branch NextGenPB https://github.com/carlodefalco/bimpp.git $pkgname-$pkgver
-WORKDIR /opt/$pkgname-$pkgver
+RUN wget https://github.com/carlodefalco/bimpp/archive/refs/tags/NextGenPB-v0.0.01.tar.gz && \
+    tar -xvzf NextGenPB-v0.0.01.tar.gz && rm -rf  NextGenPB-v0.0.01.tar.gz
+WORKDIR /opt/bimpp-NextGenPB-v0.0.01
 RUN mkdir build
 RUN ./autogen.sh
-WORKDIR /opt/$pkgname-$pkgver/build
+WORKDIR /opt/bimpp-NextGenPB-v0.0.01/build
 RUN ../configure --prefix=/opt/bimpp/ \
                 CPPFLAGS="-I/opt/openmpi/include -I/usr/include/ -I/usr/include/MUMPS/ -I/opt/p4est/include -DOMPI_SKIP_MPICXX -DHAVE_OCTAVE_44 -DBIM_TIMING" \
                 LDFLAGS="-L/usr/lib64 -L/opt/openmpi/lib -L/lib64" \
@@ -132,8 +144,10 @@ F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc \
 RUN make -j$(nproc)
 RUN make install
 WORKDIR /opt
+RUN rm -rf bimpp-NextGenPB-v0.0.01
 
-### NextGenPB ###
+### === NextGenPB (Main Solver) === ###
+# Clone and build the NextGenPB codebase
 WORKDIR /usr/local/nextgenPB
 RUN git clone --branch main https://github.com/vdiflorio/nextgenPB.git . && \
     cp /usr/local/nextgenPB/local_setting/local_settings_rocky.mk /usr/local/nextgenPB/src/local_settings.mk && \

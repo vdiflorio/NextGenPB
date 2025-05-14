@@ -124,7 +124,7 @@ From: rockylinux:9
     echo "Building BIMPP..."
     cd /opt && \
         wget https://github.com/carlodefalco/bimpp/archive/refs/tags/NextGenPB-v0.0.01.tar.gz && \
-        tar -xvzf NextGenPB-v0.0.01.tar.gz && \
+        tar -xvzf NextGenPB-v0.0.01.tar.gz && rm -rf  NextGenPB-v0.0.01.tar.gz && \
         cd bimpp-NextGenPB-v0.0.01 && ./autogen.sh && mkdir build && cd build && \
        ../configure --prefix=/opt/bimpp/ \
                 CPPFLAGS="-I/opt/openmpi/include -I/usr/include/ -I/usr/include/MUMPS/ -I/opt/p4est/include -DOMPI_SKIP_MPICXX -DHAVE_OCTAVE_44 -DBIM_TIMING" \
