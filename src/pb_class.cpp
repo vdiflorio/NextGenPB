@@ -905,6 +905,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   e_out = g2 ( (model_options + "solvent_dielectric_constant").c_str (), 80.);
   T = g2 ( (model_options + "T").c_str (), 298.15);
   calc_energy = g2 ( (model_options + "calc_energy").c_str (), 2);
+  calc_coulombic = g2 ( (model_options + "calc_coulombic").c_str (), 0);
   atoms_write = g2 ( (model_options + "atoms_write").c_str (), 0);
   surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
   surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
@@ -3066,10 +3067,10 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
     std::cout << std::left << std::setw(label_width) << "  Flux charge [e]:"
               << std::setprecision(precision) << charge_pol / (4.0 * pi) << "\n";
 
-    std::cout << std::left << std::setw(label_width)
-              << "    Error w.r.t. net charge [%]:"
-              << std::setprecision(6)
-              << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
+    // std::cout << std::left << std::setw(label_width)
+    //           << "    Error w.r.t. net charge [%]:"
+    //           << std::setprecision(6)
+    //           << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
 
     std::cout << std::left << std::setw(label_width) << "  Polarization energy [kT]:"
               << std::setprecision(precision) << energy_pol << "\n";
@@ -3347,10 +3348,10 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
     std::cout << std::left << std::setw(label_width) << "  Flux charge [e]:"
               << std::setprecision(precision) << charge_pol / (4.0 * pi) << "\n";
 
-    std::cout << std::left << std::setw(label_width)
-              << "    Error w.r.t. net charge [%]:"
-              << std::setprecision(6)
-              << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
+    // std::cout << std::left << std::setw(label_width)
+    //           << "    Error w.r.t. net charge [%]:"
+    //           << std::setprecision(6)
+    //           << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
 
     std::cout << std::left << std::setw(label_width) << "  Polarization energy [kT]:"
               << std::setprecision(precision) << energy_pol << "\n";
