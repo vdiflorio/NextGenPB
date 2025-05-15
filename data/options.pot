@@ -78,10 +78,10 @@ T                             = 298.15 # Temperature in Kelvin
 
 # Energy calculation options:
 # 0 = no energy
-# 1 = polarization energy only
+# 1 = polarization energy 
 # 2 = polarization + ionic solvation energy
-# 3 = full energy: polarization + ionic + Coulombic
-calc_energy = 3
+calc_energy = 2
+calc_coulombic = 1    # 0 = No calculation of Coulombic energy
 
 # Output options:
 atoms_write   = 0     # 1 = write potential at atom centers, 0 = don't

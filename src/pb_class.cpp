@@ -66,7 +66,7 @@ poisson_boltzmann::create_mesh ()
 
 
   
-  double net_charge = std::accumulate(charge_atoms.begin(), charge_atoms.end(), 0.0);
+  net_charge = std::accumulate(charge_atoms.begin(), charge_atoms.end(), 0.0);
   int num_atoms = charge_atoms.size ();
 
   if (rank == 0) {
@@ -905,6 +905,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   e_out = g2 ( (model_options + "solvent_dielectric_constant").c_str (), 80.);
   T = g2 ( (model_options + "T").c_str (), 298.15);
   calc_energy = g2 ( (model_options + "calc_energy").c_str (), 2);
+  calc_coulombic = g2 ( (model_options + "calc_coulombic").c_str (), 0);
   atoms_write = g2 ( (model_options + "atoms_write").c_str (), 0);
   surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
   surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
@@ -2617,13 +2618,36 @@ poisson_boltzmann::classifyCube (tmesh_3d::quadrant_iterator& quadrant,
   return cubeindex;
 }
 
-std::tuple<std::array<double,8>, std::array<double,8>, std::vector<double>,std::vector<int> >
-poisson_boltzmann::classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant)
+int
+poisson_boltzmann::classifyCube_fast (tmesh_3d::quadrant_iterator& quadrant,
+                                      double isolevel)
 {
-  std::vector<double> edges {};
+  int cubeindex = 0;
+  int index = 1;
+  double tmp = 0;
+
+  for (int ii : {
+         0,1,3,2,4,5,7,6
+       }) {
+    if ( (*epsilon_nodes)[quadrant->gt (ii)] < isolevel) cubeindex |= index;
+
+    index *= 2;
+  }
+
+  // Cube is entirely in/out of the surface
+  if (edgeTable[cubeindex] == 0)
+    return -1;
+
+  return cubeindex;
+}
+
+std::tuple<std::array<double,8>, std::array<double,8>, std::vector<int>,std::vector<int> >
+poisson_boltzmann::classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant,
+                                      std::array<double,8>& tmp_phi,
+                                      std::array<double,8>& tmp_eps)
+{
+  std::vector<int> edges {};
   std::vector<int> flux {};
-  std::array<double,8> tmp_eps;
-  std::array<double,8> tmp_phi;
 
   for (int ii = 0; ii < 8; ++ii) {
     if (! quadrant->is_hanging (ii)) {
@@ -2638,6 +2662,33 @@ poisson_boltzmann::classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant)
         tmp_phi[ii] += (*phi)[quadrant->gparent (jj, ii)] / quadrant->num_parents (ii);
       }
     }
+  }
+
+  for (int ii = 0; ii < 12; ++ii) {
+    if (tmp_eps[edge2nodes[2*ii]] < tmp_eps[edge2nodes[2*ii +1]]) {
+      flux.push_back (1);
+      edges.push_back (ii);
+    } else if (tmp_eps[edge2nodes[2*ii]] > tmp_eps[edge2nodes[2*ii +1]]) {
+      flux.push_back (-1);
+      edges.push_back (ii);
+    }
+  }
+
+  return make_tuple (tmp_phi, tmp_eps, edges, flux);
+}
+
+std::tuple<std::array<double,8>, std::array<double,8>, std::vector<int>,std::vector<int> >
+poisson_boltzmann::classifyCube_flux_fast (tmesh_3d::quadrant_iterator& quadrant,
+    std::array<double,8>& tmp_phi,
+    std::array<double,8>& tmp_eps)
+{
+  std::vector<int> edges {};
+  std::vector<int> flux {};
+
+
+  for (int ii = 0; ii < 8; ++ii) {
+    tmp_eps[ii]= (*epsilon_nodes)[quadrant->gt (ii)];
+    tmp_phi[ii]= (*phi)[quadrant->gt (ii)];
   }
 
   for (int ii = 0; ii < 12; ++ii) {
@@ -2760,367 +2811,14 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   MPI_Comm_rank (mpicomm, &rank);
 
   if (rank == 0)
-    std::cout << "\nStarting energy calculation with surface integrals" << std::endl;
-
-
-  double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
-  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
-
-  double net_charge = 0.0;
-
-  for (const NS::Atom& i : atoms) {
-    net_charge += i.charge;
-  }
-
-  ////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////////////////////////
-  double fract;
-  std::array<double,3> V;
-  std::array<double,3> N;
-  std::array<double,3> dist_vert;
-  std::array<double,3> h;
-  std::array<double,3> area_h;
-
-  std::array<double,8> tmp_eps;
-  std::array<double,8> tmp_phi;
-  std::vector<double> edg;
-  std::vector<int> fl_dir;
-
-  int cubeindex = -1;
-
-  double charge_pol = 0.0;
-
-  double constant_pol = 0.5* (1.0/eps_out - 1.0/eps_in)/ (4.0*pi);
-  double constant_react = 1.0/ (8*pi*eps_out);
-  double distance = 0.0;
-  double product = 0.0;
-  double first_int = 0.0;
-  double second_int = 0.0;
-  double tmp_flux;
-  int i1 = 0, i2 = 0;
-  double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
-         tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
-
-
-
-
-  // flux and polarization energy calculation
-
-  for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-       quadrant != this->tmsh.end_quadrant_sweep ();
-       ++quadrant) {
-
-    if (marker[quadrant->get_forest_quad_idx ()] == 0.5) {
-      h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
-      h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
-      h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
-      area_h[0] = h[1]*h[2]/h[0] * 0.25;
-      area_h[1] = h[0]*h[2]/h[1] * 0.25;
-      area_h[2] = h[0]*h[1]/h[2] * 0.25;
-
-      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant);
-
-      for (int ip = 0; ip < edg.size (); ++ip) {
-
-        tmp_flux = 0.0;
-
-        i1 = edge2nodes[2 * edg[ip] ];
-        i2 = edge2nodes[2 * edg[ip] + 1];
-
-        normal_intersection (quadrant, ray_cache, edg[ip], N,fract);
-        V[0] = quadrant->p (0, i1);
-        V[1] = quadrant->p (1, i1);
-        V[2] = quadrant->p (2, i1);
-        V[edge_axis[edg[ip]]] += fract*h[edge_axis[edg[ip]]];
-
-
-        tmp_flux = - (tmp_phi[i2] - tmp_phi[i1]) * wha (tmp_eps[i1],tmp_eps[i2], fract)*
-                   fl_dir[ip] * area_h[edge_axis[edg[ip]]];
-        charge_pol += tmp_flux;
-
-
-        for (const NS::Atom& i : atoms) {
-          distance = std::hypot (i.pos[0]-V[0], i.pos[1]-V[1], i.pos[2]-V[2]);
-          first_int += i.charge*tmp_flux/distance;
-        }
-      }
-    }
-  }
-
-  double energy_pol = constant_pol*first_int;
-
-  //direct reaction energy
-  double energy_react = 0.0;
-  int ntriang = 0;
-  int edge;
-  std::array<std::array<double,3>,3> vert_triangles;
-  std::array<std::array<double,3>,3> norms_vert;
-  std::array<double,3> phi_sup;
-
-  double area = 0.0;
-
-  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
-  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
-  double k = std::sqrt (k2);
-
-  if (calc_energy>=2 && k >1.e-5) {
-    // // Open the write file
-    /*
-    std::ofstream phi_nodes_txt;
-    std::ofstream phi_surf_txt;
-    FILE* phi_nod_delphi;
-    FILE* phi_sup_delphi;
-    std::string filename_nodes = "phi_nodes_";
-    std::string filename_nodes_delphi = "phi_nodes_delphi_";
-    std::string filename_surf = "phi_surf_";
-    std::string filename_sup_delphi = "phi_sup_delphi_";
-    std::string extension = ".txt";
-    filename_nodes += std::to_string (bc);
-    filename_nodes += "_";
-    filename_surf += std::to_string (bc);
-    filename_surf += "_";
-    filename_nodes_delphi += std::to_string (bc);
-    filename_nodes_delphi += "_";
-    filename_sup_delphi += std::to_string (bc);
-    filename_sup_delphi += "_";
-    filename_nodes += pqrfilename;
-    filename_surf += pqrfilename;
-    filename_nodes += extension;
-    filename_surf += extension;
-    filename_nodes_delphi += pqrfilename;
-    filename_sup_delphi += pqrfilename;
-    filename_nodes_delphi += extension;
-    filename_sup_delphi += extension;
-
-    phi_nodes_txt.open (filename_nodes.c_str ());
-    phi_surf_txt.open (filename_surf.c_str ());
-
-    phi_sup_delphi = std::fopen ("filename_sup_delphi.txt", "w");
-    phi_nod_delphi = std::fopen ("filename_nodes_delphi.txt", "w");
-    /* */
-    /////////////////////////////////////////////////
-
-    for (auto quadrant = this->tmsh.begin_quadrant_sweep ();
-         quadrant != this->tmsh.end_quadrant_sweep ();
-         ++quadrant) {
-      cubeindex = classifyCube (quadrant, eps_out);
-
-      if (cubeindex > -1) {
-        h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
-        h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
-        h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
-
-        ntriang = getTriangles (cubeindex, triangles);
-
-        for (int ii = 0; ii < ntriang; ++ii) {
-          for (int jj = 0; jj < 3; ++jj) {
-            tmp_eps_1 = 0.0;
-            tmp_eps_2 = 0.0;
-            tmp_phi_1 = 0.0;
-            tmp_phi_2 = 0.0;
-            edge = triangles[ii][jj];
-            i1 = edge2nodes[2 * edge ];
-            i2 = edge2nodes[2 * edge + 1];
-            V[0] = quadrant->p (0, i1);
-            V[1] = quadrant->p (1, i1);
-            V[2] = quadrant->p (2, i1);
-
-            normal_intersection (quadrant, ray_cache, edge, N,fract);
-            V[edge_axis[edge]] += fract*h[edge_axis[edge]];
-
-            vert_triangles[jj] = V;
-            norms_vert[jj] = N;
-
-            if (! quadrant->is_hanging (i1)) {
-              tmp_phi_1 = (*phi)[quadrant->gt (i1)];
-              tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
-            } else {
-              for (int jj = 0; jj < quadrant->num_parents (i1); ++jj) {
-                tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
-                tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
-              }
-            }
-
-            if (! quadrant->is_hanging (i2)) {
-              tmp_phi_2 = (*phi)[quadrant->gt (i2)];
-              tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
-            } else {
-              for (int jj = 0; jj < quadrant->num_parents (i2); ++jj) {
-                tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
-                tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
-              }
-            }
-
-            phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
-
-            // // writing potential on surf and nodes
-
-            /*
-            phi_nodes_txt << quadrant->p (0, i1) << "  "
-                          << quadrant->p (1, i1) << "  "
-                          << quadrant->p (2, i1) << "  "
-                          << tmp_phi_1 << std::endl;
-            phi_nodes_txt << quadrant->p (0, i2) << "  "
-                          << quadrant->p (1, i2) << "  "
-                          << quadrant->p (2, i2) << "  "
-                          << tmp_phi_2 << std::endl;
-
-            phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
-
-            std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                          quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
-            std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                          quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
-            std::fprintf (phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                          V[0],V[1],V[2],phi_sup[jj],0.0);
-            /* */
-            /////////////////////////////////////////////////
-          }
-
-          area = areaTriangle (vert_triangles);
-          // area = SphercalAreaTriangle (vert_triangles);
-
-          for (const NS::Atom& i : atoms) {
-            for (int kk = 0; kk < 3; ++kk) {
-              dist_vert[0] = vert_triangles[kk][0]-i.pos[0];
-              dist_vert[1] = vert_triangles[kk][1]-i.pos[1];
-              dist_vert[2] = vert_triangles[kk][2]-i.pos[2];
-              distance = std::hypot (dist_vert[0], dist_vert[1], dist_vert[2]);
-              product = dist_vert[0]*norms_vert[kk][0] +
-                        dist_vert[1]*norms_vert[kk][1] +
-                        dist_vert[2]*norms_vert[kk][2];
-              second_int += i.charge*phi_sup[kk]*product/ (4.0*pi*distance*distance*distance)*area/3;
-            }
-          }
-        }
-      }
-
-    }
-
-    /*
-    phi_nodes_txt.close ();
-    phi_surf_txt.close ();
-    fclose (phi_nod_delphi);
-    fclose (phi_sup_delphi);
-    /* */
-
-    energy_react = 0.5*second_int - first_int*constant_react;
-  }
-
-  //coulombic energy
-  double coul_energy = 0.0;
-
-  if (calc_energy==3) {
-    double den_in = 1.0/ (eps_in);
-    int i_atom = 0;
-    int j_atom = 0;
-
-    if (rank == 0) {
-      for (const NS::Atom& i : atoms) {
-        if (std::fabs (i.charge) > 0.0) {
-          for (const NS::Atom& j : atoms) {
-            if (std::fabs (j.charge) > 0.0) {
-              if (j_atom > i_atom) {
-                distance = std::hypot ( (i.pos[0] - j.pos[0]),
-                                        (i.pos[1] - j.pos[1]),
-                                        (i.pos[2] - j.pos[2]));
-                coul_energy += i.charge*j.charge/distance;
-              }
-            }
-
-            j_atom ++;
-          }
-        }
-
-        i_atom ++;
-        j_atom = 0;
-      }
-
-      coul_energy = coul_energy*den_in;
-    }
-  }
-
-
-
-  if (rank == 0) {
-    MPI_Reduce (MPI_IN_PLACE, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
-                mpicomm);
-    MPI_Reduce (MPI_IN_PLACE, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
-                mpicomm);
-    MPI_Reduce (MPI_IN_PLACE, &energy_react, 1, MPI_DOUBLE, MPI_SUM, 0,
-                mpicomm);
-  } else {
-    MPI_Reduce (&charge_pol, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
-                mpicomm);
-    MPI_Reduce (&energy_pol, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
-                mpicomm);
-    MPI_Reduce (&energy_react, &energy_react, 1, MPI_DOUBLE, MPI_SUM, 0,
-                mpicomm);
-  }
-
-  // Print the result
-  if (rank == 0) {
-    std::cout << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "Net charge: "
-              << std::setprecision (16)<<net_charge
-              << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << std::endl;
-
-
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "Polarization charge: "
-              << std::setprecision (16)<<charge_pol/ (4.0*pi)
-              << "  Errore %:" << (charge_pol/ (4.0*pi) - net_charge)/net_charge*100
-              << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << std::endl;
-
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "Polarization energy: "
-              << std::setprecision (16)<<energy_pol
-              << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << std::endl;
-
-
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "Direct ionic energy: "
-              << std::setprecision (16)<<energy_react
-              << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << std::endl;
-
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "Coulumbic energy: "
-              << std::setprecision (16)<<coul_energy
-              << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << std::endl;
-
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-    std::cout << "Total energy: "
-              << std::setprecision (16)<<energy_pol + energy_react + coul_energy
-              << std::endl;
-    std::cout <<"+++++++++++++++++++++++++++++++++" << std::endl;
-  }
-}
-
-void
-poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
-{
-  int rank;
-  MPI_Comm_rank (mpicomm, &rank);
-
-  if (rank == 0)
     std::cout << "\n================ [ Electrostatic Energy ] =================\n";
 
 
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
   double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
-
-  double net_charge = 0.0;
+  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
+  double k = std::sqrt (k2);
 
   // Store charged atoms
   std::vector<double> charge_atoms_tmp;
@@ -3129,16 +2827,40 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   // Store charged atoms
   for (int ii = 0; ii < charge_atoms.size (); ++ii) {
     if (std::fabs (charge_atoms[ii]) > 1.e-5) {
-      net_charge += charge_atoms[ii];
       charge_atoms_tmp.push_back (std::move (charge_atoms[ii]));
       pos_atoms_tmp.push_back (std::move (pos_atoms[ii]));
     }
   }
 
+  double energy_pol = 0.0;
+  double energy_react = 0.0;
+  double coul_energy = 0.0;
+  double dx, dy, dz;
+  double distance = 0.0;
+  const size_t num_atoms = charge_atoms_tmp.size();
+
   std::vector<double> ().swap (charge_atoms);
   std::vector<std::array<double,3>> ().swap (pos_atoms);
 
-
+  // Coulomb energy
+  if (calc_coulombic == 1)
+  {
+    const double den_in = 1.0 / eps_in;
+    for (size_t i = 0; i < num_atoms; ++i) {
+      const double qi = charge_atoms_tmp[i];
+      const double xi = pos_atoms_tmp[i][0];
+      const double yi = pos_atoms_tmp[i][1];
+      const double zi = pos_atoms_tmp[i][2];
+      for (size_t j = i + 1; j < num_atoms; ++j) {
+        dx = xi - pos_atoms_tmp[j][0];
+        dy = yi - pos_atoms_tmp[j][1];
+        dz = zi - pos_atoms_tmp[j][2];
+        distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+        coul_energy += (qi * charge_atoms_tmp[j]) / distance;
+      }
+    }
+    coul_energy *= den_in;
+  }
   ////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////
   double fract;
@@ -3150,16 +2872,16 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
 
   std::array<double,8> tmp_eps;
   std::array<double,8> tmp_phi;
-  std::vector<double> edg;
+  std::vector<int> edg;
   std::vector<int> fl_dir;
 
   int cubeindex = -1;
 
   double charge_pol = 0.0;
 
-  double constant_pol = 0.5* (1.0/eps_out - 1.0/eps_in)/ (4.0*pi);
-  double constant_react = 1.0/ (8*pi*eps_out);
-  double distance = 0.0;
+  const double constant_pol = 0.5* (1.0/eps_out - 1.0/eps_in)/ (4.0*pi);
+  const double constant_react = 1.0/ (8*pi*eps_out);
+  const double inv_4pi = 1.0 / (4.0 * pi);
   double product = 0.0;
   double first_int = 0.0;
   double second_int = 0.0;
@@ -3177,17 +2899,12 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
 
   double area = 0.0;
 
-  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
-  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
-  double k = std::sqrt (k2);
-  double energy_pol = 0.0;
-  double energy_react = 0.0;
-  double coul_energy = 0.0;
+  
 
   auto quadrant = this->tmsh.begin_quadrant_sweep ();
 
-  // flux and polarization energy calculation
-  if (calc_energy==1) {
+  // polarization energy
+  if (calc_energy==1 ||(calc_energy==2 && k < 1.e-5)) {
     for (const int ii : border_quad) {
       quadrant[ii];
       h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
@@ -3197,7 +2914,8 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
       area_h[1] = h[0]*h[2]/h[1] * 0.25;
       area_h[2] = h[0]*h[1]/h[2] * 0.25;
 
-      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant);
+      //std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant);
+      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant, tmp_phi, tmp_eps);
 
       for (int ip = 0; ip < edg.size (); ++ip) {
         tmp_flux = 0.0;
@@ -3212,8 +2930,12 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
                    fl_dir[ip] * area_h[edge_axis[edg[ip]]];
         charge_pol += tmp_flux;
 
-        for (int ii = 0; ii < charge_atoms_tmp.size (); ++ii) {
-          distance = std::hypot (pos_atoms_tmp[ii][0]-V[0], pos_atoms_tmp[ii][1]-V[1], pos_atoms_tmp[ii][2]-V[2]);
+        for (int ii = 0; ii < num_atoms; ++ii) {
+          dx = pos_atoms_tmp[ii][0] - V[0];
+          dy = pos_atoms_tmp[ii][1] - V[1];
+          dz = pos_atoms_tmp[ii][2] - V[2];
+          distance = std::sqrt (dx * dx + dy * dy + dz * dz);
+          //distance = std::hypot (pos_atoms_tmp[ii][0]-V[0], pos_atoms_tmp[ii][1]-V[1], pos_atoms_tmp[ii][2]-V[2]);
           first_int += charge_atoms_tmp[ii]*tmp_flux/distance;
         }
 
@@ -3223,8 +2945,9 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
     energy_pol = constant_pol*first_int;
   }
 
-  //direct reaction energy
-  if (calc_energy==2) {
+  double d2;
+  //polarization energy + ionic energy
+  if (calc_energy==2 && k > 1.e-5) {
     for (const int ii : border_quad) {
       quadrant[ii];
       cubeindex = classifyCube (quadrant, eps_out);
@@ -3236,7 +2959,8 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
       area_h[1] = h[0]*h[2]/h[1] * 0.25;
       area_h[2] = h[0]*h[1]/h[2] * 0.25;
 
-      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant);
+      //std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant);
+      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant, tmp_phi, tmp_eps);
       ntriang = getTriangles (cubeindex, triangles);
 
       for (int ip = 0; ip < edg.size (); ++ip) {
@@ -3255,192 +2979,67 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
                    fl_dir[ip] * area_h[edge_axis[edg[ip]]];
         charge_pol += tmp_flux;
 
-        for (int ii = 0; ii < charge_atoms_tmp.size (); ++ii) {
-          distance = std::hypot (pos_atoms_tmp[ii][0]-V[0], pos_atoms_tmp[ii][1]-V[1], pos_atoms_tmp[ii][2]-V[2]);
+        for (int ii = 0; ii < num_atoms; ++ii) {
+          dx = pos_atoms_tmp[ii][0] - V[0];
+          dy = pos_atoms_tmp[ii][1] - V[1];
+          dz = pos_atoms_tmp[ii][2] - V[2];
+          distance = std::sqrt (dx * dx + dy * dy + dz * dz);
+          //distance = std::hypot (pos_atoms_tmp[ii][0]-V[0], pos_atoms_tmp[ii][1]-V[1], pos_atoms_tmp[ii][2]-V[2]);
           first_int += charge_atoms_tmp[ii]*tmp_flux/distance;
         }
       }
 
-      if (k > 1.e-5)
-        for (int ii = 0; ii < ntriang; ++ii) {
-          for (int jj = 0; jj < 3; ++jj) {
-            tmp_eps_1 = 0.0;
-            tmp_eps_2 = 0.0;
-            tmp_phi_1 = 0.0;
-            tmp_phi_2 = 0.0;
-            edge = triangles[ii][jj];
-            i1 = edge2nodes[2 * edge ];
-            i2 = edge2nodes[2 * edge + 1];
-            V[0] = quadrant->p (0, i1);
-            V[1] = quadrant->p (1, i1);
-            V[2] = quadrant->p (2, i1);
+      for (int ii = 0; ii < ntriang; ++ii) {
+        for (int jj = 0; jj < 3; ++jj) {
+          edge = triangles[ii][jj];
+          i1 = edge2nodes[2 * edge ];
+          i2 = edge2nodes[2 * edge + 1];
 
-            normal_intersection (quadrant, ray_cache, edge, N,fract);
-            V[edge_axis[edge]] += fract*h[edge_axis[edge]];
+          V[0] = quadrant->p (0, i1);
+          V[1] = quadrant->p (1, i1);
+          V[2] = quadrant->p (2, i1);
 
-            vert_triangles[jj] = V;
-            norms_vert[jj] = N;
+          normal_intersection (quadrant, ray_cache, edge, N, fract);
+          V[edge_axis[edge]] += fract*h[edge_axis[edge]];
+          vert_triangles[jj] = V;
+          norms_vert[jj] = N;
 
-            if (! quadrant->is_hanging (i1)) {
-              tmp_phi_1 = (*phi)[quadrant->gt (i1)];
-              tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
-            } else {
-              for (int jj = 0; jj < quadrant->num_parents (i1); ++jj) {
-                tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
-                tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
-              }
-            }
+          tmp_phi_1 = tmp_phi[i1];
+          tmp_phi_2 = tmp_phi[i2];
+          tmp_eps_1 = tmp_eps[i1];
+          tmp_eps_2 = tmp_eps[i2];
 
-            if (! quadrant->is_hanging (i2)) {
-              tmp_phi_2 = (*phi)[quadrant->gt (i2)];
-              tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
-            } else {
-              for (int jj = 0; jj < quadrant->num_parents (i2); ++jj) {
-                tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
-                tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
-              }
-            }
+          phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
+        }
 
-            phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
-
-          }
-
-          area = areaTriangle (vert_triangles);
-          // area = SphercalAreaTriangle (vert_triangles);
-
-          for (int ii = 0; ii < charge_atoms_tmp.size (); ++ii) {
-            for (int kk = 0; kk < 3; ++kk) {
-              dist_vert[0] = vert_triangles[kk][0]-pos_atoms_tmp[ii][0];
-              dist_vert[1] = vert_triangles[kk][1]-pos_atoms_tmp[ii][1];
-              dist_vert[2] = vert_triangles[kk][2]-pos_atoms_tmp[ii][2];
-              distance = std::hypot (dist_vert[0], dist_vert[1], dist_vert[2]);
-              product = dist_vert[0]*norms_vert[kk][0] +
-                        dist_vert[1]*norms_vert[kk][1] +
-                        dist_vert[2]*norms_vert[kk][2];
-              second_int += charge_atoms_tmp[ii]*phi_sup[kk]*product/ (4.0*pi*distance*distance*distance)*area/3;
-            }
+        area = areaTriangle (vert_triangles);
+        for (int ii = 0; ii < num_atoms; ++ii) {
+          const double qi = charge_atoms_tmp[ii];
+          const double xi = pos_atoms_tmp[ii][0];
+          const double yi = pos_atoms_tmp[ii][1];
+          const double zi = pos_atoms_tmp[ii][2];
+          for (int kk = 0; kk < 3; ++kk) {
+            dist_vert[0] = vert_triangles[kk][0]- xi;
+            dist_vert[1] = vert_triangles[kk][1]- yi;
+            dist_vert[2] = vert_triangles[kk][2]- zi;
+            d2 = dist_vert[0] * dist_vert[0] +
+                 dist_vert[1] * dist_vert[1] +
+                 dist_vert[2] * dist_vert[2];
+            distance = std::sqrt (d2);
+            product = dist_vert[0]*norms_vert[kk][0] +
+                      dist_vert[1]*norms_vert[kk][1] +
+                      dist_vert[2]*norms_vert[kk][2];
+            second_int += charge_atoms_tmp[ii]*phi_sup[kk]*product/ (distance*distance*distance)* inv_4pi *area/3;
           }
         }
+      }
     }
 
     energy_pol = constant_pol*first_int;
     energy_react = 0.5*second_int - first_int*constant_react;
   }
 
-  //coulombic energy
-  if (calc_energy==3) {
-    for (const int ii : border_quad) {
-      quadrant[ii];
-      cubeindex = classifyCube (quadrant, eps_out);
-
-      h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
-      h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
-      h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
-      area_h[0] = h[1]*h[2]/h[0] * 0.25;
-      area_h[1] = h[0]*h[2]/h[1] * 0.25;
-      area_h[2] = h[0]*h[1]/h[2] * 0.25;
-      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant);
-      ntriang = getTriangles (cubeindex, triangles);
-
-      for (int ip = 0; ip < edg.size (); ++ip) {
-        tmp_flux = 0.0;
-        i1 = edge2nodes[2 * edg[ip] ];
-        i2 = edge2nodes[2 * edg[ip] + 1];
-        normal_intersection (quadrant, ray_cache, edg[ip], N,fract);
-        V[0] = quadrant->p (0, i1);
-        V[1] = quadrant->p (1, i1);
-        V[2] = quadrant->p (2, i1);
-        V[edge_axis[edg[ip]]] += fract*h[edge_axis[edg[ip]]];
-        tmp_flux = - (tmp_phi[i2] - tmp_phi[i1]) * wha (tmp_eps[i1],tmp_eps[i2], fract)*
-                   fl_dir[ip] * area_h[edge_axis[edg[ip]]];
-        charge_pol += tmp_flux;
-
-        for (int ii = 0; ii < charge_atoms_tmp.size (); ++ii) {
-          distance = std::hypot (pos_atoms_tmp[ii][0]-V[0], pos_atoms_tmp[ii][1]-V[1], pos_atoms_tmp[ii][2]-V[2]);
-          first_int += charge_atoms_tmp[ii]*tmp_flux/distance;
-        }
-      }
-
-      if (k > 1.e-5)
-        for (int ii = 0; ii < ntriang; ++ii) {
-          for (int jj = 0; jj < 3; ++jj) {
-            tmp_eps_1 = 0.0;
-            tmp_eps_2 = 0.0;
-            tmp_phi_1 = 0.0;
-            tmp_phi_2 = 0.0;
-            edge = triangles[ii][jj];
-            i1 = edge2nodes[2 * edge ];
-            i2 = edge2nodes[2 * edge + 1];
-            V[0] = quadrant->p (0, i1);
-            V[1] = quadrant->p (1, i1);
-            V[2] = quadrant->p (2, i1);
-
-            normal_intersection (quadrant, ray_cache, edge, N,fract);
-            V[edge_axis[edge]] += fract*h[edge_axis[edge]];
-
-            vert_triangles[jj] = V;
-            norms_vert[jj] = N;
-
-            if (! quadrant->is_hanging (i1)) {
-              tmp_phi_1 = (*phi)[quadrant->gt (i1)];
-              tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
-            } else {
-              for (int jj = 0; jj < quadrant->num_parents (i1); ++jj) {
-                tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
-                tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
-              }
-            }
-
-            if (! quadrant->is_hanging (i2)) {
-              tmp_phi_2 = (*phi)[quadrant->gt (i2)];
-              tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
-            } else {
-              for (int jj = 0; jj < quadrant->num_parents (i2); ++jj) {
-                tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
-                tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
-              }
-            }
-
-            phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
-          }
-
-          area = areaTriangle (vert_triangles);
-          // area = SphercalAreaTriangle (vert_triangles);
-
-          for (int ii = 0; ii < charge_atoms_tmp.size (); ++ii) {
-            for (int kk = 0; kk < 3; ++kk) {
-              dist_vert[0] = vert_triangles[kk][0]-pos_atoms_tmp[ii][0];
-              dist_vert[1] = vert_triangles[kk][1]-pos_atoms_tmp[ii][1];
-              dist_vert[2] = vert_triangles[kk][2]-pos_atoms_tmp[ii][2];
-              distance = std::hypot (dist_vert[0], dist_vert[1], dist_vert[2]);
-              product = dist_vert[0]*norms_vert[kk][0] +
-                        dist_vert[1]*norms_vert[kk][1] +
-                        dist_vert[2]*norms_vert[kk][2];
-              second_int += charge_atoms_tmp[ii]*phi_sup[kk]*product/ (4.0*pi*distance*distance*distance)*area/3;
-            }
-          }
-        }
-
-    }
-
-    double den_in = 1.0 / eps_in;
-
-    // Calculate energy
-    for (size_t i = 0; i < charge_atoms_tmp.size (); ++i) {
-      for (size_t j = i + 1; j < charge_atoms_tmp.size (); ++j) {
-        distance = std::hypot ( (pos_atoms_tmp[i][0] - pos_atoms_tmp[j][0]),
-                                (pos_atoms_tmp[i][1] - pos_atoms_tmp[j][1]),
-                                (pos_atoms_tmp[i][2] - pos_atoms_tmp[j][2]));
-        // if (distance > 0) {  // Check to avoid division by zero
-        coul_energy += (charge_atoms_tmp[i] * charge_atoms_tmp[j]) / distance;
-        // }
-      }
-    }
-
-    coul_energy *= den_in;
-    energy_pol = constant_pol*first_int;
-    energy_react = 0.5*second_int - first_int*constant_react;
-  }
+  
 
   if (rank == 0) {
     MPI_Reduce (MPI_IN_PLACE, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
@@ -3468,19 +3067,24 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
     std::cout << std::left << std::setw(label_width) << "  Flux charge [e]:"
               << std::setprecision(precision) << charge_pol / (4.0 * pi) << "\n";
 
-    std::cout << std::left << std::setw(label_width)
-              << "    Error w.r.t. net charge [%]:"
-              << std::setprecision(6)
-              << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
+    // std::cout << std::left << std::setw(label_width)
+    //           << "    Error w.r.t. net charge [%]:"
+    //           << std::setprecision(6)
+    //           << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
 
     std::cout << std::left << std::setw(label_width) << "  Polarization energy [kT]:"
               << std::setprecision(precision) << energy_pol << "\n";
 
-    std::cout << std::left << std::setw(label_width) << "  Direct ionic energy [kT]:"
+    if (calc_energy == 2)
+    {
+      std::cout << std::left << std::setw(label_width) << "  Direct ionic energy [kT]:"
               << std::setprecision(precision) << energy_react << "\n";
+    }
 
-    std::cout << std::left << std::setw(label_width) << "  Coulombic energy [kT]:"
-              << std::setprecision(precision) << coul_energy << "\n";
+    if (calc_coulombic == 1) {
+      std::cout << std::left << std::setw(label_width) << "  Coulombic energy [kT]:"
+                << std::setprecision(precision) << coul_energy << "\n";
+    }
 
     std::cout << std::left << std::setw(label_width) << "  Sum of electrostatic energy contributions [kT]:"
               << std::setprecision(precision)
@@ -3490,6 +3094,285 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   }
 }
 
+void
+poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
+{
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
+
+  if (rank == 0)
+    std::cout << "\n================ [ Electrostatic Energy ] =================\n";
+
+
+  double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
+  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
+  double k = std::sqrt (k2);
+
+  // Store charged atoms
+  std::vector<double> charge_atoms_tmp;
+  std::vector<std::array<double,3>> pos_atoms_tmp;
+
+  // Store charged atoms
+  for (int ii = 0; ii < charge_atoms.size (); ++ii) {
+    if (std::fabs (charge_atoms[ii]) > 1.e-5) {
+      charge_atoms_tmp.push_back (std::move (charge_atoms[ii]));
+      pos_atoms_tmp.push_back (std::move (pos_atoms[ii]));
+    }
+  }
+
+  double energy_pol = 0.0;
+  double energy_react = 0.0;
+  double coul_energy = 0.0;
+  double dx, dy, dz;
+  double distance = 0.0;
+  const size_t num_atoms = charge_atoms_tmp.size();
+  
+  std::vector<double> ().swap (charge_atoms);
+  std::vector<std::array<double,3>> ().swap (pos_atoms);
+
+  // Coulomb energy
+  if (calc_coulombic == 1)
+  {
+    const double den_in = 1.0 / eps_in;
+    for (size_t i = 0; i < num_atoms; ++i) {
+      const double qi = charge_atoms_tmp[i];
+      const double xi = pos_atoms_tmp[i][0];
+      const double yi = pos_atoms_tmp[i][1];
+      const double zi = pos_atoms_tmp[i][2];
+      for (size_t j = i + 1; j < num_atoms; ++j) {
+        dx = xi - pos_atoms_tmp[j][0];
+        dy = yi - pos_atoms_tmp[j][1];
+        dz = zi - pos_atoms_tmp[j][2];
+        distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+        coul_energy += (qi * charge_atoms_tmp[j]) / distance;
+      }
+    }
+    coul_energy *= den_in;
+  }
+  
+  
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////
+  double fract;
+  std::array<double,3> V;
+  std::array<double,3> N;
+  std::array<double,3> dist_vert;
+  std::array<double,3> h;
+  std::array<double,3> area_h;
+
+  std::array<double,8> tmp_eps;
+  std::array<double,8> tmp_phi;
+  std::vector<int> edg;
+  std::vector<int> fl_dir;
+
+  int cubeindex = -1;
+
+  double charge_pol = 0.0;
+
+  const double constant_pol = 0.5* (1.0/eps_out - 1.0/eps_in)/ (4.0*pi);
+  const double constant_react = 1.0/ (8*pi*eps_out);
+  const double inv_4pi = 1.0 / (4.0 * pi);
+  double product = 0.0;
+  double first_int = 0.0;
+  double second_int = 0.0;
+  double tmp_flux;
+  int i1 = 0, i2 = 0;
+  double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
+         tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
+
+
+  int ntriang = 0;
+  int edge;
+  std::array<std::array<double,3>,3> vert_triangles;
+  std::array<std::array<double,3>,3> norms_vert;
+  std::array<double,3> phi_sup;
+
+  double area = 0.0;
+
+
+  auto quadrant = this->tmsh.begin_quadrant_sweep ();
+
+  if (!border_quad.empty ()) {
+    quadrant[border_quad[0]];
+    h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
+    h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
+    h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
+    area_h[0] = h[1]*h[2]/h[0] * 0.25;
+    area_h[1] = h[0]*h[2]/h[1] * 0.25;
+    area_h[2] = h[0]*h[1]/h[2] * 0.25;  
+  }
+
+  // flux and polarization energy calculation
+  if (calc_energy==1 || (calc_energy == 2 && k < 1.e-5)) {
+    for (const int ii : border_quad) {
+      quadrant[ii];
+      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
+      for (int ip = 0; ip < edg.size (); ++ip) {
+        tmp_flux = 0.0;
+        i1 = edge2nodes[2 * edg[ip] ];
+        i2 = edge2nodes[2 * edg[ip] + 1];
+        normal_intersection (quadrant, ray_cache, edg[ip], N,fract);
+        V[0] = quadrant->p (0, i1);
+        V[1] = quadrant->p (1, i1);
+        V[2] = quadrant->p (2, i1);
+        V[edge_axis[edg[ip]]] += fract*h[edge_axis[edg[ip]]];
+        tmp_flux = - (tmp_phi[i2] - tmp_phi[i1]) * wha (tmp_eps[i1],tmp_eps[i2], fract)*
+                   fl_dir[ip] * area_h[edge_axis[edg[ip]]];
+        charge_pol += tmp_flux;
+
+        for (int ii = 0; ii < num_atoms; ++ii) {
+          dx = pos_atoms_tmp[ii][0] - V[0];
+          dy = pos_atoms_tmp[ii][1] - V[1];
+          dz = pos_atoms_tmp[ii][2] - V[2];
+          distance = std::sqrt (dx * dx + dy * dy + dz * dz);
+          first_int += charge_atoms_tmp[ii]*tmp_flux/distance;
+        }
+      }
+    }
+    energy_pol = constant_pol*first_int;
+  }
+
+  double d2;
+  //polarization energy + ionic energy
+  if (calc_energy==2 && k > 1.e-5) {
+    for (const int ii : border_quad) {
+      quadrant[ii];
+      cubeindex = classifyCube_fast (quadrant, eps_out);
+      std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
+      ntriang = getTriangles (cubeindex, triangles);
+
+      for (int ip = 0; ip < edg.size (); ++ip) {
+        tmp_flux = 0.0;
+        i1 = edge2nodes[2 * edg[ip] ];
+        i2 = edge2nodes[2 * edg[ip] + 1];
+        tmp_phi_1 = tmp_phi[i1];
+        tmp_phi_2 = tmp_phi[i2];
+        tmp_eps_1 = tmp_eps[i1];
+        tmp_eps_2 = tmp_eps[i2];
+        normal_intersection (quadrant, ray_cache, edg[ip], N,fract);
+        V[0] = quadrant->p (0, i1);
+        V[1] = quadrant->p (1, i1);
+        V[2] = quadrant->p (2, i1);
+        V[edge_axis[edg[ip]]] += fract*h[edge_axis[edg[ip]]];
+        tmp_flux = - (tmp_phi_2 - tmp_phi_1) * wha (tmp_eps_1,tmp_eps_2, fract)*
+                   fl_dir[ip] * area_h[edge_axis[edg[ip]]];
+        charge_pol += tmp_flux;
+
+        for (int ii = 0; ii < num_atoms; ++ii) {
+          dx = pos_atoms_tmp[ii][0] - V[0];
+          dy = pos_atoms_tmp[ii][1] - V[1];
+          dz = pos_atoms_tmp[ii][2] - V[2];
+          distance = std::sqrt (dx * dx + dy * dy + dz * dz);
+          first_int += charge_atoms_tmp[ii]*tmp_flux/distance;
+        }
+      }
+
+      for (int ii = 0; ii < ntriang; ++ii) {
+        for (int jj = 0; jj < 3; ++jj) {
+          edge = triangles[ii][jj];
+          i1 = edge2nodes[2 * edge ];
+          i2 = edge2nodes[2 * edge + 1];
+
+          V[0] = quadrant->p (0, i1);
+          V[1] = quadrant->p (1, i1);
+          V[2] = quadrant->p (2, i1);
+
+          normal_intersection (quadrant, ray_cache, edge, N, fract);
+          V[edge_axis[edge]] += fract*h[edge_axis[edge]];
+          vert_triangles[jj] = V;
+          norms_vert[jj] = N;
+
+          tmp_phi_1 = tmp_phi[i1];
+          tmp_phi_2 = tmp_phi[i2];
+          tmp_eps_1 = tmp_eps[i1];
+          tmp_eps_2 = tmp_eps[i2];
+
+          phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
+        }
+
+        area = areaTriangle (vert_triangles);
+        for (int ii = 0; ii < num_atoms; ++ii) {
+          const double qi = charge_atoms_tmp[ii];
+          const double xi = pos_atoms_tmp[ii][0];
+          const double yi = pos_atoms_tmp[ii][1];
+          const double zi = pos_atoms_tmp[ii][2];
+          for (int kk = 0; kk < 3; ++kk) {
+            dist_vert[0] = vert_triangles[kk][0]- xi;
+            dist_vert[1] = vert_triangles[kk][1]- yi;
+            dist_vert[2] = vert_triangles[kk][2]- zi;
+            d2 = dist_vert[0] * dist_vert[0] +
+                 dist_vert[1] * dist_vert[1] +
+                 dist_vert[2] * dist_vert[2];
+            distance = std::sqrt (d2);
+            product = dist_vert[0]*norms_vert[kk][0] +
+                      dist_vert[1]*norms_vert[kk][1] +
+                      dist_vert[2]*norms_vert[kk][2];
+            second_int += charge_atoms_tmp[ii]*phi_sup[kk]*product/ (distance*distance*distance)* inv_4pi *area/3;
+          }
+        }
+      }
+
+    }
+
+    
+    energy_pol = constant_pol*first_int;
+    energy_react = 0.5*second_int - first_int*constant_react;
+  }
+
+  if (rank == 0) {
+    MPI_Reduce (MPI_IN_PLACE, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+    MPI_Reduce (MPI_IN_PLACE, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+    MPI_Reduce (MPI_IN_PLACE, &energy_react, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+  } else {
+    MPI_Reduce (&charge_pol, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+    MPI_Reduce (&energy_pol, &energy_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+    MPI_Reduce (&energy_react, &energy_react, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+  }
+
+  // Print the result
+  if (rank == 0) {
+    constexpr int label_width = 50;
+    constexpr int precision = 16;
+
+    std::cout << std::left << std::setw(label_width) << "  Net charge [e]:"
+              << std::setprecision(precision) << net_charge << "\n";
+
+    std::cout << std::left << std::setw(label_width) << "  Flux charge [e]:"
+              << std::setprecision(precision) << charge_pol / (4.0 * pi) << "\n";
+
+    // std::cout << std::left << std::setw(label_width)
+    //           << "    Error w.r.t. net charge [%]:"
+    //           << std::setprecision(6)
+    //           << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
+
+    std::cout << std::left << std::setw(label_width) << "  Polarization energy [kT]:"
+              << std::setprecision(precision) << energy_pol << "\n";
+
+    if (calc_energy == 2)
+    {
+      std::cout << std::left << std::setw(label_width) << "  Direct ionic energy [kT]:"
+              << std::setprecision(precision) << energy_react << "\n";
+    }
+
+    if (calc_coulombic == 1) {
+      std::cout << std::left << std::setw(label_width) << "  Coulombic energy [kT]:"
+                << std::setprecision(precision) << coul_energy << "\n";
+    }
+    std::cout << std::left << std::setw(label_width) << "  Sum of electrostatic energy contributions [kT]:"
+              << std::setprecision(precision)
+              << (energy_pol + energy_react + coul_energy) << "\n";
+
+    std::cout << "===========================================================\n";
+  }
+}
 
 void
 poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
@@ -3506,7 +3389,7 @@ poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
 
   std::array<double,8> tmp_eps;
   std::array<double,8> tmp_phi;
-  std::vector<double> edg;
+  std::vector<int> edg;
   std::vector<int> fl_dir;
 
   int cubeindex = -1;
@@ -3558,7 +3441,8 @@ poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
     area_h[1] = h[0]*h[2]/h[1] * 0.25;
     area_h[2] = h[0]*h[1]/h[2] * 0.25;
 
-    std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant);
+    //std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant);
+    std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant, tmp_phi, tmp_eps);
     ntriang = getTriangles (cubeindex, triangles);
 
     for (int ii = 0; ii < ntriang; ++ii) {
