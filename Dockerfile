@@ -149,7 +149,7 @@ RUN rm -rf bimpp-NextGenPB-v0.0.01
 ### === NextGenPB (Main Solver) === ###
 # Clone and build the NextGenPB codebase
 WORKDIR /usr/local/nextgenPB
-RUN git clone --branch main https://github.com/vdiflorio/nextgenPB.git . && \
+RUN git clone --branch v1.0.1 https://github.com/vdiflorio/nextgenPB.git . && \
     cp /usr/local/nextgenPB/local_setting/local_settings_rocky.mk /usr/local/nextgenPB/src/local_settings.mk && \
     cd src && make clean all
 
