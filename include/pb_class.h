@@ -100,6 +100,7 @@ struct
   int loc_refinement;
   int mesh_shape;
   int refine_box;
+  int rand_center;
   int scale_level;
   int scale_level_min_box;
   double scale, scale_min, scale_max;

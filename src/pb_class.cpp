@@ -98,21 +98,21 @@ poisson_boltzmann::create_mesh ()
       lmax = l[kk] > lmax ? l[kk] : lmax;
     }
     // For random displacement of the grid
-    //  if (false) {
-    //   std::random_device rd; // Will be used to obtain a seed for the random number engine
-    //   std::mt19937 gen (rd ()); // Standard mersenne_twister_engine seeded with rd()
-    //   std::uniform_real_distribution<> dis (-1./scale*0.5, 1./scale*0.5);
-    //   double tmp_cc[3];
+     if (rand_center == 1) {
+      std::random_device rd; // Will be used to obtain a seed for the random number engine
+      std::mt19937 gen (rd ()); // Standard mersenne_twister_engine seeded with rd()
+      std::uniform_real_distribution<> dis (-1./scale*0.5, 1./scale*0.5);
+      double tmp_cc[3];
 
-    //   for (int n = 0; n < 3; ++n) {
-    //     tmp_cc[n] = cc[n];
-    //     cc[n] = tmp_cc[n] + dis (gen);
-    //   }
+      for (int n = 0; n < 3; ++n) {
+        tmp_cc[n] = cc[n];
+        cc[n] = tmp_cc[n] + dis (gen);
+      }
 
-    //   std::cout << tmp_cc[0] << "  " << cc[0] << "  " << std::abs (tmp_cc[0] -cc[0]) << std::endl;
-    //   std::cout << tmp_cc[1] << "  " << cc[1] << "  " << std::abs (tmp_cc[1] -cc[1]) << std::endl;
-    //   std::cout << tmp_cc[2] << "  " << cc[2] << "  " << std::abs (tmp_cc[2] -cc[2]) << std::endl;
-    // }
+      std::cout << tmp_cc[0] << "  " << cc[0] << "  " << std::abs (tmp_cc[0] -cc[0]) << std::endl;
+      std::cout << tmp_cc[1] << "  " << cc[1] << "  " << std::abs (tmp_cc[1] -cc[1]) << std::endl;
+      std::cout << tmp_cc[2] << "  " << cc[2] << "  " << std::abs (tmp_cc[2] -cc[2]) << std::endl;
+    }
 
     for (int kk = 0; kk < 3; ++kk) {
       ll[kk] = cc[kk] - lmax*0.5;
@@ -849,6 +849,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   loc_refinement = g2 ( (mesh_options + "loc_refinement").c_str (), 0);
   mesh_shape = g2 ( (mesh_options + "mesh_shape").c_str (), 1);
   refine_box = g2 ( (mesh_options + "refine_box").c_str (), 0);
+  rand_center = g2 ( (mesh_options + "rand_center").c_str (), 0);
 
   if (mesh_shape < 2) {
     perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.8);

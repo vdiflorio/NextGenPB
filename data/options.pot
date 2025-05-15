@@ -34,7 +34,7 @@ unilevel  = 6     # Uniform refinement level across the mesh (2^unilevel element
 outlevel  = 1     # Minimum refinement level outside the refine box
 
 # Optional: displace mesh center randomly within half grid size (used in stochastic sampling)
-rand_center = 0   # 1 = enable random center displacement, 0 = disable
+rand_center = 0   # 1 = enable random center displacement, 0 = disable (only for mesh_shape=0,1)
 
 # Only for mesh_shape = 2 (manual bounding box):
 # Define the physical domain directly
