@@ -172,12 +172,12 @@ main (int argc, char **argv)
   TIC ();
   if (pb.linear_solver_name == "mumps"){
     if (rank == 0)
-      std::cout << "\n======= [ Starting MUMPS solution ] ========\n";
+      std::cout << "\n== [ Starting numerical solution using MUMPS ] ==\n";
     pb.mumps_compute_electric_potential (ray_cache);
   }
   else if (pb.linear_solver_name == "lis") {
     if (rank == 0){
-      std::cout << "\n======== [ Starting LIS solution ] =========\n";
+      std::cout << "\n== [ Starting numerical solution using LIS ] ==\n";
       std::cout << "Selected BCs          : ";
       if (pb.bc ==1)
         std::cout << "Null";
