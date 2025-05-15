@@ -1,75 +1,148 @@
-#Parameters file
+# ===================================
+# Poisson-Boltzmann Solver Configuration
+# ===================================
 
+######################################
+# Mesh Settings
+######################################
 [mesh]
 
-mesh_shape = 0  # 0 for derefined cubic box with perfil at least perfil2
-                #   and "stretched" mesh with perfil1 and defined scale
-                # 1 for cubic mesh with perfil1
-                # 2 for manual setting
-                # 3 focusing
+# Grid generation mode:
+# 0 = derefined cubic mesh, uses perfil1 and perfil2 to control grid spacing, scaled by 'scale'
+# 1 = uniform cubic mesh defined by perfil1
+# 2 = manually defined bounding box (see x1–z2)
+# 3 = focused mesh centered at (cx_foc, cy_foc, cz_foc) with local refinement
+mesh_shape = 0
 
-# if mesh_shape = 0,1,3
-perfil1 = 0.8       
-perfil2 = 0.50
-scale   = 2.0 
+# Grid spacing control:
+# perfil1 controls base resolution (smaller = finer grid)
+# perfil2 is used in derefined zones (used only if mesh_shape = 0 or mesh_shape = 1 && refine_box = 1)
+# scale = 1/(grid_size) (used only if mesh_shape = 0,3)
+perfil1 = 0.8
+perfil2 = 0.5
+scale   = 2.0
 
-# if mesh_shape = 3
-cx_foc = 0;
-cy_foc = 0;
-cz_foc = 0;
-n_grig = 10;
+# Used only if mesh_shape = 3 (focusing mesh):
+# These define the center and number of grid intervals in the focused region
+cx_foc  = 0       # X-center of focusing region
+cy_foc  = 0       # Y-center of focusing region
+cz_foc  = 0       # Z-center of focusing region
+n_grid  = 10      # Number of 1/scale-width intervals in focused zone
 
-# only for mesh_shape =1 or 2
-minlevel   = 2      # min mesh refinement level
-maxlevel   = 2      # max mesh refinement level 
-unilevel   = 2      # initial uniform refinement level
+# Used for mesh_shape = 1 or 2
+unilevel  = 6     # Uniform refinement level across the mesh (2^unilevel elements per side)
+outlevel  = 1     # Minimum refinement level outside the refine box
 
-x1 = -4.88625         # only for mesh_shape = 2 
-x2 =  5.87625
-y1 = -4.88625
-y2 =  5.87625
-z1 = -4.88625
-z2 =  5.87625
+# Optional: displace mesh center randomly within half grid size (used in stochastic sampling)
+rand_center = 0   # 1 = enable random center displacement, 0 = disable
 
+# Only for mesh_shape = 2 (manual bounding box):
+# Define the physical domain directly
+x1 = -16
+x2 =  16
+y1 = -16
+y2 =  16
+z1 = -16
+z2 =  16
 
-refine_box = 0       # only for mesh_shape > 0
-outlevel   = 1        # min de-refinement level outside refine box 
-refine_x1   = -4.0   
-refine_x2   =  4.0
-refine_y1   = -4.0
-refine_y2   =  4.0
-refine_z1   = -4.0
-refine_z2   =  4.0
+# Refinement box (only active when mesh_shape = 1 or 2 and refine_box = 1)
+# Refines the mesh within a subregion
+refine_box = 0          # 1 = enable inner refinement box, 0 = disable
+refine_x1 = -4.0
+refine_x2 =  4.0
+refine_y1 = -4.0
+refine_y2 =  4.0
+refine_z1 = -4.0
+refine_z2 =  4.0
 
 [../]
+
+
+######################################
+# Electrostatic Model Settings
+######################################
+[model]
 
 [model]
-linearized = 1                        #1 for linearized model
-bc_type = 1                           #boundary conditions: 1 for Dirichlet, 0 for Neumann, 2 for Coulombic
-molecular_dielectric_constant = 2     #molecular relative dielectric constant 
-solvent_dielectric_constant = 80      #solvent relative dielectric constant
-ionic_strength = 0.145                #ionic strength expressend in molar concentration
-T = 298.15                            #temperature
-calc_energy = 3                       #0 no energy, 1 pol, 2 pol+ion, 3 2 pol+ion+coul
-atoms_write = 0                       #1 write potential on atom centers, 0 not
-map_type = vtu                        #vtu = vtu output, oct = octbin output
-potential_map = 0                     #1 write potential map, 0 not
-eps_map = 0                           #1 write epsilon map, 0 not
-surf_write = 0                        #1 write potential map on the surface, 0 not
+
+linearized = 1          # 1 = use linearized Poisson–Boltzmann equation
+bc_type = 1             # Boundary conditions:
+                        # 0 = Neumann (zero normal derivative)
+                        # 1 = Dirichlet (fixed potential)
+                        # 2 = Coulombic (analytical behavior at boundary)
+
+molecular_dielectric_constant = 2      # Dielectric constant inside the molecule
+solvent_dielectric_constant   = 80     # Dielectric constant of the solvent (e.g., water)
+ionic_strength                = 0.145  # Ionic strength (mol/L)
+T                             = 298.15 # Temperature in Kelvin
+
+# Energy calculation options:
+# 0 = no energy
+# 1 = polarization energy only
+# 2 = polarization + ionic solvation energy
+# 3 = full energy: polarization + ionic + Coulombic
+calc_energy = 3
+
+# Output options:
+atoms_write   = 0     # 1 = write potential at atom centers, 0 = don't
+map_type      = vtu   # Output format: 'vtu' (for ParaView, vtk binary), 'oct' (Octbin internal format)
+potential_map = 0     # 1 = write full potential map to file
+eps_map       = 0     # 1 = write dielectric (epsilon) map to file
+surf_write    = 0     # 1 = write potential on the molecular surface
+
 [../]
 
+
+######################################
+# Surface Definition (NanoShaper)
+######################################
 [surface]
-surface_type = 0              #surface type: ses=0, skin=1, blobby=2
-surface_parameter = 1.4       #SES probe radius (1.4), skin surface parameter, blobbyness (-1.5)
-stern_layer_surf = 1          #0 no stern layer 1 add stern layer
-stern_layer_thickness = 2.    #stern layer thickness
-number_of_threads = 1         #number of threads used by nanoshaper
+
+# Surface type used to define dielectric boundaries:
+# 0 = Solvent Excluded Surface (SES)
+# 1 = Skin surface
+# 2 = Blobby surface
+surface_type = 0
+
+# Surface shape parameter:
+# - For SES, this is the probe radius (default ~1.4 Å for water)
+# - For skin/blobby, this controls smoothness/blobbyness(-1.5)
+surface_parameter = 1.4
+
+# Stern layer options:
+stern_layer_surf      = 0     # 1 = include Stern layer (fixed ion-free shell), 0 = no Stern layer
+stern_layer_thickness = 2.0   # Thickness of Stern layer (in Å)
+
+# Performance:
+number_of_threads = 1         # Number of CPU threads for NanoShaper
+
 [../]
 
+
+######################################
+# Solver and Algorithm Settings
+######################################
 [algorithm]
-linear_solver = lis					#mumps = direct solver, lis = iterative solver
-# -i for linear solver, -p for preconditioner, -tol for tolerance, etc (lis manual for more options)
-#solver_options = -i\ cg\ -p\ ilu\ -ilu_fill\ [0]\ -tol\ 1.e-12\ -print\ 2\ -conv_cond\ 2\ -tol_w\ 0
-solver_options = -p\ ssor\ -ssor_omega\ 0.54687\ -i\ cgs\ -tol\ 1.e-12\ -print\ 2\ -conv_cond\ 2\ -tol_w\ 0
-[../]
 
+# Linear solver backend:
+# 'mumps' = direct solver (stable but memory intensive)
+# 'lis'   = iterative solver (recommended for large problems)
+linear_solver = lis
+
+# Solver options string (used by LIS library):
+# These control the solver type, preconditioner, tolerances, and print level
+#
+# -i           = solver type (cg, cgs, bicgstab, etc.)
+# -p           = preconditioner (ilu, ssor, jacobi, etc.)
+# -tol         = solver convergence tolerance
+# -print       = output verbosity (0 = silent, 1 = final, 2 = each iteration)
+# -conv_cond   = convergence condition type (default 2 = residual norm)
+# -tol_w       = warning tolerance
+#
+# This example uses SSOR preconditioning with CGS solver and strict tolerance
+solver_options = -p\ ssor\ -ssor_omega\ 0.51\ -i\ cgs\ -tol\ 1.e-6\ -print\ 2\ -conv_cond\ 2\ -tol_w\ 0
+
+# Alternative solver setup (commented out):
+# solver_options = -i\ cg\ -p\ ilu\ -ilu_fill\ [0]\ -tol\ 1.e-6\ -print\ 2\ -conv_cond\ 2\ -tol_w\ 0
+
+[../]
