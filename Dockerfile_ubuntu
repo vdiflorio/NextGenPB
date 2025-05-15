@@ -1,16 +1,20 @@
 FROM ubuntu:24.04
 
+# Set maintainer label
 LABEL maintainer="vincenzo.diflorio@iit.it"
 
-RUN echo "Installing NextGenPB 0.0"
+# Log message during image build
+RUN echo "Installing NextGenPB 1.0.1"
 
-# Set compilation flags
+# Set compiler optimization flags for generic architecture
 ENV CFLAGS="-O2 -mtune=generic"
+# Uncomment the next line for better performance on a known local machine
+# ENV CFLAGS="-Ofast -mtune=native -march=native"
 ENV CXXFLAGS="$CFLAGS"
 ENV FCFLAGS="$CFLAGS"
 
 
-# Install dependencies
+# Install dependencies and clean up
 RUN apt-get update && apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential gfortran cmake make python3 texinfo nano \
@@ -23,8 +27,8 @@ RUN apt-get update && apt-get upgrade -y && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 
-### NanoShaper ###
-WORKDIR /opt
+### === NanoShaper === ###
+# Clone and build the NanoShaper surface generation libraryWORKDIR /opt
 RUN git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
     cd nanoshaper && \
     cp CMakeLists_so.txt CMakeLists.txt && \
@@ -32,7 +36,7 @@ RUN git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
     cmake .. -DCMAKE_BUILD_TYPE="Release" && \
     make -j$(nproc)
 
-### LIS ###
+### === LIS (Linear solver) === ###
 WORKDIR /opt
 ENV LIS_VERSION="2.1.6"
 RUN wget https://www.ssisc.org/lis/dl/lis-${LIS_VERSION}.zip && \
@@ -42,7 +46,7 @@ RUN wget https://www.ssisc.org/lis/dl/lis-${LIS_VERSION}.zip && \
     make -j$(nproc) && make install && \
     cd /opt && rm -rf lis-${LIS_VERSION} lis-${LIS_VERSION}.zip
 
-### Octave-File-IO ###
+### === Octave File IO === ###
 WORKDIR /opt
 ENV OCTAVE_FILE_IO_VERSION="1.0.91"
 RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/v${OCTAVE_FILE_IO_VERSION}.tar.gz && \
@@ -58,11 +62,16 @@ RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/v${OCT
     make -j$(nproc) && make install && \
     cd /opt && rm -rf octave_file_io-${OCTAVE_FILE_IO_VERSION}
 
-### BIMPP ###
+### === BIMPP === ###
+# Clone and build BIMPP from the NextGenPB branch
 WORKDIR /opt
-RUN git clone --branch NextGenPB https://github.com/carlodefalco/bimpp.git bimpp-patch && \
-    cd bimpp-patch && ./autogen.sh && mkdir build && cd build && \
-    ../configure --prefix=/opt/bimpp/ \
+RUN wget https://github.com/carlodefalco/bimpp/archive/refs/tags/NextGenPB-v0.0.01.tar.gz && \
+    tar -xvzf NextGenPB-v0.0.01.tar.gz && rm -rf  NextGenPB-v0.0.01.tar.gz
+WORKDIR /opt/bimpp-NextGenPB-v0.0.01
+RUN mkdir build
+RUN ./autogen.sh
+WORKDIR /opt/bimpp-NextGenPB-v0.0.01/build
+RUN  ../configure --prefix=/opt/bimpp/ \
                  CPPFLAGS="-I/usr/include -I/usr/include/octave-8.4.0/octave/8.4.0 -DOMPI_SKIP_MPICXX -DHAVE_OCTAVE_44 -DBIM_TIMING" \
                  LDFLAGS="-L/usr/lib/x86_64-linux-gnu -L/lib -L/lib64 -L/usr/lib/x86_64-linux-gnu/octave/8.4.0/ \
                  -Wl,-rpath,/usr/lib/x86_64-linux-gnu/octave/8.4.0/" \
@@ -76,9 +85,10 @@ RUN git clone --branch NextGenPB https://github.com/carlodefalco/bimpp.git bimpp
                  --with-mumps-extra-libs="-L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64/lib -lscotch -lmpi \
                  -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lmpi -lopenblas  -lgfortran" && \
     make -j$(nproc) && make install && \
-    cd /opt && rm -rf bimpp-patch
+    cd /opt && rm -rf bimpp-NextGenPB-v0.0.01
 
-### NextGenPB ###
+### === NextGenPB (Main Solver) === ###
+# Clone and build the NextGenPB codebase
 WORKDIR /usr/local/nextgenPB
 RUN git clone --branch main https://github.com/vdiflorio/nextgenPB.git . && \
     cp /usr/local/nextgenPB/local_setting/local_settings_ubuntu.mk /usr/local/nextgenPB/src/local_settings.mk && \

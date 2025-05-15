@@ -1,0 +1,162 @@
+BootStrap: docker
+From: rockylinux:9
+
+%labels
+    Maintainer vincenzo.diflorio@iit.it
+    Description "NextGenPB in an Apptainer container"
+
+%environment
+    export PATH="/opt/openmpi/bin:/usr/local/nextgenPB/src:$PATH"
+    #export CFLAGS="-O2 -mtune=generic"
+    export CFLAGS="-O3 -mtune=native -march=native"
+	export CXXFLAGS="$CFLAGS"
+	export FCFLAGS="$CFLAGS"
+	export LD_LIBRARY_PATH="/opt/openmpi/lib:$LD_LIBRARY_PATH"
+	export OMP_NUM_THREADS=1  # Prevents oversubscription in multi-threaded environments
+    export MPIEXEC="mpirun"
+    export DISPLAY=""
+
+%post
+    echo "Installing dependencies..."
+    dnf upgrade -y && \
+    dnf --enablerepo=crb install -y epel-release && \
+    dnf --enablerepo=crb install -y \
+        gcc gcc-c++ gcc-gfortran make python3 texinfo nano gawk procps wget \
+        openssh-clients p11-kit diffutils which git rsync zip unzip bzip2 \
+        glibc-static patch xz perl-locale perl-Unicode-Normalize \
+        infiniband-diags libibverbs libibverbs-utils rdma-core boost boost-devel \
+        zlib-devel json-c jansson jansson-devel gmp gmp-devel mpfr mpfr-devel \
+        openssl-devel tar glpk-utils bison openblas-devel autoconf automake \
+        libtool scotch scotch-devel redhat-rpm-config libasan bzip2 bzip2-devel \
+        MUMPS MUMPS-devel qhull-devel arpack-devel octave octave-devel cmake tbb \
+        tbb-devel CGAL-devel && \
+    dnf clean all
+	
+    
+    #export CFLAGS="-O2 -mtune=generic"
+    export CFLAGS="-O3 -mtune=native -march=native"
+    export CXXFLAGS="$CFLAGS"
+    export FCFLAGS="$CFLAGS"
+    ###OPENMPI
+    cd /opt && \
+    	wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.0.tar.bz2 && \
+    	tar xf openmpi-4.0.0.tar.bz2 && \
+    	rm -rf openmpi-4.0.0.tar.bz2 && \
+    	cd openmpi-4.0.0 && \
+    	mkdir build && cd build && \
+    	../configure --prefix="/opt/openmpi" \
+        	         --disable-silent-rules \
+        	         --enable-mpi-fortran=all \
+        	         --disable-mpi-cxx \
+        	         --enable-ipv6 --without-x \
+        	         --without-libltdl --disable-dlopen \
+        	         --enable-pretty-print-stacktrace \
+        	         --enable-openib-rdmacm --disable-sphinx \
+	         CFLAGS="-O3 -mtune=native -march=native" \
+                  CXXFLAGS="-O3 -mtune=native -march=native" \
+                  FCFLAGS="-O3 -mtune=native -march=native" && \
+    	make -j$(nproc) && \
+    	make install && \
+    	cd /opt && rm -rf openmpi-4.0.0
+
+    export PATH="/opt/openmpi/bin:/usr/local/nextgenPB/src:$PATH"
+    export LD_LIBRARY_PATH="/opt/openmpi/lib:$LD_LIBRARY_PATH"
+    
+    echo "Building NanoShaper..."
+    cd /opt && \
+        git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
+        cd nanoshaper && \
+        cp CMakeLists_so.txt CMakeLists.txt && \
+        cd build_lib && \
+        cmake .. -DCMAKE_BUILD_TYPE="Release" && \
+        make -j$(nproc)
+
+    echo "Installing LIS..."
+    cd /opt && \
+        wget https://www.ssisc.org/lis/dl/lis-2.1.6.zip && \
+        unzip lis-2.1.6.zip && cd lis-2.1.6 && \
+        chmod 755 configure config/install-sh && \
+        ./configure --prefix="/opt/lis" --enable-mpi --enable-shared --disable-static \
+                      CFLAGS="-O3 -mtune=native -march=native" \
+                      CXXFLAGS="-O3 -mtune=native -march=native" \
+                      FCFLAGS="-O3 -mtune=native -march=native" && \
+        make -j$(nproc) && make install && \
+        cd /opt && rm -rf lis-2.1.6 lis-2.1.6.zip
+
+    echo "Installing p4est..."
+    wget https://p4est.github.io/release/p4est-2.8.6.tar.gz && \
+    	tar -xzf p4est-2.8.6.tar.gz && \
+    	rm -rf p4est-2.8.6.tar.gz && \
+    	cd /opt/p4est-2.8.6 && \
+    	mkdir build && \
+    	cd build && \
+    	CC=mpicc CXX=mpic++ ../configure --prefix="/opt/p4est" \
+        	        --enable-mpi \
+            	    --enable-shared \
+            	    --disable-static \
+            	    --disable-vtk-binary \
+            	    --without-blas \
+            	    CPPFLAGS="-I/opt/openmpi/include" \
+                    CFLAGS="-O3 -mtune=native -march=native" \
+                      CXXFLAGS="-O3 -mtune=native -march=native" \
+                      FCFLAGS="-O3 -mtune=native -march=native" && \
+    	make -j$(nproc) && \
+    	make install && \
+    	cd /opt && rm -rf p4est-${P4EST_VERSION}
+    
+    echo "Installing Octave-File-IO..."
+    cd /opt && \
+        wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/v1.0.91.tar.gz && \
+        tar -xf v1.0.91.tar.gz && \
+        rm -rf v1.0.91.tar.gz && \
+        cd octave_file_io-1.0.91 && \
+        ./autogen.sh && mkdir build && cd build && \
+        ../configure --prefix="/opt/octave_file_io" \
+                 --with-octave-home=/usr/bin \
+                 CC=mpicc CXX=mpicxx \
+                 CFLAGS="-O3 -mtune=native -march=native" \
+                      CXXFLAGS="-O3 -mtune=native -march=native" \
+                      FCFLAGS="-O3 -mtune=native -march=native" && \
+        make -j$(nproc) && make install && \
+        cd /opt && rm -rf octave_file_io-1.0.91
+
+    
+    echo "Building BIMPP..."
+    cd /opt && \
+        wget https://github.com/carlodefalco/bimpp/archive/refs/tags/NextGenPB-v0.0.01.tar.gz && \
+        tar -xvzf NextGenPB-v0.0.01.tar.gz && rm -rf  NextGenPB-v0.0.01.tar.gz && \
+        cd bimpp-NextGenPB-v0.0.01 && ./autogen.sh && mkdir build && cd build && \
+       ../configure --prefix=/opt/bimpp/ \
+                CPPFLAGS="-I/opt/openmpi/include -I/usr/include/ -I/usr/include/MUMPS/ -I/opt/p4est/include -DOMPI_SKIP_MPICXX -DHAVE_OCTAVE_44 -DBIM_TIMING" \
+                LDFLAGS="-L/usr/lib64 -L/opt/openmpi/lib -L/lib64" \
+                 --with-blas-lapack="-lopenblas"  \
+                 --with-octave_file_io-home=/opt/octave_file_io \
+                 --with-octave-home=/usr/bin \
+                 --with-p4est-home=/opt/p4est \
+                 --with-lis-home=/opt/lis \
+                 --with-mumps-home=/usr/lib64 \
+F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc CFLAGS="-Ofast -mtune=native -march=native" \
+CXXFLAGS="-Ofast -mtune=native -march=native" \
+--with-mumps-extra-libs="-L/usr/lib64 -L/opt/openmpi/lib -L/usr/lib64/lib -lscotch -lmpi \
+ -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lmpi -lopenblas  -lgfortran" && \
+        make -j$(nproc) && make install && \
+        cd /opt && rm -rf bimpp-NextGenPB-v0.0.01
+
+    echo "Building NextGenPB..."
+    mkdir -p /usr/local/nextgenPB
+    cd /usr/local/nextgenPB && \
+        git clone https://github.com/vdiflorio/NextGenPB.git . && \
+        git checkout devel && \
+        cp /usr/local/nextgenPB/local_setting/local_settings_rocky_fast.mk /usr/local/nextgenPB/src/local_settings.mk && \
+        cd src && make clean all
+
+
+    rm -rf /opt/nanoshaper/{example,src_client,test}
+
+%startscript
+    #echo "Starting NextGenPB container..."
+    #exec poisson_boltzmann "$@"
+
+%runscript
+    #echo "Running NextGenPB with command: poisson_boltzmann $@"
+    #exec poisson_boltzmann "$@"
