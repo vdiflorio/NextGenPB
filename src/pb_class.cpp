@@ -2842,7 +2842,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   std::vector<std::array<double,3>> ().swap (pos_atoms);
 
   // Coulomb energy
-  if (coul_energy == 1)
+  if (calc_coulombic == 1)
   {
     const double den_in = 1.0 / eps_in;
     for (size_t i = 0; i < num_atoms; ++i) {
@@ -3212,7 +3212,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   std::vector<std::array<double,3>> ().swap (pos_atoms);
 
   // Coulomb energy
-  if (coul_energy == 1)
+  if (calc_coulombic == 1)
   {
     const double den_in = 1.0 / eps_in;
     for (size_t i = 0; i < num_atoms; ++i) {

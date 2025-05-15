@@ -163,7 +163,7 @@ struct
   std::unique_ptr<distributed_vector> epsilon_nodes;
   std::unique_ptr<distributed_vector> reaction_nodes;
   double net_charge;
-  int coul_energy;
+  int calc_coulombic;
 
   std::unique_ptr<distributed_vector> phi;
   std::unique_ptr<distributed_vector> rho_fixed;
