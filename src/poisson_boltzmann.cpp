@@ -205,7 +205,7 @@ main (int argc, char **argv)
 
   if (pb.calc_energy > 0) {
     TIC ();
-    if (pb.loc_refinement == 1 || pb.mesh_shape > 2)
+    if (pb.loc_refinement == 1 || pb.mesh_shape > 2 || (pb.mesh_shape==2 && pb.refine_box==1))
       pb.energy (ray_cache);
     else
       pb.energy_fast (ray_cache);
