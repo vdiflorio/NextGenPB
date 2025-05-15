@@ -66,7 +66,7 @@ poisson_boltzmann::create_mesh ()
 
 
   
-  double net_charge = std::accumulate(charge_atoms.begin(), charge_atoms.end(), 0.0);
+  net_charge = std::accumulate(charge_atoms.begin(), charge_atoms.end(), 0.0);
   int num_atoms = charge_atoms.size ();
 
   if (rank == 0) {
@@ -2816,7 +2816,6 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
   double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
 
-  double net_charge = 0.0;
 
 
   // Store charged atoms
@@ -2826,7 +2825,6 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   // Store charged atoms
   for (int ii = 0; ii < charge_atoms.size (); ++ii) {
     if (std::fabs (charge_atoms[ii]) > 1.e-5) {
-      net_charge += charge_atoms[ii];
       charge_atoms_tmp.push_back (std::move (charge_atoms[ii]));
       pos_atoms_tmp.push_back (std::move (pos_atoms[ii]));
     }
@@ -3195,7 +3193,6 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
   double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
 
-  double net_charge = 0.0;
 
   // Store charged atoms
   std::vector<double> charge_atoms_tmp;
@@ -3204,7 +3201,6 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   // Store charged atoms
   for (int ii = 0; ii < charge_atoms.size (); ++ii) {
     if (std::fabs (charge_atoms[ii]) > 1.e-5) {
-      net_charge += charge_atoms[ii];
       charge_atoms_tmp.push_back (std::move (charge_atoms[ii]));
       pos_atoms_tmp.push_back (std::move (pos_atoms[ii]));
     }
