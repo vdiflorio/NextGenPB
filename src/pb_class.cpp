@@ -3345,7 +3345,6 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
           dy = pos_atoms_tmp[ii][1] - V[1];
           dz = pos_atoms_tmp[ii][2] - V[2];
           distance = std::sqrt (dx * dx + dy * dy + dz * dz);
-          //distance = std::hypot (pos_atoms_tmp[ii][0]-V[0], pos_atoms_tmp[ii][1]-V[1], pos_atoms_tmp[ii][2]-V[2]);
           first_int += charge_atoms_tmp[ii]*tmp_flux/distance;
         }
       }
@@ -3383,20 +3382,14 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
             dist_vert[0] = vert_triangles[kk][0]- xi;
             dist_vert[1] = vert_triangles[kk][1]- yi;
             dist_vert[2] = vert_triangles[kk][2]- zi;
-
-            // Compute distance squared and its inverse
             d2 = dist_vert[0] * dist_vert[0] +
-                        dist_vert[1] * dist_vert[1] +
-                        dist_vert[2] * dist_vert[2];
-            inv_d2 = 1.0 / d2;
-            inv_d3 = inv_d2 * std::sqrt(inv_d2);  // 1/distance^3
-            
-            // Dot product between dist and normal
-            product = dist_vert[0] * norms_vert[kk][0] +
-                      dist_vert[1] * norms_vert[kk][1] +
-                      dist_vert[2] * norms_vert[kk][2];
-
-            second_int += qi * phi_sup[kk] * product * inv_d3 * inv_4pi * area / 3;
+                 dist_vert[1] * dist_vert[1] +
+                 dist_vert[2] * dist_vert[2];
+            distance = std::sqrt (d2);
+            product = dist_vert[0]*norms_vert[kk][0] +
+                      dist_vert[1]*norms_vert[kk][1] +
+                      dist_vert[2]*norms_vert[kk][2];
+            second_int += charge_atoms_tmp[ii]*phi_sup[kk]*product/ (distance*distance*distance)* inv_4pi *area/3;
           }
         }
       }
