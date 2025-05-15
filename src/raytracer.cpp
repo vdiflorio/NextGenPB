@@ -73,7 +73,7 @@ ray_cache_t::fill_cache () {
 
     num_req_rays[idir] = rays_vector.size (); //numb of req rays from each proc
     MPI_Barrier (mpicomm);
-    std::cout << "Sending " << num_req_rays[idir] << " rays requested from rank " << rank << std::endl;
+    // std::cout << "Sending " << num_req_rays[idir] << " rays requested from rank " << rank << std::endl;
 
     std::vector<unsigned char> local_ser_rays_vec = serialize::write (rays_vector); //vector of char for the rays_vector
     std::vector<unsigned char> global_ser_rays_vec; //vector with all the rays from all proc
@@ -160,7 +160,7 @@ ray_cache_t::fill_cache () {
     }
 
     //MPI_Barrier (mpicomm);
-    std::cout << "Rays created in rank " << rank << std::endl;
+    // std::cout << "Rays created in rank " << rank << std::endl;
   }
 }
 
