@@ -3029,7 +3029,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
             product = dist_vert[0]*norms_vert[kk][0] +
                       dist_vert[1]*norms_vert[kk][1] +
                       dist_vert[2]*norms_vert[kk][2];
-            second_int += charge_atoms_tmp[ii]*phi_sup[kk]*product/ (distance*distance*distance)* inv_4pi *area/3;
+            second_int += qi*phi_sup[kk]*product/ (distance*distance*distance)* inv_4pi *area/3;
           }
         }
       }
@@ -3309,7 +3309,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
             product = dist_vert[0]*norms_vert[kk][0] +
                       dist_vert[1]*norms_vert[kk][1] +
                       dist_vert[2]*norms_vert[kk][2];
-            second_int += charge_atoms_tmp[ii]*phi_sup[kk]*product/ (distance*distance*distance)* inv_4pi *area/3;
+            second_int += qi*phi_sup[kk]*product/ (distance*distance*distance)* inv_4pi *area/3;
           }
         }
       }
