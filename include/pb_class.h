@@ -121,6 +121,7 @@ struct
   double e_in, e_out, ionic_strength; //[M]
   double T;
   int calc_energy;
+  int calc_nonpolar;
 
   //surface:
   NS::surface_type surf_type;
@@ -744,6 +745,9 @@ struct
 
   void
   energy_fast (ray_cache_t & ray_cache);
+
+  void
+  nonpolar_energy (ray_cache_t & ray_cache);
 
   void
   write_potential_on_surface (ray_cache_t & ray_cache);

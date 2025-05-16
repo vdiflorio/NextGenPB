@@ -923,6 +923,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   T = g2 ( (model_options + "T").c_str (), 298.15);
   calc_energy = g2 ( (model_options + "calc_energy").c_str (), 2);
   calc_coulombic = g2 ( (model_options + "calc_coulombic").c_str (), 0);
+  calc_nonpolar = g2 ( (model_options + "calc_nonpolar").c_str (), 0);
   atoms_write = g2 ( (model_options + "atoms_write").c_str (), 0);
   surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
   surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
@@ -3657,9 +3658,9 @@ poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
 double
 poisson_boltzmann::coulomb_boundary_conditions (double x, double y, double z)
 {
-  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
-  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
-  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
+  const double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+  const double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  const double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
 
   double dist = 0.0;
   double pot = 0.0;
@@ -3848,3 +3849,130 @@ poisson_boltzmann::search_points ()
 
 }
 
+void
+poisson_boltzmann::nonpolar_energy (ray_cache_t & ray_cache)
+{
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
+
+  if (rank == 0)
+    std::cout << "\n================ [ Nonpolar Energy ] =================\n";
+
+  const double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+  const size_t num_atoms = charge_atoms.size();
+  const double inv_4pi = 1.0 / (4.0 * pi);
+  const double b_aw = 1.0;
+  const double rho_aw = 1.0;
+  const double gamma = 1.0;
+  const double pressure = 1.0;
+
+  double fract;
+  std::array<double,3> V;
+  std::array<double,3> N;
+  std::array<double,3> dist_vert;
+  std::array<double,3> h;
+  std::array<std::array<double,3>,3> vert_triangles;
+  std::array<std::array<double,3>,3> norms_vert;
+
+  int cubeindex = -1;
+
+
+  int i1 = 0, i2 = 0;
+
+  int ntriang = 0;
+  int edge;
+  
+
+  double area = 0.0;
+  double surf = 0.0;
+  double volume = 0.0;
+  double lj = 0.0;
+  double product = 0.0;
+  double att_int = 0.0, att_fun = 0.0;
+
+
+  auto quadrant = this->tmsh.begin_quadrant_sweep ();
+
+  if (!border_quad.empty ()) {
+    quadrant[border_quad[0]];
+    h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
+    h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
+    h[2] = quadrant->p (2, 7) - quadrant->p (2, 0); 
+  }
+
+  double d2, d6;
+  
+  for (const int ii : border_quad) {
+    quadrant[ii];
+    cubeindex = classifyCube_fast (quadrant, eps_out);
+    ntriang = getTriangles (cubeindex, triangles);
+
+    for (int ii = 0; ii < ntriang; ++ii) {
+      for (int jj = 0; jj < 3; ++jj) {
+        edge = triangles[ii][jj];
+        i1 = edge2nodes[2 * edge ];
+        i2 = edge2nodes[2 * edge + 1];
+
+        V[0] = quadrant->p (0, i1);
+        V[1] = quadrant->p (1, i1);
+        V[2] = quadrant->p (2, i1);
+
+        normal_intersection (quadrant, ray_cache, edge, N, fract);
+        V[edge_axis[edge]] += fract*h[edge_axis[edge]];
+        vert_triangles[jj] = V;
+        norms_vert[jj] = N;
+      }
+
+      area = areaTriangle (vert_triangles);
+      surf += area;
+
+      for (int ii = 0; ii < num_atoms; ++ii) {
+        const double xi = pos_atoms[ii][0];
+        const double yi = pos_atoms[ii][1];
+        const double zi = pos_atoms[ii][2];
+        for (int kk = 0; kk < 3; ++kk) {
+          dist_vert[0] = vert_triangles[kk][0]- xi;
+          dist_vert[1] = vert_triangles[kk][1]- yi;
+          dist_vert[2] = vert_triangles[kk][2]- zi;
+          d2 = dist_vert[0] * dist_vert[0] +
+                dist_vert[1] * dist_vert[1] +
+                dist_vert[2] * dist_vert[2];
+          d6 = d2 * d2 * d2;
+
+          att_fun = -b_aw/(d6*3);
+          product = dist_vert[0]*norms_vert[kk][0] +
+                    dist_vert[1]*norms_vert[kk][1] +
+                    dist_vert[2]*norms_vert[kk][2];
+          
+          att_int += rho_aw*product* att_fun *area/3;
+        }
+      }
+    }
+
+  }
+
+  if (rank == 0) {
+    MPI_Reduce (MPI_IN_PLACE, &att_int, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+    MPI_Reduce (MPI_IN_PLACE, &surf, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+  } else {
+    MPI_Reduce (&att_int, &att_int, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+    MPI_Reduce (&surf, &surf, 1, MPI_DOUBLE, MPI_SUM, 0,
+                mpicomm);
+  }
+
+  // Print the result
+  if (rank == 0) {
+    constexpr int label_width = 50;
+    constexpr int precision = 16;
+    std::cout << std::left << std::setw(label_width) << "  Nonpolar repulsive term [kT]:"
+              << std::setprecision(precision) << surf*gamma + pressure*volume<< "\n";
+
+    std::cout << std::left << std::setw(label_width) << "  Nonpolar attractive term [kT]:"
+              << std::setprecision(precision) << att_int << "\n";
+
+    std::cout << "===========================================================\n";
+  }
+}

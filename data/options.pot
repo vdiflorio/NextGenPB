@@ -115,7 +115,8 @@ T                             = 298.15 # Temperature in Kelvin
 # 1 = polarization energy 
 # 2 = polarization + ionic solvation energy
 calc_energy = 2
-calc_coulombic = 1    # 0 = No calculation of Coulombic energy
+calc_coulombic = 1    # 1 = Calculation of Coulombic energy, 0 = Not
+calc_nonpolar = 0     # 1 = Calculation of nonpolar energy, 0 = Not
 
 # Output options:
 atoms_write   = 0     # 1 = write potential at atom centers, 0 = don't

@@ -207,7 +207,7 @@ main (int argc, char **argv)
   }
   if (rank == 0)
     std::cout << "============================================\n";
-  TOC ("Compute Potential");
+  TOC ("Compute numerical solution");
 
   if (pb.atoms_write == 1) {
     TIC ();
@@ -215,13 +215,20 @@ main (int argc, char **argv)
     TOC ("Write potential on atoms")
   }
 
+  if (pb.calc_nonpolar == 1)
+  {
+    TIC ();
+    pb.nonpolar_energy(ray_cache);
+    TOC ("Compute nonpolar energy")
+  }
+  
   if (pb.calc_energy > 0) {
     TIC ();
     if (pb.loc_refinement == 1 || pb.mesh_shape > 2 || (pb.mesh_shape==2 && pb.refine_box==1))
       pb.energy (ray_cache);
     else
       pb.energy_fast (ray_cache);
-    TOC ("compute energy")
+    TOC ("Compute energy")
   }
 
   if (pb.surf_write == 1) {
