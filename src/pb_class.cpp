@@ -2930,13 +2930,13 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
                    fl_dir[ip] * area_h[edge_axis[edg[ip]]];
         charge_pol += tmp_flux;
 
-        for (int ii = 0; ii < num_atoms; ++ii) {
-          dx = pos_atoms_tmp[ii][0] - V[0];
-          dy = pos_atoms_tmp[ii][1] - V[1];
-          dz = pos_atoms_tmp[ii][2] - V[2];
+        for (int iatom = 0; iatom < num_atoms; ++iatom) {
+          dx = pos_atoms_tmp[iatom][0] - V[0];
+          dy = pos_atoms_tmp[iatom][1] - V[1];
+          dz = pos_atoms_tmp[iatom][2] - V[2];
           distance = std::sqrt (dx * dx + dy * dy + dz * dz);
           //distance = std::hypot (pos_atoms_tmp[ii][0]-V[0], pos_atoms_tmp[ii][1]-V[1], pos_atoms_tmp[ii][2]-V[2]);
-          first_int += charge_atoms_tmp[ii]*tmp_flux/distance;
+          first_int += charge_atoms_tmp[iatom]*tmp_flux/distance;
         }
 
       }
@@ -2979,19 +2979,19 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
                    fl_dir[ip] * area_h[edge_axis[edg[ip]]];
         charge_pol += tmp_flux;
 
-        for (int ii = 0; ii < num_atoms; ++ii) {
-          dx = pos_atoms_tmp[ii][0] - V[0];
-          dy = pos_atoms_tmp[ii][1] - V[1];
-          dz = pos_atoms_tmp[ii][2] - V[2];
+        for (int iatom = 0; iatom < num_atoms; ++iatom) {
+          dx = pos_atoms_tmp[iatom][0] - V[0];
+          dy = pos_atoms_tmp[iatom][1] - V[1];
+          dz = pos_atoms_tmp[iatom][2] - V[2];
           distance = std::sqrt (dx * dx + dy * dy + dz * dz);
           //distance = std::hypot (pos_atoms_tmp[ii][0]-V[0], pos_atoms_tmp[ii][1]-V[1], pos_atoms_tmp[ii][2]-V[2]);
-          first_int += charge_atoms_tmp[ii]*tmp_flux/distance;
+          first_int += charge_atoms_tmp[iatom]*tmp_flux/distance;
         }
       }
 
-      for (int ii = 0; ii < ntriang; ++ii) {
+      for (int itri = 0; itri < ntriang; ++itri) {
         for (int jj = 0; jj < 3; ++jj) {
-          edge = triangles[ii][jj];
+          edge = triangles[itri][jj];
           i1 = edge2nodes[2 * edge ];
           i2 = edge2nodes[2 * edge + 1];
 
@@ -3013,11 +3013,11 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
         }
 
         area = areaTriangle (vert_triangles);
-        for (int ii = 0; ii < num_atoms; ++ii) {
-          const double qi = charge_atoms_tmp[ii];
-          const double xi = pos_atoms_tmp[ii][0];
-          const double yi = pos_atoms_tmp[ii][1];
-          const double zi = pos_atoms_tmp[ii][2];
+        for (int iatom = 0; ii < num_atoms; ++iatom) {
+          const double qi = charge_atoms_tmp[iatom];
+          const double xi = pos_atoms_tmp[iatom][0];
+          const double yi = pos_atoms_tmp[iatom][1];
+          const double zi = pos_atoms_tmp[iatom][2];
           for (int kk = 0; kk < 3; ++kk) {
             dist_vert[0] = vert_triangles[kk][0]- xi;
             dist_vert[1] = vert_triangles[kk][1]- yi;
@@ -3222,12 +3222,12 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
                    fl_dir[ip] * area_h[edge_axis[edg[ip]]];
         charge_pol += tmp_flux;
 
-        for (int ii = 0; ii < num_atoms; ++ii) {
-          dx = pos_atoms_tmp[ii][0] - V[0];
-          dy = pos_atoms_tmp[ii][1] - V[1];
-          dz = pos_atoms_tmp[ii][2] - V[2];
+        for (int iatom = 0; iatom < num_atoms; ++iatom) {
+          dx = pos_atoms_tmp[iatom][0] - V[0];
+          dy = pos_atoms_tmp[iatom][1] - V[1];
+          dz = pos_atoms_tmp[iatom][2] - V[2];
           distance = std::sqrt (dx * dx + dy * dy + dz * dz);
-          first_int += charge_atoms_tmp[ii]*tmp_flux/distance;
+          first_int += charge_atoms_tmp[iatom]*tmp_flux/distance;
         }
       }
     }
@@ -3269,9 +3269,9 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
         }
       }
 
-      for (int ii = 0; ii < ntriang; ++ii) {
+      for (int itri = 0; itri < ntriang; ++itri) {
         for (int jj = 0; jj < 3; ++jj) {
-          edge = triangles[ii][jj];
+          edge = triangles[itri][jj];
           i1 = edge2nodes[2 * edge ];
           i2 = edge2nodes[2 * edge + 1];
 
@@ -3293,11 +3293,11 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
         }
 
         area = areaTriangle (vert_triangles);
-        for (int ii = 0; ii < num_atoms; ++ii) {
-          const double qi = charge_atoms_tmp[ii];
-          const double xi = pos_atoms_tmp[ii][0];
-          const double yi = pos_atoms_tmp[ii][1];
-          const double zi = pos_atoms_tmp[ii][2];
+        for (int iatom = 0; iatom < num_atoms; ++iatom) {
+          const double qi = charge_atoms_tmp[iatom];
+          const double xi = pos_atoms_tmp[iatom][0];
+          const double yi = pos_atoms_tmp[iatom][1];
+          const double zi = pos_atoms_tmp[iatom][2];
           for (int kk = 0; kk < 3; ++kk) {
             dist_vert[0] = vert_triangles[kk][0]- xi;
             dist_vert[1] = vert_triangles[kk][1]- yi;
