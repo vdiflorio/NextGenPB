@@ -2593,18 +2593,18 @@ poisson_boltzmann::classifyCube (tmesh_3d::quadrant_iterator& quadrant,
   int cubeindex = 0;
   int index = 1;
   double tmp = 0;
-
+  constexpr double EPSILON = 1e-10;
   for (int ii : {
          0,1,3,2,4,5,7,6
        }) {
     if (! quadrant->is_hanging (ii)) {
-      if ( (*epsilon_nodes)[quadrant->gt (ii)] < isolevel) cubeindex |= index;
+      if ( (*epsilon_nodes)[quadrant->gt (ii)] < (isolevel - EPSILON)) cubeindex |= index;
     } else {
       for (int jj = 0; jj < quadrant->num_parents (ii); ++jj) {
         tmp += (*epsilon_nodes)[quadrant->gparent (jj, ii)] / quadrant->num_parents (ii);
       }
 
-      if (tmp < isolevel) cubeindex |= index;
+      if (tmp < (isolevel - EPSILON)) cubeindex |= index;
     }
 
     tmp = 0;
@@ -2625,15 +2625,15 @@ poisson_boltzmann::classifyCube_fast (tmesh_3d::quadrant_iterator& quadrant,
   int cubeindex = 0;
   int index = 1;
   double tmp = 0;
-
+  constexpr double EPSILON = 1e-10; 
   for (int ii : {
          0,1,3,2,4,5,7,6
        }) {
-    if ( (*epsilon_nodes)[quadrant->gt (ii)] < isolevel) cubeindex |= index;
+    if ( (*epsilon_nodes)[quadrant->gt (ii)] < (isolevel - EPSILON)) cubeindex |= index;
 
     index *= 2;
   }
-
+  
   // Cube is entirely in/out of the surface
   if (edgeTable[cubeindex] == 0)
     return -1;
@@ -3241,6 +3241,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
       quadrant[ii];
       cubeindex = classifyCube_fast (quadrant, eps_out);
       std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
+      
       ntriang = getTriangles (cubeindex, triangles);
 
       for (int ip = 0; ip < edg.size (); ++ip) {
