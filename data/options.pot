@@ -3,6 +3,30 @@
 # ===================================
 
 ######################################
+# Input Settings
+######################################
+[input]
+# Input file format:
+# Options:
+#   pqr  = Position, charge, and radius in one file (default)
+#   pdb  = Standard PDB file (requires separate charge and radius files)
+filetype = pqr
+
+# Path to the main input structure file
+filename = ../../data/1CCM.pqr
+
+# (Used only if filetype = pdb) Path to atomic radii file
+radius_file = radius.siz
+
+# (Used only if filetype = pdb) Path to atomic charges file
+charge_file = charge.crg
+
+# Whether to write a processed PQR file after reading:
+#   0 = Do not write
+#   1 = Write processed PQR to output
+write_pqr = 0
+
+######################################
 # Mesh Settings
 ######################################
 [mesh]

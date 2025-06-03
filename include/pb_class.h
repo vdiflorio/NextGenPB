@@ -70,6 +70,12 @@ struct
   std::vector<double> charge_atoms;
   std::vector<double> r_atoms;
 
+
+  // input parameters
+  std::string filetype;
+  std::string radiusfilename;
+  std::string chargefilename ;
+  int write_pqr;
   // Center of the system
   double cc[3];
 
