@@ -785,7 +785,7 @@ poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, d
 
   return (i % 2);
 }
-
+/*
 int
 poisson_boltzmann::parse_options (int argc, char **argv)
 {
@@ -816,10 +816,10 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     }
   }
 
-  if (!g.search ("--potfile")) {
+  if (!g.search ("--prmfile")) {
     if (rank == 0) {
       std::cout << "Warning: No parameters file selected, using the default one." <<
-                "\nTo select one use --potfile option followed by the desired one." << std::endl;
+                "\nTo select one use --prmfile option followed by the desired one." << std::endl;
     }
   }
 
@@ -937,55 +937,173 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   return 0;
 }
 
-void
-poisson_boltzmann::print_options ()
+*/
+
+int
+poisson_boltzmann::parse_options (int argc, char **argv)
 {
-  std::cout << "\nChosen options: " << std::endl;
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
 
-  if (mesh_shape == 0) {
-    std::cout << "Mesh shape = cubic at max " << perfil2 << " perfil" << " and refined box at "<< perfil1 << " perfil" << std::endl;
-    std::cout << "scale: " << scale << std::endl;
-    std::cout << "with the following domain vertices: " << std::endl;
-  } else if (mesh_shape == 1) {
-    std::cout << "Mesh shape = cubic at "<< perfil1 << "perfil" << std::endl;
-    std::cout << "minlevel = " << minlevel << "\nmaxlevel = " << maxlevel << std::endl;
-    std::cout << "unilevel = " << unilevel << std::endl;
-    std::cout << "with the following domain vertices: " << std::endl;
-  } else if (mesh_shape == 2) {
-    std::cout << "Manual setting of the mesh vertices:: " << std::endl;
-    std::cout << "minlevel = " << minlevel << "\nmaxlevel = " << maxlevel << std::endl;
-    std::cout << "unilevel = " << unilevel << std::endl;
-    std::cout << "with the following domain vertices: " << std::endl;
-  } else if (mesh_shape == 3) {
-    std::cout << "Focusing centered at:" << "\n x = " << cc_focusing[0]
-              << "\n y = " << cc_focusing[1] << "\n z = " << cc_focusing[2] << std::endl;
-    std::cout << "scale: " << scale << std::endl;
-  } else
-    std::cout << "Manual setting of the mesh vertices:" << std::endl;
+  GetPot g (argc, argv);
 
+  // =============================
+  // 1. Leggi file dei parametri
+  // =============================
+  if (!g.search("--prmfile") && !g.search("--potfile")) {
+    if (rank == 0)
+      std::cout << "Warning: No parameters file selected, using the default one."
+                << "\nTo select one use --prmfile or --potfile option followed by the desired file.\n";
+  }
 
-  std::cout << "Linearized model = " << linearized << std::endl;
+  // Cerca il file, dando precedenza a --prmfile se entrambi sono presenti
+  if (g.search("--prmfile")) {
+    optionsfilename = g.next("../../data/options.prm");
+  } else if (g.search("--potfile")) {
+    optionsfilename = g.next("../../data/options.prm");
+  }
 
-  if (bc == 1)
-    std::cout << "Dirichlet boundary conditions" << std::endl;
-  else if (bc == 2)
-    std::cout << "Coulombic boundary conditions" << std::endl;
-  else
-    std::cout << "Neumann boundary conditions" << std::endl;
+  if (rank == 0)
+    std::cout << "Selected parameters file: " << optionsfilename << std::endl;
 
-  std::cout << "e_in = " << e_in << "\ne_out = " << e_out
-            << "\nionic_strenght = " << ionic_strength << std::endl;
+  std::ifstream optionsfile(optionsfilename);
+  if (!optionsfile) {
+    if (rank == 0)
+      std::cerr << "Cannot find the options file" << std::endl;
+    return 1;
+  }
 
-  std::cout << "Linear solver = " << linear_solver_name << std::endl;
-  std::cout << "Linear solver options = " << linear_solver_options << std::endl;
+  GetPot g2(optionsfilename.c_str());
 
-  std::cout << "Chosen surface: " << surf_type << std::endl;
-  std::cout << "Surface parameter: " << surf_param << std::endl;
+  // =============================
+  // 2. Leggi parametri input/
+  // =============================
+  const std::string input_section = "input/";
+  std::string filename_from_file;
+  
+  filetype        = g2((input_section + "filetype").c_str(), "pqr");
+  pqrfilename     = g2((input_section + "filename").c_str(), "../../data/1CCM.pqr");
+  radiusfilename  = g2((input_section + "radius_file").c_str(), "../../data/radius.siz");
+  chargefilename  = g2((input_section + "charge_file").c_str(), "../../data/charge.crg");
+  write_pqr       = g2((input_section + "write_pqr").c_str(), 0);
+  name_pqr        = g2((input_section + "name_pqr").c_str(), "output.pqr");
 
-  if (stern_layer_surf == 1)
-    std::cout << "Stern layer thickness: " << stern_layer << std::endl;
+  
 
-  std::cout << "Number of threads for nanoshaper: " << num_threads << std::endl;
+  // =============================
+  // 3. Override da riga di comando: --pqrfile
+  // =============================
+  if (g.search("--pqrfile")) {
+    pqrfilename = g.next("");
+    filetype = "pqr"; // Forza il filetype a pqr se viene specificato un file
+  }
+
+  if (rank == 0)
+    std::cout << "Selected pqr file:        " << pqrfilename << std::endl;
+
+  std::ifstream pqrfile (pqrfilename);
+
+  if (!pqrfile) {
+    if (rank == 0) {
+      std::cerr << "Cannot find the pqr file" << std::endl;
+      return 1;
+    }
+  }
+
+  const std::string mesh_options = "mesh/";
+  maxlevel = g2 ( (mesh_options + "maxlevel").c_str (), 9);
+  minlevel = g2 ( (mesh_options + "minlevel").c_str (), 3);
+  unilevel = g2 ( (mesh_options + "unilevel").c_str (), 5);
+  outlevel = g2 ( (mesh_options + "outlevel").c_str (), 1);
+  loc_refinement = g2 ( (mesh_options + "loc_refinement").c_str (), 0);
+  mesh_shape = g2 ( (mesh_options + "mesh_shape").c_str (), 1);
+  refine_box = g2 ( (mesh_options + "refine_box").c_str (), 0);
+  rand_center = g2 ( (mesh_options + "rand_center").c_str (), 0);
+
+  if (mesh_shape < 2) {
+    perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.8);
+    perfil2 = g2 ( (mesh_options + "perfil2").c_str (), 0.2);
+    scale = g2 ( (mesh_options + "scale").c_str (), 2.0);
+  }
+
+  if (mesh_shape == 2) {
+    l_c[0] = g2 ( (mesh_options + "x1").c_str (), -128.0);
+    r_c[0] = g2 ( (mesh_options + "x2").c_str (), 128.0);
+    l_c[1] = g2 ( (mesh_options + "y1").c_str (), -128.0);
+    r_c[1] = g2 ( (mesh_options + "y2").c_str (), 128.0);
+    l_c[2] = g2 ( (mesh_options + "z1").c_str (), -128.0);
+    r_c[2] = g2 ( (mesh_options + "z2").c_str (), 128.0);
+    l_cr[0] = g2 ( (mesh_options + "refine_x1").c_str (), -64.0);
+    r_cr[0] = g2 ( (mesh_options + "refine_x2").c_str (), 64.0);
+    l_cr[1] = g2 ( (mesh_options + "refine_y1").c_str (), -64.0);
+    r_cr[1] = g2 ( (mesh_options + "refine_y2").c_str (), 64.0);
+    l_cr[2] = g2 ( (mesh_options + "refine_z1").c_str (), -64.0);
+    r_cr[2] = g2 ( (mesh_options + "refine_z2").c_str (), 64.0);
+  }
+
+  if (mesh_shape == 3) {
+    perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.8);
+    perfil2 = g2 ( (mesh_options + "perfil2").c_str (), 0.2);
+    scale = g2 ( (mesh_options + "scale").c_str (), 2.0);
+    cc_focusing[0] = g2 ( (mesh_options + "cx_foc").c_str (), 0.0);
+    cc_focusing[1] = g2 ( (mesh_options + "cy_foc").c_str (), 0.0);
+    cc_focusing[2] = g2 ( (mesh_options + "cz_foc").c_str (), 0.0);
+    n_grid = g2 ( (mesh_options + "n_grid").c_str (), 8);
+  }
+
+  if (mesh_shape == 4) {
+    perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.8);
+    perfil2 = g2 ( (mesh_options + "perfil2").c_str (), 0.2);
+    scale_min = g2 ( (mesh_options + "scale_min").c_str (), 0.5);
+    scale_max = g2 ( (mesh_options + "scale_max").c_str (), 2.0);
+  }
+
+  if (mesh_shape == 5) {
+    num_trees [0] = g2 ( (mesh_options + "num_trees_x").c_str (), 10);
+    num_trees [1] = g2 ( (mesh_options + "num_trees_y").c_str (), 10);
+    num_trees [2] = g2 ( (mesh_options + "num_trees_z").c_str (), 10);
+    len = g2 ( (mesh_options + "lato").c_str (), 50.0);
+    perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.8);
+  }
+
+  const std::string model_options = "model/";
+  linearized = g2 ( (model_options + "linearized").c_str (), 1);
+  bc = g2 ( (model_options + "bc_type").c_str (), 1);
+  ionic_strength = g2 ( (model_options + "ionic_strength").c_str (), 0.145);
+  e_in = g2 ( (model_options + "molecular_dielectric_constant").c_str (), 2.);
+  e_out = g2 ( (model_options + "solvent_dielectric_constant").c_str (), 80.);
+  T = g2 ( (model_options + "T").c_str (), 298.15);
+  calc_energy = g2 ( (model_options + "calc_energy").c_str (), 2);
+  calc_coulombic = g2 ( (model_options + "calc_coulombic").c_str (), 0);
+  atoms_write = g2 ( (model_options + "atoms_write").c_str (), 0);
+  surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
+  surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
+  map_type = g2 ( (model_options + "map_type").c_str (), "vtu");
+  potential_map = g2 ( (model_options + "potential_map").c_str (), 0);
+  eps_map = g2 ( (model_options + "eps_map").c_str (), 0);
+  const std::string surf_options = "surface/";
+  int surf_type_num = g2 ( (surf_options + "surface_type").c_str (), 1);
+
+  if (surf_type_num == 1) surf_type = NS::skin;
+  else if (surf_type_num == 0) surf_type = NS::ses;
+  else if (surf_type_num == 2) surf_type = NS::blobby;
+  else surf_type = NS::ses;
+
+  surf_param = g2 ( (surf_options + "surface_parameter").c_str (), 0.45);
+  stern_layer_surf = g2 ( (surf_options + "stern_layer_surf").c_str (), 0);
+  stern_layer = g2 ( (surf_options + "stern_layer_thickness").c_str (), 2.);
+  num_threads = g2 ( (surf_options + "number_of_threads").c_str (), 1);
+
+  const std::string alg_options = "algorithm/";
+  linear_solver_name = g2 ( (alg_options + "linear_solver").c_str (), "lis");
+  linear_solver_options = g2 ( (alg_options + "solver_options").c_str (), "-i cg -p ilu [0] -tol 1.e-12");
+
+  const std::string out_options = "output/";
+  p4estfilename = g2 ( (out_options + "p4estfilename").c_str (), "poisson_boltzmann_p4est");
+  markerfilename = g2 ( (out_options + "markerfilename").c_str (), "poisson_boltzmann_marker_0");
+  surffilename = g2 ( (out_options + "surffilename").c_str (), "poisson_boltzmann_surface_0");
+
+  return 0;
 }
 
 void
