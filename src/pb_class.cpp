@@ -950,13 +950,18 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   // =============================
   // 1. Leggi file dei parametri
   // =============================
-  if (!g.search("--prmfile")) {
+  if (!g.search("--prmfile") && !g.search("--potfile")) {
     if (rank == 0)
       std::cout << "Warning: No parameters file selected, using the default one."
-                << "\nTo select one use --prmfile option followed by the desired one.\n";
+                << "\nTo select one use --prmfile or --potfile option followed by the desired file.\n";
   }
 
-  optionsfilename = g.next("../../data/options.prm");
+  // Cerca il file, dando precedenza a --prmfile se entrambi sono presenti
+  if (g.search("--prmfile")) {
+    optionsfilename = g.next("../../data/options.prm");
+  } else if (g.search("--potfile")) {
+    optionsfilename = g.next("../../data/options.prm");
+  }
 
   if (rank == 0)
     std::cout << "Selected parameters file: " << optionsfilename << std::endl;
@@ -990,6 +995,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   // =============================
   if (g.search("--pqrfile")) {
     pqrfilename = g.next("");
+    filetype = "pqr"; // Forza il filetype a pqr se viene specificato un file
   }
 
   if (rank == 0)
