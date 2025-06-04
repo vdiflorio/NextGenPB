@@ -77,6 +77,9 @@ poisson_boltzmann::create_mesh ()
                      << (*minmax_y.second)[0] - (*minmax_y.first)[0] + 2*maxradius << ", " 
                      << (*minmax_z.second)[0] - (*minmax_z.first)[0] + 2*maxradius << "]\n"; 
     std::cout << "  Net charge         : " << std::scientific << net_charge << std::defaultfloat << '\n';
+    if (std::fabs(net_charge - std::round(net_charge)) > 1.e-5)
+      std::cerr << "  [WARNING] Net charge is not an integer: " << net_charge << '\n';
+      
     std::cout << "  Solvent epsilon    : " << e_in << '\n';
     std::cout << "  Solvent epsilon    : " << e_out << '\n';
     std::cout << "  Temperature        : " << T << " [K] \n";
