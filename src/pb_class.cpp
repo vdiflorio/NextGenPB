@@ -981,6 +981,8 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   radiusfilename  = g2((input_section + "radius_file").c_str(), "../../data/radius.siz");
   chargefilename  = g2((input_section + "charge_file").c_str(), "../../data/charge.crg");
   write_pqr       = g2((input_section + "write_pqr").c_str(), 0);
+  name_pqr        = g2((input_section + "name_pqr").c_str(), "output.pqr");
+
   
 
   // =============================

@@ -74,7 +74,8 @@ struct
   // input parameters
   std::string filetype;
   std::string radiusfilename;
-  std::string chargefilename ;
+  std::string chargefilename;
+  std::string name_pqr;
   int write_pqr;
   // Center of the system
   double cc[3];
@@ -614,6 +615,9 @@ struct
 
   void
   read_atoms_from_pqr (std::basic_istream<char> &inputfile);
+
+  void
+  read_atoms_from_pdb (std::basic_istream<char> &inputfile);
 
   void
   read_atoms_from_class ();
