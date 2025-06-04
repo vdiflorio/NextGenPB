@@ -3,6 +3,40 @@
 # ===================================
 
 ######################################
+# Input Settings
+######################################
+[input]
+
+
+# File type used for molecular input:
+#   - "pqr" (default): includes atomic positions, charges, and radii in one file
+#   - "pdb": standard PDB format; must be accompanied by separate radius and charge files
+filetype = pqr
+
+# Path to the main input structure file:
+#   - If filetype = pqr, this must be a .pqr file.
+#   - If filetype = pdb, this must be a .pdb file.
+filename = ../../data/1CCM.pqr
+
+# Path to atomic radii file:
+#   - Only used if filetype = pdb
+#   - Should contain radii for all atoms in the PDB file
+radius_file = radius.siz
+
+# Path to atomic charges file:
+#   - Only used if filetype = pdb
+#   - Should contain charges for all atoms in the PDB file
+charge_file = charge.crg
+
+# Write the PQR file back to disk after processing:
+#   - 0: Do not write the file
+#   - 1: Write processed structure to disk
+write_pqr = 0
+
+# Output filename used if write_pqr = 1
+name_pqr = output.pqr
+
+######################################
 # Mesh Settings
 ######################################
 [mesh]

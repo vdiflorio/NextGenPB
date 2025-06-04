@@ -20,6 +20,7 @@
 #include <mpi.h>
 
 #include "pb_class.h"
+#include "readpdb.h"
 #include "vtk_class.h"
 
 #include "wrapper_search.h"
@@ -78,7 +79,18 @@ main (int argc, char **argv)
 
   if (rank == 0) {
     std::ifstream inputfile (pb.pqrfilename);
-    pb.read_atoms_from_pqr (inputfile);
+    if (pb.filetype == "pdb") {
+      std::cout << "Reading PDB file: " << pb.pqrfilename << std::endl;
+      read_pdb (pb.pqrfilename, pb.atoms);
+      load_radii (pb.radiusfilename, pb.atoms);
+      load_charges (pb.chargefilename, pb.atoms);
+      if (pb.write_pqr == 1) {
+        write_pqr (pb.name_pqr, pb.atoms);
+        std::cout << "Wrote PQR file: " << pb.name_pqr << std::endl;
+      }
+    }
+    else 
+      pb.read_atoms_from_pqr (inputfile);
     inputfile.close ();
     pb.read_atoms_from_class ();
   }
