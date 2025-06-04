@@ -41,6 +41,11 @@ poisson_boltzmann::create_mesh ()
   int rank;
   MPI_Comm_rank (mpicomm, &rank);
 
+  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
+  double k = std::sqrt (k2);
+
   int nx, ny, nz;
   double scale_tmp, scale_x, scale_y, scale_z;
   double lmax = 0;
@@ -79,7 +84,7 @@ poisson_boltzmann::create_mesh ()
     std::cout << "  Net charge         : " << std::scientific << net_charge << std::defaultfloat << '\n';
     if (std::fabs(net_charge - std::round(net_charge)) > 1.e-5)
       std::cerr << "  [WARNING] Net charge is not an integer: " << net_charge << '\n';
-      
+
     std::cout << "  Solvent epsilon    : " << e_in << '\n';
     std::cout << "  Solvent epsilon    : " << e_out << '\n';
     std::cout << "  Temperature        : " << T << " [K] \n";
@@ -180,6 +185,9 @@ poisson_boltzmann::create_mesh ()
     r_cr[1] = cc[1] + ny*1.0/scale;
     r_cr[2] = cc[2] + nz*1.0/scale;
 
+    double dist = size/2 - lmax*0.5;
+    pot_bc = std::exp (-k*dist)/ (dist*eps_out);
+
     if (rank == 0) {
       std::cout << "========== [ Domain Information ] ==========\n";
       std::cout << "  Scale:  " << scale << "\n";
@@ -259,6 +267,9 @@ poisson_boltzmann::create_mesh ()
       r_cr[2] = cc[2] + nz*1.0/scale_tmp;
     }
 
+    double dist =((rr[0]-ll[0]) - lmax)*0.5;
+    pot_bc = std::exp (-k*dist)/ (dist*eps_out);
+
     if (rank == 0) {
       std::cout << "========== [ Domain Information ] ==========\n";
       std::cout << "  Scale:  " << scale << "\n";
@@ -309,6 +320,9 @@ poisson_boltzmann::create_mesh ()
     r_cr[1] = r_c[1];
     r_cr[2] = r_c[2];
     scale = (1<<unilevel)/ (r_c[0]-l_c[0]);
+
+    double dist =((r_cr[0]-l_cr[0]) - lmax)*0.5;
+    pot_bc = std::exp (-k*dist)/ (dist*eps_out);
 
     if (rank == 0) {
       std::cout << "========== [ Domain Information ] ==========\n";
@@ -2293,6 +2307,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   dirichlet_bcs3 bcs;
 
   if (bc == 1) { //hom Dir bc
+    if (std::fabs(pot_bc) > 1.e-5 && rank == 0) //check if the potential at the boundary is ~0  
+      std::cerr << "[WARNING] Boundary conditions may be inaccurate!!\n";
     for (auto const & ibc : bcells) {
       auto cella = ibc.first;
       auto lato = ibc.second;
