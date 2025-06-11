@@ -7,8 +7,8 @@ From: rockylinux:9
 
 %environment
     export PATH="/opt/openmpi/bin:/usr/local/nextgenPB/src:$PATH"
-    #export CFLAGS="-O2 -mtune=generic"
-    export CFLAGS="-O3 -mtune=native -march=native"
+    export CFLAGS="-O2 -mtune=generic"
+    # export CFLAGS="-O3 -mtune=native -march=native"
 	export CXXFLAGS="$CFLAGS"
 	export FCFLAGS="$CFLAGS"
 	export LD_LIBRARY_PATH="/opt/openmpi/lib:$LD_LIBRARY_PATH"
@@ -33,8 +33,8 @@ From: rockylinux:9
     dnf clean all
 	
     
-    #export CFLAGS="-O2 -mtune=generic"
-    export CFLAGS="-O3 -mtune=native -march=native"
+    export CFLAGS="-O2 -mtune=generic"
+    # export CFLAGS="-O3 -mtune=native -march=native"
     export CXXFLAGS="$CFLAGS"
     export FCFLAGS="$CFLAGS"
     ###OPENMPI
@@ -51,10 +51,7 @@ From: rockylinux:9
         	         --enable-ipv6 --without-x \
         	         --without-libltdl --disable-dlopen \
         	         --enable-pretty-print-stacktrace \
-        	         --enable-openib-rdmacm --disable-sphinx \
-	         CFLAGS="-O3 -mtune=native -march=native" \
-                  CXXFLAGS="-O3 -mtune=native -march=native" \
-                  FCFLAGS="-O3 -mtune=native -march=native" && \
+        	         --enable-openib-rdmacm --disable-sphinx && \
     	make -j$(nproc) && \
     	make install && \
     	cd /opt && rm -rf openmpi-4.0.0
@@ -76,10 +73,7 @@ From: rockylinux:9
         wget https://www.ssisc.org/lis/dl/lis-2.1.6.zip && \
         unzip lis-2.1.6.zip && cd lis-2.1.6 && \
         chmod 755 configure config/install-sh && \
-        ./configure --prefix="/opt/lis" --enable-mpi --enable-shared --disable-static \
-                      CFLAGS="-O3 -mtune=native -march=native" \
-                      CXXFLAGS="-O3 -mtune=native -march=native" \
-                      FCFLAGS="-O3 -mtune=native -march=native" && \
+        ./configure --prefix="/opt/lis" --enable-mpi --enable-shared --disable-static && \
         make -j$(nproc) && make install && \
         cd /opt && rm -rf lis-2.1.6 lis-2.1.6.zip
 
@@ -96,10 +90,7 @@ From: rockylinux:9
             	    --disable-static \
             	    --disable-vtk-binary \
             	    --without-blas \
-            	    CPPFLAGS="-I/opt/openmpi/include" \
-                    CFLAGS="-O3 -mtune=native -march=native" \
-                      CXXFLAGS="-O3 -mtune=native -march=native" \
-                      FCFLAGS="-O3 -mtune=native -march=native" && \
+                    CPPFLAGS="-I/opt/openmpi/include -DSC_LOG_PRIORITY=SC_LP_ESSENTIAL" && \
     	make -j$(nproc) && \
     	make install && \
     	cd /opt && rm -rf p4est-${P4EST_VERSION}
@@ -113,10 +104,7 @@ From: rockylinux:9
         ./autogen.sh && mkdir build && cd build && \
         ../configure --prefix="/opt/octave_file_io" \
                  --with-octave-home=/usr/bin \
-                 CC=mpicc CXX=mpicxx \
-                 CFLAGS="-O3 -mtune=native -march=native" \
-                      CXXFLAGS="-O3 -mtune=native -march=native" \
-                      FCFLAGS="-O3 -mtune=native -march=native" && \
+                 CC=mpicc CXX=mpicxx && \
         make -j$(nproc) && make install && \
         cd /opt && rm -rf octave_file_io-1.0.91
 
@@ -135,8 +123,7 @@ From: rockylinux:9
                  --with-p4est-home=/opt/p4est \
                  --with-lis-home=/opt/lis \
                  --with-mumps-home=/usr/lib64 \
-F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc CFLAGS="-Ofast -mtune=native -march=native" \
-CXXFLAGS="-Ofast -mtune=native -march=native" \
+F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc  \
 --with-mumps-extra-libs="-L/usr/lib64 -L/opt/openmpi/lib -L/usr/lib64/lib -lscotch -lmpi \
  -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lmpi -lopenblas  -lgfortran" && \
         make -j$(nproc) && make install && \
@@ -146,7 +133,7 @@ CXXFLAGS="-Ofast -mtune=native -march=native" \
     mkdir -p /usr/local/nextgenPB
     cd /usr/local/nextgenPB && \
         git clone --branch v1.0.1 https://github.com/vdiflorio/NextGenPB.git . && \
-        cp /usr/local/nextgenPB/local_setting/local_settings_rocky_fast.mk /usr/local/nextgenPB/src/local_settings.mk && \
+        cp /usr/local/nextgenPB/local_setting/local_settings_rocky.mk /usr/local/nextgenPB/src/local_settings.mk && \
         cd src && make clean all
 
 
