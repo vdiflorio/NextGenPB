@@ -35,7 +35,7 @@ write_pqr = 0
 
 # Output filename used if write_pqr = 1
 name_pqr = output.pqr
-
+[../]
 ######################################
 # Mesh Settings
 ######################################
