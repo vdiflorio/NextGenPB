@@ -143,13 +143,28 @@ main (int argc, char **argv)
       pb.init_tmesh();
   }
 
-  // Print rank-local mesh information
-  std::cout << "  [Rank " << rank << "] Local nodes     : " << pb.tmsh.num_local_nodes() << '\n';
-  std::cout << "  [Rank " << rank << "] Local quadrants : " << pb.tmsh.num_local_quadrants() << '\n';
+  int local_nodes = pb.tmsh.num_local_nodes();
+  int local_quads = pb.tmsh.num_local_quadrants();
 
-  // Print global mesh info only on rank 0
-  MPI_Barrier (mpicomm);
+  std::vector<int> all_nodes, all_quads;
   if (rank == 0) {
+      all_nodes.resize(size);
+      all_quads.resize(size);
+  }
+
+  MPI_Gather(&local_nodes, 1, MPI_INT,
+            all_nodes.data(), 1, MPI_INT,
+            0, mpicomm);
+
+  MPI_Gather(&local_quads, 1, MPI_INT,
+            all_quads.data(), 1, MPI_INT,
+            0, mpicomm);
+
+  if (rank == 0) {
+      for (int r = 0; r < size; ++r) {
+          std::cout << "  [Rank " << r << "] Local nodes     : " << all_nodes[r] << '\n';
+          std::cout << "  [Rank " << r << "] Local quadrants : " << all_quads[r] << '\n';
+      }
       std::cout << "  [Global] Total nodes     : " << pb.tmsh.num_global_nodes() << '\n';
       std::cout << "  [Global] Total quadrants : " << pb.tmsh.num_global_quadrants() << '\n';
       std::cout << "============================================\n";
