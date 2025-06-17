@@ -213,24 +213,12 @@ void write_pqr(const std::string& filename, const std::vector<NS::Atom>& atoms) 
 
     for (std::size_t i = 0; i < atoms.size(); ++i) {
         const NS::Atom& a = atoms[i];
-        // std::fprintf(fp,
-        //     "ATOM  %5zu %-4s %-3s %c%4d    %8.3f%8.3f%8.3f %7.4f %7.4f\n",
-        //     i + 1,
-        //     a.ai.name.c_str(),
-        //     a.ai.resName.c_str(),
-        //     a.ai.chain.empty() ? ' ' : a.ai.chain[0],  // Usa solo il primo carattere
-        //     a.ai.resNum,
-        //     a.pos[0],
-        //     a.pos[1],
-        //     a.pos[2],
-        //     a.charge,
-        //     a.radius
-        // );
         std::fprintf(fp,
-            "ATOM  %5zu %-4s %-3s %4d    %8.3f%8.3f%8.3f %7.4f %7.4f\n",
+            "ATOM  %5zu %-4s %-3s %c%4d    %8.3f%8.3f%8.3f %7.4f %7.4f\n",
             i + 1,
             a.ai.name.c_str(),
             a.ai.resName.c_str(),
+            a.ai.chain.empty() ? ' ' : a.ai.chain[0],  // Usa solo il primo carattere
             a.ai.resNum,
             a.pos[0],
             a.pos[1],
@@ -238,6 +226,18 @@ void write_pqr(const std::string& filename, const std::vector<NS::Atom>& atoms) 
             a.charge,
             a.radius
         );
+        // std::fprintf(fp,
+        //     "ATOM  %5zu %-4s %-3s %4d    %8.3f%8.3f%8.3f %7.4f %7.4f\n",
+        //     i + 1,
+        //     a.ai.name.c_str(),
+        //     a.ai.resName.c_str(),
+        //     a.ai.resNum,
+        //     a.pos[0],
+        //     a.pos[1],
+        //     a.pos[2],
+        //     a.charge,
+        //     a.radius
+        // );
     }
 
     std::fclose(fp);
