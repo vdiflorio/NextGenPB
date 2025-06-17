@@ -79,9 +79,8 @@ poisson_boltzmann::create_mesh ()
     std::cout << "  Number of atoms    : " << num_atoms << '\n';
     std::cout << "  Size protein [Å]   : ";
     std::cout << "[" << (*minmax_x.second)[0] - (*minmax_x.first)[0] + 2*maxradius << ", " 
-                     << (*minmax_y.second)[0] - (*minmax_y.first)[0] + 2*maxradius << ", " 
-                     << (*minmax_z.second)[0] - (*minmax_z.first)[0] + 2*maxradius << "]\n"; 
-    std::cout << "  Net charge         : " << std::scientific << net_charge << std::defaultfloat << '\n';
+                     << (*minmax_y.second)[1] - (*minmax_y.first)[1] + 2*maxradius << ", " 
+                     << (*minmax_z.second)[2] - (*minmax_z.first)[2] + 2*maxradius << "]\n"; 
     if (std::fabs(net_charge - std::round(net_charge)) > 1.e-5)
       std::cerr << "  [WARNING] Net charge is not an integer: " << net_charge << '\n';
 
@@ -1248,6 +1247,44 @@ operator>> (std::basic_istream<char>& inputfile, NS::Atom &a)
   a.radius2 = a.radius*a.radius;
   return inputfile;
 }
+
+// std::basic_istream<char>&
+// operator>> (std::basic_istream<char>& inputfile, NS::Atom &a)
+// {
+//     int Atom_number;
+//     std::string Field_name;
+
+//     inputfile >> Field_name
+//               >> Atom_number
+//               >> a.ai.name
+//               >> a.ai.resName;
+
+//     std::string token;
+//     inputfile >> token;
+
+//     // Verifica se è un numero (resNum) oppure una stringa (chain)
+//     bool is_number = !token.empty() && (std::isdigit(token[0]) || token[0] == '-' || token[0] == '+');
+    
+//     if (is_number) {
+//         // Era resNum - metti solo il token indietro nello stream
+//         for (auto it = token.rbegin(); it != token.rend(); ++it) {
+//             inputfile.putback(*it);
+//         }
+//         a.ai.chain.clear(); // Nessuna catena specificata
+//     } else {
+//         // Era chain - leggi il resNum successivo
+//         a.ai.chain = token;
+//     }
+
+//     // Ora leggi i dati numerici
+//     inputfile >> a.ai.resNum >> a.pos[0] >> a.pos[1] >> a.pos[2]
+//               >> a.charge >> a.radius;
+
+//     if (a.radius < 1.e-5)
+//         a.radius = 1.0;
+
+//     return inputfile;
+// }
 
 std::basic_istream<char>&
 operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a)
