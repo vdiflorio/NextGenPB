@@ -3515,142 +3515,183 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
 void
 poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
 {
-  double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
-  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+  int rank, size;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  
+  const double eps_in  = 4.0 * pi * e_0 * e_in  * kb * T * Angs / (e * e);
+  const double eps_out = 4.0 * pi * e_0 * e_out * kb * T * Angs / (e * e);
+  const double C_0 = 1.0e3 * N_av * ionic_strength;
+  const double k2 = 2.0 * C_0 * Angs * Angs * e * e / (e_0 * e_out * kb * T);
+  const double k = std::sqrt(k2);
 
-  double fract;
-  std::array<double,3> V;
-  std::array<double,3> N;
-  std::array<double,3> dist_vert;
-  std::array<double,3> h;
-  std::array<double,3> area_h;
-
-  std::array<double,8> tmp_eps;
-  std::array<double,8> tmp_phi;
-  std::vector<int> edg;
-  std::vector<int> fl_dir;
+  std::array<double, 3> V, N, h, area_h;
+  std::array<double, 8> tmp_eps, tmp_phi;
+  std::vector<int> edg, fl_dir;
+  std::array<std::array<double, 3>, 3> vert_triangles, norms_vert;
+  std::array<double, 3> phi_sup;
 
   int cubeindex = -1;
+  int edge, i1 = 0, i2 = 0, ntriang = 0;
+  double fract;
+  double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0;
+  double tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
 
-  int i1 = 0, i2 = 0;
-  double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
-         tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
+  auto quadrant = this->tmsh.begin_quadrant_sweep();
 
-  int ntriang = 0;
-  int edge;
-  std::array<std::array<double,3>,3> vert_triangles;
-  std::array<std::array<double,3>,3> norms_vert;
-  std::array<double,3> phi_sup;
+  // File setup
+  // std::string filename_nodes = "phi_nodes_" + pqrfilename + ".txt";
+  // std::string filename_surf  = "phi_surf_" + pqrfilename + ".txt";
 
-  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
-  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
-  double k = std::sqrt (k2);
-
-  auto quadrant = this->tmsh.begin_quadrant_sweep ();
-
-  std::ofstream phi_nodes_txt;
-  std::ofstream phi_surf_txt;
-  FILE* phi_nod_delphi;
-  FILE* phi_sup_delphi;
-  std::string filename_nodes = "phi_nodes_";
-  std::string filename_nodes_delphi = "phi_nodes_delphi_";
-  std::string filename_surf = "phi_surf_";
-  std::string filename_sup_delphi = "phi_sup_delphi_";
-  std::string extension = ".txt";
-  filename_nodes += pqrfilename;
-  filename_surf += pqrfilename;
-  filename_nodes += extension;
-  filename_surf += extension;
-
-  phi_nodes_txt.open (filename_nodes.c_str ());
-  phi_surf_txt.open (filename_surf.c_str ());
-
-  phi_sup_delphi = std::fopen ("filename_sup_delphi.txt", "w");
-  phi_nod_delphi = std::fopen ("filename_nodes_delphi.txt", "w");
-
+  // std::ofstream phi_nodes_txt(filename_nodes);
+  // std::ofstream phi_surf_txt(filename_surf);
+  // FILE* phi_nod_delphi = std::fopen("filename_nodes_delphi.txt", "w");
+  // FILE* phi_sup_delphi = std::fopen("filename_sup_delphi.txt", "w");
+  std::vector<std::string> phi_nodes_local;
+  std::vector<std::string> phi_surf_local;
+  // std::vector<std::string> phi_nodes_delphi_local;
+  // std::vector<std::string> phi_sup_delphi_local;
+  
   for (const int ii : border_quad) {
     quadrant[ii];
-    cubeindex = classifyCube (quadrant, eps_out);
+    cubeindex = classifyCube(quadrant, eps_out);
 
-    h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
-    h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
-    h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
-    area_h[0] = h[1]*h[2]/h[0] * 0.25;
-    area_h[1] = h[0]*h[2]/h[1] * 0.25;
-    area_h[2] = h[0]*h[1]/h[2] * 0.25;
+    // Compute edge lengths and area scale factors
+    h[0] = quadrant->p(0, 7) - quadrant->p(0, 0);
+    h[1] = quadrant->p(1, 7) - quadrant->p(1, 0);
+    h[2] = quadrant->p(2, 7) - quadrant->p(2, 0);
+    area_h[0] = h[1] * h[2] / h[0] * 0.25;
+    area_h[1] = h[0] * h[2] / h[1] * 0.25;
+    area_h[2] = h[0] * h[1] / h[2] * 0.25;
 
-    //std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant);
-    std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant, tmp_phi, tmp_eps);
-    ntriang = getTriangles (cubeindex, triangles);
+    std::tie(tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux(quadrant, tmp_phi, tmp_eps);
+    ntriang = getTriangles(cubeindex, triangles);
 
-    for (int ii = 0; ii < ntriang; ++ii) {
-      for (int jj = 0; jj < 3; ++jj) {
-        tmp_eps_1 = 0.0;
-        tmp_eps_2 = 0.0;
-        tmp_phi_1 = 0.0;
-        tmp_phi_2 = 0.0;
-        edge = triangles[ii][jj];
-        i1 = edge2nodes[2 * edge ];
+    for (int t = 0; t < ntriang; ++t) {
+      for (int j = 0; j < 3; ++j) {
+        edge = triangles[t][j];
+        i1 = edge2nodes[2 * edge];
         i2 = edge2nodes[2 * edge + 1];
-        V[0] = quadrant->p (0, i1);
-        V[1] = quadrant->p (1, i1);
-        V[2] = quadrant->p (2, i1);
 
-        normal_intersection (quadrant, ray_cache, edge, N,fract);
-        V[edge_axis[edge]] += fract*h[edge_axis[edge]];
+        // Intersection and vertex
+        V[0] = quadrant->p(0, i1);
+        V[1] = quadrant->p(1, i1);
+        V[2] = quadrant->p(2, i1);
 
-        vert_triangles[jj] = V;
-        norms_vert[jj] = N;
+        normal_intersection(quadrant, ray_cache, edge, N, fract);
+        V[edge_axis[edge]] += fract * h[edge_axis[edge]];
 
-        if (! quadrant->is_hanging (i1)) {
-          tmp_phi_1 = (*phi)[quadrant->gt (i1)];
-          tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
+        vert_triangles[j] = V;
+        norms_vert[j] = N;
+
+        // Interpolate phi/epsilon at i1
+        if (!quadrant->is_hanging(i1)) {
+          tmp_phi_1 = (*phi)[quadrant->gt(i1)];
+          tmp_eps_1 = (*epsilon_nodes)[quadrant->gt(i1)];
         } else {
-          for (int jj = 0; jj < quadrant->num_parents (i1); ++jj) {
-            tmp_phi_1 += (*phi)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
-            tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (jj, i1)] / quadrant->num_parents (i1);
+          tmp_phi_1 = tmp_eps_1 = 0.0;
+          int np = quadrant->num_parents(i1);
+          for (int k = 0; k < np; ++k) {
+            tmp_phi_1 += (*phi)[quadrant->gparent(k, i1)] / np;
+            tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent(k, i1)] / np;
           }
         }
 
-        if (! quadrant->is_hanging (i2)) {
-          tmp_phi_2 = (*phi)[quadrant->gt (i2)];
-          tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
+        // Interpolate phi/epsilon at i2
+        if (!quadrant->is_hanging(i2)) {
+          tmp_phi_2 = (*phi)[quadrant->gt(i2)];
+          tmp_eps_2 = (*epsilon_nodes)[quadrant->gt(i2)];
         } else {
-          for (int jj = 0; jj < quadrant->num_parents (i2); ++jj) {
-            tmp_phi_2 += (*phi)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
-            tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (jj, i2)] / quadrant->num_parents (i2);
+          tmp_phi_2 = tmp_eps_2 = 0.0;
+          int np = quadrant->num_parents(i2);
+          for (int k = 0; k < np; ++k) {
+            tmp_phi_2 += (*phi)[quadrant->gparent(k, i2)] / np;
+            tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent(k, i2)] / np;
           }
         }
 
-        phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
+        // Interpolate phi on surface
+        phi_sup[j] = phi0(tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
 
-        phi_nodes_txt << quadrant->p (0, i1) << "  "
-                      << quadrant->p (1, i1) << "  "
-                      << quadrant->p (2, i1) << "  "
-                      << tmp_phi_1 << std::endl;
-        phi_nodes_txt << quadrant->p (0, i2) << "  "
-                      << quadrant->p (1, i2) << "  "
-                      << quadrant->p (2, i2) << "  "
-                      << tmp_phi_2 << std::endl;
+        std::ostringstream oss;
+        oss << std::scientific << std::setprecision(5)
+            << quadrant->p(0, i1) << " "
+            << quadrant->p(1, i1) << " "
+            << quadrant->p(2, i1) << " "
+            << tmp_phi_1 << "\n"
+            << quadrant->p(0, i2) << " "
+            << quadrant->p(1, i2) << " "
+            << quadrant->p(2, i2) << " "
+            << tmp_phi_2;
+        phi_nodes_local.push_back(oss.str());
+        oss.str(""); oss.clear();
+        oss << std::scientific << std::setprecision(5)
+            << V[0] << " "
+            << V[1] << " "
+            << V[2] << " "
+            << phi_sup[j];
+        phi_surf_local.push_back(oss.str());
+        oss.str(""); oss.clear();
+        // // Write to ASCII
+        // phi_nodes_txt << quadrant->p(0, i1) << "  " << quadrant->p(1, i1) << "  " << quadrant->p(2, i1) << "  " << tmp_phi_1 << "\n";
+        // phi_nodes_txt << quadrant->p(0, i2) << "  " << quadrant->p(1, i2) << "  " << quadrant->p(2, i2) << "  " << tmp_phi_2 << "\n";
 
-        phi_surf_txt << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[jj] << std::endl;
+        // phi_surf_txt  << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[j] << "\n";
 
-        std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                      quadrant->p (0, i1),quadrant->p (1, i1),quadrant->p (2, i1),tmp_phi_1,tmp_phi_2);
-        std::fprintf (phi_nod_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                      quadrant->p (0, i2),quadrant->p (1, i2),quadrant->p (2, i2),tmp_phi_1,tmp_phi_2);
-        std::fprintf (phi_sup_delphi,"\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",1,"X","XXX"," ",0,
-                      V[0],V[1],V[2],phi_sup[jj],0.0);
+        // // Write to Delphi PDB-like format
+        // std::fprintf(phi_nod_delphi,
+        //   "\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",
+        //   1, "X", "XXX", " ", 0,
+        //   quadrant->p(0, i1), quadrant->p(1, i1), quadrant->p(2, i1), tmp_phi_1, tmp_phi_2);
 
+        // std::fprintf(phi_nod_delphi,
+        //   "\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",
+        //   1, "X", "XXX", " ", 0,
+        //   quadrant->p(0, i2), quadrant->p(1, i2), quadrant->p(2, i2), tmp_phi_1, tmp_phi_2);
 
+        // std::fprintf(phi_sup_delphi,
+        //   "\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",
+        //   1, "X", "XXX", " ", 0,
+        //   V[0], V[1], V[2], phi_sup[j], 0.0);
       }
     }
   }
 
-  phi_nodes_txt.close ();
-  phi_surf_txt.close ();
-  fclose (phi_nod_delphi);
-  fclose (phi_sup_delphi);
+  auto gather_and_write = [&](const std::string& filename,
+                              const std::vector<std::string>& local_lines) {
+    if (rank == 0) {
+      std::ofstream ofs(filename);
+      for (const auto& line : local_lines)
+          ofs << line << "\n";
+
+      for (int r = 1; r < size; ++r) {
+          int n_lines;
+          MPI_Recv(&n_lines, 1, MPI_INT, r, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          for (int i = 0; i < n_lines; ++i) {
+              char buf[512];
+              MPI_Recv(buf, 512, MPI_CHAR, r, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              ofs << buf << "\n";
+          }
+      }
+
+      ofs.close();
+    } else {
+      int n_lines = static_cast<int>(local_lines.size());
+      MPI_Send(&n_lines, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+      for (const auto& line : local_lines) {
+        MPI_Send(line.c_str(), static_cast<int>(line.size()) + 1,
+                  MPI_CHAR, 0, 1, MPI_COMM_WORLD);
+      }
+    }
+  };
+
+  gather_and_write("phi_nodes.txt", phi_nodes_local);
+  gather_and_write("phi_surf.txt", phi_surf_local);
+  // Close files
+  // phi_nodes_txt.close();
+  // phi_surf_txt.close();
+  // std::fclose(phi_nod_delphi);
+  // std::fclose(phi_sup_delphi);
 }
 
 
