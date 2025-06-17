@@ -2015,8 +2015,8 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
   if (size >1)
     vol_patch->assemble ();
 
-  MPI_Barrier (mpicomm);
-  auto start_rho = std::chrono::steady_clock::now ();
+  // MPI_Barrier (mpicomm);
+  // auto start_rho = std::chrono::steady_clock::now ();
 
 
   search_points ();
@@ -2048,15 +2048,15 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
 
   vol_patch.reset ();
 
-  MPI_Barrier (mpicomm);
-  auto end_rho = std::chrono::steady_clock::now ();
+  // MPI_Barrier (mpicomm);
+  // auto end_rho = std::chrono::steady_clock::now ();
 
-  if (rank==0) {
-    std::cout << "\nTime to calculate rho:  "
-              << std::chrono::duration_cast<std::chrono::milliseconds> (end_rho- start_rho).count ()
-              << " ms"
-              <<std::endl;
-  }
+  // if (rank==0) {
+  //   std::cout << "\nTime to calculate rho:  "
+  //             << std::chrono::duration_cast<std::chrono::milliseconds> (end_rho- start_rho).count ()
+  //             << " ms"
+  //             <<std::endl;
+  // }
 
   //////////////////////////////////////////////////////////////////
   auto func_frac = [&] (tmesh_3d::quadrant_iterator& quadrant) {
@@ -2224,8 +2224,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   if (size >1)
     vol_patch->assemble ();
 
-  MPI_Barrier (mpicomm);
-  auto start_rho = std::chrono::steady_clock::now ();
+  // MPI_Barrier (mpicomm);
+  // auto start_rho = std::chrono::steady_clock::now ();
 
 
   search_points ();
@@ -2261,12 +2261,12 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   MPI_Barrier (mpicomm);
   auto end_rho = std::chrono::steady_clock::now ();
 
-  if (rank==0) {
-    std::cout << "\nTime to calculate rho : "
-              << std::chrono::duration_cast<std::chrono::milliseconds> (end_rho- start_rho).count ()
-              << " ms"
-              <<std::endl;
-  }
+  // if (rank==0) {
+  //   std::cout << "\nTime to calculate rho : "
+  //             << std::chrono::duration_cast<std::chrono::milliseconds> (end_rho- start_rho).count ()
+  //             << " ms"
+  //             <<std::endl;
+  // }
 
   //////////////////////////////////////////////////////////////////
   auto func_frac = [&] (tmesh_3d::quadrant_iterator& quadrant) {
@@ -2364,7 +2364,7 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   // }
 
 
-  auto start_sol = std::chrono::steady_clock::now ();
+  // auto start_sol = std::chrono::steady_clock::now ();
 
 
   //CSR
@@ -2462,16 +2462,16 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
     solver.cleanup ();
   }
   */
-  MPI_Barrier (mpicomm);
+  // MPI_Barrier (mpicomm);
 
-  auto end_sol = std::chrono::steady_clock::now ();
+  // auto end_sol = std::chrono::steady_clock::now ();
 
-  if (rank==0) {
-    std::cout << "\nTime to solve linear problem:  "
-              << std::chrono::duration_cast<std::chrono::milliseconds> (end_sol- start_sol).count ()
-              << " ms"
-              <<std::endl;
-  }
+  // if (rank==0) {
+  //   std::cout << "\nTime to solve linear problem:  "
+  //             << std::chrono::duration_cast<std::chrono::milliseconds> (end_sol- start_sol).count ()
+  //             << " ms"
+  //             <<std::endl;
+  // }
 
   if (size > 1)
     bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
