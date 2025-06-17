@@ -1223,68 +1223,68 @@ poisson_boltzmann::write_atoms_to_pqr (std::basic_ostream<char> &outputfile)
 
 }
 
-std::basic_istream<char>&
-operator>> (std::basic_istream<char>& inputfile, NS::Atom &a)
-{
-
-  int Atom_number;
-  std::string Field_name;
-
-  inputfile >> Field_name
-            >> Atom_number
-            >> a.ai.name
-            >> a.ai.resName
-            >> a.ai.resNum
-            >> a.pos[0]
-            >> a.pos[1]
-            >> a.pos[2]
-            >> a.charge
-            >> a.radius;
-
-  if (a.radius < 1.e-5)
-    a.radius = 1.0;
-
-  a.radius2 = a.radius*a.radius;
-  return inputfile;
-}
-
 // std::basic_istream<char>&
 // operator>> (std::basic_istream<char>& inputfile, NS::Atom &a)
 // {
-//     int Atom_number;
-//     std::string Field_name;
 
-//     inputfile >> Field_name
-//               >> Atom_number
-//               >> a.ai.name
-//               >> a.ai.resName;
+//   int Atom_number;
+//   std::string Field_name;
 
-//     std::string token;
-//     inputfile >> token;
+//   inputfile >> Field_name
+//             >> Atom_number
+//             >> a.ai.name
+//             >> a.ai.resName
+//             >> a.ai.resNum
+//             >> a.pos[0]
+//             >> a.pos[1]
+//             >> a.pos[2]
+//             >> a.charge
+//             >> a.radius;
 
-//     // Verifica se è un numero (resNum) oppure una stringa (chain)
-//     bool is_number = !token.empty() && (std::isdigit(token[0]) || token[0] == '-' || token[0] == '+');
-    
-//     if (is_number) {
-//         // Era resNum - metti solo il token indietro nello stream
-//         for (auto it = token.rbegin(); it != token.rend(); ++it) {
-//             inputfile.putback(*it);
-//         }
-//         a.ai.chain.clear(); // Nessuna catena specificata
-//     } else {
-//         // Era chain - leggi il resNum successivo
-//         a.ai.chain = token;
-//     }
+//   if (a.radius < 1.e-5)
+//     a.radius = 1.0;
 
-//     // Ora leggi i dati numerici
-//     inputfile >> a.ai.resNum >> a.pos[0] >> a.pos[1] >> a.pos[2]
-//               >> a.charge >> a.radius;
-
-//     if (a.radius < 1.e-5)
-//         a.radius = 1.0;
-
-//     return inputfile;
+//   a.radius2 = a.radius*a.radius;
+//   return inputfile;
 // }
+
+std::basic_istream<char>&
+operator>> (std::basic_istream<char>& inputfile, NS::Atom &a)
+{
+    int Atom_number;
+    std::string Field_name;
+
+    inputfile >> Field_name
+              >> Atom_number
+              >> a.ai.name
+              >> a.ai.resName;
+
+    std::string token;
+    inputfile >> token;
+
+    // Verifica se è un numero (resNum) oppure una stringa (chain)
+    bool is_number = !token.empty() && (std::isdigit(token[0]) || token[0] == '-' || token[0] == '+');
+    
+    if (is_number) {
+        // Era resNum - metti solo il token indietro nello stream
+        for (auto it = token.rbegin(); it != token.rend(); ++it) {
+            inputfile.putback(*it);
+        }
+        a.ai.chain.clear(); // Nessuna catena specificata
+    } else {
+        // Era chain - leggi il resNum successivo
+        a.ai.chain = token;
+    }
+
+    // Ora leggi i dati numerici
+    inputfile >> a.ai.resNum >> a.pos[0] >> a.pos[1] >> a.pos[2]
+              >> a.charge >> a.radius;
+
+    if (a.radius < 1.e-5)
+        a.radius = 1.0;
+
+    return inputfile;
+}
 
 std::basic_istream<char>&
 operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a)
