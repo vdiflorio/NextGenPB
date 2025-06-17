@@ -123,7 +123,7 @@ def write_potential_cube(filename, scalar_field, scale, origin, dimensions):
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Interpolate unstructured VTK grid onto a cube dataset.")
 parser.add_argument('pqrfile', type=str, help="Input pqr file")
-parser.add_argument('--nproc', type=int, default=1, help="number of processor for ngpb")
+parser.add_argument('--scale', type=float, default=2, help="grid scale factor (default: 2.0)")
 args = parser.parse_args()
 name_pqr = args.pqrfile
 
@@ -142,7 +142,7 @@ origin = [center[0] - max_size * 0.5,
           center[2] - max_size * 0.5]
 
 # Define the grid dimensions (adjust the resolution)
-scale = 2.0
+scale = args.scale
 nx = round(max_size * scale) + 1
 ny = round(max_size * scale) + 1
 nz = round(max_size * scale) + 1
