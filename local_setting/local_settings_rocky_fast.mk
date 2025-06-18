@@ -1,4 +1,5 @@
 CPPFLAGS=\
+-I/usr/lib64/openmpi/include \
 -I/opt/openmpi/include \
 -I/usr/include/MUMPS/ \
 -I/opt/octave_file_io/include/ \
@@ -19,6 +20,7 @@ LDFLAGS=-L/opt/octave_file_io/lib \
 -L/opt/nanoshaper/build_lib \
 -L/opt/bimpp/lib \
 -L/opt/p4est/lib \
+-L/usr/lib64/openmpi/lib \
 -L/opt/openmpi/lib \
 -Wl,-rpath,/opt/nanoshaper/build_lib \
 -Wl,-rpath,/opt/bimpp/lib  \
