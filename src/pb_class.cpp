@@ -1015,7 +1015,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   }
 
   if (rank == 0)
-    std::cout << "Selected pqr file:        " << pqrfilename << std::endl;
+    std::cout << "Selected molecule file:   " << pqrfilename << std::endl;
 
   std::ifstream pqrfile (pqrfilename);
 
