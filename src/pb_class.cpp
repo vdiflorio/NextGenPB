@@ -1098,7 +1098,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   potential_map = g2 ( (model_options + "potential_map").c_str (), 0);
   eps_map = g2 ( (model_options + "eps_map").c_str (), 0);
   const std::string surf_options = "surface/";
-  int surf_type_num = g2 ( (surf_options + "surface_type").c_str (), 0);
+  surf_type_num = g2 ( (surf_options + "surface_type").c_str (), 0);
 
   if (surf_type_num == 1) surf_type = NS::skin;
   else if (surf_type_num == 0) surf_type = NS::ses;
