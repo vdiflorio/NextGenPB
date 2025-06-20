@@ -9,7 +9,7 @@ RUN echo "Installing NextGenPB 1.0.1"
 
 # Set compiler optimization flags for generic architecture
 ENV CFLAGS="-O2 -mtune=generic"
-# Uncomment the next line for better performance on a known local machine
+# Uncomment the following line to optimize the build for your machine's architecture
 # ENV CFLAGS="-Ofast -mtune=native -march=native"
 ENV CXXFLAGS="$CFLAGS"
 ENV FCFLAGS="$CFLAGS"
@@ -151,7 +151,9 @@ RUN rm -rf bimpp-NextGenPB-v0.0.01
 WORKDIR /usr/local/nextgenPB
 RUN git clone --branch v1.0.1 https://github.com/vdiflorio/nextgenPB.git . && \
     cp /usr/local/nextgenPB/local_setting/local_settings_rocky.mk /usr/local/nextgenPB/src/local_settings.mk && \
-    cd src && make clean all
+    cd src && \
+    sed -i "s/^CXXFLAGS=.*/CXXFLAGS= $CXXFLAGS/" local_settings.mk && \
+    make clean all
 
 # Clean up unnecessary files
 RUN rm -rf /opt/nanoshaper/{example,src_client,test}
