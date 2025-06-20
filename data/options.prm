@@ -133,7 +133,6 @@ surf_write    = 0     # 1 = write potential on the molecular surface
 # Surface type used to define dielectric boundaries:
 # 0 = Solvent Excluded Surface (SES)
 # 1 = Skin surface
-# 2 = Blobby surface
 surface_type = 0
 
 # Surface shape parameter:

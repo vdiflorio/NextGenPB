@@ -1102,7 +1102,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
 
   if (surf_type_num == 1) surf_type = NS::skin;
   else if (surf_type_num == 0) surf_type = NS::ses;
-  else if (surf_type_num == 2) surf_type = NS::blobby;
+  // else if (surf_type_num == 2) surf_type = NS::blobby;
   else surf_type = NS::ses;
 
   surf_param = g2 ( (surf_options + "surface_parameter").c_str (), 0.45);
