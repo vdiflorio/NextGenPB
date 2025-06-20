@@ -97,8 +97,6 @@ refine_z2 =  4.0
 ######################################
 [model]
 
-[model]
-
 linearized = 1          # 1 = use linearized Poisson–Boltzmann equation
 bc_type = 1             # Boundary conditions:
                         # 0 = Neumann (zero normal derivative)
