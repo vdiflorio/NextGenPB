@@ -1098,7 +1098,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   potential_map = g2 ( (model_options + "potential_map").c_str (), 0);
   eps_map = g2 ( (model_options + "eps_map").c_str (), 0);
   const std::string surf_options = "surface/";
-  int surf_type_num = g2 ( (surf_options + "surface_type").c_str (), 1);
+  int surf_type_num = g2 ( (surf_options + "surface_type").c_str (), 0);
 
   if (surf_type_num == 1) surf_type = NS::skin;
   else if (surf_type_num == 0) surf_type = NS::ses;
@@ -1501,7 +1501,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
   int num_cycles = 2;
 
-  if (size == 1 || surf_type == 2)
+  if (size == 1 || surf_type_num == 2)
     num_cycles = 1;
 
   int coars_ref_cycles = (maxlevel - unilevel) > (unilevel - minlevel) ? (maxlevel - unilevel) : (unilevel - minlevel);
@@ -1529,7 +1529,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
           for (int ii = 0; ii < 8; ++ii) {
 
             if (! quadrant->is_hanging (ii)) {
-              if (surf_type == 2)
+              if (surf_type_num == 2)
                 rcoeff[quadrant->gt (ii)] = levelsetfun (quadrant->p (0, ii),
                                             quadrant->p (1, ii),
                                             quadrant->p (2, ii));
@@ -1613,7 +1613,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
           }
 
-          if (this->surf_type == 2) {
+          if (this->surf_type_num == 2) {
             if (max > 1 && min < 1)
               retval = this->maxlevel - currentlevel;
             else
@@ -1663,7 +1663,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
           for (int ii = 0; ii < 8; ++ii) {
 
             if (! quadrant->is_hanging (ii)) {
-              if (surf_type == 2)
+              if (surf_type_num == 2)
                 rcoeff[quadrant->gt (ii)] = levelsetfun (quadrant->p (0, ii),
                                             quadrant->p (1, ii),
                                             quadrant->p (2, ii));
@@ -1748,7 +1748,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
           }
 
-          if (this->surf_type == 2) {
+          if (this->surf_type_num == 2) {
             if (min > 1 || max < 1)
               retval = currentlevel - this->minlevel;
           } else {
