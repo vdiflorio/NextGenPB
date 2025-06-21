@@ -31,12 +31,12 @@ RUN dnf upgrade -y && \
 
 
 ### === OpenMPI === ###
-# Build and install OpenMPI v4.0.0 from source.
+# Build and install OpenMPI v4.1.8 from source.
 # This is useful when you need to match a specific OpenMPI version with your local environment
-RUN wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.0.tar.bz2 && \
-    tar xf openmpi-4.0.0.tar.bz2 && \
-    rm -rf openmpi-4.0.0.tar.bz2 && \
-    cd openmpi-4.0.0 && \
+RUN wget  https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.8.tar.bz2 && \
+    tar xf openmpi-4.1.8.tar.bz2 && \
+    rm -rf openmpi-4.1.8.tar.bz2 && \
+    cd openmpi-4.1.8 && \
     mkdir build && cd build && \
     ../configure --prefix="/opt/openmpi" \
                  --disable-silent-rules \
@@ -48,7 +48,7 @@ RUN wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.0.tar.b
                  --enable-openib-rdmacm --disable-sphinx && \
     make -j$(nproc) && \
     make install && \
-    cd /opt && rm -rf openmpi-4.0.0
+    cd /opt && rm -rf openmpi-4.1.8
 
 # Set environment variables for OpenMPI
 ENV PATH=/opt/openmpi/bin:$PATH

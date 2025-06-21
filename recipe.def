@@ -46,10 +46,10 @@ From: rockylinux:9
     
     ###OPENMPI
     cd /opt && \
-    	wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.0.tar.bz2 && \
-    	tar xf openmpi-4.0.0.tar.bz2 && \
-    	rm -rf openmpi-4.0.0.tar.bz2 && \
-    	cd openmpi-4.0.0 && \
+    	wget https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.8.tar.bz2 && \
+    	tar xf openmpi-4.1.8.tar.bz2 && \
+    	rm -rf openmpi-4.1.8.tar.bz2 && \
+    	cd openmpi-4.1.8 && \
     	mkdir build && cd build && \
     	../configure --prefix="/opt/openmpi" \
         	         --disable-silent-rules \
@@ -61,7 +61,7 @@ From: rockylinux:9
         	         --enable-openib-rdmacm --disable-sphinx && \
     	make -j$(nproc) && \
     	make install && \
-    	cd /opt && rm -rf openmpi-4.0.0
+    	cd /opt && rm -rf openmpi-4.1.8
 
     export PATH="/opt/openmpi/bin:/usr/local/nextgenPB/src:$PATH"
     export LD_LIBRARY_PATH="/opt/openmpi/lib:$LD_LIBRARY_PATH"
