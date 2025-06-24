@@ -3268,7 +3268,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
         }
 
         area = areaTriangle (vert_triangles);
-        for (int iatom = 0; ii < num_atoms; ++iatom) {
+        for (int iatom = 0; iatom < num_atoms; ++iatom) {
           const double qi = charge_atoms_tmp[iatom];
           const double xi = pos_atoms_tmp[iatom][0];
           const double yi = pos_atoms_tmp[iatom][1];
