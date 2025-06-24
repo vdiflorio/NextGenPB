@@ -2516,98 +2516,179 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 }
 
 
-void
+void 
 poisson_boltzmann::write_potential_on_atoms_fast ()
 {
-  int rank;
-  MPI_Comm_rank (mpicomm, &rank);
+  int rank, size;
+  MPI_Comm_rank(mpicomm, &rank);
+  MPI_Comm_size(mpicomm, &size);
 
-  std::ofstream phi_atoms;
-
-  std::string filename = "phi_on_atoms_";
-  std::string extension = ".txt";
-  filename += std::to_string (rank);
-  filename += extension;
-  phi_atoms.open (filename.c_str ());
+  std::vector<std::string> local_lines;
 
   double phi_on_atom;
   double phi_hang_nodes = 0.0;
 
-  for (auto it = lookup_table.begin (); it!=lookup_table.end (); ++it) {
+  // Costruisci stringhe localmente
+  for (auto it = lookup_table.begin(); it != lookup_table.end(); ++it) {
     phi_on_atom = 0.0;
-    //linear approx:
-    double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
-                    (it->second.p (1, 7) - it->second.p (1, 0)) *
-                    (it->second.p (2, 7) - it->second.p (2, 0)); //volume
+    double volume = (it->second.p(0, 7) - it->second.p(0, 0)) *
+                    (it->second.p(1, 7) - it->second.p(1, 0)) *
+                    (it->second.p(2, 7) - it->second.p(2, 0));
 
+    for (int ii = 0; ii < 8; ++ii) {
+      double weigth = std::abs((pos_atoms[it->first][0] - it->second.p(0, 7-ii)) *
+                               (pos_atoms[it->first][1] - it->second.p(1, 7-ii)) *
+                               (pos_atoms[it->first][2] - it->second.p(2, 7-ii))) / volume;
 
-
-    {
-      for (int ii = 0; ii < 8; ++ii) {
-        double weigth = std::abs ( (pos_atoms[it->first][0] - it->second.p (0, 7-ii))*
-                                   (pos_atoms[it->first][1] - it->second.p (1, 7-ii))*
-                                   (pos_atoms[it->first][2] - it->second.p (2, 7-ii))) / volume;
-
-        if (! it->second.is_hanging (ii))
-          phi_on_atom += (*phi)[it->second.gt (ii)]*weigth;
-        else {
-          phi_hang_nodes = 0.0;
-
-          for (int jj = 0; jj < it->second.num_parents (ii); ++jj)
-            phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)]/it->second.num_parents (ii);
-
-
-          phi_on_atom += phi_hang_nodes*weigth;
+      if (!it->second.is_hanging(ii)) {
+        phi_on_atom += (*phi)[it->second.gt(ii)] * weigth;
+      } else {
+        phi_hang_nodes = 0.0;
+        for (int jj = 0; jj < it->second.num_parents(ii); ++jj) {
+          phi_hang_nodes += (*phi)[it->second.gparent(jj, ii)] / it->second.num_parents(ii);
         }
+        phi_on_atom += phi_hang_nodes * weigth;
       }
     }
 
-    phi_atoms << std::fixed << std::setprecision (3)
-              << std::setw (8) << pos_atoms[it->first][0]
-              << std::setw (8) << pos_atoms[it->first][1]
-              << std::setw (8) << pos_atoms[it->first][2]
-              << std::fixed << std::setprecision (4)
-              << "  " << phi_on_atom << std::endl;
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(3)
+        << std::setw(8) << pos_atoms[it->first][0]
+        << std::setw(8) << pos_atoms[it->first][1]
+        << std::setw(8) << pos_atoms[it->first][2]
+        << std::fixed << std::setprecision(4)
+        << "  " << phi_on_atom << "\n";
+
+    local_lines.push_back(oss.str());
   }
 
-  /*for (auto it = lookup_table.begin(); it!=lookup_table.end(); ++it) {
-    phi_on_atom = 0.0;
-      //linear approx:
-      double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
-                      (it->second.p (1, 7) - it->second.p (1, 0)) *
-                      (it->second.p (2, 7) - it->second.p (2, 0)); //volume
+  // Serializzazione delle stringhe
+  std::string local_data;
+  for (const auto& line : local_lines)
+    local_data += line;
 
+  int local_size = local_data.size();
+  std::vector<int> all_sizes(size);
 
+  MPI_Gather(&local_size, 1, MPI_INT, all_sizes.data(), 1, MPI_INT, 0, mpicomm);
 
-      {
-        for (int ii = 0; ii < 8; ++ii) {
-          double weigth = std::abs ((atoms[it->first].pos[0] - it->second.p (0, 7-ii))*
-                                    (atoms[it->first].pos[1] - it->second.p (1, 7-ii))*
-                                    (atoms[it->first].pos[2] - it->second.p (2, 7-ii))) / volume;
+  std::vector<int> displs(size);
+  std::string global_data;
 
-          if (! it->second.is_hanging (ii))
-            phi_on_atom += (*phi)[it->second.gt (ii)]*weigth;
-          else {
-            phi_hang_nodes = 0.0;
-            for (int jj = 0; jj < it->second.num_parents (ii); ++jj)
-              phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)]/it->second.num_parents (ii);
+  if (rank == 0) {
+    int total_size = 0;
+    for (int i = 0; i < size; ++i) {
+      displs[i] = total_size;
+      total_size += all_sizes[i];
+    }
+    global_data.resize(total_size);
+  }
 
+  MPI_Gatherv(local_data.data(), local_size, MPI_CHAR,
+              rank == 0 ? &global_data[0] : nullptr,
+              all_sizes.data(), displs.data(), MPI_CHAR,
+              0, mpicomm);
 
-            phi_on_atom += phi_hang_nodes*weigth;
-          }
-        }
-      }
-
-      phi_atoms << std::fixed << std::setprecision(3)
-                << std::setw(8) << atoms[it->first].pos[0]
-                << std::setw(8) << atoms[it->first].pos[1]
-                << std::setw(8) << atoms[it->first].pos[2]
-                << std::fixed << std::setprecision(4)
-                << "  " << phi_on_atom << std::endl;
-  }*/
-
-  phi_atoms.close ();
+  // Solo rank 0 scrive sul file
+  if (rank == 0) {
+    std::ofstream phi_atoms("phi_on_atoms.txt");
+    phi_atoms << global_data;
+    phi_atoms.close();
+  }
 }
+
+// void
+// poisson_boltzmann::write_potential_on_atoms_fast ()
+// {
+//   int rank;
+//   MPI_Comm_rank (mpicomm, &rank);
+
+//   std::ofstream phi_atoms;
+
+//   std::string filename = "phi_on_atoms_";
+//   std::string extension = ".txt";
+//   filename += std::to_string (rank);
+//   filename += extension;
+//   phi_atoms.open (filename.c_str ());
+
+//   double phi_on_atom;
+//   double phi_hang_nodes = 0.0;
+
+//   for (auto it = lookup_table.begin (); it!=lookup_table.end (); ++it) {
+//     phi_on_atom = 0.0;
+//     //linear approx:
+//     double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
+//                     (it->second.p (1, 7) - it->second.p (1, 0)) *
+//                     (it->second.p (2, 7) - it->second.p (2, 0)); //volume
+
+
+
+//     {
+//       for (int ii = 0; ii < 8; ++ii) {
+//         double weigth = std::abs ( (pos_atoms[it->first][0] - it->second.p (0, 7-ii))*
+//                                    (pos_atoms[it->first][1] - it->second.p (1, 7-ii))*
+//                                    (pos_atoms[it->first][2] - it->second.p (2, 7-ii))) / volume;
+
+//         if (! it->second.is_hanging (ii))
+//           phi_on_atom += (*phi)[it->second.gt (ii)]*weigth;
+//         else {
+//           phi_hang_nodes = 0.0;
+
+//           for (int jj = 0; jj < it->second.num_parents (ii); ++jj)
+//             phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)]/it->second.num_parents (ii);
+
+
+//           phi_on_atom += phi_hang_nodes*weigth;
+//         }
+//       }
+//     }
+
+//     phi_atoms << std::fixed << std::setprecision (3)
+//               << std::setw (8) << pos_atoms[it->first][0]
+//               << std::setw (8) << pos_atoms[it->first][1]
+//               << std::setw (8) << pos_atoms[it->first][2]
+//               << std::fixed << std::setprecision (4)
+//               << "  " << phi_on_atom << std::endl;
+//   }
+
+//   /*for (auto it = lookup_table.begin(); it!=lookup_table.end(); ++it) {
+//     phi_on_atom = 0.0;
+//       //linear approx:
+//       double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
+//                       (it->second.p (1, 7) - it->second.p (1, 0)) *
+//                       (it->second.p (2, 7) - it->second.p (2, 0)); //volume
+
+
+
+//       {
+//         for (int ii = 0; ii < 8; ++ii) {
+//           double weigth = std::abs ((atoms[it->first].pos[0] - it->second.p (0, 7-ii))*
+//                                     (atoms[it->first].pos[1] - it->second.p (1, 7-ii))*
+//                                     (atoms[it->first].pos[2] - it->second.p (2, 7-ii))) / volume;
+
+//           if (! it->second.is_hanging (ii))
+//             phi_on_atom += (*phi)[it->second.gt (ii)]*weigth;
+//           else {
+//             phi_hang_nodes = 0.0;
+//             for (int jj = 0; jj < it->second.num_parents (ii); ++jj)
+//               phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)]/it->second.num_parents (ii);
+
+
+//             phi_on_atom += phi_hang_nodes*weigth;
+//           }
+//         }
+//       }
+
+//       phi_atoms << std::fixed << std::setprecision(3)
+//                 << std::setw(8) << atoms[it->first].pos[0]
+//                 << std::setw(8) << atoms[it->first].pos[1]
+//                 << std::setw(8) << atoms[it->first].pos[2]
+//                 << std::fixed << std::setprecision(4)
+//                 << "  " << phi_on_atom << std::endl;
+//   }*/
+
+//   phi_atoms.close ();
+// }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////
