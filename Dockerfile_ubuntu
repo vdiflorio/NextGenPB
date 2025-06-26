@@ -93,18 +93,18 @@ WORKDIR /usr/local/
 RUN wget https://github.com/concept-lab/NextGenPB/archive/refs/tags/NextGenPB_v1.0.0.tar.gz && \
     tar xf NextGenPB_v1.0.0.tar.gz && \
     rm -rf NextGenPB_v1.0.0.tar.gz && \
-    mv NextGenPB-NextGenPB_v1.0.0 NextGenPB 
-WORKDIR /usr/local/NextGenPB
-RUN cp /usr/local/NextGenPB/local_setting/local_settings_ubuntu.mk /usr/local/NextGenPB/src/local_settings.mk && \
+    mv NextGenPB-NextGenPB_v1.0.0 nextgenPB 
+WORKDIR /usr/local/nextgenPB
+RUN cp /usr/local/NextGenPB/local_setting/local_settings_ubuntu.mk /usr/local/nextgenPB/src/local_settings.mk && \
     cd src && \
     sed -i "s/^CXXFLAGS=.*/CXXFLAGS= $CXXFLAGS/" local_settings.mk && \
     make clean all
 
 # Clean up unnecessary files
 RUN rm -rf /opt/nanoshaper/{example,src_client,test}
-RUN rm -rf /usr/local/NextGenPB/{docs, data}
+RUN rm -rf /usr/local/nextgenPB/{docs, data}
 
 ### Final Setup ###
-ENV PATH="/usr/local/NextGenPB/src:$PATH"
+ENV PATH="/usr/local/nextgenPB/src:$PATH"
 VOLUME ["/App"]
 WORKDIR /App
