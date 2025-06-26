@@ -107,5 +107,8 @@ RUN rm -rf /usr/local/nextgenPB/{docs, data}
 
 ### Final Setup ###
 ENV PATH="/usr/local/nextgenPB/src:$PATH"
+ENV OMPI_ALLOW_RUN_AS_ROOT=1
+ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+
 VOLUME ["/App"]
 WORKDIR /App

@@ -168,6 +168,8 @@ WORKDIR /opt
 
 # Create a volume for passing input data (potfile, pqrfile, etc.)
 ENV PATH=/usr/local/nextgenPB/src:$PATH
+ENV OMPI_ALLOW_RUN_AS_ROOT=1
+ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
 
 VOLUME ["/App"]
 WORKDIR /App
