@@ -4,7 +4,7 @@ FROM ubuntu:24.04
 LABEL maintainer="vincenzo.diflorio@iit.it"
 
 # Log message during image build
-RUN echo "Installing NextGenPB 1.0.1"
+RUN echo "Installing NextGenPB 1.0.0"
 
 # Set compiler optimization flags for generic architecture
 ENV CFLAGS="-O2 -mtune=generic"
@@ -89,9 +89,13 @@ RUN  ../configure --prefix=/opt/bimpp/ \
 
 ### === NextGenPB (Main Solver) === ###
 # Clone and build the NextGenPB codebase
-WORKDIR /usr/local/nextgenPB
-RUN git clone --branch v1.0.1 https://github.com/vdiflorio/nextgenPB.git . && \
-    cp /usr/local/nextgenPB/local_setting/local_settings_ubuntu.mk /usr/local/nextgenPB/src/local_settings.mk && \
+WORKDIR /usr/local/
+RUN wget https://github.com/concept-lab/NextGenPB/archive/refs/tags/NextGenPB_v1.0.0.tar.gz && \
+    tar xf NextGenPB_v1.0.0.tar.gz && \
+    rm -rf NextGenPB_v1.0.0.tar.gz && \
+    mv NextGenPB-NextGenPB_v1.0.0 NextGenPB 
+WORKDIR /usr/local/NextGenPB
+RUN cp /usr/local/nextgenPB/local_setting/local_settings_ubuntu.mk /usr/local/nextgenPB/src/local_settings.mk && \
     cd src && \
     sed -i "s/^CXXFLAGS=.*/CXXFLAGS= $CXXFLAGS/" local_settings.mk && \
     make clean all
@@ -100,6 +104,6 @@ RUN git clone --branch v1.0.1 https://github.com/vdiflorio/nextgenPB.git . && \
 RUN rm -rf /opt/nanoshaper/{example,src_client,test}
 
 ### Final Setup ###
-ENV PATH="/usr/local/nextgenPB/src:$PATH"
+ENV PATH="/usr/local/NextGenPB/src:$PATH"
 VOLUME ["/App"]
 WORKDIR /App

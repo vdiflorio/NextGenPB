@@ -5,7 +5,7 @@ FROM rockylinux:9
 LABEL maintainer="vincenzo.diflorio@iit.it"
 
 # Log message during image build
-RUN echo "Installing NextGenPB 1.0.1"
+RUN echo "Installing NextGenPB 1.0.0"
 
 # Set compiler optimization flags for generic architecture
 ENV CFLAGS="-O2 -mtune=generic"
@@ -148,9 +148,13 @@ RUN rm -rf bimpp-NextGenPB-v0.0.01
 
 ### === NextGenPB (Main Solver) === ###
 # Clone and build the NextGenPB codebase
-WORKDIR /usr/local/nextgenPB
-RUN git clone --branch v1.0.1 https://github.com/vdiflorio/nextgenPB.git . && \
-    cp /usr/local/nextgenPB/local_setting/local_settings_rocky.mk /usr/local/nextgenPB/src/local_settings.mk && \
+WORKDIR /usr/local/
+RUN wget https://github.com/concept-lab/NextGenPB/archive/refs/tags/NextGenPB_v1.0.0.tar.gz && \
+    tar xf NextGenPB_v1.0.0.tar.gz && \
+    rm -rf NextGenPB_v1.0.0.tar.gz && \
+    mv NextGenPB-NextGenPB_v1.0.0 NextGenPB 
+WORKDIR /usr/local/NextGenPB
+RUN cp /usr/local/nextgenPB/local_setting/local_settings_rocky.mk /usr/local/nextgenPB/src/local_settings.mk && \
     cd src && \
     sed -i "s/^CXXFLAGS=.*/CXXFLAGS= $CXXFLAGS/" local_settings.mk && \
     make clean all
@@ -161,7 +165,7 @@ RUN rm -rf /opt/nanoshaper/{example,src_client,test}
 WORKDIR /opt
 
 # Create a volume for passing input data (potfile, pqrfile, etc.)
-ENV PATH=/usr/local/nextgenPB/src:$PATH
+ENV PATH=/usr/local/NextGenPB/src:$PATH
 
 VOLUME ["/App"]
 WORKDIR /App
