@@ -152,7 +152,7 @@ WORKDIR /usr/local/
 RUN wget https://github.com/concept-lab/NextGenPB/archive/refs/tags/NextGenPB_v1.0.0.tar.gz && \
     tar xf NextGenPB_v1.0.0.tar.gz && \
     rm -rf NextGenPB_v1.0.0.tar.gz && \
-    mv NextGenPB-NextGenPB_v1.0.0 NextGenPB 
+    mv NextGenPB-NextGenPB_v1.0.0 nextgenPB 
 WORKDIR /usr/local/nextgenPB
 RUN cp /usr/local/nextgenPB/local_setting/local_settings_rocky.mk /usr/local/nextgenPB/src/local_settings.mk && \
     cd src && \
@@ -167,7 +167,7 @@ RUN rm -rf /usr/local/nextgenPB/{docs, data}
 WORKDIR /opt
 
 # Create a volume for passing input data (potfile, pqrfile, etc.)
-ENV PATH=/usr/local/NextGenPB/src:$PATH
+ENV PATH=/usr/local/nextgenPB/src:$PATH
 
 VOLUME ["/App"]
 WORKDIR /App
