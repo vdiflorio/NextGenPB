@@ -161,6 +161,8 @@ RUN cp /usr/local/nextgenPB/local_setting/local_settings_rocky.mk /usr/local/nex
 
 # Clean up unnecessary files
 RUN rm -rf /opt/nanoshaper/{example,src_client,test}
+RUN rm -rf /usr/local/NextGenPB/{docs, data}
+
 
 WORKDIR /opt
 

@@ -147,6 +147,7 @@ F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc  \
 
 
     rm -rf /opt/nanoshaper/{example,src_client,test}
+    rm -rf /usr/local/nextgenPB/{docs, data} 
 
 %startscript
     #echo "Starting NextGenPB container..."

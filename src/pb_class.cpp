@@ -84,7 +84,7 @@ poisson_boltzmann::create_mesh ()
     if (std::fabs(net_charge - std::round(net_charge)) > 1.e-5)
       std::cerr << "  [WARNING] Net charge is not an integer: " << net_charge << '\n';
 
-    std::cout << "  Solvent epsilon    : " << e_in << '\n';
+    std::cout << "  Solute epsilon     : " << e_in << '\n';
     std::cout << "  Solvent epsilon    : " << e_out << '\n';
     std::cout << "  Temperature        : " << T << " [K] \n";
     std::cout << "  Ionic strength     : " << ionic_strength << " [mol/L] \n";
