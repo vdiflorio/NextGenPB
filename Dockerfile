@@ -154,7 +154,7 @@ RUN wget https://github.com/concept-lab/NextGenPB/archive/refs/tags/NextGenPB_v1
     rm -rf NextGenPB_v1.0.0.tar.gz && \
     mv NextGenPB-NextGenPB_v1.0.0 NextGenPB 
 WORKDIR /usr/local/NextGenPB
-RUN cp /usr/local/NextGenPB/local_setting/local_settings_rocky.mk /usr/local/nextgenPB/src/local_settings.mk && \
+RUN cp /usr/local/NextGenPB/local_setting/local_settings_rocky.mk /usr/local/NextGenPB/src/local_settings.mk && \
     cd src && \
     sed -i "s/^CXXFLAGS=.*/CXXFLAGS= $CXXFLAGS/" local_settings.mk && \
     make clean all
