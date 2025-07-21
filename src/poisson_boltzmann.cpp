@@ -1,20 +1,20 @@
-/*  
+/*
  *  Copyright (C) 2019-2025 Carlo de Falco
  *  Copyright (C) 2020-2021 Martina Politi
  *  Copyright (C) 2021-2025 Vincenzo Di Florio
- *  
- *  This program is free software: you can redistribute it and/or modify  
- *  it under the terms of the GNU General Public License as published by  
- *  the Free Software Foundation, either version 3 of the License, or  
- *  (at your option) any later version.  
- *  
- *  This program is distributed in the hope that it will be useful,  
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the  
- *  GNU General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program. If not, see <https://www.gnu.org/licenses/>.  
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <mpi.h>
@@ -79,18 +79,20 @@ main (int argc, char **argv)
 
   if (rank == 0) {
     std::ifstream inputfile (pb.pqrfilename);
+
     if (pb.filetype == "pdb") {
       std::cout << "Reading PDB file: " << pb.pqrfilename << std::endl;
       read_pdb (pb.pqrfilename, pb.atoms);
       load_radii (pb.radiusfilename, pb.atoms);
       load_charges (pb.chargefilename, pb.atoms);
+
       if (pb.write_pqr == 1) {
         write_pqr (pb.name_pqr, pb.atoms);
         std::cout << "Wrote PQR file: " << pb.name_pqr << std::endl;
       }
-    }
-    else 
+    } else
       pb.read_atoms_from_pqr (inputfile);
+
     inputfile.close ();
     pb.read_atoms_from_class ();
   }
@@ -130,52 +132,55 @@ main (int argc, char **argv)
   MPI_Barrier (mpicomm);
 
   TIC ();
+
   if (rank == 0) {
     std::cout << "\n============ [ Building Grid ] =============\n";
   }
 
   // Initialize the mesh depending on the settings
   if (pb.mesh_shape == 0 || pb.refine_box == 1 || pb.mesh_shape == 4) {
-      pb.init_tmesh_with_refine_scale();
+    pb.init_tmesh_with_refine_scale();
   } else if (pb.mesh_shape == 3) {
-      pb.init_tmesh_with_refine_box_scale();
+    pb.init_tmesh_with_refine_box_scale();
   } else {
-      pb.init_tmesh();
+    pb.init_tmesh();
   }
 
   int local_nodes = pb.tmsh.num_local_nodes();
   int local_quads = pb.tmsh.num_local_quadrants();
 
   std::vector<int> all_nodes, all_quads;
+
   if (rank == 0) {
-      all_nodes.resize(size);
-      all_quads.resize(size);
+    all_nodes.resize (size);
+    all_quads.resize (size);
   }
 
-  MPI_Gather(&local_nodes, 1, MPI_INT,
-            all_nodes.data(), 1, MPI_INT,
-            0, mpicomm);
+  MPI_Gather (&local_nodes, 1, MPI_INT,
+              all_nodes.data(), 1, MPI_INT,
+              0, mpicomm);
 
-  MPI_Gather(&local_quads, 1, MPI_INT,
-            all_quads.data(), 1, MPI_INT,
-            0, mpicomm);
+  MPI_Gather (&local_quads, 1, MPI_INT,
+              all_quads.data(), 1, MPI_INT,
+              0, mpicomm);
 
   if (rank == 0) {
-      for (int r = 0; r < size; ++r) {
-          std::cout << "  [Rank " << r << "] Local nodes     : " << all_nodes[r] << '\n';
-          std::cout << "  [Rank " << r << "] Local quadrants : " << all_quads[r] << '\n';
-      }
-      std::cout << "  [Global] Total nodes     : " << pb.tmsh.num_global_nodes() << '\n';
-      std::cout << "  [Global] Total quadrants : " << pb.tmsh.num_global_quadrants() << '\n';
-      std::cout << "============================================\n";
+    for (int r = 0; r < size; ++r) {
+      std::cout << "  [Rank " << r << "] Local nodes     : " << all_nodes[r] << '\n';
+      std::cout << "  [Rank " << r << "] Local quadrants : " << all_quads[r] << '\n';
+    }
+
+    std::cout << "  [Global] Total nodes     : " << pb.tmsh.num_global_nodes() << '\n';
+    std::cout << "  [Global] Total quadrants : " << pb.tmsh.num_global_quadrants() << '\n';
+    std::cout << "============================================\n";
   }
 
   TOC ("Building Grid");
 
 
-  
 
-  if (pb.loc_refinement == 1 || pb.mesh_shape == 4){
+
+  if (pb.loc_refinement == 1 || pb.mesh_shape == 4) {
     TIC ();
     pb.refine_surface (ray_cache);
     TOC ("refine the box");
@@ -184,12 +189,16 @@ main (int argc, char **argv)
 
 
   TIC ();
-  if (rank == 0){
+
+  if (rank == 0) {
     std::cout << "\n========= [ Building Epsilon Map ] =========\n";
   }
+
   pb.create_markers (ray_cache);
+
   if (rank == 0)
     std::cout << "============================================\n";
+
   TOC ("create element markers");
 
 
@@ -197,31 +206,35 @@ main (int argc, char **argv)
   if ( rank == 0) ray_cache.ns->clean();
 
   TIC ();
-  if (pb.linear_solver_name == "mumps"){
+
+  if (pb.linear_solver_name == "mumps") {
     if (rank == 0)
       std::cout << "\n== [ Starting numerical solution using MUMPS ] ==\n";
+
     pb.mumps_compute_electric_potential (ray_cache);
-  }
-  else if (pb.linear_solver_name == "lis") {
-    if (rank == 0){
+  } else if (pb.linear_solver_name == "lis") {
+    if (rank == 0) {
       std::cout << "\n== [ Starting numerical solution using LIS ] ==\n";
       std::cout << "Selected BCs          : ";
+
       if (pb.bc ==1)
         std::cout << "Null";
       else if (pb.bc ==2)
         std::cout << "Coulombic";
       else
         std::cout << "Neumann";
-           
+
     }
+
     pb.lis_compute_electric_potential (ray_cache);
-  }
-  else {
+  } else {
     std::cerr << "Invalid linear solver selected" << std::endl;
     return 1;
   }
+
   if (rank == 0)
     std::cout << "============================================\n";
+
   TOC ("Compute Potential");
 
   if (pb.atoms_write == 1) {
@@ -232,10 +245,12 @@ main (int argc, char **argv)
 
   if (pb.calc_energy > 0) {
     TIC ();
+
     if (pb.loc_refinement == 1 || pb.mesh_shape > 2 || (pb.mesh_shape==2 && pb.refine_box==1))
       pb.energy (ray_cache);
     else
       pb.energy_fast (ray_cache);
+
     TOC ("compute energy")
   }
 

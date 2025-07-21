@@ -1,20 +1,20 @@
-/*  
+/*
  *  Copyright (C) 2019-2025 Carlo de Falco
  *  Copyright (C) 2020-2021 Martina Politi
  *  Copyright (C) 2021-2025 Vincenzo Di Florio
- *  
- *  This program is free software: you can redistribute it and/or modify  
- *  it under the terms of the GNU General Public License as published by  
- *  the Free Software Foundation, either version 3 of the License, or  
- *  (at your option) any later version.  
- *  
- *  This program is distributed in the hope that it will be useful,  
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the  
- *  GNU General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program. If not, see <https://www.gnu.org/licenses/>.  
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "pb_class.h"
@@ -70,18 +70,19 @@ poisson_boltzmann::create_mesh ()
   auto minmax_z = std::minmax_element (pos_atoms.begin (), pos_atoms.end (), comp_pos_z);
 
 
-  
-  net_charge = std::accumulate(charge_atoms.begin(), charge_atoms.end(), 0.0);
+
+  net_charge = std::accumulate (charge_atoms.begin(), charge_atoms.end(), 0.0);
   int num_atoms = charge_atoms.size ();
 
   if (rank == 0) {
     std::cout << "\n========== [ System Information ] ==========\n";
     std::cout << "  Number of atoms    : " << num_atoms << '\n';
     std::cout << "  Size protein [Å]   : ";
-    std::cout << "[" << (*minmax_x.second)[0] - (*minmax_x.first)[0] + 2*maxradius << ", " 
-                     << (*minmax_y.second)[1] - (*minmax_y.first)[1] + 2*maxradius << ", " 
-                     << (*minmax_z.second)[2] - (*minmax_z.first)[2] + 2*maxradius << "]\n"; 
-    if (std::fabs(net_charge - std::round(net_charge)) > 1.e-5)
+    std::cout << "[" << (*minmax_x.second)[0] - (*minmax_x.first)[0] + 2*maxradius << ", "
+              << (*minmax_y.second)[1] - (*minmax_y.first)[1] + 2*maxradius << ", "
+              << (*minmax_z.second)[2] - (*minmax_z.first)[2] + 2*maxradius << "]\n";
+
+    if (std::fabs (net_charge - std::round (net_charge)) > 1.e-5)
       std::cerr << "  [WARNING] Net charge is not an integer: " << net_charge << '\n';
 
     std::cout << "  Solute epsilon     : " << e_in << '\n';
@@ -104,8 +105,9 @@ poisson_boltzmann::create_mesh ()
       cc[kk] = (r_c[kk] + l_c[kk])*0.5;
       lmax = l[kk] > lmax ? l[kk] : lmax;
     }
+
     // For random displacement of the grid
-     if (rand_center == 1) {
+    if (rand_center == 1) {
       std::random_device rd; // Will be used to obtain a seed for the random number engine
       std::mt19937 gen (rd ()); // Standard mersenne_twister_engine seeded with rd()
       std::uniform_real_distribution<> dis (-1./scale*0.5, 1./scale*0.5);
@@ -199,7 +201,7 @@ poisson_boltzmann::create_mesh ()
       std::cout << "      x = [" << ll[0] << ", " << rr[0] << "]\n";
       std::cout << "      y = [" << ll[1] << ", " << rr[1] << "]\n";
       std::cout << "      z = [" << ll[2] << ", " << rr[2] << "]\n";
-      
+
       std::cout << "  Perfil uniform grid:  " << perfil1 << "\n";
       std::cout << "  Uniform grid Size [Å]:\n";
       std::cout << "      x = [" << l_cr[0] << ", " << r_cr[0] << "]\n";
@@ -266,7 +268,7 @@ poisson_boltzmann::create_mesh ()
       r_cr[2] = cc[2] + nz*1.0/scale_tmp;
     }
 
-    double dist =((rr[0]-ll[0]) - lmax)*0.5;
+    double dist = ((rr[0]-ll[0]) - lmax)*0.5;
     pot_bc = std::exp (-k*dist)/ (dist*eps_out);
 
     if (rank == 0) {
@@ -275,7 +277,7 @@ poisson_boltzmann::create_mesh ()
 
       std::cout << "  Center of the System [Å]:";
       std::cout << "  [" << cc[0] << ", " << cc[1] << ", " << cc[2] << "]\n";
-      
+
       std::cout << "  Perfil box:  " << perfil1 << "\n";
       std::cout << "  Complete Domain Box Size [Å]:\n";
       std::cout << "      x = [" << ll[0] << ", " << rr[0] << "]\n";
@@ -311,7 +313,7 @@ poisson_boltzmann::create_mesh ()
     for (int i = 0; i<6; i++)
       bcells.push_back (std::make_pair (0, i));
   } else if (mesh_shape == 2) {
-    
+
     l_cr[0] = l_c[0];
     l_cr[1] = l_c[1];
     l_cr[2] = l_c[2];
@@ -320,7 +322,7 @@ poisson_boltzmann::create_mesh ()
     r_cr[2] = r_c[2];
     scale = (1<<unilevel)/ (r_c[0]-l_c[0]);
 
-    double dist =((r_cr[0]-l_cr[0]) - lmax)*0.5;
+    double dist = ((r_cr[0]-l_cr[0]) - lmax)*0.5;
     pot_bc = std::exp (-k*dist)/ (dist*eps_out);
 
     if (rank == 0) {
@@ -329,10 +331,10 @@ poisson_boltzmann::create_mesh ()
       std::cout << "  Scale:  " << scale << "\n";
 
       std::cout << "  Center of the System [Å]:";
-      std::cout << "  [" << (r_c[0] + l_c[0])*0.5 << ", " 
-                << (r_c[1] + l_c[1])*0.5 << ", " 
+      std::cout << "  [" << (r_c[0] + l_c[0])*0.5 << ", "
+                << (r_c[1] + l_c[1])*0.5 << ", "
                 << (r_c[2] + l_c[2])*0.5 << "]\n";
-      
+
       std::cout << "  Complete Domain Box Size [Å]:\n";
       std::cout << "      x = [" << l_cr[0] << ", " << r_cr[0] << "]\n";
       std::cout << "      y = [" << l_cr[1] << ", " << r_cr[1] << "]\n";
@@ -538,26 +540,26 @@ poisson_boltzmann::create_mesh ()
 
       std::cout << "  Center of the focusing [Å]:";
       std::cout << "  [" << cc_focusing[0] << ", " << cc_focusing[1] << ", " << cc_focusing[2] << "]\n";
-      
+
       std::cout << "  Scale in the box focusing:  " << scale << "\n";
 
       std::cout << "  Complete Domain Box Size [Å]:\n";
       std::cout << "      x = [" << ll[0] << ", " << rr[0] << "]\n";
       std::cout << "      y = [" << ll[1] << ", " << rr[1] << "]\n";
       std::cout << "      z = [" << ll[2] << ", " << rr[2] << "]\n";
-      
+
       std::cout << "  Focusing Box Size [Å]:\n";
       std::cout << "      x = [" << l_box[0] << ", " << r_box[0] << "]\n";
       std::cout << "      y = [" << l_box[1] << ", " << r_box[1] << "]\n";
       std::cout << "      z = [" << l_box[2] << ", " << r_box[2] << "]\n";
 
-      
+
       std::cout << "  Number of Subdivisions in the focusing Box:";
       std::cout << "  nx = " << n_grid << "  ny = " << n_grid << "  nz = " << n_grid << '\n';
 
       std::cout << "============================================\n";
     }
-    
+
 
     simple_conn_num_vertices = 8;
     simple_conn_num_trees = 1;
@@ -801,6 +803,7 @@ poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, d
 
   return (i % 2);
 }
+
 /*
 int
 poisson_boltzmann::parse_options (int argc, char **argv)
@@ -966,51 +969,53 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   // =============================
   // 1. Leggi file dei parametri
   // =============================
-  if (!g.search("--prmfile") && !g.search("--potfile")) {
+  if (!g.search ("--prmfile") && !g.search ("--potfile")) {
     if (rank == 0)
       std::cout << "Warning: No parameters file selected, using the default one."
                 << "\nTo select one use --prmfile or --potfile option followed by the desired file.\n";
   }
 
   // Cerca il file, dando precedenza a --prmfile se entrambi sono presenti
-  if (g.search("--prmfile")) {
-    optionsfilename = g.next("../../data/options.prm");
-  } else if (g.search("--potfile")) {
-    optionsfilename = g.next("../../data/options.prm");
+  if (g.search ("--prmfile")) {
+    optionsfilename = g.next ("../../data/options.prm");
+  } else if (g.search ("--potfile")) {
+    optionsfilename = g.next ("../../data/options.prm");
   }
 
   if (rank == 0)
     std::cout << "Selected parameters file: " << optionsfilename << std::endl;
 
-  std::ifstream optionsfile(optionsfilename);
+  std::ifstream optionsfile (optionsfilename);
+
   if (!optionsfile) {
     if (rank == 0)
       std::cerr << "Cannot find the options file" << std::endl;
+
     return 1;
   }
 
-  GetPot g2(optionsfilename.c_str());
+  GetPot g2 (optionsfilename.c_str());
 
   // =============================
   // 2. Leggi parametri input/
   // =============================
   const std::string input_section = "input/";
   std::string filename_from_file;
-  
-  filetype        = g2((input_section + "filetype").c_str(), "pqr");
-  pqrfilename     = g2((input_section + "filename").c_str(), "../../data/1CCM.pqr");
-  radiusfilename  = g2((input_section + "radius_file").c_str(), "../../data/radius.siz");
-  chargefilename  = g2((input_section + "charge_file").c_str(), "../../data/charge.crg");
-  write_pqr       = g2((input_section + "write_pqr").c_str(), 0);
-  name_pqr        = g2((input_section + "name_pqr").c_str(), "output.pqr");
 
-  
+  filetype = g2 ((input_section + "filetype").c_str(), "pqr");
+  pqrfilename = g2 ((input_section + "filename").c_str(), "../../data/1CCM.pqr");
+  radiusfilename = g2 ((input_section + "radius_file").c_str(), "../../data/radius.siz");
+  chargefilename = g2 ((input_section + "charge_file").c_str(), "../../data/charge.crg");
+  write_pqr = g2 ((input_section + "write_pqr").c_str(), 0);
+  name_pqr = g2 ((input_section + "name_pqr").c_str(), "output.pqr");
+
+
 
   // =============================
   // 3. Override da riga di comando: --pqrfile
   // =============================
-  if (g.search("--pqrfile")) {
-    pqrfilename = g.next("");
+  if (g.search ("--pqrfile")) {
+    pqrfilename = g.next ("");
     filetype = "pqr"; // Forza il filetype a pqr se viene specificato un file
   }
 
@@ -1130,13 +1135,13 @@ poisson_boltzmann::read_atoms_from_pqr (std::basic_istream<char> &inputfile)
 
   while (inputfile >> a)
     atoms.push_back (a);
-  
+
   if (atoms.size() < 4) {
     auto comp = [] (const NS::Atom &a1, const NS::Atom &a2) -> bool {
       return a1.radius < a2.radius;
     };
 
-    auto max_iter = std::max_element(atoms.begin(), atoms.end(), comp);
+    auto max_iter = std::max_element (atoms.begin(), atoms.end(), comp);
     std::array<double, 3> max_pos = {
       max_iter->pos[0],
       max_iter->pos[1],
@@ -1146,13 +1151,14 @@ poisson_boltzmann::read_atoms_from_pqr (std::basic_istream<char> &inputfile)
     const double epsilon = 0.001;
 
     std::array<std::array<int, 3>, 6> directions = {{
-      {{-1, 0, 0}},
-      {{+1, 0, 0}},
-      {{0, -1, 0}},
-      {{0, +1, 0}},
-      {{0, 0, -1}},
-      {{0, 0, +1}}
-    }};
+        {{-1, 0, 0}},
+        {{+1, 0, 0}},
+        {{0, -1, 0}},
+        {{0, +1, 0}},
+        {{0, 0, -1}},
+        {{0, 0, +1}}
+      }
+    };
 
     for (int ii = 0; ii < 6; ++ii) {
       std::array<double, 3> new_pos = {
@@ -1166,7 +1172,7 @@ poisson_boltzmann::read_atoms_from_pqr (std::basic_istream<char> &inputfile)
       dummy.pos[2] = new_pos[2];
       dummy.charge = 0.0;
       dummy.radius = 0.0;
-      atoms.push_back(dummy);
+      atoms.push_back (dummy);
     }
   }
 }
@@ -1227,63 +1233,64 @@ poisson_boltzmann::write_atoms_to_pqr (std::basic_ostream<char> &outputfile)
 // operator>> (std::basic_istream<char>& inputfile, NS::Atom &a)
 // {
 
-//   int Atom_number;
-//   std::string Field_name;
+// int Atom_number;
+// std::string Field_name;
 
-//   inputfile >> Field_name
-//             >> Atom_number
-//             >> a.ai.name
-//             >> a.ai.resName
-//             >> a.ai.resNum
-//             >> a.pos[0]
-//             >> a.pos[1]
-//             >> a.pos[2]
-//             >> a.charge
-//             >> a.radius;
+// inputfile >> Field_name
+// >> Atom_number
+// >> a.ai.name
+// >> a.ai.resName
+// >> a.ai.resNum
+// >> a.pos[0]
+// >> a.pos[1]
+// >> a.pos[2]
+// >> a.charge
+// >> a.radius;
 
-//   if (a.radius < 1.e-5)
-//     a.radius = 1.0;
+// if (a.radius < 1.e-5)
+// a.radius = 1.0;
 
-//   a.radius2 = a.radius*a.radius;
-//   return inputfile;
+// a.radius2 = a.radius*a.radius;
+// return inputfile;
 // }
 
 std::basic_istream<char>&
 operator>> (std::basic_istream<char>& inputfile, NS::Atom &a)
 {
-    int Atom_number;
-    std::string Field_name;
+  int Atom_number;
+  std::string Field_name;
 
-    inputfile >> Field_name
-              >> Atom_number
-              >> a.ai.name
-              >> a.ai.resName;
+  inputfile >> Field_name
+            >> Atom_number
+            >> a.ai.name
+            >> a.ai.resName;
 
-    std::string token;
-    inputfile >> token;
+  std::string token;
+  inputfile >> token;
 
-    // Verifica se è un numero (resNum) oppure una stringa (chain)
-    bool is_number = !token.empty() && (std::isdigit(token[0]) || token[0] == '-' || token[0] == '+');
-    
-    if (is_number) {
-        // Era resNum - metti solo il token indietro nello stream
-        for (auto it = token.rbegin(); it != token.rend(); ++it) {
-            inputfile.putback(*it);
-        }
-        a.ai.chain.clear(); // Nessuna catena specificata
-    } else {
-        // Era chain - leggi il resNum successivo
-        a.ai.chain = token;
+  // Verifica se è un numero (resNum) oppure una stringa (chain)
+  bool is_number = !token.empty() && (std::isdigit (token[0]) || token[0] == '-' || token[0] == '+');
+
+  if (is_number) {
+    // Era resNum - metti solo il token indietro nello stream
+    for (auto it = token.rbegin(); it != token.rend(); ++it) {
+      inputfile.putback (*it);
     }
 
-    // Ora leggi i dati numerici
-    inputfile >> a.ai.resNum >> a.pos[0] >> a.pos[1] >> a.pos[2]
-              >> a.charge >> a.radius;
+    a.ai.chain.clear(); // Nessuna catena specificata
+  } else {
+    // Era chain - leggi il resNum successivo
+    a.ai.chain = token;
+  }
 
-    if (a.radius < 1.e-5)
-        a.radius = 1.0;
+  // Ora leggi i dati numerici
+  inputfile >> a.ai.resNum >> a.pos[0] >> a.pos[1] >> a.pos[2]
+            >> a.charge >> a.radius;
 
-    return inputfile;
+  if (a.radius < 1.e-5)
+    a.radius = 1.0;
+
+  return inputfile;
 }
 
 std::basic_istream<char>&
@@ -2009,7 +2016,7 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
   MPI_Comm_rank (mpicomm, &rank);
 
   // if (rank == 0)
-  //   std::cout << "\nStarting MUMPS solution" << std::endl;
+  // std::cout << "\nStarting MUMPS solution" << std::endl;
 
   // diffusion
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
@@ -2089,10 +2096,10 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
   // auto end_rho = std::chrono::steady_clock::now ();
 
   // if (rank==0) {
-  //   std::cout << "\nTime to calculate rho:  "
-  //             << std::chrono::duration_cast<std::chrono::milliseconds> (end_rho- start_rho).count ()
-  //             << " ms"
-  //             <<std::endl;
+  // std::cout << "\nTime to calculate rho:  "
+  // << std::chrono::duration_cast<std::chrono::milliseconds> (end_rho- start_rho).count ()
+  // << " ms"
+  // <<std::endl;
   // }
 
   //////////////////////////////////////////////////////////////////
@@ -2200,6 +2207,7 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
 
   phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
   (*phi) = mumps_solver.get_distributed_solution ();
+
   if (size > 1)
     bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
 
@@ -2218,8 +2226,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   MPI_Comm_rank (mpicomm, &rank);
 
   // if (rank == 0)
-  //   std::cout << "\nStarting LIS solution" << std::endl;
-    
+  // std::cout << "\nStarting LIS solution" << std::endl;
+
 
   // diffusion
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
@@ -2299,10 +2307,10 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   auto end_rho = std::chrono::steady_clock::now ();
 
   // if (rank==0) {
-  //   std::cout << "\nTime to calculate rho : "
-  //             << std::chrono::duration_cast<std::chrono::milliseconds> (end_rho- start_rho).count ()
-  //             << " ms"
-  //             <<std::endl;
+  // std::cout << "\nTime to calculate rho : "
+  // << std::chrono::duration_cast<std::chrono::milliseconds> (end_rho- start_rho).count ()
+  // << " ms"
+  // <<std::endl;
   // }
 
   //////////////////////////////////////////////////////////////////
@@ -2344,8 +2352,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   dirichlet_bcs3 bcs;
 
   if (bc == 1) { //hom Dir bc
-    if (std::fabs(pot_bc) > 1.e-5 && rank == 0) //check if the potential at the boundary is ~0  
+    if (std::fabs (pot_bc) > 1.e-5 && rank == 0) //check if the potential at the boundary is ~0
       std::cerr << "[WARNING] Boundary conditions may be inaccurate!!\n";
+
     for (auto const & ibc : bcells) {
       auto cella = ibc.first;
       auto lato = ibc.second;
@@ -2390,14 +2399,14 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   }
 
   // std::cout << "\nMatrix and rhs assembled!"<< std::endl;
-  
+
   MPI_Barrier (mpicomm);
   // auto end_matrix = std::chrono::steady_clock::now ();
   // if (rank==0) {
-  //   std::cout << "\nTime to calculate Matrix and rhs:  "
-  //             << std::chrono::duration_cast<std::chrono::milliseconds> (end_matrix- start_matrix).count ()
-  //             << " ms"
-  //             <<std::endl<<std::endl;
+  // std::cout << "\nTime to calculate Matrix and rhs:  "
+  // << std::chrono::duration_cast<std::chrono::milliseconds> (end_matrix- start_matrix).count ()
+  // << " ms"
+  // <<std::endl<<std::endl;
   // }
 
 
@@ -2504,10 +2513,10 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   // auto end_sol = std::chrono::steady_clock::now ();
 
   // if (rank==0) {
-  //   std::cout << "\nTime to solve linear problem:  "
-  //             << std::chrono::duration_cast<std::chrono::milliseconds> (end_sol- start_sol).count ()
-  //             << " ms"
-  //             <<std::endl;
+  // std::cout << "\nTime to solve linear problem:  "
+  // << std::chrono::duration_cast<std::chrono::milliseconds> (end_sol- start_sol).count ()
+  // << " ms"
+  // <<std::endl;
   // }
 
   if (size > 1)
@@ -2516,12 +2525,12 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 }
 
 
-void 
+void
 poisson_boltzmann::write_potential_on_atoms_fast ()
 {
   int rank, size;
-  MPI_Comm_rank(mpicomm, &rank);
-  MPI_Comm_size(mpicomm, &size);
+  MPI_Comm_rank (mpicomm, &rank);
+  MPI_Comm_size (mpicomm, &size);
 
   std::vector<std::string> local_lines;
 
@@ -2531,67 +2540,72 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
   // Costruisci stringhe localmente
   for (auto it = lookup_table.begin(); it != lookup_table.end(); ++it) {
     phi_on_atom = 0.0;
-    double volume = (it->second.p(0, 7) - it->second.p(0, 0)) *
-                    (it->second.p(1, 7) - it->second.p(1, 0)) *
-                    (it->second.p(2, 7) - it->second.p(2, 0));
+    double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
+                    (it->second.p (1, 7) - it->second.p (1, 0)) *
+                    (it->second.p (2, 7) - it->second.p (2, 0));
 
     for (int ii = 0; ii < 8; ++ii) {
-      double weigth = std::abs((pos_atoms[it->first][0] - it->second.p(0, 7-ii)) *
-                               (pos_atoms[it->first][1] - it->second.p(1, 7-ii)) *
-                               (pos_atoms[it->first][2] - it->second.p(2, 7-ii))) / volume;
+      double weigth = std::abs ((pos_atoms[it->first][0] - it->second.p (0, 7-ii)) *
+                                (pos_atoms[it->first][1] - it->second.p (1, 7-ii)) *
+                                (pos_atoms[it->first][2] - it->second.p (2, 7-ii))) / volume;
 
-      if (!it->second.is_hanging(ii)) {
-        phi_on_atom += (*phi)[it->second.gt(ii)] * weigth;
+      if (!it->second.is_hanging (ii)) {
+        phi_on_atom += (*phi)[it->second.gt (ii)] * weigth;
       } else {
         phi_hang_nodes = 0.0;
-        for (int jj = 0; jj < it->second.num_parents(ii); ++jj) {
-          phi_hang_nodes += (*phi)[it->second.gparent(jj, ii)] / it->second.num_parents(ii);
+
+        for (int jj = 0; jj < it->second.num_parents (ii); ++jj) {
+          phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)] / it->second.num_parents (ii);
         }
+
         phi_on_atom += phi_hang_nodes * weigth;
       }
     }
 
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision(3)
-        << std::setw(8) << pos_atoms[it->first][0]
-        << std::setw(8) << pos_atoms[it->first][1]
-        << std::setw(8) << pos_atoms[it->first][2]
-        << std::fixed << std::setprecision(4)
+    oss << std::fixed << std::setprecision (3)
+        << std::setw (8) << pos_atoms[it->first][0]
+        << std::setw (8) << pos_atoms[it->first][1]
+        << std::setw (8) << pos_atoms[it->first][2]
+        << std::fixed << std::setprecision (4)
         << "  " << phi_on_atom << "\n";
 
-    local_lines.push_back(oss.str());
+    local_lines.push_back (oss.str());
   }
 
   // Serializzazione delle stringhe
   std::string local_data;
+
   for (const auto& line : local_lines)
     local_data += line;
 
   int local_size = local_data.size();
-  std::vector<int> all_sizes(size);
+  std::vector<int> all_sizes (size);
 
-  MPI_Gather(&local_size, 1, MPI_INT, all_sizes.data(), 1, MPI_INT, 0, mpicomm);
+  MPI_Gather (&local_size, 1, MPI_INT, all_sizes.data(), 1, MPI_INT, 0, mpicomm);
 
-  std::vector<int> displs(size);
+  std::vector<int> displs (size);
   std::string global_data;
 
   if (rank == 0) {
     int total_size = 0;
+
     for (int i = 0; i < size; ++i) {
       displs[i] = total_size;
       total_size += all_sizes[i];
     }
-    global_data.resize(total_size);
+
+    global_data.resize (total_size);
   }
 
-  MPI_Gatherv(local_data.data(), local_size, MPI_CHAR,
-              rank == 0 ? &global_data[0] : nullptr,
-              all_sizes.data(), displs.data(), MPI_CHAR,
-              0, mpicomm);
+  MPI_Gatherv (local_data.data(), local_size, MPI_CHAR,
+               rank == 0 ? &global_data[0] : nullptr,
+               all_sizes.data(), displs.data(), MPI_CHAR,
+               0, mpicomm);
 
   // Solo rank 0 scrive sul file
   if (rank == 0) {
-    std::ofstream phi_atoms("phi_on_atoms.txt");
+    std::ofstream phi_atoms ("phi_on_atoms.txt");
     phi_atoms << global_data;
     phi_atoms.close();
   }
@@ -2600,94 +2614,94 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
 // void
 // poisson_boltzmann::write_potential_on_atoms_fast ()
 // {
-//   int rank;
-//   MPI_Comm_rank (mpicomm, &rank);
+// int rank;
+// MPI_Comm_rank (mpicomm, &rank);
 
-//   std::ofstream phi_atoms;
+// std::ofstream phi_atoms;
 
-//   std::string filename = "phi_on_atoms_";
-//   std::string extension = ".txt";
-//   filename += std::to_string (rank);
-//   filename += extension;
-//   phi_atoms.open (filename.c_str ());
+// std::string filename = "phi_on_atoms_";
+// std::string extension = ".txt";
+// filename += std::to_string (rank);
+// filename += extension;
+// phi_atoms.open (filename.c_str ());
 
-//   double phi_on_atom;
-//   double phi_hang_nodes = 0.0;
+// double phi_on_atom;
+// double phi_hang_nodes = 0.0;
 
-//   for (auto it = lookup_table.begin (); it!=lookup_table.end (); ++it) {
-//     phi_on_atom = 0.0;
-//     //linear approx:
-//     double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
-//                     (it->second.p (1, 7) - it->second.p (1, 0)) *
-//                     (it->second.p (2, 7) - it->second.p (2, 0)); //volume
-
-
-
-//     {
-//       for (int ii = 0; ii < 8; ++ii) {
-//         double weigth = std::abs ( (pos_atoms[it->first][0] - it->second.p (0, 7-ii))*
-//                                    (pos_atoms[it->first][1] - it->second.p (1, 7-ii))*
-//                                    (pos_atoms[it->first][2] - it->second.p (2, 7-ii))) / volume;
-
-//         if (! it->second.is_hanging (ii))
-//           phi_on_atom += (*phi)[it->second.gt (ii)]*weigth;
-//         else {
-//           phi_hang_nodes = 0.0;
-
-//           for (int jj = 0; jj < it->second.num_parents (ii); ++jj)
-//             phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)]/it->second.num_parents (ii);
-
-
-//           phi_on_atom += phi_hang_nodes*weigth;
-//         }
-//       }
-//     }
-
-//     phi_atoms << std::fixed << std::setprecision (3)
-//               << std::setw (8) << pos_atoms[it->first][0]
-//               << std::setw (8) << pos_atoms[it->first][1]
-//               << std::setw (8) << pos_atoms[it->first][2]
-//               << std::fixed << std::setprecision (4)
-//               << "  " << phi_on_atom << std::endl;
-//   }
-
-//   /*for (auto it = lookup_table.begin(); it!=lookup_table.end(); ++it) {
-//     phi_on_atom = 0.0;
-//       //linear approx:
-//       double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
-//                       (it->second.p (1, 7) - it->second.p (1, 0)) *
-//                       (it->second.p (2, 7) - it->second.p (2, 0)); //volume
+// for (auto it = lookup_table.begin (); it!=lookup_table.end (); ++it) {
+// phi_on_atom = 0.0;
+// //linear approx:
+// double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
+// (it->second.p (1, 7) - it->second.p (1, 0)) *
+// (it->second.p (2, 7) - it->second.p (2, 0)); //volume
 
 
 
-//       {
-//         for (int ii = 0; ii < 8; ++ii) {
-//           double weigth = std::abs ((atoms[it->first].pos[0] - it->second.p (0, 7-ii))*
-//                                     (atoms[it->first].pos[1] - it->second.p (1, 7-ii))*
-//                                     (atoms[it->first].pos[2] - it->second.p (2, 7-ii))) / volume;
+// {
+// for (int ii = 0; ii < 8; ++ii) {
+// double weigth = std::abs ( (pos_atoms[it->first][0] - it->second.p (0, 7-ii))*
+// (pos_atoms[it->first][1] - it->second.p (1, 7-ii))*
+// (pos_atoms[it->first][2] - it->second.p (2, 7-ii))) / volume;
 
-//           if (! it->second.is_hanging (ii))
-//             phi_on_atom += (*phi)[it->second.gt (ii)]*weigth;
-//           else {
-//             phi_hang_nodes = 0.0;
-//             for (int jj = 0; jj < it->second.num_parents (ii); ++jj)
-//               phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)]/it->second.num_parents (ii);
+// if (! it->second.is_hanging (ii))
+// phi_on_atom += (*phi)[it->second.gt (ii)]*weigth;
+// else {
+// phi_hang_nodes = 0.0;
+
+// for (int jj = 0; jj < it->second.num_parents (ii); ++jj)
+// phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)]/it->second.num_parents (ii);
 
 
-//             phi_on_atom += phi_hang_nodes*weigth;
-//           }
-//         }
-//       }
+// phi_on_atom += phi_hang_nodes*weigth;
+// }
+// }
+// }
 
-//       phi_atoms << std::fixed << std::setprecision(3)
-//                 << std::setw(8) << atoms[it->first].pos[0]
-//                 << std::setw(8) << atoms[it->first].pos[1]
-//                 << std::setw(8) << atoms[it->first].pos[2]
-//                 << std::fixed << std::setprecision(4)
-//                 << "  " << phi_on_atom << std::endl;
-//   }*/
+// phi_atoms << std::fixed << std::setprecision (3)
+// << std::setw (8) << pos_atoms[it->first][0]
+// << std::setw (8) << pos_atoms[it->first][1]
+// << std::setw (8) << pos_atoms[it->first][2]
+// << std::fixed << std::setprecision (4)
+// << "  " << phi_on_atom << std::endl;
+// }
 
-//   phi_atoms.close ();
+// /*for (auto it = lookup_table.begin(); it!=lookup_table.end(); ++it) {
+// phi_on_atom = 0.0;
+// //linear approx:
+// double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
+// (it->second.p (1, 7) - it->second.p (1, 0)) *
+// (it->second.p (2, 7) - it->second.p (2, 0)); //volume
+
+
+
+// {
+// for (int ii = 0; ii < 8; ++ii) {
+// double weigth = std::abs ((atoms[it->first].pos[0] - it->second.p (0, 7-ii))*
+// (atoms[it->first].pos[1] - it->second.p (1, 7-ii))*
+// (atoms[it->first].pos[2] - it->second.p (2, 7-ii))) / volume;
+
+// if (! it->second.is_hanging (ii))
+// phi_on_atom += (*phi)[it->second.gt (ii)]*weigth;
+// else {
+// phi_hang_nodes = 0.0;
+// for (int jj = 0; jj < it->second.num_parents (ii); ++jj)
+// phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)]/it->second.num_parents (ii);
+
+
+// phi_on_atom += phi_hang_nodes*weigth;
+// }
+// }
+// }
+
+// phi_atoms << std::fixed << std::setprecision(3)
+// << std::setw(8) << atoms[it->first].pos[0]
+// << std::setw(8) << atoms[it->first].pos[1]
+// << std::setw(8) << atoms[it->first].pos[2]
+// << std::fixed << std::setprecision(4)
+// << "  " << phi_on_atom << std::endl;
+// }*/
+
+// phi_atoms.close ();
 // }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2849,6 +2863,7 @@ poisson_boltzmann::classifyCube (tmesh_3d::quadrant_iterator& quadrant,
   int index = 1;
   double tmp = 0;
   constexpr double EPSILON = 1e-10;
+
   for (int ii : {
          0,1,3,2,4,5,7,6
        }) {
@@ -2880,7 +2895,8 @@ poisson_boltzmann::classifyCube_fast (tmesh_3d::quadrant_iterator& quadrant,
   int cubeindex = 0;
   int index = 1;
   double tmp = 0;
-  constexpr double EPSILON = 1e-10; 
+  constexpr double EPSILON = 1e-10;
+
   for (int ii : {
          0,1,3,2,4,5,7,6
        }) {
@@ -2888,7 +2904,7 @@ poisson_boltzmann::classifyCube_fast (tmesh_3d::quadrant_iterator& quadrant,
 
     index *= 2;
   }
-  
+
   // Cube is entirely in/out of the surface
   if (edgeTable[cubeindex] == 0)
     return -1;
@@ -3098,24 +3114,27 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   std::vector<std::array<double,3>> ().swap (pos_atoms);
 
   // Coulomb energy
-  if (calc_coulombic == 1)
-  {
+  if (calc_coulombic == 1) {
     const double den_in = 1.0 / eps_in;
+
     for (size_t i = 0; i < num_atoms; ++i) {
       const double qi = charge_atoms_tmp[i];
       const double xi = pos_atoms_tmp[i][0];
       const double yi = pos_atoms_tmp[i][1];
       const double zi = pos_atoms_tmp[i][2];
+
       for (size_t j = i + 1; j < num_atoms; ++j) {
         dx = xi - pos_atoms_tmp[j][0];
         dy = yi - pos_atoms_tmp[j][1];
         dz = zi - pos_atoms_tmp[j][2];
-        distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+        distance = std::sqrt (dx * dx + dy * dy + dz * dz);
         coul_energy += (qi * charge_atoms_tmp[j]) / distance;
       }
     }
+
     coul_energy *= den_in;
   }
+
   ////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////
   double fract;
@@ -3154,12 +3173,12 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
   double area = 0.0;
 
-  
+
 
   auto quadrant = this->tmsh.begin_quadrant_sweep ();
 
   // polarization energy
-  if (calc_energy==1 ||(calc_energy==2 && k < 1.e-5)) {
+  if (calc_energy==1 || (calc_energy==2 && k < 1.e-5)) {
     for (const int ii : border_quad) {
       quadrant[ii];
       h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
@@ -3201,6 +3220,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   }
 
   double d2;
+
   //polarization energy + ionic energy
   if (calc_energy==2 && k > 1.e-5) {
     for (const int ii : border_quad) {
@@ -3268,11 +3288,13 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
         }
 
         area = areaTriangle (vert_triangles);
+
         for (int iatom = 0; iatom < num_atoms; ++iatom) {
           const double qi = charge_atoms_tmp[iatom];
           const double xi = pos_atoms_tmp[iatom][0];
           const double yi = pos_atoms_tmp[iatom][1];
           const double zi = pos_atoms_tmp[iatom][2];
+
           for (int kk = 0; kk < 3; ++kk) {
             dist_vert[0] = vert_triangles[kk][0]- xi;
             dist_vert[1] = vert_triangles[kk][1]- yi;
@@ -3294,7 +3316,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
     energy_react = 0.5*second_int - first_int*constant_react;
   }
 
-  
+
 
   if (rank == 0) {
     MPI_Reduce (MPI_IN_PLACE, &charge_pol, 1, MPI_DOUBLE, MPI_SUM, 0,
@@ -3316,33 +3338,32 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
     constexpr int label_width = 50;
     constexpr int precision = 16;
 
-    std::cout << std::left << std::setw(label_width) << "  Net charge [e]:"
-              << std::setprecision(precision) << net_charge << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Net charge [e]:"
+              << std::setprecision (precision) << net_charge << "\n";
 
-    std::cout << std::left << std::setw(label_width) << "  Flux charge [e]:"
-              << std::setprecision(precision) << charge_pol / (4.0 * pi) << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Flux charge [e]:"
+              << std::setprecision (precision) << charge_pol / (4.0 * pi) << "\n";
 
     // std::cout << std::left << std::setw(label_width)
-    //           << "    Error w.r.t. net charge [%]:"
-    //           << std::setprecision(6)
-    //           << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
+    // << "    Error w.r.t. net charge [%]:"
+    // << std::setprecision(6)
+    // << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
 
-    std::cout << std::left << std::setw(label_width) << "  Polarization energy [kT]:"
-              << std::setprecision(precision) << energy_pol << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Polarization energy [kT]:"
+              << std::setprecision (precision) << energy_pol << "\n";
 
-    if (calc_energy == 2)
-    {
-      std::cout << std::left << std::setw(label_width) << "  Direct ionic energy [kT]:"
-              << std::setprecision(precision) << energy_react << "\n";
+    if (calc_energy == 2) {
+      std::cout << std::left << std::setw (label_width) << "  Direct ionic energy [kT]:"
+                << std::setprecision (precision) << energy_react << "\n";
     }
 
     if (calc_coulombic == 1) {
-      std::cout << std::left << std::setw(label_width) << "  Coulombic energy [kT]:"
-                << std::setprecision(precision) << coul_energy << "\n";
+      std::cout << std::left << std::setw (label_width) << "  Coulombic energy [kT]:"
+                << std::setprecision (precision) << coul_energy << "\n";
     }
 
-    std::cout << std::left << std::setw(label_width) << "  Sum of electrostatic energy contributions [kT]:"
-              << std::setprecision(precision)
+    std::cout << std::left << std::setw (label_width) << "  Sum of electrostatic energy contributions [kT]:"
+              << std::setprecision (precision)
               << (energy_pol + energy_react + coul_energy) << "\n";
 
     std::cout << "===========================================================\n";
@@ -3383,31 +3404,33 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   double dx, dy, dz;
   double distance = 0.0;
   const size_t num_atoms = charge_atoms_tmp.size();
-  
+
   std::vector<double> ().swap (charge_atoms);
   std::vector<std::array<double,3>> ().swap (pos_atoms);
 
   // Coulomb energy
-  if (calc_coulombic == 1)
-  {
+  if (calc_coulombic == 1) {
     const double den_in = 1.0 / eps_in;
+
     for (size_t i = 0; i < num_atoms; ++i) {
       const double qi = charge_atoms_tmp[i];
       const double xi = pos_atoms_tmp[i][0];
       const double yi = pos_atoms_tmp[i][1];
       const double zi = pos_atoms_tmp[i][2];
+
       for (size_t j = i + 1; j < num_atoms; ++j) {
         dx = xi - pos_atoms_tmp[j][0];
         dy = yi - pos_atoms_tmp[j][1];
         dz = zi - pos_atoms_tmp[j][2];
-        distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+        distance = std::sqrt (dx * dx + dy * dy + dz * dz);
         coul_energy += (qi * charge_atoms_tmp[j]) / distance;
       }
     }
+
     coul_energy *= den_in;
   }
-  
-  
+
+
   ////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////////
   double fract;
@@ -3456,7 +3479,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
     h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
     area_h[0] = h[1]*h[2]/h[0] * 0.25;
     area_h[1] = h[0]*h[2]/h[1] * 0.25;
-    area_h[2] = h[0]*h[1]/h[2] * 0.25;  
+    area_h[2] = h[0]*h[1]/h[2] * 0.25;
   }
 
   // flux and polarization energy calculation
@@ -3464,6 +3487,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
     for (const int ii : border_quad) {
       quadrant[ii];
       std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
+
       for (int ip = 0; ip < edg.size (); ++ip) {
         tmp_flux = 0.0;
         i1 = edge2nodes[2 * edg[ip] ];
@@ -3486,17 +3510,19 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
         }
       }
     }
+
     energy_pol = constant_pol*first_int;
   }
 
   double d2;
+
   //polarization energy + ionic energy
   if (calc_energy==2 && k > 1.e-5) {
     for (const int ii : border_quad) {
       quadrant[ii];
       cubeindex = classifyCube_fast (quadrant, eps_out);
       std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
-      
+
       ntriang = getTriangles (cubeindex, triangles);
 
       for (int ip = 0; ip < edg.size (); ++ip) {
@@ -3549,11 +3575,13 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
         }
 
         area = areaTriangle (vert_triangles);
+
         for (int iatom = 0; iatom < num_atoms; ++iatom) {
           const double qi = charge_atoms_tmp[iatom];
           const double xi = pos_atoms_tmp[iatom][0];
           const double yi = pos_atoms_tmp[iatom][1];
           const double zi = pos_atoms_tmp[iatom][2];
+
           for (int kk = 0; kk < 3; ++kk) {
             dist_vert[0] = vert_triangles[kk][0]- xi;
             dist_vert[1] = vert_triangles[kk][1]- yi;
@@ -3572,7 +3600,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
 
     }
 
-    
+
     energy_pol = constant_pol*first_int;
     energy_react = 0.5*second_int - first_int*constant_react;
   }
@@ -3598,32 +3626,32 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
     constexpr int label_width = 50;
     constexpr int precision = 16;
 
-    std::cout << std::left << std::setw(label_width) << "  Net charge [e]:"
-              << std::setprecision(precision) << net_charge << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Net charge [e]:"
+              << std::setprecision (precision) << net_charge << "\n";
 
-    std::cout << std::left << std::setw(label_width) << "  Flux charge [e]:"
-              << std::setprecision(precision) << charge_pol / (4.0 * pi) << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Flux charge [e]:"
+              << std::setprecision (precision) << charge_pol / (4.0 * pi) << "\n";
 
     // std::cout << std::left << std::setw(label_width)
-    //           << "    Error w.r.t. net charge [%]:"
-    //           << std::setprecision(6)
-    //           << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
+    // << "    Error w.r.t. net charge [%]:"
+    // << std::setprecision(6)
+    // << ((charge_pol / (4.0 * pi) - net_charge) / net_charge * 100.0) << "\n";
 
-    std::cout << std::left << std::setw(label_width) << "  Polarization energy [kT]:"
-              << std::setprecision(precision) << energy_pol << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Polarization energy [kT]:"
+              << std::setprecision (precision) << energy_pol << "\n";
 
-    if (calc_energy == 2)
-    {
-      std::cout << std::left << std::setw(label_width) << "  Direct ionic energy [kT]:"
-              << std::setprecision(precision) << energy_react << "\n";
+    if (calc_energy == 2) {
+      std::cout << std::left << std::setw (label_width) << "  Direct ionic energy [kT]:"
+                << std::setprecision (precision) << energy_react << "\n";
     }
 
     if (calc_coulombic == 1) {
-      std::cout << std::left << std::setw(label_width) << "  Coulombic energy [kT]:"
-                << std::setprecision(precision) << coul_energy << "\n";
+      std::cout << std::left << std::setw (label_width) << "  Coulombic energy [kT]:"
+                << std::setprecision (precision) << coul_energy << "\n";
     }
-    std::cout << std::left << std::setw(label_width) << "  Sum of electrostatic energy contributions [kT]:"
-              << std::setprecision(precision)
+
+    std::cout << std::left << std::setw (label_width) << "  Sum of electrostatic energy contributions [kT]:"
+              << std::setprecision (precision)
               << (energy_pol + energy_react + coul_energy) << "\n";
 
     std::cout << "===========================================================\n";
@@ -3634,14 +3662,14 @@ void
 poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
 {
   int rank, size;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
-  
-  const double eps_in  = 4.0 * pi * e_0 * e_in  * kb * T * Angs / (e * e);
+  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+  MPI_Comm_size (MPI_COMM_WORLD, &size);
+
+  const double eps_in = 4.0 * pi * e_0 * e_in * kb * T * Angs / (e * e);
   const double eps_out = 4.0 * pi * e_0 * e_out * kb * T * Angs / (e * e);
   const double C_0 = 1.0e3 * N_av * ionic_strength;
   const double k2 = 2.0 * C_0 * Angs * Angs * e * e / (e_0 * e_out * kb * T);
-  const double k = std::sqrt(k2);
+  const double k = std::sqrt (k2);
 
   std::array<double, 3> V, N, h, area_h;
   std::array<double, 8> tmp_eps, tmp_phi;
@@ -3669,21 +3697,21 @@ poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
   std::vector<std::string> phi_surf_local;
   // std::vector<std::string> phi_nodes_delphi_local;
   // std::vector<std::string> phi_sup_delphi_local;
-  
+
   for (const int ii : border_quad) {
     quadrant[ii];
-    cubeindex = classifyCube(quadrant, eps_out);
+    cubeindex = classifyCube (quadrant, eps_out);
 
     // Compute edge lengths and area scale factors
-    h[0] = quadrant->p(0, 7) - quadrant->p(0, 0);
-    h[1] = quadrant->p(1, 7) - quadrant->p(1, 0);
-    h[2] = quadrant->p(2, 7) - quadrant->p(2, 0);
+    h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
+    h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
+    h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
     area_h[0] = h[1] * h[2] / h[0] * 0.25;
     area_h[1] = h[0] * h[2] / h[1] * 0.25;
     area_h[2] = h[0] * h[1] / h[2] * 0.25;
 
-    std::tie(tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux(quadrant, tmp_phi, tmp_eps);
-    ntriang = getTriangles(cubeindex, triangles);
+    std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant, tmp_phi, tmp_eps);
+    ntriang = getTriangles (cubeindex, triangles);
 
     for (int t = 0; t < ntriang; ++t) {
       for (int j = 0; j < 3; ++j) {
@@ -3692,64 +3720,68 @@ poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
         i2 = edge2nodes[2 * edge + 1];
 
         // Intersection and vertex
-        V[0] = quadrant->p(0, i1);
-        V[1] = quadrant->p(1, i1);
-        V[2] = quadrant->p(2, i1);
+        V[0] = quadrant->p (0, i1);
+        V[1] = quadrant->p (1, i1);
+        V[2] = quadrant->p (2, i1);
 
-        normal_intersection(quadrant, ray_cache, edge, N, fract);
+        normal_intersection (quadrant, ray_cache, edge, N, fract);
         V[edge_axis[edge]] += fract * h[edge_axis[edge]];
 
         vert_triangles[j] = V;
         norms_vert[j] = N;
 
         // Interpolate phi/epsilon at i1
-        if (!quadrant->is_hanging(i1)) {
-          tmp_phi_1 = (*phi)[quadrant->gt(i1)];
-          tmp_eps_1 = (*epsilon_nodes)[quadrant->gt(i1)];
+        if (!quadrant->is_hanging (i1)) {
+          tmp_phi_1 = (*phi)[quadrant->gt (i1)];
+          tmp_eps_1 = (*epsilon_nodes)[quadrant->gt (i1)];
         } else {
           tmp_phi_1 = tmp_eps_1 = 0.0;
-          int np = quadrant->num_parents(i1);
+          int np = quadrant->num_parents (i1);
+
           for (int k = 0; k < np; ++k) {
-            tmp_phi_1 += (*phi)[quadrant->gparent(k, i1)] / np;
-            tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent(k, i1)] / np;
+            tmp_phi_1 += (*phi)[quadrant->gparent (k, i1)] / np;
+            tmp_eps_1 += (*epsilon_nodes)[quadrant->gparent (k, i1)] / np;
           }
         }
 
         // Interpolate phi/epsilon at i2
-        if (!quadrant->is_hanging(i2)) {
-          tmp_phi_2 = (*phi)[quadrant->gt(i2)];
-          tmp_eps_2 = (*epsilon_nodes)[quadrant->gt(i2)];
+        if (!quadrant->is_hanging (i2)) {
+          tmp_phi_2 = (*phi)[quadrant->gt (i2)];
+          tmp_eps_2 = (*epsilon_nodes)[quadrant->gt (i2)];
         } else {
           tmp_phi_2 = tmp_eps_2 = 0.0;
-          int np = quadrant->num_parents(i2);
+          int np = quadrant->num_parents (i2);
+
           for (int k = 0; k < np; ++k) {
-            tmp_phi_2 += (*phi)[quadrant->gparent(k, i2)] / np;
-            tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent(k, i2)] / np;
+            tmp_phi_2 += (*phi)[quadrant->gparent (k, i2)] / np;
+            tmp_eps_2 += (*epsilon_nodes)[quadrant->gparent (k, i2)] / np;
           }
         }
 
         // Interpolate phi on surface
-        phi_sup[j] = phi0(tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
+        phi_sup[j] = phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
 
         std::ostringstream oss;
-        oss << std::scientific << std::setprecision(5)
-            << quadrant->p(0, i1) << " "
-            << quadrant->p(1, i1) << " "
-            << quadrant->p(2, i1) << " "
+        oss << std::scientific << std::setprecision (5)
+            << quadrant->p (0, i1) << " "
+            << quadrant->p (1, i1) << " "
+            << quadrant->p (2, i1) << " "
             << tmp_phi_1 << "\n"
-            << quadrant->p(0, i2) << " "
-            << quadrant->p(1, i2) << " "
-            << quadrant->p(2, i2) << " "
+            << quadrant->p (0, i2) << " "
+            << quadrant->p (1, i2) << " "
+            << quadrant->p (2, i2) << " "
             << tmp_phi_2;
-        phi_nodes_local.push_back(oss.str());
-        oss.str(""); oss.clear();
-        oss << std::scientific << std::setprecision(5)
+        phi_nodes_local.push_back (oss.str());
+        oss.str ("");
+        oss.clear();
+        oss << std::scientific << std::setprecision (5)
             << V[0] << " "
             << V[1] << " "
             << V[2] << " "
             << phi_sup[j];
-        phi_surf_local.push_back(oss.str());
-        oss.str(""); oss.clear();
+        phi_surf_local.push_back (oss.str());
+        oss.str ("");
+        oss.clear();
         // // Write to ASCII
         // phi_nodes_txt << quadrant->p(0, i1) << "  " << quadrant->p(1, i1) << "  " << quadrant->p(2, i1) << "  " << tmp_phi_1 << "\n";
         // phi_nodes_txt << quadrant->p(0, i2) << "  " << quadrant->p(1, i2) << "  " << quadrant->p(2, i2) << "  " << tmp_phi_2 << "\n";
@@ -3758,53 +3790,56 @@ poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
 
         // // Write to Delphi PDB-like format
         // std::fprintf(phi_nod_delphi,
-        //   "\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",
-        //   1, "X", "XXX", " ", 0,
-        //   quadrant->p(0, i1), quadrant->p(1, i1), quadrant->p(2, i1), tmp_phi_1, tmp_phi_2);
+        // "\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",
+        // 1, "X", "XXX", " ", 0,
+        // quadrant->p(0, i1), quadrant->p(1, i1), quadrant->p(2, i1), tmp_phi_1, tmp_phi_2);
 
         // std::fprintf(phi_nod_delphi,
-        //   "\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",
-        //   1, "X", "XXX", " ", 0,
-        //   quadrant->p(0, i2), quadrant->p(1, i2), quadrant->p(2, i2), tmp_phi_1, tmp_phi_2);
+        // "\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",
+        // 1, "X", "XXX", " ", 0,
+        // quadrant->p(0, i2), quadrant->p(1, i2), quadrant->p(2, i2), tmp_phi_1, tmp_phi_2);
 
         // std::fprintf(phi_sup_delphi,
-        //   "\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",
-        //   1, "X", "XXX", " ", 0,
-        //   V[0], V[1], V[2], phi_sup[j], 0.0);
+        // "\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",
+        // 1, "X", "XXX", " ", 0,
+        // V[0], V[1], V[2], phi_sup[j], 0.0);
       }
     }
   }
 
-  auto gather_and_write = [&](const std::string& filename,
-                              const std::vector<std::string>& local_lines) {
+  auto gather_and_write = [&] (const std::string& filename,
+  const std::vector<std::string>& local_lines) {
     if (rank == 0) {
-      std::ofstream ofs(filename);
+      std::ofstream ofs (filename);
+
       for (const auto& line : local_lines)
-          ofs << line << "\n";
+        ofs << line << "\n";
 
       for (int r = 1; r < size; ++r) {
-          int n_lines;
-          MPI_Recv(&n_lines, 1, MPI_INT, r, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-          for (int i = 0; i < n_lines; ++i) {
-              char buf[512];
-              MPI_Recv(buf, 512, MPI_CHAR, r, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-              ofs << buf << "\n";
-          }
+        int n_lines;
+        MPI_Recv (&n_lines, 1, MPI_INT, r, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        for (int i = 0; i < n_lines; ++i) {
+          char buf[512];
+          MPI_Recv (buf, 512, MPI_CHAR, r, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          ofs << buf << "\n";
+        }
       }
 
       ofs.close();
     } else {
-      int n_lines = static_cast<int>(local_lines.size());
-      MPI_Send(&n_lines, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+      int n_lines = static_cast<int> (local_lines.size());
+      MPI_Send (&n_lines, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+
       for (const auto& line : local_lines) {
-        MPI_Send(line.c_str(), static_cast<int>(line.size()) + 1,
+        MPI_Send (line.c_str(), static_cast<int> (line.size()) + 1,
                   MPI_CHAR, 0, 1, MPI_COMM_WORLD);
       }
     }
   };
 
-  gather_and_write("phi_nodes.txt", phi_nodes_local);
-  gather_and_write("phi_surf.txt", phi_surf_local);
+  gather_and_write ("phi_nodes.txt", phi_nodes_local);
+  gather_and_write ("phi_surf.txt", phi_surf_local);
   // Close files
   // phi_nodes_txt.close();
   // phi_surf_txt.close();

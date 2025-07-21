@@ -1,20 +1,20 @@
-/*  
+/*
  *  Copyright (C) 2019-2025 Carlo de Falco
  *  Copyright (C) 2020-2021 Martina Politi
  *  Copyright (C) 2021-2025 Vincenzo Di Florio
- *  
- *  This program is free software: you can redistribute it and/or modify  
- *  it under the terms of the GNU General Public License as published by  
- *  the Free Software Foundation, either version 3 of the License, or  
- *  (at your option) any later version.  
- *  
- *  This program is distributed in the hope that it will be useful,  
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the  
- *  GNU General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program. If not, see <https://www.gnu.org/licenses/>.  
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -25,14 +25,16 @@
 #include <set>
 #include "raytracer.h"
 
-namespace serialize {
+namespace serialize
+{
 //! Convert an std::vector<T>, where T is a trivial type,
 //!  to a vector of bytes that can be saved to a binary file
 //!  or transmitted through a channel such as a socket or
 //!  sent as an MPI message.
 template <class T>
 std::vector<unsigned char>
-write (const std::vector<T>& container) {
+write (const std::vector<T>& container)
+{
   static_assert (std::is_trivial<T>::value,
                  "Cannot serialize vector of this type");
 
@@ -51,7 +53,8 @@ write (const std::vector<T>& container) {
 template <class T>
 void
 read (const std::vector<unsigned char>& data,
-      std::vector<T> &container) {
+      std::vector<T> &container)
+{
   static_assert (std::is_trivial<T>::value,
                  "Cannot serialize vector of this type");
 
@@ -69,7 +72,8 @@ read (const std::vector<unsigned char>& data,
 //!  sent as an MPI message.
 template <class F, class S>
 std::vector<unsigned char>
-write (const std::map<F,S>& container) {
+write (const std::map<F,S>& container)
+{
   static_assert (std::is_trivial<F>::value
                  && std::is_trivial<S>::value,
                  "Cannot serialize map of this type");
@@ -97,7 +101,8 @@ write (const std::map<F,S>& container) {
 template <class F, class S, class C>
 void
 read (const std::vector<unsigned char>& data,
-      std::map<F,S,C> &container) {
+      std::map<F,S,C> &container)
+{
   static_assert (std::is_trivial<F>::value
                  && std::is_trivial<S>::value,
                  "Cannot serialize map of this type");
@@ -123,7 +128,8 @@ read (const std::vector<unsigned char>& data,
 //!  a channel such as a socket or sent as an MPI message.
 template <class F, class S, class C>
 std::vector<unsigned char>
-write (const std::vector<std::map<F, S,C>>& container) {
+write (const std::vector<std::map<F, S,C>>& container)
+{
 
   // sizeof (F) = nF
   // sizeof (S) = nS
@@ -166,7 +172,8 @@ write (const std::vector<std::map<F, S,C>>& container) {
 template <class F, class S>
 void
 read (const std::vector<unsigned char>& data,
-      std::vector<std::map<F,S>> &container) {
+      std::vector<std::map<F,S>> &container)
+{
   static_assert (std::is_trivial<F>::value
                  && std::is_trivial<S>::value,
                  "Cannot serialize map of this type");

@@ -1,20 +1,20 @@
-/*  
+/*
  *  Copyright (C) 2019-2025 Carlo de Falco
  *  Copyright (C) 2020-2021 Martina Politi
  *  Copyright (C) 2021-2025 Vincenzo Di Florio
- *  
- *  This program is free software: you can redistribute it and/or modify  
- *  it under the terms of the GNU General Public License as published by  
- *  the Free Software Foundation, either version 3 of the License, or  
- *  (at your option) any later version.  
- *  
- *  This program is distributed in the hope that it will be useful,  
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the  
- *  GNU General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program. If not, see <https://www.gnu.org/licenses/>.  
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef HAVE_PB_CLASS_H
@@ -519,12 +519,12 @@ struct
 
   /**
    * @brief Determines whether a point is inside a molecular surface along a specified direction.
-   * 
-   * This function evaluates whether a point defined by coordinates `(x, y, z)` lies 
-   * inside, outside, or on the boundary of a molecular surface based on ray intersections 
+   *
+   * This function evaluates whether a point defined by coordinates `(x, y, z)` lies
+   * inside, outside, or on the boundary of a molecular surface based on ray intersections
    * retrieved from a ray cache.
-   * 
-   * @param ray_cache A reference to the ray tracing cache that stores intersection 
+   *
+   * @param ray_cache A reference to the ray tracing cache that stores intersection
    *                  data and manages ray operations.
    * @param x The x-coordinate of the point.
    * @param y The y-coordinate of the point.
@@ -533,36 +533,36 @@ struct
    *            - `0`: Evaluate in the yz-plane.
    *            - `1`: Evaluate in the xz-plane.
    *            - `2`: Evaluate in the xy-plane.
-   * 
+   *
    * @return A value indicating the position of the point relative to the molecular surface:
    *         - `0.0`: The point is outside the surface.
    *         - `1.0`: The point is inside the surface.
    *         - `-1.0`: The point requires additional ray tracing or data is unavailable.
-   * 
+   *
    * ### Algorithm Details
    * - Coordinates `(x, y, z)` are reordered based on the specified evaluation direction (`dir`).
    * - Intersections along the specified direction are retrieved from the ray cache.
    * - If no intersections are found, or the point lies before the first intersection, it is marked as outside.
    * - Iteratively evaluates whether the point alternates between inside and outside based on intersection crossings.
    * - Returns `1.0` if the number of intersections passed is odd (inside) and `0.0` if even (outside).
-   * 
+   *
    * ### Notes
-   * - Requires the `ray_cache` to be properly initialized and populated with 
+   * - Requires the `ray_cache` to be properly initialized and populated with
    *   intersection data.
    * - Assumes that intersections are sorted and stored in the ray cache.
    * - This function is intended to be used within an MPI-based parallel environment.
    */
   double
   is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir);
-  
+
   /**
    * @brief Determines whether a point is inside the Stern layer along a specified direction.
-   * 
-   * This function evaluates whether a point defined by coordinates `(x, y, z)` lies 
-   * inside, outside, or on the boundary of the Stern layer for a given direction. 
+   *
+   * This function evaluates whether a point defined by coordinates `(x, y, z)` lies
+   * inside, outside, or on the boundary of the Stern layer for a given direction.
    * The evaluation uses precomputed ray intersections stored in a ray cache.
-   * 
-   * @param ray_cache A reference to the ray tracing cache that stores intersection 
+   *
+   * @param ray_cache A reference to the ray tracing cache that stores intersection
    *                  data and handles ray operations.
    * @param x The x-coordinate of the point.
    * @param y The y-coordinate of the point.
@@ -571,21 +571,21 @@ struct
    *            - `0`: Evaluate in the yz-plane.
    *            - `1`: Evaluate in the xz-plane.
    *            - `2`: Evaluate in the xy-plane.
-   * 
+   *
    * @return A value indicating the position of the point relative to the Stern layer:
    *         - `0.0`: The point is outside the Stern layer.
    *         - `1.0`: The point is inside the Stern layer.
    *         - `-1.0`: The point requires additional ray tracing or data is unavailable.
-   * 
+   *
    * ### Algorithm Details
    * - Coordinates `(x, y, z)` are reordered based on the evaluation direction (`dir`).
    * - Intersections along the specified direction are retrieved from the ray cache.
    * - If the point lies outside all intersections, it is marked as outside.
-   * - Iteratively evaluates whether the point alternates between inside and outside 
+   * - Iteratively evaluates whether the point alternates between inside and outside
    *   based on the intersection list, accounting for the Stern layer thickness.
-   * 
+   *
    * ### Notes
-   * - Requires the `ray_cache` to be properly initialized and populated with 
+   * - Requires the `ray_cache` to be properly initialized and populated with
    *   intersection data.
    * - Assumes a uniform thickness for the Stern layer, defined as `stern_layer`.
    * - The `sign` variable alternates to evaluate the nesting of intersections.
@@ -665,43 +665,43 @@ struct
 
   /**
    * @brief Initializes and updates markers for quadrants in a forest mesh.
-   * 
-   * This function sets up markers for quadrants within a forest mesh to distinguish 
-   * whether they are inside, outside, or on the boundary of a molecule. It also 
-   * computes dielectric properties and reaction rates for the nodes based on their 
+   *
+   * This function sets up markers for quadrants within a forest mesh to distinguish
+   * whether they are inside, outside, or on the boundary of a molecule. It also
+   * computes dielectric properties and reaction rates for the nodes based on their
    * location relative to the molecule and optional Stern layer.
-   * 
+   *
    * @param ray_cache A reference to a ray tracing cache structure that holds
    *                  information on required rays and their intersections.
-   * 
+   *
    * This function performs the following:
-   * - Initializes the dielectric constants (`epsilon`) for the inside and outside 
+   * - Initializes the dielectric constants (`epsilon`) for the inside and outside
    *   regions.
    * - Computes reaction rates based on ionic strength and other physical parameters.
-   * - Loops over quadrants in the mesh, evaluating the position of nodes relative to 
+   * - Loops over quadrants in the mesh, evaluating the position of nodes relative to
    *   the molecule and Stern layer (if present).
    * - Updates markers for quadrants and nodes based on their location:
    *     - `0.0`: Inside the molecule.
    *     - `0.5`: On the boundary of the molecule.
    *     - `1.0`: Outside the molecule.
-   * - Updates reaction and dielectric properties for nodes inside the molecule or 
+   * - Updates reaction and dielectric properties for nodes inside the molecule or
    *   Stern layer.
-   * - Handles MPI-based parallelism, including barrier synchronization and data 
+   * - Handles MPI-based parallelism, including barrier synchronization and data
    *   exchange.
    * - Ensures rays are calculated and cached for points near molecular boundaries.
-   * 
+   *
    * ### Stern Layer Handling
-   * If `stern_layer_surf` is set to `1`, the function also processes Stern layer 
+   * If `stern_layer_surf` is set to `1`, the function also processes Stern layer
    * interactions, updating markers and reaction values accordingly.
-   * 
+   *
    * ### Constants
    * - Dielectric constants for inside (`eps_in`) and outside (`eps_out`) regions.
    * - Reaction rate constant based on ionic strength (`k2`).
-   * 
+   *
    * ### Notes
-   * - The function assumes that the mesh and ray tracing cache are correctly 
+   * - The function assumes that the mesh and ray tracing cache are correctly
    *   initialized before calling.
-   * - It performs two cycles of refinement for multi-process configurations and 
+   * - It performs two cycles of refinement for multi-process configurations and
    *   one cycle for single-process configurations.
    */
   void
@@ -735,7 +735,7 @@ struct
   classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant,
                      std::array<double,8>& tmp_phi,
                      std::array<double,8>& tmp_eps);
-  
+
   std::tuple<std::array<double,8>, std::array<double,8>, std::vector<int>,std::vector<int> >
   classifyCube_flux_fast (tmesh_3d::quadrant_iterator& quadrant,
                           std::array<double,8>& tmp_phi,

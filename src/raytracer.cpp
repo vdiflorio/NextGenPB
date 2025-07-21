@@ -1,26 +1,27 @@
-/*  
+/*
  *  Copyright (C) 2019-2025 Carlo de Falco
  *  Copyright (C) 2020-2021 Martina Politi
  *  Copyright (C) 2021-2025 Vincenzo Di Florio
- *  
- *  This program is free software: you can redistribute it and/or modify  
- *  it under the terms of the GNU General Public License as published by  
- *  the Free Software Foundation, either version 3 of the License, or  
- *  (at your option) any later version.  
- *  
- *  This program is distributed in the hope that it will be useful,  
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of  
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the  
- *  GNU General Public License for more details.  
- *  
- *  You should have received a copy of the GNU General Public License  
- *  along with this program. If not, see <https://www.gnu.org/licenses/>.  
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "raytracer.h"
 
 crossings_t &
-ray_cache_t::operator () (double x0, double x1, unsigned direct) {
+ray_cache_t::operator () (double x0, double x1, unsigned direct)
+{
 
   int rank;
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
@@ -62,7 +63,8 @@ ray_cache_t::operator () (double x0, double x1, unsigned direct) {
 }
 
 void
-ray_cache_t::fill_cache () {
+ray_cache_t::fill_cache ()
+{
   int rank, size;
   MPI_Comm mpicomm = MPI_COMM_WORLD;
   MPI_Comm_rank (mpicomm, &rank);
@@ -335,7 +337,8 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
 void
 ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
                                       const double & surf_param, const double & stern_layer, const unsigned & num_threads,
-                                      double* l_cr, double* r_cr, double scale, const std::string* configFile) {
+                                      double* l_cr, double* r_cr, double scale, const std::string* configFile)
+{
   ns = std::make_unique<NS::NanoShaper> (atoms, surf_type, surf_param, stern_layer, num_threads,configFile);
   // set here a consistent grid scale
   ns->setConfig<double> ("Grid_scale", scale);
@@ -374,7 +377,8 @@ ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const
 
 
 void
-ray_cache_t::compute_ns_inters (crossings_t & ct) {
+ray_cache_t::compute_ns_inters (crossings_t & ct)
+{
 
   if (ct.dir == 0) {
     double start_ray[3] = {l_c[ct.dir], ct.point[0], ct.point[1]};
@@ -468,7 +472,8 @@ ray_cache_t::compute_ns_inters (crossings_t & ct) {
 //!  be saved to a binary file or transmitted through
 //!  a channel such as a socket or sent as an MPI message.
 std::vector<unsigned char>
-ray_cache_t::write_ct (const crossings_t& ct) {
+ray_cache_t::write_ct (const crossings_t& ct)
+{
 
   size_t N = sizeof (unsigned) + sizeof (bool) + sizeof (double)*2;
   std::vector<unsigned char> res (N, 0);
@@ -485,7 +490,8 @@ ray_cache_t::write_ct (const crossings_t& ct) {
 }
 
 void
-ray_cache_t::read_ct (const std::vector<unsigned char>& data, crossings_t& ct) {
+ray_cache_t::read_ct (const std::vector<unsigned char>& data, crossings_t& ct)
+{
 
   size_t size_fixed = sizeof (unsigned) + sizeof (bool) + sizeof (double)*2;
   size_t size_non_fixed = 4*sizeof (double); // + sizeof(bool);
@@ -521,7 +527,8 @@ ray_cache_t::read_ct (const std::vector<unsigned char>& data, crossings_t& ct) {
 }
 
 std::vector<unsigned char>
-ray_cache_t::write_map (const std::map<std::array<double, 2>, crossings_t, map_compare>& container) {
+ray_cache_t::write_map (const std::map<std::array<double, 2>, crossings_t, map_compare>& container)
+{
   size_t numel = container.size (); //number of elements inside the container
   size_t size = numel * (sizeof (double)*2); //array of double
 
@@ -554,7 +561,8 @@ ray_cache_t::write_map (const std::map<std::array<double, 2>, crossings_t, map_c
 
 void
 ray_cache_t::read_map (const std::vector<unsigned char>& data,
-                       std::map<std::array<double, 2>, crossings_t, map_compare>& container) {
+                       std::map<std::array<double, 2>, crossings_t, map_compare>& container)
+{
   const size_t *psize = (reinterpret_cast<const size_t*> (& (data[0])));
   size_t num_maps = *psize;
 
