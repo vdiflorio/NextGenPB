@@ -235,7 +235,7 @@ main (int argc, char **argv)
   if (rank == 0)
     std::cout << "============================================\n";
 
-  TOC ("Compute Potential");
+  TOC ("Compute numerical solution");
 
   if (pb.atoms_write == 1) {
     TIC ();
@@ -251,7 +251,7 @@ main (int argc, char **argv)
     else
       pb.energy_fast (ray_cache);
 
-    TOC ("compute energy")
+    TOC ("Compute energy")
   }
 
   if (pb.surf_write == 1) {
