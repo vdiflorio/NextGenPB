@@ -296,6 +296,19 @@ main (int argc, char **argv)
 
   if (pb.zeta_pot == 1) {
     TIC ();
+    for (NS::Atom& i : pb.atoms) {
+      i.radius = i.radius + pb.zeta_distance;
+    }
+    for (auto &m : ray_cache.rays) {
+      m.clear(); // svuota ogni std::map
+    }
+    MPI_Barrier (mpicomm);
+
+    if ( rank == 0)
+      ray_cache.init_analytical_surf_ns (pb.atoms, NS::ses, 0.1, 0, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+
+    MPI_Barrier (mpicomm);
+
     pb.zeta_pot_calculation (ray_cache);
     TOC ("Compute Zeta Potential");
   }
