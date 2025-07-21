@@ -131,6 +131,11 @@ struct
   double stern_layer;
   unsigned num_threads;
 
+  //zeta potential:
+  int zeta_pot = 1; //if 1, zeta potential is computed
+  double zeta_potential = 0.0; //zeta potential value
+  double zeta_distance = 5.0; //distance from the surface where zeta potential is applied
+
   //algorithm:
   std::string linear_solver_name;
   std::string linear_solver_options;
@@ -786,6 +791,10 @@ struct
 
   void
   search_points ();
+  
+  void
+  zeta_pot_calculation (ray_cache_t & ray_cache);
+
 };
 
 std::basic_istream<char>&

@@ -98,6 +98,15 @@ poisson_boltzmann::create_mesh ()
     r_c[0] = (*minmax_x.second)[0] + maxradius + 2*prb_radius;
     r_c[1] = (*minmax_y.second)[1] + maxradius + 2*prb_radius;
     r_c[2] = (*minmax_z.second)[2] + maxradius + 2*prb_radius;
+    if (zeta_pot == 1) {
+      l_c[0] -= zeta_distance;
+      l_c[1] -= zeta_distance;
+      l_c[2] -= zeta_distance;
+      r_c[0] += zeta_distance;
+      r_c[1] += zeta_distance;
+      r_c[2] += zeta_distance;
+    } 
+
 
     for (int kk = 0; kk < 3; ++kk) {
       l[kk] = (r_c[kk] - l_c[kk]);
@@ -2126,7 +2135,7 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
   ones.reset ();
   std::vector<double> ().swap (const_ones);
   std::vector<double> ().swap (reaction);
-  std::vector<double> ().swap (marker);
+  // std::vector<double> ().swap (marker);
 
   // Set boundary conditions.
   dirichlet_bcs3 bcs;
@@ -3047,7 +3056,6 @@ poisson_boltzmann::getTriangles (int cubeindex,
   int ntriang = 0;
   int i;
   triangles.fill ({}); //set matrix to zero
-
   for (i=0; triTable[cubeindex][i]!=-1; i+=3) {
     // save all the assigned indexes
     triangles[ntriang][0] = triTable[cubeindex][i ];
@@ -4007,3 +4015,154 @@ poisson_boltzmann::search_points ()
 
 }
 
+
+
+void
+poisson_boltzmann::zeta_pot_calculation (ray_cache_t & ray_cache)
+{
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
+
+  if (rank == 0)
+    std::cout << "\n================ [ Zeta Potential ] =================\n";
+  
+  for (NS::Atom& i : atoms) {
+    i.radius = i.radius + zeta_distance;
+  }
+  for (auto &m : ray_cache.rays) {
+    m.clear(); // svuota ogni std::map
+  }
+  MPI_Barrier (mpicomm);
+
+  if ( rank == 0)
+    ray_cache.init_analytical_surf_ns (atoms, surf_type, 0.1, stern_layer, num_threads, l_cr, r_cr, scale);
+  
+  MPI_Barrier (mpicomm);
+  epsilon_nodes.reset();
+  border_quad.clear();
+  marker.clear();
+  create_markers (ray_cache);
+  
+  
+  
+
+  double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
+  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+
+
+  double fract;
+  std::array<double,3> V;
+  std::array<double,3> N;
+  std::array<double,3> dist_vert;
+  std::array<double,3> h;
+  std::array<double,3> area_h;
+
+  std::array<double,8> tmp_eps;
+  std::array<double,8> tmp_phi;
+  std::vector<int> edg;
+  std::vector<int> fl_dir;
+
+  int cubeindex = -1;
+
+  double tmp_flux;
+  int i1 = 0, i2 = 0;
+  double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
+         tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
+
+
+  int ntriang = 0;
+  int edge;
+  std::array<std::array<double,3>,3> vert_triangles;
+  std::array<std::array<double,3>,3> norms_vert;
+  std::array<double,3> phi_sup;
+
+  double area = 0.0;
+  double total_area = 0.0;
+
+
+  auto quadrant = this->tmsh.begin_quadrant_sweep ();
+
+  if (!border_quad.empty ()) {
+    quadrant[border_quad[0]];
+    h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
+    h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
+    h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
+    area_h[0] = h[1]*h[2]/h[0] * 0.25;
+    area_h[1] = h[0]*h[2]/h[1] * 0.25;
+    area_h[2] = h[0]*h[1]/h[2] * 0.25;  
+  }
+
+  // for (const int ii : border_quad) {
+  //   quadrant[ii];
+  //   cubeindex = classifyCube_fast (quadrant, eps_out);
+  //   std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
+    
+    
+  //   if(cubeindex == -1){ 
+  //     for (int i = 0; i < 8; ++i) {
+  //         std::cout << "Node " << quadrant->gt (i) << " has epsilon " 
+  //                   << (*epsilon_nodes)[quadrant->gt (ii)] << "\n";    
+  //     }
+  //     break;;
+  //   } else{
+  //      ntriang = getTriangles (cubeindex, triangles);
+
+  //     for (int itri = 0; itri < ntriang; ++itri) {
+  //       for (int jj = 0; jj < 3; ++jj) {
+  //         edge = triangles[itri][jj];
+  //         i1 = edge2nodes[2 * edge ];
+  //         i2 = edge2nodes[2 * edge + 1];
+
+  //         V[0] = quadrant->p (0, i1);
+  //         V[1] = quadrant->p (1, i1);
+  //         V[2] = quadrant->p (2, i1);
+
+  //         normal_intersection (quadrant, ray_cache, edge, N, fract);
+  //         V[edge_axis[edge]] += fract*h[edge_axis[edge]];
+  //         vert_triangles[jj] = V;
+  //         norms_vert[jj] = N;
+
+  //         tmp_phi_1 = tmp_phi[i1];
+  //         tmp_phi_2 = tmp_phi[i2];
+  //         tmp_eps_1 = tmp_eps[i1];
+  //         tmp_eps_2 = tmp_eps[i2];
+
+  //         phi_sup[jj]= phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
+  //       }
+
+  //       area = areaTriangle (vert_triangles);
+  //       total_area += area;
+  //       for (int kk = 0; kk < 3; ++kk) {
+  //         zeta_potential += phi_sup[kk] * area / 3.0;
+  //       } 
+        
+  //     }
+  //   }
+
+  // }
+
+  // if (rank == 0) {
+  //   MPI_Reduce (MPI_IN_PLACE, &zeta_potential, 1, MPI_DOUBLE, MPI_SUM, 0,
+  //               mpicomm);
+  //   MPI_Reduce (MPI_IN_PLACE, &total_area, 1, MPI_DOUBLE, MPI_SUM, 0,
+  //               mpicomm);
+  // } else {
+  //   MPI_Reduce (&zeta_potential, &zeta_potential, 1, MPI_DOUBLE, MPI_SUM, 0,
+  //               mpicomm);
+  //   MPI_Reduce (&total_area, &total_area, 1, MPI_DOUBLE, MPI_SUM, 0,
+  //               mpicomm);
+  // }
+
+  // if (rank == 0) {
+  //   constexpr int label_width = 50;
+  //   constexpr int precision = 16;
+
+  //   std::cout << std::left << std::setw(label_width) << "\n\n  Zeta Potential [kT/e]:"
+  //             << std::setprecision(precision) << zeta_potential/total_area << "\n";
+  // }
+  
+  
+
+  if (rank == 0)
+    std::cout << "============================================\n";
+}

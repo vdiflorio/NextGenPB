@@ -121,7 +121,8 @@ main (int argc, char **argv)
   if (rank == 0) {
     std::cout << "\n=== [ Building Surface with NanoShaper ] ===\n";
     ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
-    std::vector<NS::Atom> ().swap (pb.atoms);
+    if (pb.zeta_pot == 0)
+      std::vector<NS::Atom> ().swap (pb.atoms);
     std::cout << "\n============================================\n";
   }
 
@@ -230,6 +231,7 @@ main (int argc, char **argv)
     TOC ("Write potential on atoms")
   }
 
+
   if (pb.calc_energy > 0) {
     TIC ();
     if (pb.loc_refinement == 1 || pb.mesh_shape > 2 || (pb.mesh_shape==2 && pb.refine_box==1))
@@ -292,7 +294,13 @@ main (int argc, char **argv)
   } else
     std::cout << "\n Wrong type of map output! "<<std::endl;
 
+  if (pb.zeta_pot == 1) {
+    TIC ();
+    pb.zeta_pot_calculation (ray_cache);
+    TOC ("Compute Zeta Potential");
+  }
 
+  
 
   if (rank == 0) {
     std::cout<<std::endl;
