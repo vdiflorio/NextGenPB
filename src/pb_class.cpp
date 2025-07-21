@@ -1040,6 +1040,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   mesh_shape = g2 ( (mesh_options + "mesh_shape").c_str (), 1);
   refine_box = g2 ( (mesh_options + "refine_box").c_str (), 0);
   rand_center = g2 ( (mesh_options + "rand_center").c_str (), 0);
+  aligned = g2 ( (mesh_options + "aligned").c_str (), 0);
 
   if (mesh_shape < 2) {
     perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.8);
@@ -1127,6 +1128,124 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   return 0;
 }
 
+// ====================================
+// Autovettore dominante per matrice 3x3 simmetrica
+// Usa il metodo di Jacobi (iterativo, robusto)
+// ====================================
+void compute_dominant_eigenvector (double cov[3][3], double axis[3])
+{
+  // Inizializza axis = (1,0,0)
+  axis[0] = 1.0;
+  axis[1] = 0.0;
+  axis[2] = 0.0;
+
+  // Potenza iterativa per il vettore principale
+  for (int iter = 0; iter < 20; ++iter) {
+    double x = cov[0][0]*axis[0] + cov[0][1]*axis[1] + cov[0][2]*axis[2];
+    double y = cov[1][0]*axis[0] + cov[1][1]*axis[1] + cov[1][2]*axis[2];
+    double z = cov[2][0]*axis[0] + cov[2][1]*axis[1] + cov[2][2]*axis[2];
+
+    double norm = std::sqrt (x*x + y*y + z*z);
+
+    if (norm < 1e-12) break;
+
+    axis[0] = x / norm;
+    axis[1] = y / norm;
+    axis[2] = z / norm;
+  }
+}
+
+void align_atoms_to_Z (std::vector<NS::Atom> &atoms)
+{
+  if (atoms.empty()) return;
+
+  // 1. Centro geometrico (NON pesato)
+  double center[3] = {0.0, 0.0, 0.0};
+
+  for (const auto &a : atoms) {
+    center[0] += a.pos[0];
+    center[1] += a.pos[1];
+    center[2] += a.pos[2];
+  }
+
+  center[0] /= atoms.size();
+  center[1] /= atoms.size();
+  center[2] /= atoms.size();
+
+  // Traslazione
+  for (auto &a : atoms) {
+    a.pos[0] -= center[0];
+    a.pos[1] -= center[1];
+    a.pos[2] -= center[2];
+  }
+
+  // 2. Matrice di covarianza simmetrica
+  double cov[3][3] = {{0.0}};
+
+  for (const auto &a : atoms) {
+    cov[0][0] += a.pos[0] * a.pos[0];
+    cov[0][1] += a.pos[0] * a.pos[1];
+    cov[0][2] += a.pos[0] * a.pos[2];
+    cov[1][1] += a.pos[1] * a.pos[1];
+    cov[1][2] += a.pos[1] * a.pos[2];
+    cov[2][2] += a.pos[2] * a.pos[2];
+  }
+
+  cov[1][0] = cov[0][1];
+  cov[2][0] = cov[0][2];
+  cov[2][1] = cov[1][2];
+
+  // 3. Autovettore principale (metodo potenza)
+  double axis[3];
+  compute_dominant_eigenvector (cov, axis);
+
+  // Normalizza
+  double norm = std::sqrt (axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
+
+  if (norm > 1e-12) {
+    axis[0] /= norm;
+    axis[1] /= norm;
+    axis[2] /= norm;
+  }
+
+  // 4. Rotazione: porta axis su (0,0,1) usando rotazione di Rodrigues
+  double z_axis[3] = {0.0, 0.0, 1.0};
+  double v[3] = {
+    axis[1]*z_axis[2] - axis[2]*z_axis[1],
+    axis[2]*z_axis[0] - axis[0]*z_axis[2],
+    axis[0]*z_axis[1] - axis[1]*z_axis[0]
+  };
+  double s = std::sqrt (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+  double c = axis[0]*z_axis[0] + axis[1]*z_axis[1] + axis[2]*z_axis[2];
+
+  double R[3][3];
+
+  if (s < 1e-8) {
+    R[0][0] = R[1][1] = R[2][2] = 1.0;
+    R[0][1] = R[0][2] = R[1][0] = R[1][2] = R[2][0] = R[2][1] = 0.0;
+  } else {
+    double vx = v[0]/s, vy = v[1]/s, vz = v[2]/s;
+    double k = 1.0 - c;
+    R[0][0] = c + vx*vx*k;
+    R[0][1] = vx*vy*k - vz*s;
+    R[0][2] = vx*vz*k + vy*s;
+    R[1][0] = vy*vx*k + vz*s;
+    R[1][1] = c + vy*vy*k;
+    R[1][2] = vy*vz*k - vx*s;
+    R[2][0] = vz*vx*k - vy*s;
+    R[2][1] = vz*vy*k + vx*s;
+    R[2][2] = c + vz*vz*k;
+  }
+
+  // 5. Applica rotazione
+  for (auto &a : atoms) {
+    double x = a.pos[0], y = a.pos[1], z = a.pos[2];
+    a.pos[0] = R[0][0]*x + R[0][1]*y + R[0][2]*z;
+    a.pos[1] = R[1][0]*x + R[1][1]*y + R[1][2]*z;
+    a.pos[2] = R[2][0]*x + R[2][1]*y + R[2][2]*z;
+  }
+}
+
 void
 poisson_boltzmann::read_atoms_from_pqr (std::basic_istream<char> &inputfile)
 {
@@ -1135,6 +1254,10 @@ poisson_boltzmann::read_atoms_from_pqr (std::basic_istream<char> &inputfile)
 
   while (inputfile >> a)
     atoms.push_back (a);
+
+  if (aligned == 1) {
+    align_atoms_to_Z (atoms);
+  }
 
   if (atoms.size() < 4) {
     auto comp = [] (const NS::Atom &a1, const NS::Atom &a2) -> bool {

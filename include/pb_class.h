@@ -114,7 +114,7 @@ struct
   double scale, scale_min, scale_max;
   double perfil1, perfil2;
   int loc_ref = 0;
-
+  int aligned = 0;
   //model:
   int linearized;
   int bc;
