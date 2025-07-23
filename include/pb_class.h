@@ -787,10 +787,33 @@ struct
 
   void
   search_points ();
+
+  void
+  write_Dn (ray_cache_t & ray_cache);
 };
 
 std::basic_istream<char>&
 operator>> (std::basic_istream<char>& inputfile, NS::Atom &a);
 std::basic_istream<char>&
 operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a);
+
+
+struct EdgeKey {
+    int a, b;
+    bool operator==(const EdgeKey& other) const {
+        return a == other.a && b == other.b;
+    }
+};
+
+struct EdgeHash {
+    std::size_t operator()(const EdgeKey& k) const {
+        return std::hash<int>()(k.a) ^ (std::hash<int>()(k.b) << 1);
+    }
+};
+
+struct EdgeData {
+    double area_sum = 0.0;
+    double flux = 0.0;
+};
+
 #endif

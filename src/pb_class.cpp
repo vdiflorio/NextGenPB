@@ -4182,3 +4182,145 @@ poisson_boltzmann::search_points ()
 
 }
 
+void
+poisson_boltzmann::write_Dn (ray_cache_t & ray_cache)
+{
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
+
+  if (rank == 0)
+    std::cout << "\n================ [ Calc Dn ] =================\n";
+
+  const double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
+  const double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+  const double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  const double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
+  const double k = std::sqrt (k2);
+
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////
+  double fract;
+  std::array<double,3> V;
+  std::array<double,3> N;
+  std::array<double,3> h;
+  std::array<double,3> area_h;
+
+  std::array<double,8> tmp_eps;
+  std::array<double,8> tmp_phi;
+  std::vector<int> edg;
+  std::vector<int> fl_dir;
+
+  int cubeindex = -1;
+  
+  int i1 = 0, i2 = 0;
+  double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
+         tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
+
+
+  int ntriang = 0;
+  int edge;
+  double normal = 1;
+  std::array<std::array<double,3>,3> vert_triangles;
+  std::array<std::array<double,3>,3> norms_vert;
+
+  double area = 0.0;
+  double Dn_tmp = 0.0;
+  double tot_a = 0.0;
+
+  auto quadrant = this->tmsh.begin_quadrant_sweep ();
+
+  if (!border_quad.empty ()) {
+    quadrant[border_quad[0]];
+    h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
+    h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
+    h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
+    area_h[0] = h[1]*h[2]/h[0];
+    area_h[1] = h[0]*h[2]/h[1];
+    area_h[2] = h[0]*h[1]/h[2];
+  }
+
+  std::unordered_map<EdgeKey, EdgeData, EdgeHash> edgeMap;
+
+  for (const int ii : border_quad) {
+    quadrant[ii];
+    cubeindex = classifyCube_fast (quadrant, eps_out);
+    std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
+
+    ntriang = getTriangles (cubeindex, triangles);
+    // for (int ip = 0; ip < edg.size (); ++ip) {
+    //   EdgeKey key;
+    //   i1 = edge2nodes[2 * edg[ip] ];
+    //   i2 = edge2nodes[2 * edg[ip] + 1];
+    //   key = { static_cast<int>(std::min(quadrant->gt(i1), quadrant->gt(i2))),
+    //           static_cast<int>(std::max(quadrant->gt(i1), quadrant->gt(i2))) };
+    //   auto &edgeData = edgeMap[key]; // crea se non esiste
+    //   normal_intersection (quadrant, ray_cache, edg[ip], N,fract);
+    //   V[0] = quadrant->p (0, i1);
+    //   V[1] = quadrant->p (1, i1);
+    //   V[2] = quadrant->p (2, i1);
+    //   V[edge_axis[edg[ip]]] += fract*h[edge_axis[edg[ip]]];
+    //   // tmp_flux = - (tmp_phi[i2] - tmp_phi[i1]) * wha (tmp_eps[i1],tmp_eps[i2], fract)*
+    //   //            fl_dir[ip] * area_h[edge_axis[edg[ip]]];
+    //   // charge_pol += tmp_flux;
+    //   Dn_tmp = - (tmp_phi[i2] - tmp_phi[i1]) * wha (tmp_eps[i1],tmp_eps[i2], fract)*
+    //              fl_dir[ip] * area_h[edge_axis[edg[ip]]];
+    //   edgeData.flux = Dn_tmp;
+    //   edgeData.area_sum += area_h[edge_axis[edg[ip]]]; // Aggiungo l'area dell'edge
+    // }
+    for (int itri = 0; itri < ntriang; ++itri) {
+      std::array<EdgeKey, 3> triEdges;
+      for (int jj = 0; jj < 3; ++jj) {
+        edge = triangles[itri][jj];
+        i1 = edge2nodes[2 * edge ];
+        i2 = edge2nodes[2 * edge + 1];
+
+        triEdges[jj] = { static_cast<int>(std::min(quadrant->gt(i1), quadrant->gt(i2))),
+                          static_cast<int>(std::max(quadrant->gt(i1), quadrant->gt(i2))) };
+
+        auto &edgeData = edgeMap[triEdges[jj]]; // crea se non esiste
+
+        // Coordinate del punto sul bordo
+        V[0] = quadrant->p(0, i1);
+        V[1] = quadrant->p(1, i1);
+        V[2] = quadrant->p(2, i1);
+
+        normal_intersection(quadrant, ray_cache, edge, N, fract);
+        V[edge_axis[edge]] += fract * h[edge_axis[edge]];
+        vert_triangles[jj] = V;
+        norms_vert[jj] = N;
+
+        tmp_phi_1 = tmp_phi[i1];
+        tmp_phi_2 = tmp_phi[i2];
+        tmp_eps_1 = tmp_eps[i1];
+        tmp_eps_2 = tmp_eps[i2];
+
+        normal = (tmp_eps_1 > tmp_eps_2) ? -1.0 : 1.0;
+
+        Dn_tmp = - (tmp_phi_2 - tmp_phi_1) * wha(tmp_eps_1, tmp_eps_2, fract) *
+                 normal * area_h[edge_axis[edge]];
+        edgeData.flux = Dn_tmp;
+      }
+
+      // Calcola l'area del triangolo
+      // area = areaTriangle(vert_triangles);
+      area = SphercalAreaTriangle(vert_triangles);
+      // Aggiungi area a TUTTI e tre gli edge
+      for (auto &ek : triEdges) {
+        edgeMap[ek].area_sum += area / 3.0; // Distribuisco equamente
+      }
+    }
+  }
+  for (auto &ek : edgeMap) {
+    tot_a += ek.second.flux/area_h[0]/(4*pi)*ek.second.area_sum; // Calcolo il tot flux
+  }
+  if (rank == 0) {
+    std::cout << "\n---- Dn per ogni edge ----\n";
+    for (const auto &[key, data] : edgeMap) {
+      std::cout << "Edge (" << key.a << ", " << key.b << ") : Dn = " << data.flux/data.area_sum << " , flux = " << data.flux 
+          << ", tot flux = " << tot_a
+          << ", area_sum = " << data.area_sum << "\n";
+    }
+    std::cout << "\nNumero di edge unici nella mappa: " << edgeMap.size() << "\n";
+
+  }
+}
