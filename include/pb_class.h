@@ -132,7 +132,7 @@ struct
   unsigned num_threads;
 
   //zeta potential:
-  int zeta_pot = 1; //if 1, zeta potential is computed
+  int zeta_pot = 0; //if 1, zeta potential is computed
   double zeta_potential = 0.0; //zeta potential value
   double zeta_distance = 5.0; //distance from the surface where zeta potential is applied
 

@@ -1118,6 +1118,8 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   stern_layer_surf = g2 ( (surf_options + "stern_layer_surf").c_str (), 0);
   stern_layer = g2 ( (surf_options + "stern_layer_thickness").c_str (), 2.);
   num_threads = g2 ( (surf_options + "number_of_threads").c_str (), 1);
+  zeta_pot = g2 ( (surf_options + "zeta_pot").c_str (), 0);
+  zeta_distance = g2 ( (surf_options + "zeta_distance").c_str (), 10.0);
 
   const std::string alg_options = "algorithm/";
   linear_solver_name = g2 ( (alg_options + "linear_solver").c_str (), "lis");
