@@ -4225,7 +4225,9 @@ poisson_boltzmann::write_Dn (ray_cache_t & ray_cache)
 
   double area = 0.0;
   double Dn_tmp = 0.0;
-  double tot_a = 0.0;
+  double tot_flux_calc = 0.0;
+  double tot_flux = 0.0;
+  double tot_area = 0.0;
 
   auto quadrant = this->tmsh.begin_quadrant_sweep ();
 
@@ -4296,14 +4298,15 @@ poisson_boltzmann::write_Dn (ray_cache_t & ray_cache)
 
         normal = (tmp_eps_1 > tmp_eps_2) ? -1.0 : 1.0;
 
-        Dn_tmp = - (tmp_phi_2 - tmp_phi_1) * wha(tmp_eps_1, tmp_eps_2, fract) *
+        edgeData.Dn = - (tmp_phi_2 - tmp_phi_1) * wha(tmp_eps_1, tmp_eps_2, fract) *
+                 normal/h[0];
+        edgeData.flux = - (tmp_phi_2 - tmp_phi_1) * wha(tmp_eps_1, tmp_eps_2, fract) *
                  normal * area_h[edge_axis[edge]];
-        edgeData.flux = Dn_tmp;
       }
 
       // Calcola l'area del triangolo
-      // area = areaTriangle(vert_triangles);
-      area = SphercalAreaTriangle(vert_triangles);
+      area = areaTriangle(vert_triangles);
+      // area = SphercalAreaTriangle(vert_triangles);
       // Aggiungi area a TUTTI e tre gli edge
       for (auto &ek : triEdges) {
         edgeMap[ek].area_sum += area / 3.0; // Distribuisco equamente
@@ -4311,16 +4314,20 @@ poisson_boltzmann::write_Dn (ray_cache_t & ray_cache)
     }
   }
   for (auto &ek : edgeMap) {
-    tot_a += ek.second.flux/area_h[0]/(4*pi)*ek.second.area_sum; // Calcolo il tot flux
+    tot_flux_calc += ek.second.flux/area_h[0]/(4*pi)*ek.second.area_sum; // Calcolo il tot flux
+    tot_flux += ek.second.flux; // Calcolo il tot flux
+    tot_area += ek.second.area_sum; // Calcolo il tot area
   }
   if (rank == 0) {
     std::cout << "\n---- Dn per ogni edge ----\n";
     for (const auto &[key, data] : edgeMap) {
-      std::cout << "Edge (" << key.a << ", " << key.b << ") : Dn = " << data.flux/data.area_sum << " , flux = " << data.flux 
-          << ", tot flux = " << tot_a
-          << ", area_sum = " << data.area_sum << "\n";
+      std::cout << "Dn_calc = " << data.flux/data.area_sum << " , flux = " << data.flux << ", area_sum = " << data.area_sum
+          << ", Dn = " << data.Dn  << "\n";
     }
-    std::cout << "\nNumero di edge unici nella mappa: " << edgeMap.size() << "\n";
+    std::cout << "\n tot flux Calc= " <<tot_flux_calc << ", tot flux= "<< tot_flux/(4*pi) 
+              << ", Total area " << tot_area << "\n";
+    std::cout << "phi an: " << 1.0/(eps_out) * 1.0/(2*(1+k*2)) << "\n";
+    std::cout << "Dn an: " <<  1.0/(2*2) << "\n";
 
   }
 }

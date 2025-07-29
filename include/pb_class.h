@@ -814,6 +814,7 @@ struct EdgeHash {
 struct EdgeData {
     double area_sum = 0.0;
     double flux = 0.0;
+    double Dn = 0.0;
 };
 
 #endif
