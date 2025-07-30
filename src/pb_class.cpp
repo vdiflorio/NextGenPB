@@ -1305,13 +1305,27 @@ poisson_boltzmann::read_atoms_from_class ()
 {
   static std::array<double,3> pos;
 
-  for (const NS::Atom& i : atoms) {
-    pos[0] = i.pos[0];
-    pos[1] = i.pos[1];
-    pos[2] = i.pos[2];
-    pos_atoms.push_back (pos);
-    charge_atoms.push_back (i.charge);
-    r_atoms.push_back (i.radius);
+  if (atoms_write == 1) {
+    int atom_number = 1;
+    for (const NS::Atom& i : atoms) {
+      pos[0] = i.pos[0];
+      pos[1] = i.pos[1];
+      pos[2] = i.pos[2];
+      pos_atoms.push_back (pos);
+      index_atoms.push_back (atom_number);
+      charge_atoms.push_back (i.charge);
+      r_atoms.push_back (i.radius);
+      atom_number++;
+    }
+  } else {
+    for (const NS::Atom& i : atoms) {
+      pos[0] = i.pos[0];
+      pos[1] = i.pos[1];
+      pos[2] = i.pos[2];
+      pos_atoms.push_back (pos);
+      charge_atoms.push_back (i.charge);
+      r_atoms.push_back (i.radius);
+    }
   }
 }
 
@@ -1325,11 +1339,13 @@ poisson_boltzmann::broadcast_vectors ()
   pos_atoms.resize (size_vec);
   charge_atoms.resize (size_vec);
   r_atoms.resize (size_vec);
+  index_atoms.resize (size_vec);
 
   // Effettuare il broadcast del vettore
   MPI_Bcast (pos_atoms.data (), size_vec * 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast (charge_atoms.data (), size_vec, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast (r_atoms.data (), size_vec, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  MPI_Bcast (index_atoms.data (), size_vec, MPI_INT, 0, MPI_COMM_WORLD);
 }
 
 void
@@ -2686,7 +2702,8 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
     }
 
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision (3)
+    oss << std::setw (8) << index_atoms[it->first]
+        << std::fixed << std::setprecision (3)
         << std::setw (8) << pos_atoms[it->first][0]
         << std::setw (8) << pos_atoms[it->first][1]
         << std::setw (8) << pos_atoms[it->first][2]

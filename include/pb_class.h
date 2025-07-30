@@ -69,6 +69,7 @@ struct
   std::vector<std::array<double,3>> pos_atoms;
   std::vector<double> charge_atoms;
   std::vector<double> r_atoms;
+  std::vector<int> index_atoms;
 
 
   // input parameters
