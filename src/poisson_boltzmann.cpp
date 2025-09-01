@@ -255,7 +255,7 @@ main (int argc, char **argv)
     TOC ("Compute energy")
   }
 
-  pb.write_Dn (ray_cache);
+  // pb.write_Dn (ray_cache);
 
   if (pb.surf_write == 1) {
     TIC ();
