@@ -186,6 +186,7 @@ main (int argc, char **argv)
     TOC ("refine the box");
   }
 
+  if ( rank == 0) ray_cache.ns->clean();
 
 
   TIC ();
@@ -203,7 +204,7 @@ main (int argc, char **argv)
 
 
 
-  if ( rank == 0) ray_cache.ns->clean();
+  // if ( rank == 0) ray_cache.ns->clean();
 
   TIC ();
 
