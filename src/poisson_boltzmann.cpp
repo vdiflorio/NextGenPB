@@ -126,7 +126,7 @@ main (int argc, char **argv)
     std::vector<NS::Atom> ().swap (pb.atoms);
     std::cout << "\n============================================\n";
   }
-
+  if ( rank == 0) ray_cache.ns->clean();
   TOC ("Building Surface with NanoShaper");
 
   MPI_Barrier (mpicomm);
@@ -186,7 +186,6 @@ main (int argc, char **argv)
     TOC ("refine the box");
   }
 
-  if ( rank == 0) ray_cache.ns->clean();
 
 
   TIC ();
