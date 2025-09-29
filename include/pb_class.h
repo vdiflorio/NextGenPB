@@ -790,6 +790,10 @@ struct
 
   void
   write_Dn (ray_cache_t & ray_cache);
+
+  void
+  write_phi0_Dn (ray_cache_t & ray_cache);
+
 };
 
 std::basic_istream<char>&
@@ -815,6 +819,16 @@ struct EdgeData {
     double area_sum = 0.0;
     double flux = 0.0;
     double Dn = 0.0;
+};
+
+struct VertexData {
+    double pos[3] = {0.0, 0.0, 0.0};
+    double phi0 = 0.0;
+    double phi0_mod = 0.0;
+    double Dn_nu = 0.0;
+    double D_nu = 0.0;
+    double alpha = 0.0;
+    double cos_theta = 0.0;
 };
 
 #endif

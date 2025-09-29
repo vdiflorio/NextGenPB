@@ -3846,9 +3846,6 @@ poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
     h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
     h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
     h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
-    area_h[0] = h[1] * h[2] / h[0] * 0.25;
-    area_h[1] = h[0] * h[2] / h[1] * 0.25;
-    area_h[2] = h[0] * h[1] / h[2] * 0.25;
 
     std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant, tmp_phi, tmp_eps);
     ntriang = getTriangles (cubeindex, triangles);
@@ -3922,27 +3919,6 @@ poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
         phi_surf_local.push_back (oss.str());
         oss.str ("");
         oss.clear();
-        // // Write to ASCII
-        // phi_nodes_txt << quadrant->p(0, i1) << "  " << quadrant->p(1, i1) << "  " << quadrant->p(2, i1) << "  " << tmp_phi_1 << "\n";
-        // phi_nodes_txt << quadrant->p(0, i2) << "  " << quadrant->p(1, i2) << "  " << quadrant->p(2, i2) << "  " << tmp_phi_2 << "\n";
-
-        // phi_surf_txt  << V[0] << "  " << V[1] << "  " << V[2] << "  " << phi_sup[j] << "\n";
-
-        // // Write to Delphi PDB-like format
-        // std::fprintf(phi_nod_delphi,
-        // "\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",
-        // 1, "X", "XXX", " ", 0,
-        // quadrant->p(0, i1), quadrant->p(1, i1), quadrant->p(2, i1), tmp_phi_1, tmp_phi_2);
-
-        // std::fprintf(phi_nod_delphi,
-        // "\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",
-        // 1, "X", "XXX", " ", 0,
-        // quadrant->p(0, i2), quadrant->p(1, i2), quadrant->p(2, i2), tmp_phi_1, tmp_phi_2);
-
-        // std::fprintf(phi_sup_delphi,
-        // "\nATOM  %5d %-4s %3s %s%4d    %8.3f%8.3f%8.3f%8.4f%8.4f",
-        // 1, "X", "XXX", " ", 0,
-        // V[0], V[1], V[2], phi_sup[j], 0.0);
       }
     }
   }
@@ -4329,5 +4305,196 @@ poisson_boltzmann::write_Dn (ray_cache_t & ray_cache)
     std::cout << "phi an: " << 1.0/(eps_out) * 1.0/(2*(1+k*2)) << "\n";
     std::cout << "Dn an: " <<  1.0/(2*2) << "\n";
 
+  }
+}
+
+
+void
+poisson_boltzmann::write_phi0_Dn (ray_cache_t & ray_cache)
+{
+  int rank, size;
+  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+  MPI_Comm_size (MPI_COMM_WORLD, &size);
+
+  if (rank == 0)
+    std::cout << "\n================ [ Calcolo vertex quantity ] =================\n";
+
+  const double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
+  const double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+  const double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
+  const double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
+  const double k = std::sqrt (k2);
+
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////
+  double fract;
+  std::array<double,3> V;
+  std::array<double,3> N;
+  std::array<double,3> h;
+  std::array<double,3> area_h;
+
+  std::array<double,8> tmp_eps;
+  std::array<double,8> tmp_phi;
+  std::vector<int> edg;
+  std::vector<int> fl_dir;
+
+  int cubeindex = -1;
+  
+  int i1 = 0, i2 = 0;
+  double tmp_phi_1 = 0.0, tmp_phi_2 = 0.0,
+         tmp_eps_1 = 0.0, tmp_eps_2 = 0.0;
+
+
+  int ntriang = 0;
+  int edge;
+  double normal = 1;
+  std::array<std::array<double,3>,3> vert_triangles;
+  std::array<std::array<double,3>,3> norms_vert;
+
+  double area = 0.0;
+  double Dn_tmp = 0.0;
+  double tot_flux_calc = 0.0;
+  double tot_flux = 0.0;
+  double tot_area = 0.0;
+
+  auto quadrant = this->tmsh.begin_quadrant_sweep ();
+
+  if (!border_quad.empty ()) {
+    quadrant[border_quad[0]];
+    h[0] = quadrant->p (0, 7) - quadrant->p (0, 0);
+    h[1] = quadrant->p (1, 7) - quadrant->p (1, 0);
+    h[2] = quadrant->p (2, 7) - quadrant->p (2, 0);
+  }
+
+  std::unordered_map<EdgeKey, VertexData, EdgeHash> edgeMap;
+  double cos_theta, theta, tang_theta2;
+  double eps_eff;
+
+  for (const int ii : border_quad) {
+    quadrant[ii];
+    cubeindex = classifyCube_fast (quadrant, eps_out);
+    std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
+
+    ntriang = getTriangles (cubeindex, triangles);
+    
+    for (int itri = 0; itri < ntriang; ++itri) {
+      std::array<EdgeKey, 3> triEdges;
+      for (int jj = 0; jj < 3; ++jj) {
+        edge = triangles[itri][jj];
+        i1 = edge2nodes[2 * edge ];
+        i2 = edge2nodes[2 * edge + 1];
+
+        triEdges[jj] = { static_cast<int>(std::min(quadrant->gt(i1), quadrant->gt(i2))),
+                          static_cast<int>(std::max(quadrant->gt(i1), quadrant->gt(i2))) };
+
+        auto &vertexData = edgeMap[triEdges[jj]]; // crea se non esiste
+
+        // Coordinate del punto sul bordo
+        V[0] = quadrant->p(0, i1);
+        V[1] = quadrant->p(1, i1);
+        V[2] = quadrant->p(2, i1);
+
+        normal_intersection(quadrant, ray_cache, edge, N, fract);
+        V[edge_axis[edge]] += fract * h[edge_axis[edge]];
+        vert_triangles[jj] = V;
+        norms_vert[jj] = N;
+
+        tmp_phi_1 = tmp_phi[i1];
+        tmp_phi_2 = tmp_phi[i2];
+        tmp_eps_1 = tmp_eps[i1];
+        tmp_eps_2 = tmp_eps[i2];
+
+        normal = (tmp_eps_1 > tmp_eps_2) ? -1.0 : 1.0;
+
+        cos_theta = V[edge_axis[edge]] / std::sqrt (V[0]*V[0] + V[1]*V[1] + V[2]*V[2]);
+        theta = std::acos (cos_theta);
+        tang_theta2 = std::tan (theta)*std::tan (theta);
+
+        eps_eff = wha (tmp_eps_1, tmp_eps_2, fract);
+        vertexData.cos_theta = cos_theta;
+        vertexData.alpha = fract;
+        vertexData.phi0 = phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
+        vertexData.phi0_mod = tmp_phi_1 + fract* (tmp_phi_2-tmp_phi_1)* 
+                                (tang_theta2/eps_out + 1./tmp_eps_1)/
+                                (fract/tmp_eps_1 + (1-fract)/tmp_eps_2 + tang_theta2/eps_out);
+        vertexData.Dn_nu = - eps_eff*(tmp_phi_2 - tmp_phi_1)*normal / 
+                             (h[edge_axis[edge]]*(1. + eps_eff/eps_out* (1- cos_theta*cos_theta)/cos_theta*cos_theta));
+        vertexData.D_nu =- (tmp_phi_2 - tmp_phi_1) * wha(tmp_eps_1, tmp_eps_2, fract) *
+                 normal/h[0];
+        vertexData.pos[0] = V[0];
+        vertexData.pos[1] = V[1];
+        vertexData.pos[2] = V[2];
+
+      }
+    }
+  }
+  // Ogni rank scrive il proprio file locale
+  {
+    std::ostringstream fname;
+    fname << "vertexdata_rank" << rank << ".csv";
+    std::ofstream ofs(fname.str());
+    if (!ofs) {
+      std::cerr << "Errore: impossibile aprire " << fname.str() << " per scrittura\n";
+      return;
+    }
+
+    ofs << "edge_key_a,edge_key_b,"
+        << "pos_x,pos_y,pos_z,"
+        << "phi0,phi0_mod,Dn_nu,D_nu,alpha,cos_theta\n";
+    ofs << std::fixed << std::setprecision(8);
+
+    for (const auto &kv : edgeMap) {
+      const EdgeKey &k = kv.first;
+      const VertexData &vd = kv.second;
+
+      ofs << k.a << "," << k.b << ","
+          << vd.pos[0] << "," << vd.pos[1] << "," << vd.pos[2] << ","
+          << vd.phi0 << "," << vd.phi0_mod << ","
+          << vd.Dn_nu << "," << vd.D_nu << ","
+          << vd.alpha << "," << vd.cos_theta << "\n";
+    }
+  }
+
+  // Aspetta che tutti abbiano scritto
+  MPI_Barrier(mpicomm);
+
+  // Rank 0 raccoglie tutto in un unico file
+  if (rank == 0) {
+    std::ofstream final("vertexdata.csv");
+    if (!final) {
+      std::cerr << "Errore: impossibile aprire vertexdata.csv per scrittura\n";
+      return;
+    }
+
+    final << "edge_key_a,edge_key_b,"
+          << "pos_x,pos_y,pos_z,"
+          << "phi0,phi0_mod,Dn_nu,D_nu,alpha,cos_theta\n";
+    final << std::fixed << std::setprecision(8);
+
+    for (int r = 0; r < size; ++r) {
+      std::ostringstream fname;
+      fname << "vertexdata_rank" << r << ".csv";
+
+      std::ifstream ifs(fname.str());
+      if (!ifs) {
+        std::cerr << "Attenzione: impossibile aprire " << fname.str() << "\n";
+        continue;
+      }
+
+      std::string line;
+      bool first_line = true;
+      while (std::getline(ifs, line)) {
+        if (first_line) {
+          first_line = false; // salta l’intestazione
+          continue;
+        }
+        final << line << "\n";
+      }
+
+      ifs.close();
+      std::filesystem::remove(fname.str()); // opzionale: elimina i file temporanei
+    }
+
+    std::cout << "Tutti i dati uniti in vertexdata.csv\n";
   }
 }
