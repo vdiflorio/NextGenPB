@@ -4407,8 +4407,7 @@ poisson_boltzmann::write_phi0_Dn (ray_cache_t & ray_cache)
         normal = (tmp_eps_1 > tmp_eps_2) ? -1.0 : 1.0;
 
         cos_theta = V[edge_axis[edge]] / std::sqrt (V[0]*V[0] + V[1]*V[1] + V[2]*V[2]);
-        theta = std::acos (cos_theta);
-        tang_theta2 = std::tan (theta)*std::tan (theta);
+        tang_theta2 = 1./(cos_theta*cos_theta) - 1.0;
 
         eps_eff = wha (tmp_eps_1, tmp_eps_2, fract);
         vertexData.cos_theta = cos_theta;
@@ -4418,8 +4417,8 @@ poisson_boltzmann::write_phi0_Dn (ray_cache_t & ray_cache)
                                 (tang_theta2/eps_out + 1./tmp_eps_1)/
                                 (fract/tmp_eps_1 + (1-fract)/tmp_eps_2 + tang_theta2/eps_out);
         vertexData.Dn_nu = - eps_eff*(tmp_phi_2 - tmp_phi_1)*normal / 
-                             (h[edge_axis[edge]]*(1. + eps_eff/eps_out* (1- cos_theta*cos_theta)/cos_theta*cos_theta));
-        vertexData.D_nu =- (tmp_phi_2 - tmp_phi_1) * wha(tmp_eps_1, tmp_eps_2, fract) *
+                             (h[edge_axis[edge]]*(1. + eps_eff/eps_out* tang_theta2));
+        vertexData.D_nu = - (tmp_phi_2 - tmp_phi_1) * wha(tmp_eps_1, tmp_eps_2, fract) *
                  normal/h[0];
         vertexData.pos[0] = V[0];
         vertexData.pos[1] = V[1];
