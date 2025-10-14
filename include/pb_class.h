@@ -829,6 +829,11 @@ struct VertexData {
     double D_nu = 0.0;
     double alpha = 0.0;
     double cos_theta = 0.0;
+    double phi1 = 0.0;
+    double phi2 = 0.0;
+    double pos1[3] = {0.0, 0.0, 0.0};
+    double pos2[3] = {0.0, 0.0, 0.0};
+
 };
 
 #endif

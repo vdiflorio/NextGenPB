@@ -4413,17 +4413,28 @@ poisson_boltzmann::write_phi0_Dn (ray_cache_t & ray_cache)
         vertexData.cos_theta = cos_theta;
         vertexData.alpha = fract;
         vertexData.phi0 = phi0 (tmp_eps_1, tmp_eps_2, tmp_phi_1, tmp_phi_2, fract);
-        vertexData.phi0_mod = tmp_phi_1 + fract* (tmp_phi_2-tmp_phi_1)* 
-                                (tang_theta2/eps_out + 1./tmp_eps_1)/
-                                (fract/tmp_eps_1 + (1-fract)/tmp_eps_2 + tang_theta2/eps_out);
+        vertexData.phi1 = tmp_phi_1;
+        vertexData.phi2 = tmp_phi_2;
+        // vertexData.phi0_mod = tmp_phi_1 + fract* (tmp_phi_2-tmp_phi_1)* 
+        //                         (tang_theta2/eps_out + 1./tmp_eps_1)/
+        //                         (fract/tmp_eps_1 + (1-fract)/tmp_eps_2 + tang_theta2/eps_out);
+        vertexData.phi0_mod = (1-fract)*tmp_phi_1 + fract*tmp_phi_2 +
+                              (tmp_phi_2 - tmp_phi_1)*fract*(1-fract)*
+                              (1./tmp_eps_1 - 1./tmp_eps_2)/
+                              (1./eps_eff + tang_theta2/eps_out);
         vertexData.Dn_nu = - eps_eff*(tmp_phi_2 - tmp_phi_1)*normal / 
                              (h[edge_axis[edge]]*(1. + eps_eff/eps_out* tang_theta2));
-        vertexData.D_nu = - (tmp_phi_2 - tmp_phi_1) * wha(tmp_eps_1, tmp_eps_2, fract) *
-                 normal/h[0];
+        vertexData.D_nu = - (tmp_phi_2 - tmp_phi_1) * wha(tmp_eps_1, tmp_eps_2, fract) * normal/h[0];
+
         vertexData.pos[0] = V[0];
         vertexData.pos[1] = V[1];
         vertexData.pos[2] = V[2];
-
+        vertexData.pos1[0] = quadrant->p(0, i1);
+        vertexData.pos1[1] = quadrant->p(1, i1);
+        vertexData.pos1[2] = quadrant->p(2, i1);
+        vertexData.pos2[0] = quadrant->p(0, i2);
+        vertexData.pos2[1] = quadrant->p(1, i2);
+        vertexData.pos2[2] = quadrant->p(2, i2);
       }
     }
   }
@@ -4437,9 +4448,25 @@ poisson_boltzmann::write_phi0_Dn (ray_cache_t & ray_cache)
       return;
     }
 
+    // ofs << "edge_key_a,edge_key_b,"
+    //     << "pos_x,pos_y,pos_z,"
+    //     << "phi0,phi0_mod,Dn_nu,D_nu,alpha,cos_theta\n";
+    // ofs << std::fixed << std::setprecision(8);
+
+    // for (const auto &kv : edgeMap) {
+    //   const EdgeKey &k = kv.first;
+    //   const VertexData &vd = kv.second;
+
+    //   ofs << k.a << "," << k.b << ","
+    //       << vd.pos[0] << "," << vd.pos[1] << "," << vd.pos[2] << ","
+    //       << vd.phi0 << "," << vd.phi0_mod << ","
+    //       << vd.Dn_nu << "," << vd.D_nu << ","
+    //       << vd.alpha << "," << vd.cos_theta << "\n";
+    // }
     ofs << "edge_key_a,edge_key_b,"
-        << "pos_x,pos_y,pos_z,"
-        << "phi0,phi0_mod,Dn_nu,D_nu,alpha,cos_theta\n";
+        << "pos0_x,pos0_y,pos0_z,phi0,"
+        << "pos1_x,pos1_y,pos1_z,phi1,"
+        << "pos2_x,pos2_y,pos2_z,phi2\n";
     ofs << std::fixed << std::setprecision(8);
 
     for (const auto &kv : edgeMap) {
@@ -4447,10 +4474,9 @@ poisson_boltzmann::write_phi0_Dn (ray_cache_t & ray_cache)
       const VertexData &vd = kv.second;
 
       ofs << k.a << "," << k.b << ","
-          << vd.pos[0] << "," << vd.pos[1] << "," << vd.pos[2] << ","
-          << vd.phi0 << "," << vd.phi0_mod << ","
-          << vd.Dn_nu << "," << vd.D_nu << ","
-          << vd.alpha << "," << vd.cos_theta << "\n";
+          << vd.pos[0] << "," << vd.pos[1] << "," << vd.pos[2] << ","<< vd.phi0 << "," 
+          << vd.pos1[0] << "," << vd.pos1[1] << "," << vd.pos1[2] << ","<< vd.phi1 << ","
+          << vd.pos2[0] << "," << vd.pos2[1] << "," << vd.pos2[2] << ","<< vd.phi2 <<"\n";
     }
   }
 
@@ -4465,9 +4491,13 @@ poisson_boltzmann::write_phi0_Dn (ray_cache_t & ray_cache)
       return;
     }
 
+    // final << "edge_key_a,edge_key_b,"
+    //       << "pos_x,pos_y,pos_z,"
+    //       << "phi0,phi0_mod,Dn_nu,D_nu,alpha,cos_theta\n";
     final << "edge_key_a,edge_key_b,"
-          << "pos_x,pos_y,pos_z,"
-          << "phi0,phi0_mod,Dn_nu,D_nu,alpha,cos_theta\n";
+          << "pos0_x,pos0_y,pos0_z,phi0,"
+          << "pos1_x,pos1_y,pos1_z,phi1,"
+          << "pos2_x,pos2_y,pos2_z,phi2\n";
     final << std::fixed << std::setprecision(8);
 
     for (int r = 0; r < size; ++r) {
