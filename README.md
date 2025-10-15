@@ -12,9 +12,10 @@ the terms of the GNU/GPL licence v3
 # Overview
 ----------
 
-**NextGenPB** is a linearized Poisson–Boltzmann solver based on an octree mesh.
+**NextGenPB** is a high-performance solver for the linearized Poisson–Boltzmann equation (PBE), built on an adaptive octree mesh.
+It efficiently computes electrostatic potentials in heterogeneous dielectric media using a flexible, hierarchical discretization scheme.
 
-It solves the linearized Poisson–Boltzmann equation (PBE):
+The equation solved is:
 
 
 $$
@@ -23,6 +24,17 @@ $$
 
 on a rectangular domain.
 
+# Documentation & Tutorials
 ---
 
-All information about installation and usage can be found in the [NextGenPB Tutorial and Guide](https://vdiflorio.github.io/nextgenpb_tutorial/)
+Comprehensive installation instructions, examples, and usage guides are available here:
+
+[NextGenPB Tutorial and Guide](https://vdiflorio.github.io/nextgenpb_tutorial/)
+
+---
+
+# Citation
+
+If you use **NextGenPB** in your research, please cite the following article:
+
+>Di Florio, V., Ansalone, P., Siryk, S. V., Decherchi, S., De Falco, C., & Rocchia, W. (2025). NextGenPB: An analytically-enabled super resolution tool for solving the Poisson-Boltzmann Equation featuring local (de) refinement. Computer Physics Communications, 109816.
