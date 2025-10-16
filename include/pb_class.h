@@ -787,6 +787,9 @@ struct
 
   void
   search_points ();
+
+  void
+  pot_field_fast (ray_cache_t & ray_cache);
 };
 
 std::basic_istream<char>&
