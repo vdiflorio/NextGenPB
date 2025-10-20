@@ -122,6 +122,10 @@ struct
   double e_in, e_out, ionic_strength; //[M]
   double T;
   int calc_energy;
+  int calc_coulombic;
+  int calc_potential_term;
+  int calc_field_term;
+  
 
   //surface:
   NS::surface_type surf_type;
@@ -173,7 +177,6 @@ struct
   std::unique_ptr<distributed_vector> epsilon_nodes;
   std::unique_ptr<distributed_vector> reaction_nodes;
   double net_charge;
-  int calc_coulombic;
 
   std::unique_ptr<distributed_vector> phi;
   std::unique_ptr<distributed_vector> rho_fixed;
@@ -790,6 +793,9 @@ struct
 
   void
   pot_field_fast (ray_cache_t & ray_cache);
+
+  void
+  pot_field (ray_cache_t & ray_cache);
 };
 
 std::basic_istream<char>&
