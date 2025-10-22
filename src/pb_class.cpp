@@ -3890,7 +3890,7 @@ poisson_boltzmann::pot_field_fast (ray_cache_t & ray_cache)
   MPI_Comm_rank (mpicomm, &rank);
 
   if (rank == 0)
-    std::cout << "\n================ [ Electrostatic Energy PD 1] =================\n";
+    std::cout << "\n================ [ Calculating Potential & Field Components ] =================\n";
 
   // ===========================
   // Costanti fisiche e scalari
@@ -4548,7 +4548,8 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
   MPI_Comm_rank (mpicomm, &rank);
 
   if (rank == 0)
-    std::cout << "\n================ [ Electrostatic Energy PD 2] =================\n";
+    std::cout << "\n================ [ Calculating Potential & Field Components ] =================\n";
+
 
   // ===========================
   // Costanti fisiche e scalari
