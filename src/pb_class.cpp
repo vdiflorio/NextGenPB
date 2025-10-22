@@ -4550,7 +4550,6 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
   if (rank == 0)
     std::cout << "\n================ [ Calculating Potential & Field Components ] =================\n";
 
-
   // ===========================
   // Costanti fisiche e scalari
   // ===========================
