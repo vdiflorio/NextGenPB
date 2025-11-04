@@ -242,6 +242,8 @@ main (int argc, char **argv)
     pb.write_potential_on_atoms_fast ();
     TOC ("Write potential on atoms")
   }
+  
+  pb.write_dataset (ray_cache);
 
   if (pb.calc_potential_term > 0 || pb.calc_field_term > 0 || pb.calc_energy > 0) {
     TIC ();

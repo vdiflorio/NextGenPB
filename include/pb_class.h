@@ -796,10 +796,123 @@ struct
 
   void
   pot_field (ray_cache_t & ray_cache);
+
+  void
+  write_dataset (ray_cache_t & ray_cache);
 };
 
 std::basic_istream<char>&
 operator>> (std::basic_istream<char>& inputfile, NS::Atom &a);
 std::basic_istream<char>&
 operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a);
+
+
+
+
+struct EdgeKey {
+    int a, b;
+    bool operator==(const EdgeKey& other) const {
+        return a == other.a && b == other.b;
+    }
+};
+
+struct EdgeHash {
+    std::size_t operator()(const EdgeKey& k) const {
+        return std::hash<int>()(k.a) ^ (std::hash<int>()(k.b) << 1);
+    }
+};
+
+static constexpr
+  std::array<int, 24> edge2nodes_nn1 = {
+    2, 4,  // Edge 0
+    5, 0,  // Edge 1
+    0, 6,  // Edge 2
+    4, 1,  // Edge 3
+    6, 0,  // Edge 4
+    1, 4,  // Edge 5
+    4, 2,  // Edge 6
+    0, 5,  // Edge 7
+    1, 2,  // Edge 8
+    0, 3,  // Edge 9
+    2, 1,  // Edge 10
+    3, 0   // Edge 11
+  };
+  static constexpr
+  std::array<int, 24> edge2index_nn1 = {
+    0, 2,  // Edge 0
+    0, 3,  // Edge 1
+    1, 2,  // Edge 2
+    0, 2,  // Edge 3
+    0, 3,  // Edge 4
+    1, 3,  // Edge 5
+    1, 3,  // Edge 6
+    1, 2,  // Edge 7
+    0, 2,  // Edge 8
+    1, 2,  // Edge 9
+    1, 3,  // Edge 10
+    0, 3   // Edge 11
+  };
+  static constexpr
+  std::array<int, 24> edge2nodes_nn2 = {
+    3, 5,  // Edge 0
+    7, 2,  // Edge 1
+    1, 7,  // Edge 2
+    6, 3,  // Edge 3
+    7, 1,  // Edge 4
+    3, 6,  // Edge 5
+    5, 3,  // Edge 6
+    2, 7,  // Edge 7
+    5, 6,  // Edge 8
+    4, 7,  // Edge 9
+    6, 5,  // Edge 10
+    7, 4   // Edge 11
+  };
+
+  static constexpr
+  std::array<int, 24> edge2index_nn2 = {
+    0, 2,  // Edge 0
+    0, 3,  // Edge 1
+    1, 2,  // Edge 2
+    0, 2,  // Edge 3
+    0, 3,  // Edge 4
+    1, 3,  // Edge 5
+    1, 3,  // Edge 6
+    1, 2,  // Edge 7
+    0, 2,  // Edge 8
+    1, 2,  // Edge 9
+    1, 3,  // Edge 10
+    0, 3   // Edge 11
+  };
+
+  
+
+struct VertexData {
+  int axis = -1;          // Direction of the edge (0, 1, or 2)
+
+  double phi0 = 0.0;                 // Target electrostatic potential at the surface intersection point (P0)
+  double alpha = 0.0;                // Fractional position of the surface intersection along the edge (0 ≤ α ≤ 1)
+  double phi1 = 0.0;                 // Electrostatic potential at the first edge node (P1)
+  double phi2 = 0.0;                 // Electrostatic potential at the second edge node (P2)
+  double eps1 = 0.0;                 // Dielectric constant at the first edge node (ε1)
+  double eps2 = 0.0;                 // Dielectric constant at the second edge node (ε2)
+  std::array<double, 3> pos1 = {0.0, 0.0, 0.0};  // Coordinates of the first edge node (P1) 
+  std::array<double, 3> pos0 = {0.0, 0.0, 0.0};  // Coordinates of the vertex (surface intersection point P0)
+
+
+  std::array<double, 3> N = {0.0, 0.0, 0.0};  // Unit normal vector to the molecular surface, pointing toward the solvent
+
+  // Electrostatic potentials at the four nearest neighbors of node 1 (P1)
+  // corresponding to displacements in ±(ν+1) and ±(ν+2) directions
+  std::array<double, 4> phi1_nn = {0.0, 0.0, 0.0, 0.0};
+
+  // Dielectric constants at the same four neighboring points of node 1
+  std::array<double, 4> eps1_nn = {0.0, 0.0, 0.0, 0.0};
+
+  // Electrostatic potentials at the four nearest neighbors of node 2 (P2)
+  std::array<double, 4> phi2_nn = {0.0, 0.0, 0.0, 0.0};
+
+  // Dielectric constants at the same four neighboring points of node 2
+  std::array<double, 4> eps2_nn = {0.0, 0.0, 0.0, 0.0};
+};
+
 #endif

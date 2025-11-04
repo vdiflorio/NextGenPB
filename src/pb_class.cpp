@@ -5214,3 +5214,196 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
     std::cout << "Atom potentials and fields written to 'pot_field.dat'\n";
   }
 }
+
+void
+poisson_boltzmann::write_dataset (ray_cache_t & ray_cache)
+{
+  int rank, size;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+  if (rank == 0)
+    std::cout << "\n================ [ Computing vertex quantities ] =================\n";
+
+  const double eps_in = 4.0 * pi * e_0 * e_in * kb * T * Angs / (e * e);
+  const double eps_out = 4.0 * pi * e_0 * e_out * kb * T * Angs / (e * e);
+
+  std::array<double, 3> N;
+  std::array<double, 3> V;
+  std::array<double, 3> h;
+  std::array<double, 8> tmp_eps;
+  std::array<double, 8> tmp_phi;
+  std::vector<int> edg;
+  std::vector<int> fl_dir;
+
+  int cubeindex = -1;
+  std::unordered_map<EdgeKey, VertexData, EdgeHash> edgeMap;
+
+  auto quadrant = this->tmsh.begin_quadrant_sweep();
+
+  if (!border_quad.empty()) {
+    quadrant[border_quad[0]];
+    h[0] = quadrant->p(0, 7) - quadrant->p(0, 0);
+    h[1] = quadrant->p(1, 7) - quadrant->p(1, 0);
+    h[2] = quadrant->p(2, 7) - quadrant->p(2, 0);
+  }
+
+  // === Loop over border cubes ===
+  for (const int ii : border_quad) {
+    quadrant[ii];
+    cubeindex = classifyCube_fast (quadrant, eps_out);
+    std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
+    
+    for (int ip = 0; ip < edg.size (); ++ip) {
+      const int edge = edg[ip];
+      const int axis = edge_axis[edge];
+      const int i1 = edge2nodes[2 * edge];
+      const int i2 = edge2nodes[2 * edge + 1];
+      EdgeKey triEdges{
+        static_cast<int>(std::min(quadrant->gt(i1), quadrant->gt(i2))),
+        static_cast<int>(std::max(quadrant->gt(i1), quadrant->gt(i2)))
+      };
+
+      auto &vertexData = edgeMap[triEdges]; // crea se non esiste
+
+      vertexData.axis = axis;
+
+      double fract = 0.0;
+      normal_intersection(quadrant, ray_cache, edge, N, fract);
+      
+      // Store normal (reordered cyclically by axis)   
+      for (int jj = 0; jj < 3; ++jj) {
+        int nu = (axis + jj) % 3;
+        vertexData.N[jj] = N[nu];
+      }
+
+      vertexData.pos1[0] = quadrant->p(0, i1);
+      vertexData.pos1[1] = quadrant->p(1, i1);
+      vertexData.pos1[2] = quadrant->p(2, i1);
+
+      vertexData.pos0[0] = vertexData.pos1[0];
+      vertexData.pos0[1] = vertexData.pos1[1];
+      vertexData.pos0[2] = vertexData.pos1[2];
+
+      vertexData.pos0[edge_axis[edge]] += fract * h[edge_axis[edge]];
+
+      vertexData.phi1 = tmp_phi[i1];
+      vertexData.phi2 = tmp_phi[i2];
+      vertexData.eps1 = tmp_eps[i1];
+      vertexData.eps2 = tmp_eps[i2];
+
+      vertexData.alpha = fract;
+      vertexData.phi0 = phi0 (tmp_eps[i1], tmp_eps[i2], tmp_phi[i1], tmp_phi[i2], fract);      
+      
+      // Nearest neighbors
+      const int i1_nn1 = edge2nodes_nn1[2 * edge];
+      const int i1_nn2 = edge2nodes_nn1[2 * edge + 1];
+      const int i2_nn1 = edge2nodes_nn2[2 * edge];
+      const int i2_nn2 = edge2nodes_nn2[2 * edge + 1];
+
+      const int ind1_nn1 = edge2index_nn1[2 * edge];
+      const int ind1_nn2 = edge2index_nn1[2 * edge + 1];
+      const int ind2_nn1 = edge2index_nn2[2 * edge];
+      const int ind2_nn2 = edge2index_nn2[2 * edge + 1];
+
+      vertexData.phi1_nn[ind1_nn1] = tmp_phi[i1_nn1];
+      vertexData.phi1_nn[ind1_nn2] = tmp_phi[i1_nn2];
+      vertexData.eps1_nn[ind1_nn1] = tmp_eps[i1_nn1];
+      vertexData.eps1_nn[ind1_nn2] = tmp_eps[i1_nn2];
+
+      vertexData.phi2_nn[ind2_nn1] = tmp_phi[i2_nn1];
+      vertexData.phi2_nn[ind2_nn2] = tmp_phi[i2_nn2];
+      vertexData.eps2_nn[ind2_nn1] = tmp_eps[i2_nn1];
+      vertexData.eps2_nn[ind2_nn2] = tmp_eps[i2_nn2];
+    }
+  }
+  
+  // === Each rank writes its local CSV ===
+  {
+    std::ostringstream fname;
+    fname << "vertexdata_rank" << rank << ".csv";
+    std::ofstream ofs(fname.str());
+    if (!ofs) {
+      std::cerr << "Error: cannot open " << fname.str() << " for writing\n";
+      return;
+    }
+
+    ofs << "phi1,eps1,alpha,N_nu,N_nu1,N_nu2,"
+        << "phi2,eps2,"
+        << "phi_perp_1_p_1,eps_perp_1_p_1,"
+        << "phi_perp_1_m_1,eps_perp_1_m_1,"
+        << "phi_perp_2_p_1,eps_perp_2_p_1,"
+        << "phi_perp_2_m_1,eps_perp_2_m_1,"
+        << "phi_perp_1_p_2,eps_perp_1_p_2,"
+        << "phi_perp_1_m_2,eps_perp_1_m_2,"
+        << "phi_perp_2_p_2,eps_perp_2_p_2,"
+        << "phi_perp_2_m_2,eps_perp_2_m_2,"
+        << "x0, y0, z0, phi0, x1, y1, z1, axis\n";
+
+    ofs << std::scientific << std::setprecision(8);
+
+    for (const auto &[k, vd] : edgeMap) {
+      ofs << vd.phi1 << "," << vd.eps1 << "," << vd.alpha << ","
+          << vd.N[0] << "," << vd.N[1] << "," << vd.N[2] << ","
+          << vd.phi2 << "," << vd.eps2 << ",";
+
+      // Node 1 neighbors
+      ofs << vd.phi1_nn[0] << "," << vd.eps1_nn[0] << ","
+          << vd.phi1_nn[1] << "," << vd.eps1_nn[1] << ","
+          << vd.phi1_nn[2] << "," << vd.eps1_nn[2] << ","
+          << vd.phi1_nn[3] << "," << vd.eps1_nn[3] << ",";
+
+      // Node 2 neighbors
+      ofs << vd.phi2_nn[0] << "," << vd.eps2_nn[0] << ","
+          << vd.phi2_nn[1] << "," << vd.eps2_nn[1] << ","
+          << vd.phi2_nn[2] << "," << vd.eps2_nn[2] << ","
+          << vd.phi2_nn[3] << "," << vd.eps2_nn[3] << ",";
+
+      ofs << vd.pos0[0] << ","<< vd.pos0[1] << ","<< vd.pos0[2] << ","<< vd.phi0 << ",";
+      ofs << vd.pos1[0] << ","<< vd.pos1[1] << ","<< vd.pos1[2] << ","<< vd.axis<< "\n";
+    }
+  }
+
+  MPI_Barrier(MPI_COMM_WORLD);
+
+  // === Rank 0 collects all CSVs into one ===
+  if (rank == 0) {
+    std::ofstream final("vertexdata.csv");
+    if (!final) {
+      std::cerr << "Error: cannot open vertexdata.csv for writing\n";
+      return;
+    }
+
+    final << "phi1,eps1,alpha,N_nu,N_nu1,N_nu2,"
+          << "phi2,eps2,"
+          << "phi_perp_1_p_1,eps_perp_1_p_1,"
+          << "phi_perp_1_m_1,eps_perp_1_m_1,"
+          << "phi_perp_2_p_1,eps_perp_2_p_1,"
+          << "phi_perp_2_m_1,eps_perp_2_m_1,"
+          << "phi_perp_1_p_2,eps_perp_1_p_2,"
+          << "phi_perp_1_m_2,eps_perp_1_m_2,"
+          << "phi_perp_2_p_2,eps_perp_2_p_2,"
+          << "phi_perp_2_m_2,eps_perp_2_m_2,"
+          << "x0, y0, z0, phi0, x1, y1, z1, axis\n";
+
+    final << std::scientific << std::setprecision(8);
+
+    for (int r = 0; r < size; ++r) {
+      std::ostringstream fname;
+      fname << "vertexdata_rank" << r << ".csv";
+      std::ifstream ifs(fname.str());
+      if (!ifs) continue;
+
+      std::string line;
+      bool first_line = true;
+      while (std::getline(ifs, line)) {
+        if (first_line) { first_line = false; continue; } // skip header
+        final << line << "\n";
+      }
+      ifs.close();
+      std::filesystem::remove(fname.str()); // remove temporary file
+    }
+
+    std::cout << "\nAll data merged into vertexdata.csv\n";
+  }
+}
