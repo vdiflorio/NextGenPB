@@ -5338,7 +5338,7 @@ poisson_boltzmann::write_dataset (ray_cache_t & ray_cache)
         << "phi_perp_1_m_2,eps_perp_1_m_2,"
         << "phi_perp_2_p_2,eps_perp_2_p_2,"
         << "phi_perp_2_m_2,eps_perp_2_m_2,"
-        << "x0, y0, z0, phi0, x1, y1, z1, axis\n";
+        << "x0,y0,z0,phi0,x1,y1,z1, axis\n";
 
     ofs << std::scientific << std::setprecision(8);
 
@@ -5384,7 +5384,7 @@ poisson_boltzmann::write_dataset (ray_cache_t & ray_cache)
           << "phi_perp_1_m_2,eps_perp_1_m_2,"
           << "phi_perp_2_p_2,eps_perp_2_p_2,"
           << "phi_perp_2_m_2,eps_perp_2_m_2,"
-          << "x0, y0, z0, phi0, x1, y1, z1, axis\n";
+          << "x0,y0,z0,phi0,x1,y1,z1,axis\n";
 
     final << std::scientific << std::setprecision(8);
 
