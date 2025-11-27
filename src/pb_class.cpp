@@ -2978,9 +2978,9 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   // ===========================
   // Variabili locali
   // ===========================
-  double energy_pol = 0.0;
-  double energy_react = 0.0;
-  double coul_energy = 0.0;
+  // double energy_pol = 0.0;
+  // double energy_react = 0.0;
+  // double coul_energy = 0.0;
   double charge_pol = 0.0;
 
   // --- Filtra gli atomi caricati ---
@@ -3012,11 +3012,11 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
         const double dy = ri[1] - rj[1];
         const double dz = ri[2] - rj[2];
         const double r = std::sqrt (dx * dx + dy * dy + dz * dz);
-        coul_energy += qi * charge_atoms_tmp[j] / r;
+        this->coul_energy += qi * charge_atoms_tmp[j] / r;
       }
     }
 
-    coul_energy *= den_in;
+    this->coul_energy *= den_in;
   }
 
   ////////////////////////////////////////////////////////
@@ -3252,9 +3252,9 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   // ===========================
   // Variabili locali
   // ===========================
-  double energy_pol = 0.0;
-  double energy_react = 0.0;
-  double coul_energy = 0.0;
+  // double energy_pol = 0.0;
+  // double energy_react = 0.0;
+  // double coul_energy = 0.0;
   double charge_pol = 0.0;
 
   // --- Filtra gli atomi caricati ---
@@ -3286,11 +3286,11 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
         const double dy = ri[1] - rj[1];
         const double dz = ri[2] - rj[2];
         const double r = std::sqrt (dx * dx + dy * dy + dz * dz);
-        coul_energy += qi * charge_atoms_tmp[j] / r;
+        this->coul_energy += qi * charge_atoms_tmp[j] / r;
       }
     }
 
-    coul_energy *= den_in;
+    this->coul_energy *= den_in;
   }
 
   ////////////////////////////////////////////////////////
@@ -3352,7 +3352,7 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
       }
     }
 
-    energy_pol = 0.5*constant_pol*first_int;
+    this->energy_pol = 0.5*constant_pol*first_int;
   }
 
   //polarization energy + ionic energy
@@ -3443,8 +3443,8 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
       }
     }
 
-    energy_pol = 0.5 * constant_pol * first_int;
-    energy_react = 0.5 * (second_int - first_int * constant_react);
+    this->energy_pol = 0.5 * constant_pol * first_int;
+    this->energy_react = 0.5 * (second_int - first_int * constant_react);
   }
 
 
@@ -3911,9 +3911,9 @@ poisson_boltzmann::pot_field_fast (ray_cache_t & ray_cache)
   // ===========================
   // Variabili locali
   // ===========================
-  double energy_pol = 0.0;
-  double energy_react = 0.0;
-  double coul_energy = 0.0;
+  // double energy_pol = 0.0;
+  // double energy_react = 0.0;
+  // double coul_energy = 0.0;
   double charge_pol = 0.0;
   const size_t num_atoms = charge_atoms.size();
 
@@ -3943,7 +3943,7 @@ poisson_boltzmann::pot_field_fast (ray_cache_t & ray_cache)
       const double inv_r3 = 1.0 / (r2 * r);
 
       // Coulomb energy
-      coul_energy += (qi * qj) / r * den_in;
+      this->coul_energy += (qi * qj) / r * den_in;
       // Coulomb potential
       phi_c[i] += qj / r * den_in;
       phi_c[j] += qi / r * den_in;
@@ -4035,7 +4035,7 @@ poisson_boltzmann::pot_field_fast (ray_cache_t & ray_cache)
       }
     }
 
-    energy_pol = 0.5*constant_pol*first_int;
+    this->energy_pol = 0.5*constant_pol*first_int;
   } else if ((calc_potential_term == 1 || (calc_potential_term == 2 && k < 1.e-5)) && calc_field_term == 0) {
     phi_p.assign (num_atoms, 0.0);
 
@@ -4074,7 +4074,7 @@ poisson_boltzmann::pot_field_fast (ray_cache_t & ray_cache)
       }
     }
 
-    energy_pol = 0.5*constant_pol*first_int;
+    this->energy_pol = 0.5*constant_pol*first_int;
   }
 
   auto allocate_potential_fields = [&] (void) {
@@ -4185,8 +4185,8 @@ poisson_boltzmann::pot_field_fast (ray_cache_t & ray_cache)
       }
     }
 
-    energy_pol = 0.5 * constant_pol * first_int;
-    energy_react = 0.5 * (second_int - first_int * constant_react);
+    this->energy_pol = 0.5 * constant_pol * first_int;
+    this->energy_react = 0.5 * (second_int - first_int * constant_react);
   } else if ((calc_potential_term==2 && k > 1.e-5) && calc_field_term == 0) {
     phi_p.assign (num_atoms, 0.0);
     phi_i.assign (num_atoms, 0.0);
@@ -4275,8 +4275,8 @@ poisson_boltzmann::pot_field_fast (ray_cache_t & ray_cache)
       }
     }
 
-    energy_pol = 0.5 * constant_pol * first_int;
-    energy_react = 0.5 * (second_int - first_int * constant_react);
+    this->energy_pol = 0.5 * constant_pol * first_int;
+    this->energy_react = 0.5 * (second_int - first_int * constant_react);
   } else if ((calc_potential_term==2 && k > 1.e-5) && calc_field_term == 1) {
     phi_p.assign (num_atoms, 0.0);
     phi_i.assign (num_atoms, 0.0);
@@ -4371,8 +4371,8 @@ poisson_boltzmann::pot_field_fast (ray_cache_t & ray_cache)
       }
     }
 
-    energy_pol = 0.5 * constant_pol * first_int;
-    energy_react = 0.5 * (second_int - first_int * constant_react);
+    this->energy_pol = 0.5 * constant_pol * first_int;
+    this->energy_react = 0.5 * (second_int - first_int * constant_react);
   }
 
 
@@ -4569,9 +4569,9 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
   // ===========================
   // Variabili locali
   // ===========================
-  double energy_pol = 0.0;
-  double energy_react = 0.0;
-  double coul_energy = 0.0;
+  // double energy_pol = 0.0;
+  // double energy_react = 0.0;
+  // double coul_energy = 0.0;
   double charge_pol = 0.0;
   const size_t num_atoms = charge_atoms.size();
 
@@ -4601,7 +4601,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
       const double inv_r3 = 1.0 / (r2 * r);
 
       // Coulomb energy
-      coul_energy += (qi * qj) / r * den_in;
+      this->coul_energy += (qi * qj) / r * den_in;
       // Coulomb potential
       phi_c[i] += qj / r * den_in;
       phi_c[j] += qi / r * den_in;
@@ -4689,7 +4689,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
       }
     }
 
-    energy_pol = 0.5*constant_pol*first_int;
+    this->energy_pol = 0.5*constant_pol*first_int;
   } else if ((calc_potential_term == 1 || (calc_potential_term == 2 && k < 1.e-5)) && calc_field_term == 0) {
     phi_p.assign (num_atoms, 0.0);
 
@@ -4733,7 +4733,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
       }
     }
 
-    energy_pol = 0.5*constant_pol*first_int;
+    this->energy_pol = 0.5*constant_pol*first_int;
   }
 
   auto allocate_potential_fields = [&] (void) {
@@ -4849,8 +4849,8 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
       }
     }
 
-    energy_pol = 0.5 * constant_pol * first_int;
-    energy_react = 0.5 * (second_int - first_int * constant_react);
+    this->energy_pol = 0.5 * constant_pol * first_int;
+    this->energy_react = 0.5 * (second_int - first_int * constant_react);
   } else if ((calc_potential_term==2 && k > 1.e-5) && calc_field_term == 1) {
     phi_p.assign (num_atoms, 0.0);
     phi_i.assign (num_atoms, 0.0);
@@ -4950,8 +4950,8 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
       }
     }
 
-    energy_pol = 0.5 * constant_pol * first_int;
-    energy_react = 0.5 * (second_int - first_int * constant_react);
+    this->energy_pol = 0.5 * constant_pol * first_int;
+    this->energy_react = 0.5 * (second_int - first_int * constant_react);
   } else if ((calc_potential_term==2 && k > 1.e-5) && calc_field_term == 0) {
     phi_p.assign (num_atoms, 0.0);
     phi_i.assign (num_atoms, 0.0);
@@ -5045,8 +5045,8 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
       }
     }
 
-    energy_pol = 0.5 * constant_pol * first_int;
-    energy_react = 0.5 * (second_int - first_int * constant_react);
+    this->energy_pol = 0.5 * constant_pol * first_int;
+    this->energy_react = 0.5 * (second_int - first_int * constant_react);
   }
 
 

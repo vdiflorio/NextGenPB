@@ -122,9 +122,14 @@ struct
   double e_in, e_out, ionic_strength; //[M]
   double T;
   int calc_energy;
+  double energy_pol = 0.0;
+  double energy_react = 0.0;
+  double coul_energy = 0.0;
+  
   int calc_coulombic;
   int calc_potential_term;
   int calc_field_term;
+  
   
 
   //surface:
