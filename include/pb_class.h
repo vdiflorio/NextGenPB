@@ -125,12 +125,12 @@ struct
   double energy_pol = 0.0;
   double energy_react = 0.0;
   double coul_energy = 0.0;
-  
+
   int calc_coulombic;
   int calc_potential_term;
   int calc_field_term;
-  
-  
+
+
 
   //surface:
   NS::surface_type surf_type;
@@ -171,12 +171,10 @@ struct
   std::vector<double> epsilon_in;
   std::vector<double> epsilon_out;
   std::vector<double> reaction;
-  std::vector<double> ones_in;
 
   std::vector<int> border_quad;
 
-
-  std::set<std::array<int, 2>> int_nodes;
+  std::vector<double> const_ones;
 
   std::unique_ptr<distributed_vector> markn;
   std::unique_ptr<distributed_vector> epsilon_nodes;
@@ -185,7 +183,9 @@ struct
 
   std::unique_ptr<distributed_vector> phi;
   std::unique_ptr<distributed_vector> rho_fixed;
-  // std::unique_ptr<distributed_vector> rhs;
+  std::unique_ptr<distributed_vector> ones;
+  std::unique_ptr<distributed_vector> rhs;
+  std::unique_ptr<distributed_sparse_matrix> A;
 
   static constexpr
   std::array<int, 12> edge_axis = {0,1,0,1,0,1,0,1,2,2,2,2};
@@ -727,6 +727,12 @@ struct
 
   void
   export_p4est ();
+
+  void
+  assemple_system_matrix (ray_cache_t & ray_cache);
+
+  void
+  create_density_map (ray_cache_t & ray_cache);
 
   void
   mumps_compute_electric_potential (ray_cache_t & ray_cache);

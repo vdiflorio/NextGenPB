@@ -207,24 +207,50 @@ main (int argc, char **argv)
 
   TIC ();
 
+  if (rank == 0) {
+    std::cout << "\n========= [ Creating Density Map ] =========\n";
+  }
+
+  pb.create_density_map (ray_cache);
+
+  if (rank == 0)
+    std::cout << "============================================\n";
+
+  TOC ("create density map");
+
+  TIC();
+
+  if (rank == 0) {
+    std::cout << "\n========== [ Assemble Matricies ] ==========\n";
+    std::cout << "Selected BCs          : ";
+
+    if (pb.bc ==1)
+      std::cout << "Null\n";
+    else if (pb.bc ==2)
+      std::cout << "Coulombic\n";
+    else
+      std::cout << "Neumann\n";
+  }
+
+  pb.assemple_system_matrix (ray_cache);
+
+  if (rank == 0)
+    std::cout << "============================================\n";
+
+  TOC ("Assemble system matrix");
+
+  MPI_Barrier (mpicomm);
+
+  TIC ();
+
   if (pb.linear_solver_name == "mumps") {
     if (rank == 0)
       std::cout << "\n== [ Starting numerical solution using MUMPS ] ==\n";
 
     pb.mumps_compute_electric_potential (ray_cache);
   } else if (pb.linear_solver_name == "lis") {
-    if (rank == 0) {
+    if (rank == 0)
       std::cout << "\n== [ Starting numerical solution using LIS ] ==\n";
-      std::cout << "Selected BCs          : ";
-
-      if (pb.bc ==1)
-        std::cout << "Null";
-      else if (pb.bc ==2)
-        std::cout << "Coulombic";
-      else
-        std::cout << "Neumann";
-
-    }
 
     pb.lis_compute_electric_potential (ray_cache);
   } else {
@@ -251,10 +277,12 @@ main (int argc, char **argv)
     if (pot_field_bool) {
       if (refined) {
         pb.pot_field (ray_cache);
+
         if (pb.calc_energy > pb.calc_potential_term && pb.calc_energy > pb.calc_field_term)
           pb.energy (ray_cache);
       } else {
         pb.pot_field_fast (ray_cache);
+
         if (pb.calc_energy > pb.calc_potential_term && pb.calc_energy > pb.calc_field_term)
           pb.energy_fast (ray_cache);
       }
