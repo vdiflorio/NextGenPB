@@ -23,19 +23,19 @@
 #include "readpdb.h"
 #include "vtk_class.h"
 
-#include "wrapper_search.h"
+// #include "wrapper_search.h"
 
-int
-cerca_atomo_wrapper (p8est_t *p4est,
-                     p4est_topidx_t which_tree,
-                     p8est_quadrant_t *quadrant,
-                     p4est_locidx_t local_num,
-                     void *point)
-{
+// int
+// cerca_atomo_wrapper (p8est_t *p4est,
+//                      p4est_topidx_t which_tree,
+//                      p8est_quadrant_t *quadrant,
+//                      p4est_locidx_t local_num,
+//                      void *point)
+// {
 
-  poisson_boltzmann * pb_wrapper = static_cast<poisson_boltzmann*> (pb_global);
-  return pb_wrapper->cerca_atomo (p4est, which_tree, quadrant, local_num,point);
-}
+//   poisson_boltzmann * pb_wrapper = static_cast<poisson_boltzmann*> (pb_global);
+//   return pb_wrapper->cerca_atomo (p4est, which_tree, quadrant, local_num,point);
+// }
 
 // static char filename[255];
 
@@ -72,7 +72,7 @@ main (int argc, char **argv)
   poisson_boltzmann pb;
   ray_cache_t ray_cache;
 
-  pb_global = (void *) (&pb);
+  // pb_global = (void *) (&pb);
 
   if (pb.parse_options (argc, argv))
     return 1;

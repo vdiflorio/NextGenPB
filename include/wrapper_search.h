@@ -18,13 +18,19 @@
 #ifndef WRAPPER_SEARCH_H
 #define WRAPPER_SEARCH_H
 
-static void * pb_global;
+#include "p8est.h"
 
-int
-cerca_atomo_wrapper (p8est_t * p4est,
-                     p4est_topidx_t which_tree,
-                     p8est_quadrant_t * quadrant,
-                     p4est_locidx_t local_num,
-                     void *point);
+struct poisson_boltzmann;  // forward declaration
+
+// l’unico modo: una variabile globale
+extern poisson_boltzmann* pb_global_wrapper;
+
+int cerca_atomo_wrapper(
+    p8est_t* p4est,
+    p4est_topidx_t which_tree,
+    p8est_quadrant_t* quadrant,
+    p4est_locidx_t local_num,
+    void* point   // p4est gestisce sc_array_t
+);
 
 #endif

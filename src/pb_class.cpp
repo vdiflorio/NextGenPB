@@ -1329,14 +1329,13 @@ poisson_boltzmann::init_tmesh_with_refine_scale ()
         }
       }
     }
-
     return (retval);
   };
-
   for (auto i = 0; i < scale_level; ++i) {
     tmsh.set_refine_marker (refinement);
     tmsh.refine (0, 1);
   }
+  
 }
 
 
@@ -3704,22 +3703,29 @@ poisson_boltzmann::cerca_atomo (p8est_t * p4est,
 
 }
 
-void
-poisson_boltzmann::search_points ()
+void 
+poisson_boltzmann::search_points()
 {
-  // size_t count = atoms.size();
-  size_t count = charge_atoms.size ();
-  auto base =std::make_unique<int[]> (count);
+    size_t count = charge_atoms.size();
+    auto base = std::make_unique<int[]>(count);
 
-  for (size_t ii = 0; ii < count; ++ii) {
-    base[ii] = ii;
-  }
+    for (size_t ii = 0; ii < count; ++ii)
+        base[ii] = ii;
 
-  sc_array_t *points = sc_array_new_data (base.get (), sizeof (int), count);
+    sc_array_t* points = sc_array_new_data(
+        base.get(), sizeof(int), count);
 
+    // Set the global pointer for the callback
+    pb_global_wrapper = this;
 
-  p8est_search_local (tmsh.p8est, 0, NULL, cerca_atomo_wrapper, points);
-
+    // call the search function
+    p8est_search_local(
+        tmsh.p8est,
+        0,
+        NULL,
+        cerca_atomo_wrapper,
+        points
+    );
 }
 
 void
