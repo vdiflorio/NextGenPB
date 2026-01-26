@@ -69,7 +69,7 @@ WORKDIR /opt
 RUN git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
     cd nanoshaper && \
     cp CMakeLists_so.txt CMakeLists.txt && \
-    cd build_lib && \
+    mkdir -p build_lib && cd build_lib && \
     cmake .. -DCMAKE_BUILD_TYPE="Release" && \
     make -j$(nproc)
 
