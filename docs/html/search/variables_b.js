@@ -1,14 +1,16 @@
 var searchData=
 [
-  ['r_5fatoms_0',['r_atoms',['../structpoisson__boltzmann.html#ae687636e97546958daadd62f42999c9a',1,'poisson_boltzmann']]],
-  ['r_5fbox_1',['r_box',['../structpoisson__boltzmann.html#a26e7a54f5e19ba2c3dc56f1ad8f5743c',1,'poisson_boltzmann']]],
-  ['r_5fc_2',['r_c',['../structpoisson__boltzmann.html#a5de7c54d4190b7af042e18fcd2cf3670',1,'poisson_boltzmann::r_c'],['../structray__cache__t.html#a78d533199d6235334e79f825a52f09ef',1,'ray_cache_t::r_c']]],
-  ['r_5fcr_3',['r_cr',['../structpoisson__boltzmann.html#a0d7619ed5365bfea50b68133b3534545',1,'poisson_boltzmann']]],
-  ['rays_4',['rays',['../structray__cache__t.html#a8f183b5ad6cfb287f5c05a7bad3511d2',1,'ray_cache_t']]],
-  ['rays_5flist_5',['rays_list',['../structray__cache__t.html#a0860b6d780679710232774fc2a8613a5',1,'ray_cache_t']]],
-  ['reaction_6',['reaction',['../structpoisson__boltzmann.html#a6c880680bf2608788374a5bfd77f1591',1,'poisson_boltzmann']]],
-  ['reaction_5fnodes_7',['reaction_nodes',['../structpoisson__boltzmann.html#acdf7e0afa452648bb77e20653f30cc4a',1,'poisson_boltzmann']]],
-  ['refine_5fbox_8',['refine_box',['../structpoisson__boltzmann.html#a24f1f30ab3b65b947a32cc2c0427880e',1,'poisson_boltzmann']]],
-  ['rho_5ffixed_9',['rho_fixed',['../structpoisson__boltzmann.html#a26443a3b714ac95b374d26221d317b99',1,'poisson_boltzmann']]],
-  ['rr_10',['rr',['../structpoisson__boltzmann.html#a20ec98e36fcfec6afbe072a8f1f4bf65',1,'poisson_boltzmann']]]
+  ['p4estfilename_0',['p4estfilename',['../structpoisson__boltzmann.html#a9edca2ad6b750e50cae0d7be793741a5',1,'poisson_boltzmann']]],
+  ['p4esttol_1',['p4esttol',['../pb__class_8h.html#ad09fa89526f50d4b4a031f43a211319e',1,'pb_class.h']]],
+  ['pb_5fglobal_5fwrapper_2',['pb_global_wrapper',['../wrapper__search_8cpp.html#a43b5c253b7fb6ca7e3b4640886d799e2',1,'pb_global_wrapper:&#160;wrapper_search.cpp'],['../wrapper__search_8h.html#a43b5c253b7fb6ca7e3b4640886d799e2',1,'pb_global_wrapper:&#160;wrapper_search.cpp']]],
+  ['perfil1_3',['perfil1',['../structpoisson__boltzmann.html#a72ae4e7e3a980f8692a81704b74a7417',1,'poisson_boltzmann']]],
+  ['perfil2_4',['perfil2',['../structpoisson__boltzmann.html#a599f98621e7b94d2a3ae326fc16fe1f3',1,'poisson_boltzmann']]],
+  ['phi_5',['phi',['../structpoisson__boltzmann.html#a36064372d1201f079e8441c94929cc75',1,'poisson_boltzmann']]],
+  ['pi_6',['pi',['../group__constants.html#gad172e8d1a294401209781f9aeaa77410',1,'pb_class.h']]],
+  ['pos_5fatoms_7',['pos_atoms',['../structpoisson__boltzmann.html#a266ad49c8e38bbe7034893b7de213a23',1,'poisson_boltzmann']]],
+  ['pot_5fbc_8',['pot_bc',['../structpoisson__boltzmann.html#a26ef58cd79162cbf259302d9814d94fa',1,'poisson_boltzmann']]],
+  ['potential_5fmap_9',['potential_map',['../structpoisson__boltzmann.html#a47c4338d64840074317ec42e22c00170',1,'poisson_boltzmann']]],
+  ['pqr_5fatoms_10',['pqr_atoms',['../structpoisson__boltzmann.html#a1d758b0108160763dddf3e4306b30f50',1,'poisson_boltzmann']]],
+  ['pqrfilename_11',['pqrfilename',['../structpoisson__boltzmann.html#a65c8927f049a59d175799bfbb31ab250',1,'poisson_boltzmann']]],
+  ['prb_5fradius_12',['prb_radius',['../structpoisson__boltzmann.html#a0e7a690caa1f6e499f2c23febb2e9e56',1,'poisson_boltzmann']]]
 ];

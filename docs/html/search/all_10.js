@@ -16,12 +16,13 @@ var searchData=
   ['simple_5fconn_5fnum_5fvertices_13',['simple_conn_num_vertices',['../structpoisson__boltzmann.html#ad4080b9b085cddcbb3ed8254ff566870',1,'poisson_boltzmann']]],
   ['simple_5fconn_5fp_14',['simple_conn_p',['../structpoisson__boltzmann.html#ae35f28b2f60817065b11a6ca7e0a5a77',1,'poisson_boltzmann']]],
   ['simple_5fconn_5ft_15',['simple_conn_t',['../structpoisson__boltzmann.html#a8c46bf974c4b145df7d331388f840c7d',1,'poisson_boltzmann']]],
-  ['sphercalareatriangle_16',['SphercalAreaTriangle',['../pb__class_8cpp.html#a4df98aa1bd83e36d2706adb0a781ff5a',1,'pb_class.cpp']]],
+  ['sphercalareatriangle_16',['SphercalAreaTriangle',['../pb__surface_8cpp.html#a4df98aa1bd83e36d2706adb0a781ff5a',1,'pb_surface.cpp']]],
   ['stern_20layer_20handling_17',['Stern Layer Handling',['../structpoisson__boltzmann.html#autotoc_md4',1,'']]],
   ['stern_5flayer_18',['stern_layer',['../structpoisson__boltzmann.html#ac92de7cf4d19bb910098b007817403af',1,'poisson_boltzmann']]],
   ['stern_5flayer_5fsurf_19',['stern_layer_surf',['../structpoisson__boltzmann.html#a712206ec0622882bd66649ec89aaa246',1,'poisson_boltzmann']]],
   ['surf_5fparam_20',['surf_param',['../structpoisson__boltzmann.html#aff5baddd56f7f2eb414ab76188c1b764',1,'poisson_boltzmann']]],
   ['surf_5ftype_21',['surf_type',['../structpoisson__boltzmann.html#af4f5f24416210800beb58c2ceceaf806',1,'poisson_boltzmann']]],
-  ['surf_5fwrite_22',['surf_write',['../structpoisson__boltzmann.html#a89f91065362b2f1910da5873b531138b',1,'poisson_boltzmann']]],
-  ['surffilename_23',['surffilename',['../structpoisson__boltzmann.html#a6013c2e73a20caab51bfd8c2f25480e0',1,'poisson_boltzmann']]]
+  ['surf_5ftype_5fnum_22',['surf_type_num',['../structpoisson__boltzmann.html#a8ea91522fd792d9b79b485f3c90968c0',1,'poisson_boltzmann']]],
+  ['surf_5fwrite_23',['surf_write',['../structpoisson__boltzmann.html#a89f91065362b2f1910da5873b531138b',1,'poisson_boltzmann']]],
+  ['surffilename_24',['surffilename',['../structpoisson__boltzmann.html#a6013c2e73a20caab51bfd8c2f25480e0',1,'poisson_boltzmann']]]
 ];

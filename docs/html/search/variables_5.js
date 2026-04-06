@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['kb_0',['kb',['../pb__class_8h.html#a20c343545bb88a9206285e5d0d8b2b1b',1,'pb_class.h']]]
+  ['index_5fatoms_0',['index_atoms',['../structpoisson__boltzmann.html#a4ab1d18f724a0024d68c7147c4604bc5',1,'poisson_boltzmann']]],
+  ['ionic_5fstrength_1',['ionic_strength',['../structpoisson__boltzmann.html#a709782bede1a2ca45a069bd522241782',1,'poisson_boltzmann']]]
 ];

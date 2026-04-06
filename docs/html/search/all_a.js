@@ -11,7 +11,9 @@ var searchData=
   ['linearized_8',['linearized',['../structpoisson__boltzmann.html#ad8b0b210be7ff7fc926789b39b2f4d5f',1,'poisson_boltzmann']]],
   ['lis_5fcompute_5felectric_5fpotential_9',['lis_compute_electric_potential',['../structpoisson__boltzmann.html#a1f55d99ffedad9266bf860bdacc03b61',1,'poisson_boltzmann']]],
   ['ll_10',['ll',['../structpoisson__boltzmann.html#a513627682a26668ae6b81b8423fc3aab',1,'poisson_boltzmann']]],
-  ['loc_5fref_11',['loc_ref',['../structpoisson__boltzmann.html#aa192b55665beeeafcbab572a7338c05f',1,'poisson_boltzmann']]],
-  ['loc_5frefinement_12',['loc_refinement',['../structpoisson__boltzmann.html#aab6588d46efea99997cf8cb96744cc84',1,'poisson_boltzmann']]],
-  ['lookup_5ftable_13',['lookup_table',['../structpoisson__boltzmann.html#a3a25c156728a7294f90b17cafba125f2',1,'poisson_boltzmann']]]
+  ['load_5fcharges_11',['load_charges',['../readpdb_8cpp.html#a521b5f8e89b7556cd7e2b9357695c88c',1,'load_charges(const std::string &amp;filename, std::vector&lt; NS::Atom &gt; &amp;atoms):&#160;readpdb.cpp'],['../readpdb_8h.html#a521b5f8e89b7556cd7e2b9357695c88c',1,'load_charges(const std::string &amp;filename, std::vector&lt; NS::Atom &gt; &amp;atoms):&#160;readpdb.cpp']]],
+  ['load_5fradii_12',['load_radii',['../readpdb_8cpp.html#aaa726378e560b5f595b07464ef7502ed',1,'load_radii(const std::string &amp;filename, std::vector&lt; NS::Atom &gt; &amp;atoms):&#160;readpdb.cpp'],['../readpdb_8h.html#aaa726378e560b5f595b07464ef7502ed',1,'load_radii(const std::string &amp;filename, std::vector&lt; NS::Atom &gt; &amp;atoms):&#160;readpdb.cpp']]],
+  ['loc_5fref_13',['loc_ref',['../structpoisson__boltzmann.html#aa192b55665beeeafcbab572a7338c05f',1,'poisson_boltzmann']]],
+  ['loc_5frefinement_14',['loc_refinement',['../structpoisson__boltzmann.html#aab6588d46efea99997cf8cb96744cc84',1,'poisson_boltzmann']]],
+  ['lookup_5ftable_15',['lookup_table',['../structpoisson__boltzmann.html#a3a25c156728a7294f90b17cafba125f2',1,'poisson_boltzmann']]]
 ];

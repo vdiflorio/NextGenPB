@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.11.0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>My Project: /Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/src/poisson_boltzmann.cpp File Reference</title>
+<title>NextGenPB: /Users/vincenzo/Documents/PhD/PBE/LPBe/NextGenPB/src/poisson_boltzmann.cpp File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">My Project
+   <div id="projectname">NextGenPB
    </div>
   </td>
  </tr>
@@ -95,13 +95,11 @@ $(function(){ initResizable(false); });
 <div class="contents">
 <div class="textblock"><code>#include &lt;mpi.h&gt;</code><br />
 <code>#include &quot;<a class="el" href="pb__class_8h_source.html">pb_class.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="readpdb_8h_source.html">readpdb.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="vtk__class_8h_source.html">vtk_class.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="wrapper__search_8h_source.html">wrapper_search.h</a>&quot;</code><br />
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a0ffcd13bdb7d47ed0b7b0a67b4591269" id="r_a0ffcd13bdb7d47ed0b7b0a67b4591269"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0ffcd13bdb7d47ed0b7b0a67b4591269">cerca_atomo_wrapper</a> (p8est_t *p4est, p4est_topidx_t which_tree, p8est_quadrant_t *quadrant, p4est_locidx_t local_num, void *point)</td></tr>
-<tr class="separator:a0ffcd13bdb7d47ed0b7b0a67b4591269"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa7d751b1299798f2ae3bef8f216751c5" id="r_aa7d751b1299798f2ae3bef8f216751c5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aa7d751b1299798f2ae3bef8f216751c5">print_map</a> (const std::array&lt; std::map&lt; std::array&lt; double, 2 &gt;, crossings_t, map_compare &gt;, 3 &gt; &amp;r)</td></tr>
 <tr class="separator:aa7d751b1299798f2ae3bef8f216751c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3b54db4b0bf2991bd924c4fe57d3c02f" id="r_a3b54db4b0bf2991bd924c4fe57d3c02f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3b54db4b0bf2991bd924c4fe57d3c02f">print_point</a> (const std::array&lt; std::vector&lt; std::array&lt; double, 2 &gt; &gt;, 3 &gt; &amp;r)</td></tr>
@@ -112,42 +110,6 @@ Functions</h2></td></tr>
 <tr class="separator:a3c04138a5bfe5d72780bb7e82a18e627"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Function Documentation</h2>
-<a id="a0ffcd13bdb7d47ed0b7b0a67b4591269" name="a0ffcd13bdb7d47ed0b7b0a67b4591269"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0ffcd13bdb7d47ed0b7b0a67b4591269">&#9670;&#160;</a></span>cerca_atomo_wrapper()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">int cerca_atomo_wrapper </td>
-          <td>(</td>
-          <td class="paramtype">p8est_t *</td>          <td class="paramname"><span class="paramname"><em>p4est</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">p4est_topidx_t</td>          <td class="paramname"><span class="paramname"><em>which_tree</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">p8est_quadrant_t *</td>          <td class="paramname"><span class="paramname"><em>quadrant</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">p4est_locidx_t</td>          <td class="paramname"><span class="paramname"><em>local_num</em></span>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">void *</td>          <td class="paramname"><span class="paramname"><em>point</em></span>&#160;)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <a id="a3c04138a5bfe5d72780bb7e82a18e627" name="a3c04138a5bfe5d72780bb7e82a18e627"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a3c04138a5bfe5d72780bb7e82a18e627">&#9670;&#160;</a></span>main()</h2>
 

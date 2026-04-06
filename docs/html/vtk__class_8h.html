@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.11.0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>My Project: /Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/vtk_class.h File Reference</title>
+<title>NextGenPB: /Users/vincenzo/Documents/PhD/PBE/LPBe/NextGenPB/include/vtk_class.h File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">My Project
+   <div id="projectname">NextGenPB
    </div>
   </td>
  </tr>
@@ -94,6 +94,9 @@ $(function(){ initResizable(false); });
   <div class="headertitle"><div class="title">vtk_class.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>VTK UnstructuredGrid (VTU) writer for distributed octree fields.  
+<a href="#details">More...</a></p>
 <div class="textblock"><code>#include &lt;iostream&gt;</code><br />
 <code>#include &lt;fstream&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
@@ -111,14 +114,19 @@ $(function(){ initResizable(false); });
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_v_t_k_writer.html">VTKWriter</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes a scalar field on an adaptive octree to binary VTU/PVTU files.  <a href="class_v_t_k_writer.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
 Typedefs</h2></td></tr>
 <tr class="memitem:a35da937e2331acce98d47f44892f4a76" id="r_a35da937e2331acce98d47f44892f4a76"><td class="memItemLeft" align="right" valign="top">typedef std::vector&lt; uint8_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a35da937e2331acce98d47f44892f4a76">ByteArray</a></td></tr>
+<tr class="memdesc:a35da937e2331acce98d47f44892f4a76"><td class="mdescLeft">&#160;</td><td class="mdescRight">Raw byte buffer for binary VTK data.  <br /></td></tr>
 <tr class="separator:a35da937e2331acce98d47f44892f4a76"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Typedef Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>VTK UnstructuredGrid (VTU) writer for distributed octree fields. </p>
+<p>Provides <a class="el" href="class_v_t_k_writer.html" title="Writes a scalar field on an adaptive octree to binary VTU/PVTU files.">VTKWriter</a>, which serialises a BIM++ distributed_vector field on a tmesh_3d octree to a binary VTU file per MPI rank and an accompanying parallel PVTU descriptor. Output is compatible with ParaView and VisIt. </p>
+</div><h2 class="groupheader">Typedef Documentation</h2>
 <a id="a35da937e2331acce98d47f44892f4a76" name="a35da937e2331acce98d47f44892f4a76"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a35da937e2331acce98d47f44892f4a76">&#9670;&#160;</a></span>ByteArray</h2>
 
@@ -130,6 +138,8 @@ Typedefs</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Raw byte buffer for binary VTK data. </p>
 
 </div>
 </div>

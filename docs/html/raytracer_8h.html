@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.11.0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>My Project: /Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/raytracer.h File Reference</title>
+<title>NextGenPB: /Users/vincenzo/Documents/PhD/PBE/LPBe/NextGenPB/include/raytracer.h File Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">My Project
+   <div id="projectname">NextGenPB
    </div>
   </td>
  </tr>
@@ -94,6 +94,9 @@ $(function(){ initResizable(false); });
   <div class="headertitle"><div class="title">raytracer.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Ray-casting cache for molecular surface intersection detection.  
+<a href="#details">More...</a></p>
 <div class="textblock"><code>#include &lt;map&gt;</code><br />
 <code>#include &lt;set&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
@@ -108,14 +111,19 @@ $(function(){ initResizable(false); });
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structray__cache__t.html">ray_cache_t</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cache of ray–surface intersections for the NanoShaper molecular surface.  <a href="structray__cache__t.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
 Typedefs</h2></td></tr>
 <tr class="memitem:a4efe5052ed87980f656ce822f0b7c417" id="r_a4efe5052ed87980f656ce822f0b7c417"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a4efe5052ed87980f656ce822f0b7c417">int_coord_t</a> = unsigned long long int</td></tr>
+<tr class="memdesc:a4efe5052ed87980f656ce822f0b7c417"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type for encoded ray coordinates.  <br /></td></tr>
 <tr class="separator:a4efe5052ed87980f656ce822f0b7c417"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Typedef Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Ray-casting cache for molecular surface intersection detection. </p>
+<p>Provides <code><a class="el" href="structray__cache__t.html" title="Cache of ray–surface intersections for the NanoShaper molecular surface.">ray_cache_t</a></code>, which stores and lazily computes axis-aligned ray intersections with the NanoShaper molecular surface. Results are cached in a map and distributed across MPI ranks via fill_cache(). </p>
+</div><h2 class="groupheader">Typedef Documentation</h2>
 <a id="a4efe5052ed87980f656ce822f0b7c417" name="a4efe5052ed87980f656ce822f0b7c417"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a4efe5052ed87980f656ce822f0b7c417">&#9670;&#160;</a></span>int_coord_t</h2>
 
@@ -127,6 +135,8 @@ Typedefs</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Type for encoded ray coordinates. </p>
 
 </div>
 </div>

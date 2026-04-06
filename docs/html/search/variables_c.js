@@ -1,18 +1,17 @@
 var searchData=
 [
-  ['scale_0',['scale',['../structpoisson__boltzmann.html#a6645595cafb6442ba9d968a328b350ee',1,'poisson_boltzmann']]],
-  ['scale_5flevel_1',['scale_level',['../structpoisson__boltzmann.html#a230d04b7ead695aca162c51c8526a788',1,'poisson_boltzmann']]],
-  ['scale_5flevel_5fmin_5fbox_2',['scale_level_min_box',['../structpoisson__boltzmann.html#ac9ccf3d2e3f523d1f70c716d0023f147',1,'poisson_boltzmann']]],
-  ['scale_5fmax_3',['scale_max',['../structpoisson__boltzmann.html#ad5aaf8bf529d89fe67e18ffb446bdb60',1,'poisson_boltzmann']]],
-  ['scale_5fmin_4',['scale_min',['../structpoisson__boltzmann.html#ad353d781f1f1a3b90f7e460755d4c400',1,'poisson_boltzmann']]],
-  ['simple_5fconn_5fnum_5ftrees_5',['simple_conn_num_trees',['../structpoisson__boltzmann.html#ada6750bc870ae1c3815c824b96c4a481',1,'poisson_boltzmann']]],
-  ['simple_5fconn_5fnum_5fvertices_6',['simple_conn_num_vertices',['../structpoisson__boltzmann.html#ad4080b9b085cddcbb3ed8254ff566870',1,'poisson_boltzmann']]],
-  ['simple_5fconn_5fp_7',['simple_conn_p',['../structpoisson__boltzmann.html#ae35f28b2f60817065b11a6ca7e0a5a77',1,'poisson_boltzmann']]],
-  ['simple_5fconn_5ft_8',['simple_conn_t',['../structpoisson__boltzmann.html#a8c46bf974c4b145df7d331388f840c7d',1,'poisson_boltzmann']]],
-  ['stern_5flayer_9',['stern_layer',['../structpoisson__boltzmann.html#ac92de7cf4d19bb910098b007817403af',1,'poisson_boltzmann']]],
-  ['stern_5flayer_5fsurf_10',['stern_layer_surf',['../structpoisson__boltzmann.html#a712206ec0622882bd66649ec89aaa246',1,'poisson_boltzmann']]],
-  ['surf_5fparam_11',['surf_param',['../structpoisson__boltzmann.html#aff5baddd56f7f2eb414ab76188c1b764',1,'poisson_boltzmann']]],
-  ['surf_5ftype_12',['surf_type',['../structpoisson__boltzmann.html#af4f5f24416210800beb58c2ceceaf806',1,'poisson_boltzmann']]],
-  ['surf_5fwrite_13',['surf_write',['../structpoisson__boltzmann.html#a89f91065362b2f1910da5873b531138b',1,'poisson_boltzmann']]],
-  ['surffilename_14',['surffilename',['../structpoisson__boltzmann.html#a6013c2e73a20caab51bfd8c2f25480e0',1,'poisson_boltzmann']]]
+  ['r_5fatoms_0',['r_atoms',['../structpoisson__boltzmann.html#ae687636e97546958daadd62f42999c9a',1,'poisson_boltzmann']]],
+  ['r_5fbox_1',['r_box',['../structpoisson__boltzmann.html#a26e7a54f5e19ba2c3dc56f1ad8f5743c',1,'poisson_boltzmann']]],
+  ['r_5fc_2',['r_c',['../structpoisson__boltzmann.html#a5de7c54d4190b7af042e18fcd2cf3670',1,'poisson_boltzmann::r_c'],['../structray__cache__t.html#a78d533199d6235334e79f825a52f09ef',1,'ray_cache_t::r_c']]],
+  ['r_5fcr_3',['r_cr',['../structpoisson__boltzmann.html#a0d7619ed5365bfea50b68133b3534545',1,'poisson_boltzmann']]],
+  ['radiusfilename_4',['radiusfilename',['../structpoisson__boltzmann.html#a2a2dfb9c4f6a544fcb4c06f8a45a68af',1,'poisson_boltzmann']]],
+  ['rand_5fcenter_5',['rand_center',['../structpoisson__boltzmann.html#adc6ce9522a05a98cdf290059439a17eb',1,'poisson_boltzmann']]],
+  ['rays_6',['rays',['../structray__cache__t.html#a8f183b5ad6cfb287f5c05a7bad3511d2',1,'ray_cache_t']]],
+  ['rays_5flist_7',['rays_list',['../structray__cache__t.html#a0860b6d780679710232774fc2a8613a5',1,'ray_cache_t']]],
+  ['reaction_8',['reaction',['../structpoisson__boltzmann.html#a6c880680bf2608788374a5bfd77f1591',1,'poisson_boltzmann']]],
+  ['reaction_5fnodes_9',['reaction_nodes',['../structpoisson__boltzmann.html#acdf7e0afa452648bb77e20653f30cc4a',1,'poisson_boltzmann']]],
+  ['refine_5fbox_10',['refine_box',['../structpoisson__boltzmann.html#a24f1f30ab3b65b947a32cc2c0427880e',1,'poisson_boltzmann']]],
+  ['rho_5ffixed_11',['rho_fixed',['../structpoisson__boltzmann.html#a26443a3b714ac95b374d26221d317b99',1,'poisson_boltzmann']]],
+  ['rhs_12',['rhs',['../structpoisson__boltzmann.html#a8dcc76e631ea0c321af718fa87cfe014',1,'poisson_boltzmann']]],
+  ['rr_13',['rr',['../structpoisson__boltzmann.html#a20ec98e36fcfec6afbe072a8f1f4bf65',1,'poisson_boltzmann']]]
 ];

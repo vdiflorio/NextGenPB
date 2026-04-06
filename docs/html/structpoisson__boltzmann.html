@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.11.0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>My Project: poisson_boltzmann Struct Reference</title>
+<title>NextGenPB: poisson_boltzmann Struct Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">My Project
+   <div id="projectname">NextGenPB
    </div>
   </td>
  </tr>
@@ -89,11 +89,13 @@ $(function(){ initResizable(false); });
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
 <a href="#pub-static-attribs">Static Public Attributes</a> &#124;
-<a href="#friends">Friends</a> &#124;
 <a href="structpoisson__boltzmann-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">poisson_boltzmann Struct Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>Main struct for the NextGenPB Poisson-Boltzmann solver.  
+ <a href="#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="pb__class_8h_source.html">pb_class.h</a>&gt;</code></p>
 <table class="memberdecls">
@@ -109,261 +111,451 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a80729d23efbccebeea17b473ecc6337f" id="r_a80729d23efbccebeea17b473ecc6337f"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a80729d23efbccebeea17b473ecc6337f">is_in_ns_surf_stern</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache, double x, double y, double z, int dir)</td></tr>
 <tr class="memdesc:a80729d23efbccebeea17b473ecc6337f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Determines whether a point is inside the Stern layer along a specified direction.  <br /></td></tr>
 <tr class="separator:a80729d23efbccebeea17b473ecc6337f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Mesh generation</div></td></tr>
 <tr class="memitem:a8b6e46589efe4fb7387855e50456619e" id="r_a8b6e46589efe4fb7387855e50456619e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8b6e46589efe4fb7387855e50456619e">create_mesh</a> ()</td></tr>
+<tr class="memdesc:a8b6e46589efe4fb7387855e50456619e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Build the adaptive octree mesh from atomic positions (standard mode).  <br /></td></tr>
 <tr class="separator:a8b6e46589efe4fb7387855e50456619e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae30ca6de93b5007013d36a0c15ae7233" id="r_ae30ca6de93b5007013d36a0c15ae7233"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae30ca6de93b5007013d36a0c15ae7233">create_mesh_ns</a> ()</td></tr>
+<tr class="memdesc:ae30ca6de93b5007013d36a0c15ae7233"><td class="mdescLeft">&#160;</td><td class="mdescRight">Build the adaptive octree mesh using a NanoShaper-defined domain.  <br /></td></tr>
 <tr class="separator:ae30ca6de93b5007013d36a0c15ae7233"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6425a8be9d2e3794a2ccce9e7b1216d8" id="r_a6425a8be9d2e3794a2ccce9e7b1216d8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6425a8be9d2e3794a2ccce9e7b1216d8">create_mesh_scale</a> ()</td></tr>
+<tr class="memdesc:a6425a8be9d2e3794a2ccce9e7b1216d8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Build the adaptive octree mesh with scale-based stretching.  <br /></td></tr>
 <tr class="separator:a6425a8be9d2e3794a2ccce9e7b1216d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a089bd6acbb0d02d356aec241c2b5b231" id="r_a089bd6acbb0d02d356aec241c2b5b231"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a089bd6acbb0d02d356aec241c2b5b231">parse_options</a> (int argc, char **argv)</td></tr>
-<tr class="separator:a089bd6acbb0d02d356aec241c2b5b231"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a003cd682f654be8009b2287758d72bf5" id="r_a003cd682f654be8009b2287758d72bf5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a003cd682f654be8009b2287758d72bf5">print_options</a> ()</td></tr>
-<tr class="separator:a003cd682f654be8009b2287758d72bf5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac6808467c1c2d595fdd958a6f31a12b4" id="r_ac6808467c1c2d595fdd958a6f31a12b4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac6808467c1c2d595fdd958a6f31a12b4">read_atoms_from_pqr</a> (std::basic_istream&lt; char &gt; &amp;inputfile)</td></tr>
-<tr class="separator:ac6808467c1c2d595fdd958a6f31a12b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a86beea6d47af16e2d2d5cbdeaa713be1" id="r_a86beea6d47af16e2d2d5cbdeaa713be1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a86beea6d47af16e2d2d5cbdeaa713be1">read_atoms_from_class</a> ()</td></tr>
-<tr class="separator:a86beea6d47af16e2d2d5cbdeaa713be1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a60b2381dc5f9c24601cd6c83f84c38fd" id="r_a60b2381dc5f9c24601cd6c83f84c38fd"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a60b2381dc5f9c24601cd6c83f84c38fd">broadcast_vectors</a> ()</td></tr>
-<tr class="separator:a60b2381dc5f9c24601cd6c83f84c38fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aec61a2906caa3cc5d599e76bc7b28f1c" id="r_aec61a2906caa3cc5d599e76bc7b28f1c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aec61a2906caa3cc5d599e76bc7b28f1c">write_atoms_to_pqr</a> (std::basic_ostream&lt; char &gt; &amp;outputfile)</td></tr>
-<tr class="separator:aec61a2906caa3cc5d599e76bc7b28f1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac4b08e11c8bdbeb0f23bb9b8f7f94dd6" id="r_ac4b08e11c8bdbeb0f23bb9b8f7f94dd6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac4b08e11c8bdbeb0f23bb9b8f7f94dd6">write_potential_on_atoms</a> ()</td></tr>
-<tr class="separator:ac4b08e11c8bdbeb0f23bb9b8f7f94dd6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6bfe0b0a6cd30aedeab72978e845b99c" id="r_a6bfe0b0a6cd30aedeab72978e845b99c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6bfe0b0a6cd30aedeab72978e845b99c">write_potential_on_atoms_fast</a> ()</td></tr>
-<tr class="separator:a6bfe0b0a6cd30aedeab72978e845b99c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Mesh initialisation and refinement</div></td></tr>
 <tr class="memitem:a50f995bf3630328870d6ce12dee2cddf" id="r_a50f995bf3630328870d6ce12dee2cddf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a50f995bf3630328870d6ce12dee2cddf">init_tmesh</a> ()</td></tr>
+<tr class="memdesc:a50f995bf3630328870d6ce12dee2cddf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initialise the p4est forest with uniform refinement (level = unilevel).  <br /></td></tr>
 <tr class="separator:a50f995bf3630328870d6ce12dee2cddf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ada2c67497ddcab8b622e8863d0a24d79" id="r_ada2c67497ddcab8b622e8863d0a24d79"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ada2c67497ddcab8b622e8863d0a24d79">init_tmesh_with_refine_scale</a> ()</td></tr>
+<tr class="memdesc:ada2c67497ddcab8b622e8863d0a24d79"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initialise the p4est forest with scale-based refinement.  <br /></td></tr>
 <tr class="separator:ada2c67497ddcab8b622e8863d0a24d79"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a02502acbb9cf57b4a6f01bb79a8c7fbc" id="r_a02502acbb9cf57b4a6f01bb79a8c7fbc"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a02502acbb9cf57b4a6f01bb79a8c7fbc">init_tmesh_with_refine_box_scale</a> ()</td></tr>
+<tr class="memdesc:a02502acbb9cf57b4a6f01bb79a8c7fbc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initialise the p4est forest with scale-based refinement inside a box.  <br /></td></tr>
 <tr class="separator:a02502acbb9cf57b4a6f01bb79a8c7fbc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Surface detection and marker creation</div></td></tr>
 <tr class="memitem:a2cc252f4eee6662c7149d826c2bd3448" id="r_a2cc252f4eee6662c7149d826c2bd3448"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a2cc252f4eee6662c7149d826c2bd3448">is_in</a> (const NS::Atom &amp;i, tmesh_3d::quadrant_iterator q)</td></tr>
+<tr class="memdesc:a2cc252f4eee6662c7149d826c2bd3448"><td class="mdescLeft">&#160;</td><td class="mdescRight">Test whether atom <code>i</code> is geometrically inside quadrant <code>q</code>.  <br /></td></tr>
 <tr class="separator:a2cc252f4eee6662c7149d826c2bd3448"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acd6c0a18c7a8beeb8a608c479b006ed2" id="r_acd6c0a18c7a8beeb8a608c479b006ed2"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#acd6c0a18c7a8beeb8a608c479b006ed2">is_in_ref</a> (const NS::Atom &amp;i, tmesh_3d::quadrant_iterator q)</td></tr>
+<tr class="memdesc:acd6c0a18c7a8beeb8a608c479b006ed2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Test whether atom <code>i</code> is geometrically inside a refined quadrant <code>q</code>.  <br /></td></tr>
 <tr class="separator:acd6c0a18c7a8beeb8a608c479b006ed2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abd0234d354952b2c942ca3ec211804be" id="r_abd0234d354952b2c942ca3ec211804be"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abd0234d354952b2c942ca3ec211804be">refine_surface</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:abd0234d354952b2c942ca3ec211804be"><td class="mdescLeft">&#160;</td><td class="mdescRight">Refine quadrants near the molecular surface until maxlevel is reached.  <br /></td></tr>
 <tr class="separator:abd0234d354952b2c942ca3ec211804be"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a404432e4e36b22fa22c7bb0c92f9487d" id="r_a404432e4e36b22fa22c7bb0c92f9487d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a404432e4e36b22fa22c7bb0c92f9487d">refine_only_surface</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:a404432e4e36b22fa22c7bb0c92f9487d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Refine only the quadrants that straddle the molecular surface (no interior refinement).  <br /></td></tr>
 <tr class="separator:a404432e4e36b22fa22c7bb0c92f9487d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab22fbb26a0240a51ae5dd6a5e269f82b" id="r_ab22fbb26a0240a51ae5dd6a5e269f82b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab22fbb26a0240a51ae5dd6a5e269f82b">create_markers</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
 <tr class="memdesc:ab22fbb26a0240a51ae5dd6a5e269f82b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes and updates markers for quadrants in a forest mesh.  <br /></td></tr>
 <tr class="separator:ab22fbb26a0240a51ae5dd6a5e269f82b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Mesh and field export</div></td></tr>
 <tr class="memitem:a115288511e9c1376e9da1d7684751411" id="r_a115288511e9c1376e9da1d7684751411"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a115288511e9c1376e9da1d7684751411">export_tmesh</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:a115288511e9c1376e9da1d7684751411"><td class="mdescLeft">&#160;</td><td class="mdescRight">Export the marked mesh to VTK format for visualisation.  <br /></td></tr>
 <tr class="separator:a115288511e9c1376e9da1d7684751411"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a80090bff7521b64888126a4803c0fd80" id="r_a80090bff7521b64888126a4803c0fd80"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a80090bff7521b64888126a4803c0fd80">export_potential_map</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:a80090bff7521b64888126a4803c0fd80"><td class="mdescLeft">&#160;</td><td class="mdescRight">Export the electric potential field to a binary map file.  <br /></td></tr>
 <tr class="separator:a80090bff7521b64888126a4803c0fd80"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a374bdbb8bd2c5a24081b02dab0296ff0" id="r_a374bdbb8bd2c5a24081b02dab0296ff0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a374bdbb8bd2c5a24081b02dab0296ff0">export_marked_tmesh</a> ()</td></tr>
+<tr class="memdesc:a374bdbb8bd2c5a24081b02dab0296ff0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Export the mesh with marker values to VTK format.  <br /></td></tr>
 <tr class="separator:a374bdbb8bd2c5a24081b02dab0296ff0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a179e61bb4b8ae35732cedd52db1c6b02" id="r_a179e61bb4b8ae35732cedd52db1c6b02"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a179e61bb4b8ae35732cedd52db1c6b02">export_p4est</a> ()</td></tr>
+<tr class="memdesc:a179e61bb4b8ae35732cedd52db1c6b02"><td class="mdescLeft">&#160;</td><td class="mdescRight">Save the current p4est forest to a checkpoint file.  <br /></td></tr>
 <tr class="separator:a179e61bb4b8ae35732cedd52db1c6b02"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">System assembly and solvers</div></td></tr>
+<tr class="memitem:adccd692c47a2b21c2492373399f49f1d" id="r_adccd692c47a2b21c2492373399f49f1d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#adccd692c47a2b21c2492373399f49f1d">assemple_system_matrix</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:adccd692c47a2b21c2492373399f49f1d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Assemble the FEM system matrix A and right-hand side rhs.  <br /></td></tr>
+<tr class="separator:adccd692c47a2b21c2492373399f49f1d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a01495c9266fb32ee986b43b8033473f8" id="r_a01495c9266fb32ee986b43b8033473f8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a01495c9266fb32ee986b43b8033473f8">create_density_map</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:a01495c9266fb32ee986b43b8033473f8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute the fixed-charge density map on the octree nodes.  <br /></td></tr>
+<tr class="separator:a01495c9266fb32ee986b43b8033473f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a804c4eaed5e1621c7e847403a0f6cd94" id="r_a804c4eaed5e1621c7e847403a0f6cd94"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a804c4eaed5e1621c7e847403a0f6cd94">mumps_compute_electric_potential</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:a804c4eaed5e1621c7e847403a0f6cd94"><td class="mdescLeft">&#160;</td><td class="mdescRight">Solve the system Aφ = rhs using the MUMPS direct solver.  <br /></td></tr>
 <tr class="separator:a804c4eaed5e1621c7e847403a0f6cd94"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1f55d99ffedad9266bf860bdacc03b61" id="r_a1f55d99ffedad9266bf860bdacc03b61"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1f55d99ffedad9266bf860bdacc03b61">lis_compute_electric_potential</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:a1f55d99ffedad9266bf860bdacc03b61"><td class="mdescLeft">&#160;</td><td class="mdescRight">Solve the system Aφ = rhs using the LIS iterative solver.  <br /></td></tr>
 <tr class="separator:a1f55d99ffedad9266bf860bdacc03b61"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Marching cubes helpers</div></td></tr>
 <tr class="memitem:a530d2c030025f0f0a99624b671d043c5" id="r_a530d2c030025f0f0a99624b671d043c5"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a530d2c030025f0f0a99624b671d043c5">classifyCube</a> (tmesh_3d::quadrant_iterator &amp;quadrant, double isolevel)</td></tr>
+<tr class="memdesc:a530d2c030025f0f0a99624b671d043c5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Classify a quadrant by the standard marching-cubes algorithm.  <br /></td></tr>
 <tr class="separator:a530d2c030025f0f0a99624b671d043c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9468821e793841db22e55b21da6f19d2" id="r_a9468821e793841db22e55b21da6f19d2"><td class="memItemLeft" align="right" valign="top">std::tuple&lt; std::array&lt; double, 8 &gt;, std::array&lt; double, 8 &gt;, std::vector&lt; double &gt;, std::vector&lt; int &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a9468821e793841db22e55b21da6f19d2">classifyCube_flux</a> (tmesh_3d::quadrant_iterator &amp;quadrant)</td></tr>
-<tr class="separator:a9468821e793841db22e55b21da6f19d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acb8f442acde1eea9b6aa5cb45779e635" id="r_acb8f442acde1eea9b6aa5cb45779e635"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#acb8f442acde1eea9b6aa5cb45779e635">classifyCube_fast</a> (tmesh_3d::quadrant_iterator &amp;quadrant, double isolevel)</td></tr>
+<tr class="memdesc:acb8f442acde1eea9b6aa5cb45779e635"><td class="mdescLeft">&#160;</td><td class="mdescRight">Classify a quadrant using the fast (precomputed) marching-cubes path.  <br /></td></tr>
+<tr class="separator:acb8f442acde1eea9b6aa5cb45779e635"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6e1c70c347c346067e902b7f9f85541a" id="r_a6e1c70c347c346067e902b7f9f85541a"><td class="memItemLeft" align="right" valign="top">std::tuple&lt; std::array&lt; double, 8 &gt;, std::array&lt; double, 8 &gt;, std::vector&lt; int &gt;, std::vector&lt; int &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6e1c70c347c346067e902b7f9f85541a">classifyCube_flux</a> (tmesh_3d::quadrant_iterator &amp;quadrant, std::array&lt; double, 8 &gt; &amp;tmp_phi, std::array&lt; double, 8 &gt; &amp;tmp_eps)</td></tr>
+<tr class="memdesc:a6e1c70c347c346067e902b7f9f85541a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Classify a quadrant and return potential/dielectric values on edges with flux information.  <br /></td></tr>
+<tr class="separator:a6e1c70c347c346067e902b7f9f85541a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a66ca50a2395a6ed47d98cfdc593d3799" id="r_a66ca50a2395a6ed47d98cfdc593d3799"><td class="memItemLeft" align="right" valign="top">std::tuple&lt; std::array&lt; double, 8 &gt;, std::array&lt; double, 8 &gt;, std::vector&lt; int &gt;, std::vector&lt; int &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a66ca50a2395a6ed47d98cfdc593d3799">classifyCube_flux_fast</a> (tmesh_3d::quadrant_iterator &amp;quadrant, std::array&lt; double, 8 &gt; &amp;tmp_phi, std::array&lt; double, 8 &gt; &amp;tmp_eps)</td></tr>
+<tr class="memdesc:a66ca50a2395a6ed47d98cfdc593d3799"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fast version of classifyCube_flux using precomputed fields.  <br /></td></tr>
+<tr class="separator:a66ca50a2395a6ed47d98cfdc593d3799"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Post-processing: energy and fields</div></td></tr>
 <tr class="memitem:a22fc8312ed89a977fb4726cfedf19278" id="r_a22fc8312ed89a977fb4726cfedf19278"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a22fc8312ed89a977fb4726cfedf19278">energy</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:a22fc8312ed89a977fb4726cfedf19278"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute and print the solvation energy components (standard path).  <br /></td></tr>
 <tr class="separator:a22fc8312ed89a977fb4726cfedf19278"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a332fd74168dc0229b2bd87a4232c9c96" id="r_a332fd74168dc0229b2bd87a4232c9c96"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a332fd74168dc0229b2bd87a4232c9c96">energy_fast</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:a332fd74168dc0229b2bd87a4232c9c96"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute and print the solvation energy components using fast interpolation.  <br /></td></tr>
 <tr class="separator:a332fd74168dc0229b2bd87a4232c9c96"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a97e49efcfc205f254c0cf82496014a0c" id="r_a97e49efcfc205f254c0cf82496014a0c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a97e49efcfc205f254c0cf82496014a0c">write_potential_on_surface</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:a97e49efcfc205f254c0cf82496014a0c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write the electric potential sampled on the molecular surface to file.  <br /></td></tr>
 <tr class="separator:a97e49efcfc205f254c0cf82496014a0c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa4eb340f7a894a167f2d992c2a363e29" id="r_aa4eb340f7a894a167f2d992c2a363e29"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aa4eb340f7a894a167f2d992c2a363e29">coulomb_boundary_conditions</a> (double x, double y, double z)</td></tr>
+<tr class="memdesc:aa4eb340f7a894a167f2d992c2a363e29"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute the Coulomb (Debye-Hückel) boundary potential at a point.  <br /></td></tr>
 <tr class="separator:aa4eb340f7a894a167f2d992c2a363e29"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2cec7821bf214d20d2338d29dbc8bd0e" id="r_a2cec7821bf214d20d2338d29dbc8bd0e"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a2cec7821bf214d20d2338d29dbc8bd0e">analytic_solution</a> (double x, double y, double z)</td></tr>
+<tr class="memdesc:a2cec7821bf214d20d2338d29dbc8bd0e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Evaluate the analytical Debye-Hückel solution at a single point.  <br /></td></tr>
 <tr class="separator:a2cec7821bf214d20d2338d29dbc8bd0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5afeb9dbce6ab41d2c3394c319ad48c3" id="r_a5afeb9dbce6ab41d2c3394c319ad48c3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a5afeb9dbce6ab41d2c3394c319ad48c3">analitic_potential</a> ()</td></tr>
+<tr class="memdesc:a5afeb9dbce6ab41d2c3394c319ad48c3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute the analytical Debye-Hückel potential on the full mesh and export.  <br /></td></tr>
 <tr class="separator:a5afeb9dbce6ab41d2c3394c319ad48c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab4c4b9e45a15643ac9a5e00fa8e89887" id="r_ab4c4b9e45a15643ac9a5e00fa8e89887"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab4c4b9e45a15643ac9a5e00fa8e89887">abs_value_field</a> (distributed_vector &amp;<a class="el" href="#a36064372d1201f079e8441c94929cc75">phi</a>)</td></tr>
+<tr class="memdesc:ab4c4b9e45a15643ac9a5e00fa8e89887"><td class="mdescLeft">&#160;</td><td class="mdescRight">Replace each nodal value in <code>phi</code> with its absolute value (in-place).  <br /></td></tr>
 <tr class="separator:ab4c4b9e45a15643ac9a5e00fa8e89887"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3bcae08c7cac419bc56464cd7ea46004" id="r_a3bcae08c7cac419bc56464cd7ea46004"><td class="memItemLeft" align="right" valign="top">std::array&lt; double, 12 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3bcae08c7cac419bc56464cd7ea46004">cube_fraction_intersection</a> (tmesh_3d::quadrant_iterator &amp;quadrant, const <a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:a3bcae08c7cac419bc56464cd7ea46004"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute the fraction of each quadrant edge that lies inside the molecular surface.  <br /></td></tr>
 <tr class="separator:a3bcae08c7cac419bc56464cd7ea46004"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a78705d85fb2c017a0c29e042f7fd13b0" id="r_a78705d85fb2c017a0c29e042f7fd13b0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a78705d85fb2c017a0c29e042f7fd13b0">normal_intersection</a> (tmesh_3d::quadrant_iterator &amp;quadrant, const <a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache, int edge, std::array&lt; double, 3 &gt; &amp;norm, double &amp;frac)</td></tr>
+<tr class="memdesc:a78705d85fb2c017a0c29e042f7fd13b0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute the surface normal and edge fraction at a boundary edge intersection.  <br /></td></tr>
 <tr class="separator:a78705d85fb2c017a0c29e042f7fd13b0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a75463d072ece26596ae536bebe132252" id="r_a75463d072ece26596ae536bebe132252"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a75463d072ece26596ae536bebe132252">getTriangles</a> (int cubeindex, std::array&lt; std::array&lt; int, 3 &gt;, 5 &gt; &amp;<a class="el" href="#a382dc91094274230d1c1806458aff65c">triangles</a>)</td></tr>
+<tr class="memdesc:a75463d072ece26596ae536bebe132252"><td class="mdescLeft">&#160;</td><td class="mdescRight">Look up the triangle connectivity for a marching-cubes cube index.  <br /></td></tr>
 <tr class="separator:a75463d072ece26596ae536bebe132252"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">p4est search callbacks</div></td></tr>
 <tr class="memitem:abcb0eb6fd2f5489e31bfb9cb05dafc19" id="r_abcb0eb6fd2f5489e31bfb9cb05dafc19"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abcb0eb6fd2f5489e31bfb9cb05dafc19">controlla_coordinate</a> (int i, const p8est_quadrant_t *quadrant)</td></tr>
+<tr class="memdesc:abcb0eb6fd2f5489e31bfb9cb05dafc19"><td class="mdescLeft">&#160;</td><td class="mdescRight">p4est point-search callback: checks if atom <code>i</code> is inside <code>quadrant</code>.  <br /></td></tr>
 <tr class="separator:abcb0eb6fd2f5489e31bfb9cb05dafc19"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad8bbebd3a1763c32dcb5206e373ee518" id="r_ad8bbebd3a1763c32dcb5206e373ee518"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad8bbebd3a1763c32dcb5206e373ee518">cerca_atomo</a> (p8est_t *p4est, p4est_topidx_t which_tree, p8est_quadrant_t *quadrant, p4est_locidx_t local_num, void *point)</td></tr>
+<tr class="memdesc:ad8bbebd3a1763c32dcb5206e373ee518"><td class="mdescLeft">&#160;</td><td class="mdescRight">p4est search callback used during atom-to-quadrant mapping.  <br /></td></tr>
 <tr class="separator:ad8bbebd3a1763c32dcb5206e373ee518"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adb158be89b73d31e6703b5cab7472027" id="r_adb158be89b73d31e6703b5cab7472027"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#adb158be89b73d31e6703b5cab7472027">search_points</a> ()</td></tr>
+<tr class="memdesc:adb158be89b73d31e6703b5cab7472027"><td class="mdescLeft">&#160;</td><td class="mdescRight">Perform p4est point search to map all atoms to their owning quadrants.  <br /></td></tr>
 <tr class="separator:adb158be89b73d31e6703b5cab7472027"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Electric potential field output</div></td></tr>
+<tr class="memitem:a477f23b8f77d301bdd30f77543ad5084" id="r_a477f23b8f77d301bdd30f77543ad5084"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a477f23b8f77d301bdd30f77543ad5084">pot_field_fast</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:a477f23b8f77d301bdd30f77543ad5084"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute and export the electric potential and field on atom positions (fast path).  <br /></td></tr>
+<tr class="separator:a477f23b8f77d301bdd30f77543ad5084"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3308de1061ad3f513015c0b7b28ad858" id="r_a3308de1061ad3f513015c0b7b28ad858"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3308de1061ad3f513015c0b7b28ad858">pot_field</a> (<a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;ray_cache)</td></tr>
+<tr class="memdesc:a3308de1061ad3f513015c0b7b28ad858"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute and export the electric potential and field on atom positions (standard path).  <br /></td></tr>
+<tr class="separator:a3308de1061ad3f513015c0b7b28ad858"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
 <tr class="memitem:ab24c0340bc5067b9eeb04c62e476889e" id="r_ab24c0340bc5067b9eeb04c62e476889e"><td class="memItemLeft" align="right" valign="top">static int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab24c0340bc5067b9eeb04c62e476889e">uniform_refinement</a> (tmesh_3d::quadrant_iterator quadrant)</td></tr>
+<tr class="memdesc:ab24c0340bc5067b9eeb04c62e476889e"><td class="mdescLeft">&#160;</td><td class="mdescRight">p4est refinement callback that always returns 1 (refine every quadrant).  <br /></td></tr>
 <tr class="separator:ab24c0340bc5067b9eeb04c62e476889e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:ad4080b9b085cddcbb3ed8254ff566870" id="r_ad4080b9b085cddcbb3ed8254ff566870"><td class="memItemLeft" align="right" valign="top">p4est_topidx_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad4080b9b085cddcbb3ed8254ff566870">simple_conn_num_vertices</a></td></tr>
-<tr class="separator:ad4080b9b085cddcbb3ed8254ff566870"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ada6750bc870ae1c3815c824b96c4a481" id="r_ada6750bc870ae1c3815c824b96c4a481"><td class="memItemLeft" align="right" valign="top">p4est_topidx_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ada6750bc870ae1c3815c824b96c4a481">simple_conn_num_trees</a></td></tr>
-<tr class="separator:ada6750bc870ae1c3815c824b96c4a481"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae35f28b2f60817065b11a6ca7e0a5a77" id="r_ae35f28b2f60817065b11a6ca7e0a5a77"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; double[]&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae35f28b2f60817065b11a6ca7e0a5a77">simple_conn_p</a></td></tr>
-<tr class="separator:ae35f28b2f60817065b11a6ca7e0a5a77"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8c46bf974c4b145df7d331388f840c7d" id="r_a8c46bf974c4b145df7d331388f840c7d"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; p4est_topidx_t[]&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8c46bf974c4b145df7d331388f840c7d">simple_conn_t</a></td></tr>
-<tr class="separator:a8c46bf974c4b145df7d331388f840c7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0ce1800e0a54eabd9bd638d5434e063a" id="r_a0ce1800e0a54eabd9bd638d5434e063a"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::pair&lt; p4est_topidx_t, p4est_topidx_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0ce1800e0a54eabd9bd638d5434e063a">bcells</a></td></tr>
-<tr class="separator:a0ce1800e0a54eabd9bd638d5434e063a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaf0802ca2d2e4c159b03246f50cd1b33" id="r_aaf0802ca2d2e4c159b03246f50cd1b33"><td class="memItemLeft" align="right" valign="top">std::vector&lt; NS::Atom &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aaf0802ca2d2e4c159b03246f50cd1b33">atoms</a></td></tr>
-<tr class="separator:aaf0802ca2d2e4c159b03246f50cd1b33"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a266ad49c8e38bbe7034893b7de213a23" id="r_a266ad49c8e38bbe7034893b7de213a23"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::array&lt; double, 3 &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a266ad49c8e38bbe7034893b7de213a23">pos_atoms</a></td></tr>
-<tr class="separator:a266ad49c8e38bbe7034893b7de213a23"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af998f20b72a695f7b080116dbee90c95" id="r_af998f20b72a695f7b080116dbee90c95"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af998f20b72a695f7b080116dbee90c95">charge_atoms</a></td></tr>
-<tr class="separator:af998f20b72a695f7b080116dbee90c95"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae687636e97546958daadd62f42999c9a" id="r_ae687636e97546958daadd62f42999c9a"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae687636e97546958daadd62f42999c9a">r_atoms</a></td></tr>
-<tr class="separator:ae687636e97546958daadd62f42999c9a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3bdf63e7b7cab2be4cf74a017ae37e38" id="r_a3bdf63e7b7cab2be4cf74a017ae37e38"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3bdf63e7b7cab2be4cf74a017ae37e38">cc</a> [3]</td></tr>
-<tr class="separator:a3bdf63e7b7cab2be4cf74a017ae37e38"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a513627682a26668ae6b81b8423fc3aab" id="r_a513627682a26668ae6b81b8423fc3aab"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a513627682a26668ae6b81b8423fc3aab">ll</a> [3]</td></tr>
-<tr class="separator:a513627682a26668ae6b81b8423fc3aab"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a20ec98e36fcfec6afbe072a8f1f4bf65" id="r_a20ec98e36fcfec6afbe072a8f1f4bf65"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a20ec98e36fcfec6afbe072a8f1f4bf65">rr</a> [3]</td></tr>
-<tr class="separator:a20ec98e36fcfec6afbe072a8f1f4bf65"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1275e62a9fdcd4d2122886c9b389e9f7" id="r_a1275e62a9fdcd4d2122886c9b389e9f7"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1275e62a9fdcd4d2122886c9b389e9f7">l_c</a> [3]</td></tr>
-<tr class="separator:a1275e62a9fdcd4d2122886c9b389e9f7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5de7c54d4190b7af042e18fcd2cf3670" id="r_a5de7c54d4190b7af042e18fcd2cf3670"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a5de7c54d4190b7af042e18fcd2cf3670">r_c</a> [3]</td></tr>
-<tr class="separator:a5de7c54d4190b7af042e18fcd2cf3670"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad1a35cfa08a4182b5ed26a69e811e2bd" id="r_ad1a35cfa08a4182b5ed26a69e811e2bd"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad1a35cfa08a4182b5ed26a69e811e2bd">l_cr</a> [3]</td></tr>
-<tr class="separator:ad1a35cfa08a4182b5ed26a69e811e2bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0d7619ed5365bfea50b68133b3534545" id="r_a0d7619ed5365bfea50b68133b3534545"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0d7619ed5365bfea50b68133b3534545">r_cr</a> [3]</td></tr>
-<tr class="separator:a0d7619ed5365bfea50b68133b3534545"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af71100dfe72d7c718bd7a5e0a3ea4d29" id="r_af71100dfe72d7c718bd7a5e0a3ea4d29"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af71100dfe72d7c718bd7a5e0a3ea4d29">l_box</a> [3]</td></tr>
-<tr class="separator:af71100dfe72d7c718bd7a5e0a3ea4d29"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a26e7a54f5e19ba2c3dc56f1ad8f5743c" id="r_a26e7a54f5e19ba2c3dc56f1ad8f5743c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a26e7a54f5e19ba2c3dc56f1ad8f5743c">r_box</a> [3]</td></tr>
-<tr class="separator:a26e7a54f5e19ba2c3dc56f1ad8f5743c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8ff44147adfe9489114a7ee804cc7c54" id="r_a8ff44147adfe9489114a7ee804cc7c54"><td class="memItemLeft" align="right" valign="top">p4est_topidx_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8ff44147adfe9489114a7ee804cc7c54">num_trees</a> [3]</td></tr>
-<tr class="separator:a8ff44147adfe9489114a7ee804cc7c54"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a088f38c3a9053599fa9c211707327fde" id="r_a088f38c3a9053599fa9c211707327fde"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a088f38c3a9053599fa9c211707327fde">len</a></td></tr>
-<tr class="separator:a088f38c3a9053599fa9c211707327fde"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a57fb6001bdb751988612ba000b72e6e4" id="r_a57fb6001bdb751988612ba000b72e6e4"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a57fb6001bdb751988612ba000b72e6e4">cc_focusing</a> [3]</td></tr>
-<tr class="separator:a57fb6001bdb751988612ba000b72e6e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4094f5d90666822dc20feb754d2a7779" id="r_a4094f5d90666822dc20feb754d2a7779"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a4094f5d90666822dc20feb754d2a7779">n_grid</a></td></tr>
-<tr class="separator:a4094f5d90666822dc20feb754d2a7779"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ada70a8b8390e0a273d44ea1be8b12237" id="r_ada70a8b8390e0a273d44ea1be8b12237"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ada70a8b8390e0a273d44ea1be8b12237">maxlevel</a></td></tr>
-<tr class="separator:ada70a8b8390e0a273d44ea1be8b12237"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8d0fbc088f8db88c9e68b680a048169b" id="r_a8d0fbc088f8db88c9e68b680a048169b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8d0fbc088f8db88c9e68b680a048169b">minlevel</a></td></tr>
-<tr class="separator:a8d0fbc088f8db88c9e68b680a048169b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7e5cb352275e0121b15fedc4439c9ad9" id="r_a7e5cb352275e0121b15fedc4439c9ad9"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a7e5cb352275e0121b15fedc4439c9ad9">unilevel</a></td></tr>
-<tr class="separator:a7e5cb352275e0121b15fedc4439c9ad9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a70ab9b61836e45760a0449ebfb140dd4" id="r_a70ab9b61836e45760a0449ebfb140dd4"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a70ab9b61836e45760a0449ebfb140dd4">outlevel</a></td></tr>
-<tr class="separator:a70ab9b61836e45760a0449ebfb140dd4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aab6588d46efea99997cf8cb96744cc84" id="r_aab6588d46efea99997cf8cb96744cc84"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aab6588d46efea99997cf8cb96744cc84">loc_refinement</a></td></tr>
-<tr class="separator:aab6588d46efea99997cf8cb96744cc84"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a843d3fb2db009524e498a0c26168c936" id="r_a843d3fb2db009524e498a0c26168c936"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a843d3fb2db009524e498a0c26168c936">mesh_shape</a></td></tr>
-<tr class="separator:a843d3fb2db009524e498a0c26168c936"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a24f1f30ab3b65b947a32cc2c0427880e" id="r_a24f1f30ab3b65b947a32cc2c0427880e"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a24f1f30ab3b65b947a32cc2c0427880e">refine_box</a></td></tr>
-<tr class="separator:a24f1f30ab3b65b947a32cc2c0427880e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a230d04b7ead695aca162c51c8526a788" id="r_a230d04b7ead695aca162c51c8526a788"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a230d04b7ead695aca162c51c8526a788">scale_level</a></td></tr>
-<tr class="separator:a230d04b7ead695aca162c51c8526a788"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac9ccf3d2e3f523d1f70c716d0023f147" id="r_ac9ccf3d2e3f523d1f70c716d0023f147"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac9ccf3d2e3f523d1f70c716d0023f147">scale_level_min_box</a></td></tr>
-<tr class="separator:ac9ccf3d2e3f523d1f70c716d0023f147"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6645595cafb6442ba9d968a328b350ee" id="r_a6645595cafb6442ba9d968a328b350ee"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6645595cafb6442ba9d968a328b350ee">scale</a></td></tr>
-<tr class="separator:a6645595cafb6442ba9d968a328b350ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad353d781f1f1a3b90f7e460755d4c400" id="r_ad353d781f1f1a3b90f7e460755d4c400"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad353d781f1f1a3b90f7e460755d4c400">scale_min</a></td></tr>
-<tr class="separator:ad353d781f1f1a3b90f7e460755d4c400"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad5aaf8bf529d89fe67e18ffb446bdb60" id="r_ad5aaf8bf529d89fe67e18ffb446bdb60"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad5aaf8bf529d89fe67e18ffb446bdb60">scale_max</a></td></tr>
-<tr class="separator:ad5aaf8bf529d89fe67e18ffb446bdb60"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a72ae4e7e3a980f8692a81704b74a7417" id="r_a72ae4e7e3a980f8692a81704b74a7417"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a72ae4e7e3a980f8692a81704b74a7417">perfil1</a></td></tr>
-<tr class="separator:a72ae4e7e3a980f8692a81704b74a7417"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a599f98621e7b94d2a3ae326fc16fe1f3" id="r_a599f98621e7b94d2a3ae326fc16fe1f3"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a599f98621e7b94d2a3ae326fc16fe1f3">perfil2</a></td></tr>
-<tr class="separator:a599f98621e7b94d2a3ae326fc16fe1f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa192b55665beeeafcbab572a7338c05f" id="r_aa192b55665beeeafcbab572a7338c05f"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aa192b55665beeeafcbab572a7338c05f">loc_ref</a> = 0</td></tr>
-<tr class="separator:aa192b55665beeeafcbab572a7338c05f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad8b0b210be7ff7fc926789b39b2f4d5f" id="r_ad8b0b210be7ff7fc926789b39b2f4d5f"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad8b0b210be7ff7fc926789b39b2f4d5f">linearized</a></td></tr>
-<tr class="separator:ad8b0b210be7ff7fc926789b39b2f4d5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab66e7d15f0a17db0a01fd36a8e1ad928" id="r_ab66e7d15f0a17db0a01fd36a8e1ad928"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab66e7d15f0a17db0a01fd36a8e1ad928">bc</a></td></tr>
-<tr class="separator:ab66e7d15f0a17db0a01fd36a8e1ad928"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3469f7059f33dca08462398e264b3ee8" id="r_a3469f7059f33dca08462398e264b3ee8"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3469f7059f33dca08462398e264b3ee8">e_in</a></td></tr>
-<tr class="separator:a3469f7059f33dca08462398e264b3ee8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a46317d7e6285ea7ee3399fd55f8a0e01" id="r_a46317d7e6285ea7ee3399fd55f8a0e01"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a46317d7e6285ea7ee3399fd55f8a0e01">e_out</a></td></tr>
-<tr class="separator:a46317d7e6285ea7ee3399fd55f8a0e01"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a709782bede1a2ca45a069bd522241782" id="r_a709782bede1a2ca45a069bd522241782"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a709782bede1a2ca45a069bd522241782">ionic_strength</a></td></tr>
-<tr class="separator:a709782bede1a2ca45a069bd522241782"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0ce6946c5e7845bbd5209e643d95eb7d" id="r_a0ce6946c5e7845bbd5209e643d95eb7d"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0ce6946c5e7845bbd5209e643d95eb7d">T</a></td></tr>
-<tr class="separator:a0ce6946c5e7845bbd5209e643d95eb7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adb2fab7915f075ead209ccbdec9f92a0" id="r_adb2fab7915f075ead209ccbdec9f92a0"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#adb2fab7915f075ead209ccbdec9f92a0">calc_energy</a></td></tr>
-<tr class="separator:adb2fab7915f075ead209ccbdec9f92a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af4f5f24416210800beb58c2ceceaf806" id="r_af4f5f24416210800beb58c2ceceaf806"><td class="memItemLeft" align="right" valign="top">NS::surface_type&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af4f5f24416210800beb58c2ceceaf806">surf_type</a></td></tr>
-<tr class="separator:af4f5f24416210800beb58c2ceceaf806"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aff5baddd56f7f2eb414ab76188c1b764" id="r_aff5baddd56f7f2eb414ab76188c1b764"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aff5baddd56f7f2eb414ab76188c1b764">surf_param</a></td></tr>
-<tr class="separator:aff5baddd56f7f2eb414ab76188c1b764"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0e7a690caa1f6e499f2c23febb2e9e56" id="r_a0e7a690caa1f6e499f2c23febb2e9e56"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0e7a690caa1f6e499f2c23febb2e9e56">prb_radius</a> = 1.4</td></tr>
-<tr class="separator:a0e7a690caa1f6e499f2c23febb2e9e56"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a712206ec0622882bd66649ec89aaa246" id="r_a712206ec0622882bd66649ec89aaa246"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a712206ec0622882bd66649ec89aaa246">stern_layer_surf</a></td></tr>
-<tr class="separator:a712206ec0622882bd66649ec89aaa246"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac92de7cf4d19bb910098b007817403af" id="r_ac92de7cf4d19bb910098b007817403af"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac92de7cf4d19bb910098b007817403af">stern_layer</a></td></tr>
-<tr class="separator:ac92de7cf4d19bb910098b007817403af"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afbf780d4c02a0233c0ccccaaf2afbe39" id="r_afbf780d4c02a0233c0ccccaaf2afbe39"><td class="memItemLeft" align="right" valign="top">unsigned&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#afbf780d4c02a0233c0ccccaaf2afbe39">num_threads</a></td></tr>
-<tr class="separator:afbf780d4c02a0233c0ccccaaf2afbe39"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2a13fa4678d6fd832174e499c2274b13" id="r_a2a13fa4678d6fd832174e499c2274b13"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a2a13fa4678d6fd832174e499c2274b13">linear_solver_name</a></td></tr>
-<tr class="separator:a2a13fa4678d6fd832174e499c2274b13"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2be1899b67868330e25315c7d84a4974" id="r_a2be1899b67868330e25315c7d84a4974"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a2be1899b67868330e25315c7d84a4974">linear_solver_options</a></td></tr>
-<tr class="separator:a2be1899b67868330e25315c7d84a4974"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac58228995612efdf2076c3606cf1c2a0" id="r_ac58228995612efdf2076c3606cf1c2a0"><td class="memItemLeft" align="right" valign="top">MPI_Comm&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac58228995612efdf2076c3606cf1c2a0">mpicomm</a></td></tr>
-<tr class="separator:ac58228995612efdf2076c3606cf1c2a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1c8953fea663682856648664b6e99160" id="r_a1c8953fea663682856648664b6e99160"><td class="memItemLeft" align="right" valign="top">tmesh_3d&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1c8953fea663682856648664b6e99160">tmsh</a></td></tr>
-<tr class="separator:a1c8953fea663682856648664b6e99160"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1f0f3333c358e84de8b0d5578a73ff6f" id="r_a1f0f3333c358e84de8b0d5578a73ff6f"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1f0f3333c358e84de8b0d5578a73ff6f">optionsfilename</a></td></tr>
-<tr class="separator:a1f0f3333c358e84de8b0d5578a73ff6f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a65c8927f049a59d175799bfbb31ab250" id="r_a65c8927f049a59d175799bfbb31ab250"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a65c8927f049a59d175799bfbb31ab250">pqrfilename</a></td></tr>
-<tr class="separator:a65c8927f049a59d175799bfbb31ab250"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9edca2ad6b750e50cae0d7be793741a5" id="r_a9edca2ad6b750e50cae0d7be793741a5"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a9edca2ad6b750e50cae0d7be793741a5">p4estfilename</a></td></tr>
-<tr class="separator:a9edca2ad6b750e50cae0d7be793741a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6013c2e73a20caab51bfd8c2f25480e0" id="r_a6013c2e73a20caab51bfd8c2f25480e0"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6013c2e73a20caab51bfd8c2f25480e0">surffilename</a></td></tr>
-<tr class="separator:a6013c2e73a20caab51bfd8c2f25480e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6e57b67794fb48c5f9c2df7b7c82aae9" id="r_a6e57b67794fb48c5f9c2df7b7c82aae9"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6e57b67794fb48c5f9c2df7b7c82aae9">markerfilename</a></td></tr>
-<tr class="separator:a6e57b67794fb48c5f9c2df7b7c82aae9"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1d758b0108160763dddf3e4306b30f50" id="r_a1d758b0108160763dddf3e4306b30f50"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1d758b0108160763dddf3e4306b30f50">pqr_atoms</a></td></tr>
-<tr class="separator:a1d758b0108160763dddf3e4306b30f50"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a07099aa2c65afcf1badd04105fb3a9d2" id="r_a07099aa2c65afcf1badd04105fb3a9d2"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a07099aa2c65afcf1badd04105fb3a9d2">atoms_write</a></td></tr>
-<tr class="separator:a07099aa2c65afcf1badd04105fb3a9d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a89f91065362b2f1910da5873b531138b" id="r_a89f91065362b2f1910da5873b531138b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a89f91065362b2f1910da5873b531138b">surf_write</a></td></tr>
-<tr class="separator:a89f91065362b2f1910da5873b531138b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaac1686e5e2b30f68356cffd4589d983" id="r_aaac1686e5e2b30f68356cffd4589d983"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aaac1686e5e2b30f68356cffd4589d983">map_type</a></td></tr>
-<tr class="separator:aaac1686e5e2b30f68356cffd4589d983"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a47c4338d64840074317ec42e22c00170" id="r_a47c4338d64840074317ec42e22c00170"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a47c4338d64840074317ec42e22c00170">potential_map</a></td></tr>
-<tr class="separator:a47c4338d64840074317ec42e22c00170"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a579dd0c47dcafe074e0b60925e77ccad" id="r_a579dd0c47dcafe074e0b60925e77ccad"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a579dd0c47dcafe074e0b60925e77ccad">eps_map</a></td></tr>
-<tr class="separator:a579dd0c47dcafe074e0b60925e77ccad"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3a25c156728a7294f90b17cafba125f2" id="r_a3a25c156728a7294f90b17cafba125f2"><td class="memItemLeft" align="right" valign="top">std::map&lt; int, tmesh_3d::quadrant_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3a25c156728a7294f90b17cafba125f2">lookup_table</a></td></tr>
-<tr class="separator:a3a25c156728a7294f90b17cafba125f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae0ceaa5f2aa5ce801c3d4c0d5223c06b" id="r_ae0ceaa5f2aa5ce801c3d4c0d5223c06b"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae0ceaa5f2aa5ce801c3d4c0d5223c06b">marker</a></td></tr>
-<tr class="separator:ae0ceaa5f2aa5ce801c3d4c0d5223c06b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad2d97878a54ee20cd1530b21c9e11400" id="r_ad2d97878a54ee20cd1530b21c9e11400"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad2d97878a54ee20cd1530b21c9e11400">marker_k</a></td></tr>
-<tr class="separator:ad2d97878a54ee20cd1530b21c9e11400"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a84d44521fbde6ddad9c133ae5a03e957" id="r_a84d44521fbde6ddad9c133ae5a03e957"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a84d44521fbde6ddad9c133ae5a03e957">epsilon</a></td></tr>
-<tr class="separator:a84d44521fbde6ddad9c133ae5a03e957"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7b510f8e7f268c325e075d882ec29da3" id="r_a7b510f8e7f268c325e075d882ec29da3"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a7b510f8e7f268c325e075d882ec29da3">epsilon_in</a></td></tr>
-<tr class="separator:a7b510f8e7f268c325e075d882ec29da3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a698245e830f0274771d2e08f3ae5879f" id="r_a698245e830f0274771d2e08f3ae5879f"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a698245e830f0274771d2e08f3ae5879f">epsilon_out</a></td></tr>
-<tr class="separator:a698245e830f0274771d2e08f3ae5879f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6c880680bf2608788374a5bfd77f1591" id="r_a6c880680bf2608788374a5bfd77f1591"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6c880680bf2608788374a5bfd77f1591">reaction</a></td></tr>
-<tr class="separator:a6c880680bf2608788374a5bfd77f1591"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acd4e8ee8e42b10514e17fa886a4e0286" id="r_acd4e8ee8e42b10514e17fa886a4e0286"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#acd4e8ee8e42b10514e17fa886a4e0286">ones_in</a></td></tr>
-<tr class="separator:acd4e8ee8e42b10514e17fa886a4e0286"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abb0a067ea4ad9a1738bd7b9744095e1a" id="r_abb0a067ea4ad9a1738bd7b9744095e1a"><td class="memItemLeft" align="right" valign="top">std::vector&lt; int &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abb0a067ea4ad9a1738bd7b9744095e1a">border_quad</a></td></tr>
-<tr class="separator:abb0a067ea4ad9a1738bd7b9744095e1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af840403e584d64807c3d6ddcff9b792a" id="r_af840403e584d64807c3d6ddcff9b792a"><td class="memItemLeft" align="right" valign="top">std::set&lt; std::array&lt; int, 2 &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af840403e584d64807c3d6ddcff9b792a">int_nodes</a></td></tr>
-<tr class="separator:af840403e584d64807c3d6ddcff9b792a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab3daea492c5690b67e91e033ac2f6085" id="r_ab3daea492c5690b67e91e033ac2f6085"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_vector &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab3daea492c5690b67e91e033ac2f6085">markn</a></td></tr>
-<tr class="separator:ab3daea492c5690b67e91e033ac2f6085"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aedaed5a229714981786df08d60809b77" id="r_aedaed5a229714981786df08d60809b77"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_vector &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aedaed5a229714981786df08d60809b77">epsilon_nodes</a></td></tr>
-<tr class="separator:aedaed5a229714981786df08d60809b77"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acdf7e0afa452648bb77e20653f30cc4a" id="r_acdf7e0afa452648bb77e20653f30cc4a"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_vector &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#acdf7e0afa452648bb77e20653f30cc4a">reaction_nodes</a></td></tr>
-<tr class="separator:acdf7e0afa452648bb77e20653f30cc4a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a36064372d1201f079e8441c94929cc75" id="r_a36064372d1201f079e8441c94929cc75"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_vector &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a36064372d1201f079e8441c94929cc75">phi</a></td></tr>
-<tr class="separator:a36064372d1201f079e8441c94929cc75"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a26443a3b714ac95b374d26221d317b99" id="r_a26443a3b714ac95b374d26221d317b99"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_vector &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a26443a3b714ac95b374d26221d317b99">rho_fixed</a></td></tr>
-<tr class="separator:a26443a3b714ac95b374d26221d317b99"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa35119e0c17eb7f90b4136d57bb5b5a8" id="r_aa35119e0c17eb7f90b4136d57bb5b5a8"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aa35119e0c17eb7f90b4136d57bb5b5a8">edgeTable</a> [256]</td></tr>
 <tr class="separator:aa35119e0c17eb7f90b4136d57bb5b5a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8b156cadd55549da0cb9f3dce56836ae" id="r_a8b156cadd55549da0cb9f3dce56836ae"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8b156cadd55549da0cb9f3dce56836ae">triTable</a> [256][16]</td></tr>
 <tr class="separator:a8b156cadd55549da0cb9f3dce56836ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a382dc91094274230d1c1806458aff65c" id="r_a382dc91094274230d1c1806458aff65c"><td class="memItemLeft" align="right" valign="top">std::array&lt; std::array&lt; int, 3 &gt;, 5 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a382dc91094274230d1c1806458aff65c">triangles</a></td></tr>
 <tr class="separator:a382dc91094274230d1c1806458aff65c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Octree mesh connectivity (p4est)</div></td></tr>
+<tr class="memitem:ad4080b9b085cddcbb3ed8254ff566870" id="r_ad4080b9b085cddcbb3ed8254ff566870"><td class="memItemLeft" align="right" valign="top">p4est_topidx_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad4080b9b085cddcbb3ed8254ff566870">simple_conn_num_vertices</a></td></tr>
+<tr class="memdesc:ad4080b9b085cddcbb3ed8254ff566870"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of mesh vertices.  <br /></td></tr>
+<tr class="separator:ad4080b9b085cddcbb3ed8254ff566870"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ada6750bc870ae1c3815c824b96c4a481" id="r_ada6750bc870ae1c3815c824b96c4a481"><td class="memItemLeft" align="right" valign="top">p4est_topidx_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ada6750bc870ae1c3815c824b96c4a481">simple_conn_num_trees</a></td></tr>
+<tr class="memdesc:ada6750bc870ae1c3815c824b96c4a481"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of trees in the octree.  <br /></td></tr>
+<tr class="separator:ada6750bc870ae1c3815c824b96c4a481"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae35f28b2f60817065b11a6ca7e0a5a77" id="r_ae35f28b2f60817065b11a6ca7e0a5a77"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; double[]&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae35f28b2f60817065b11a6ca7e0a5a77">simple_conn_p</a></td></tr>
+<tr class="memdesc:ae35f28b2f60817065b11a6ca7e0a5a77"><td class="mdescLeft">&#160;</td><td class="mdescRight">Vertex coordinate array.  <br /></td></tr>
+<tr class="separator:ae35f28b2f60817065b11a6ca7e0a5a77"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8c46bf974c4b145df7d331388f840c7d" id="r_a8c46bf974c4b145df7d331388f840c7d"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; p4est_topidx_t[]&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8c46bf974c4b145df7d331388f840c7d">simple_conn_t</a></td></tr>
+<tr class="memdesc:a8c46bf974c4b145df7d331388f840c7d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Tree-to-vertex connectivity.  <br /></td></tr>
+<tr class="separator:a8c46bf974c4b145df7d331388f840c7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0ce1800e0a54eabd9bd638d5434e063a" id="r_a0ce1800e0a54eabd9bd638d5434e063a"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::pair&lt; p4est_topidx_t, p4est_topidx_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0ce1800e0a54eabd9bd638d5434e063a">bcells</a></td></tr>
+<tr class="memdesc:a0ce1800e0a54eabd9bd638d5434e063a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Boundary cell pairs.  <br /></td></tr>
+<tr class="separator:a0ce1800e0a54eabd9bd638d5434e063a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Atomic data</div></td></tr>
+<tr class="memitem:aaf0802ca2d2e4c159b03246f50cd1b33" id="r_aaf0802ca2d2e4c159b03246f50cd1b33"><td class="memItemLeft" align="right" valign="top">std::vector&lt; NS::Atom &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aaf0802ca2d2e4c159b03246f50cd1b33">atoms</a></td></tr>
+<tr class="memdesc:aaf0802ca2d2e4c159b03246f50cd1b33"><td class="mdescLeft">&#160;</td><td class="mdescRight">Full atom list (NanoShaper format)  <br /></td></tr>
+<tr class="separator:aaf0802ca2d2e4c159b03246f50cd1b33"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a266ad49c8e38bbe7034893b7de213a23" id="r_a266ad49c8e38bbe7034893b7de213a23"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::array&lt; double, 3 &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a266ad49c8e38bbe7034893b7de213a23">pos_atoms</a></td></tr>
+<tr class="memdesc:a266ad49c8e38bbe7034893b7de213a23"><td class="mdescLeft">&#160;</td><td class="mdescRight">Atomic positions [Å].  <br /></td></tr>
+<tr class="separator:a266ad49c8e38bbe7034893b7de213a23"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af998f20b72a695f7b080116dbee90c95" id="r_af998f20b72a695f7b080116dbee90c95"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af998f20b72a695f7b080116dbee90c95">charge_atoms</a></td></tr>
+<tr class="memdesc:af998f20b72a695f7b080116dbee90c95"><td class="mdescLeft">&#160;</td><td class="mdescRight">Partial charges [e].  <br /></td></tr>
+<tr class="separator:af998f20b72a695f7b080116dbee90c95"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae687636e97546958daadd62f42999c9a" id="r_ae687636e97546958daadd62f42999c9a"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae687636e97546958daadd62f42999c9a">r_atoms</a></td></tr>
+<tr class="memdesc:ae687636e97546958daadd62f42999c9a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Van der Waals radii [Å].  <br /></td></tr>
+<tr class="separator:ae687636e97546958daadd62f42999c9a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4ab1d18f724a0024d68c7147c4604bc5" id="r_a4ab1d18f724a0024d68c7147c4604bc5"><td class="memItemLeft" align="right" valign="top">std::vector&lt; int &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a4ab1d18f724a0024d68c7147c4604bc5">index_atoms</a></td></tr>
+<tr class="memdesc:a4ab1d18f724a0024d68c7147c4604bc5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Atom index mapping.  <br /></td></tr>
+<tr class="separator:a4ab1d18f724a0024d68c7147c4604bc5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Input / file options</div></td></tr>
+<tr class="memitem:a184c2e1c77989684f4d9c8f52895b09f" id="r_a184c2e1c77989684f4d9c8f52895b09f"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a184c2e1c77989684f4d9c8f52895b09f">filetype</a></td></tr>
+<tr class="memdesc:a184c2e1c77989684f4d9c8f52895b09f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Input file type ("pqr", "pdb", …)  <br /></td></tr>
+<tr class="separator:a184c2e1c77989684f4d9c8f52895b09f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2a2dfb9c4f6a544fcb4c06f8a45a68af" id="r_a2a2dfb9c4f6a544fcb4c06f8a45a68af"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a2a2dfb9c4f6a544fcb4c06f8a45a68af">radiusfilename</a></td></tr>
+<tr class="memdesc:a2a2dfb9c4f6a544fcb4c06f8a45a68af"><td class="mdescLeft">&#160;</td><td class="mdescRight">File with van der Waals radii.  <br /></td></tr>
+<tr class="separator:a2a2dfb9c4f6a544fcb4c06f8a45a68af"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa3df357e8c8aad146b56d022cbf16260" id="r_aa3df357e8c8aad146b56d022cbf16260"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aa3df357e8c8aad146b56d022cbf16260">chargefilename</a></td></tr>
+<tr class="memdesc:aa3df357e8c8aad146b56d022cbf16260"><td class="mdescLeft">&#160;</td><td class="mdescRight">File with partial charges.  <br /></td></tr>
+<tr class="separator:aa3df357e8c8aad146b56d022cbf16260"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a83bd2a1a34c285fc882b55113f5e0964" id="r_a83bd2a1a34c285fc882b55113f5e0964"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a83bd2a1a34c285fc882b55113f5e0964">name_pqr</a></td></tr>
+<tr class="memdesc:a83bd2a1a34c285fc882b55113f5e0964"><td class="mdescLeft">&#160;</td><td class="mdescRight">Base name for PQR output.  <br /></td></tr>
+<tr class="separator:a83bd2a1a34c285fc882b55113f5e0964"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a543b587b9467df75e3121fbe26e4b1c8" id="r_a543b587b9467df75e3121fbe26e4b1c8"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a543b587b9467df75e3121fbe26e4b1c8">write_pqr</a></td></tr>
+<tr class="memdesc:a543b587b9467df75e3121fbe26e4b1c8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write PQR file if non-zero.  <br /></td></tr>
+<tr class="separator:a543b587b9467df75e3121fbe26e4b1c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Domain bounding boxes</div></td></tr>
+<tr class="memitem:a3bdf63e7b7cab2be4cf74a017ae37e38" id="r_a3bdf63e7b7cab2be4cf74a017ae37e38"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3bdf63e7b7cab2be4cf74a017ae37e38">cc</a> [3]</td></tr>
+<tr class="memdesc:a3bdf63e7b7cab2be4cf74a017ae37e38"><td class="mdescLeft">&#160;</td><td class="mdescRight">Center of the bounding box [Å].  <br /></td></tr>
+<tr class="separator:a3bdf63e7b7cab2be4cf74a017ae37e38"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a513627682a26668ae6b81b8423fc3aab" id="r_a513627682a26668ae6b81b8423fc3aab"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a513627682a26668ae6b81b8423fc3aab">ll</a> [3]</td></tr>
+<tr class="memdesc:a513627682a26668ae6b81b8423fc3aab"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cubic mesh: min (x,y,z) corner [Å].  <br /></td></tr>
+<tr class="separator:a513627682a26668ae6b81b8423fc3aab"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a20ec98e36fcfec6afbe072a8f1f4bf65" id="r_a20ec98e36fcfec6afbe072a8f1f4bf65"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a20ec98e36fcfec6afbe072a8f1f4bf65">rr</a> [3]</td></tr>
+<tr class="memdesc:a20ec98e36fcfec6afbe072a8f1f4bf65"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cubic mesh: max (x,y,z) corner [Å].  <br /></td></tr>
+<tr class="separator:a20ec98e36fcfec6afbe072a8f1f4bf65"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1275e62a9fdcd4d2122886c9b389e9f7" id="r_a1275e62a9fdcd4d2122886c9b389e9f7"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1275e62a9fdcd4d2122886c9b389e9f7">l_c</a> [3]</td></tr>
+<tr class="memdesc:a1275e62a9fdcd4d2122886c9b389e9f7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stretched mesh: min (x,y,z) corner [Å].  <br /></td></tr>
+<tr class="separator:a1275e62a9fdcd4d2122886c9b389e9f7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5de7c54d4190b7af042e18fcd2cf3670" id="r_a5de7c54d4190b7af042e18fcd2cf3670"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a5de7c54d4190b7af042e18fcd2cf3670">r_c</a> [3]</td></tr>
+<tr class="memdesc:a5de7c54d4190b7af042e18fcd2cf3670"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stretched mesh: max (x,y,z) corner [Å].  <br /></td></tr>
+<tr class="separator:a5de7c54d4190b7af042e18fcd2cf3670"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad1a35cfa08a4182b5ed26a69e811e2bd" id="r_ad1a35cfa08a4182b5ed26a69e811e2bd"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad1a35cfa08a4182b5ed26a69e811e2bd">l_cr</a> [3]</td></tr>
+<tr class="memdesc:ad1a35cfa08a4182b5ed26a69e811e2bd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Refined sub-box: min corner [Å].  <br /></td></tr>
+<tr class="separator:ad1a35cfa08a4182b5ed26a69e811e2bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0d7619ed5365bfea50b68133b3534545" id="r_a0d7619ed5365bfea50b68133b3534545"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0d7619ed5365bfea50b68133b3534545">r_cr</a> [3]</td></tr>
+<tr class="memdesc:a0d7619ed5365bfea50b68133b3534545"><td class="mdescLeft">&#160;</td><td class="mdescRight">Refined sub-box: max corner [Å].  <br /></td></tr>
+<tr class="separator:a0d7619ed5365bfea50b68133b3534545"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af71100dfe72d7c718bd7a5e0a3ea4d29" id="r_af71100dfe72d7c718bd7a5e0a3ea4d29"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af71100dfe72d7c718bd7a5e0a3ea4d29">l_box</a> [3]</td></tr>
+<tr class="memdesc:af71100dfe72d7c718bd7a5e0a3ea4d29"><td class="mdescLeft">&#160;</td><td class="mdescRight">Focusing sub-box: min corner [Å].  <br /></td></tr>
+<tr class="separator:af71100dfe72d7c718bd7a5e0a3ea4d29"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a26e7a54f5e19ba2c3dc56f1ad8f5743c" id="r_a26e7a54f5e19ba2c3dc56f1ad8f5743c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a26e7a54f5e19ba2c3dc56f1ad8f5743c">r_box</a> [3]</td></tr>
+<tr class="memdesc:a26e7a54f5e19ba2c3dc56f1ad8f5743c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Focusing sub-box: max corner [Å].  <br /></td></tr>
+<tr class="separator:a26e7a54f5e19ba2c3dc56f1ad8f5743c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a26ef58cd79162cbf259302d9814d94fa" id="r_a26ef58cd79162cbf259302d9814d94fa"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a26ef58cd79162cbf259302d9814d94fa">pot_bc</a> = 0.0</td></tr>
+<tr class="memdesc:a26ef58cd79162cbf259302d9814d94fa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Potential value at outer boundary [kT/e].  <br /></td></tr>
+<tr class="separator:a26ef58cd79162cbf259302d9814d94fa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8ff44147adfe9489114a7ee804cc7c54" id="r_a8ff44147adfe9489114a7ee804cc7c54"><td class="memItemLeft" align="right" valign="top">p4est_topidx_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8ff44147adfe9489114a7ee804cc7c54">num_trees</a> [3]</td></tr>
+<tr class="memdesc:a8ff44147adfe9489114a7ee804cc7c54"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of octree trees per axis.  <br /></td></tr>
+<tr class="separator:a8ff44147adfe9489114a7ee804cc7c54"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a088f38c3a9053599fa9c211707327fde" id="r_a088f38c3a9053599fa9c211707327fde"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a088f38c3a9053599fa9c211707327fde">len</a></td></tr>
+<tr class="memdesc:a088f38c3a9053599fa9c211707327fde"><td class="mdescLeft">&#160;</td><td class="mdescRight">Side length of the coarsest tree [Å].  <br /></td></tr>
+<tr class="separator:a088f38c3a9053599fa9c211707327fde"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a57fb6001bdb751988612ba000b72e6e4" id="r_a57fb6001bdb751988612ba000b72e6e4"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a57fb6001bdb751988612ba000b72e6e4">cc_focusing</a> [3]</td></tr>
+<tr class="memdesc:a57fb6001bdb751988612ba000b72e6e4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Center for focusing mesh [Å].  <br /></td></tr>
+<tr class="separator:a57fb6001bdb751988612ba000b72e6e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4094f5d90666822dc20feb754d2a7779" id="r_a4094f5d90666822dc20feb754d2a7779"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a4094f5d90666822dc20feb754d2a7779">n_grid</a></td></tr>
+<tr class="memdesc:a4094f5d90666822dc20feb754d2a7779"><td class="mdescLeft">&#160;</td><td class="mdescRight">Grid resolution for focusing region.  <br /></td></tr>
+<tr class="separator:a4094f5d90666822dc20feb754d2a7779"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Mesh control parameters</div></td></tr>
+<tr class="memitem:ada70a8b8390e0a273d44ea1be8b12237" id="r_ada70a8b8390e0a273d44ea1be8b12237"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ada70a8b8390e0a273d44ea1be8b12237">maxlevel</a></td></tr>
+<tr class="memdesc:ada70a8b8390e0a273d44ea1be8b12237"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maximum octree refinement level.  <br /></td></tr>
+<tr class="separator:ada70a8b8390e0a273d44ea1be8b12237"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8d0fbc088f8db88c9e68b680a048169b" id="r_a8d0fbc088f8db88c9e68b680a048169b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8d0fbc088f8db88c9e68b680a048169b">minlevel</a></td></tr>
+<tr class="memdesc:a8d0fbc088f8db88c9e68b680a048169b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Minimum octree refinement level.  <br /></td></tr>
+<tr class="separator:a8d0fbc088f8db88c9e68b680a048169b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7e5cb352275e0121b15fedc4439c9ad9" id="r_a7e5cb352275e0121b15fedc4439c9ad9"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a7e5cb352275e0121b15fedc4439c9ad9">unilevel</a></td></tr>
+<tr class="memdesc:a7e5cb352275e0121b15fedc4439c9ad9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Uniform (base) refinement level.  <br /></td></tr>
+<tr class="separator:a7e5cb352275e0121b15fedc4439c9ad9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a70ab9b61836e45760a0449ebfb140dd4" id="r_a70ab9b61836e45760a0449ebfb140dd4"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a70ab9b61836e45760a0449ebfb140dd4">outlevel</a></td></tr>
+<tr class="memdesc:a70ab9b61836e45760a0449ebfb140dd4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Refinement level in outer region.  <br /></td></tr>
+<tr class="separator:a70ab9b61836e45760a0449ebfb140dd4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aab6588d46efea99997cf8cb96744cc84" id="r_aab6588d46efea99997cf8cb96744cc84"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aab6588d46efea99997cf8cb96744cc84">loc_refinement</a></td></tr>
+<tr class="memdesc:aab6588d46efea99997cf8cb96744cc84"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enable local refinement near surface.  <br /></td></tr>
+<tr class="separator:aab6588d46efea99997cf8cb96744cc84"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a843d3fb2db009524e498a0c26168c936" id="r_a843d3fb2db009524e498a0c26168c936"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a843d3fb2db009524e498a0c26168c936">mesh_shape</a></td></tr>
+<tr class="memdesc:a843d3fb2db009524e498a0c26168c936"><td class="mdescLeft">&#160;</td><td class="mdescRight">0 = cubic, 1 = stretched, 2 = custom  <br /></td></tr>
+<tr class="separator:a843d3fb2db009524e498a0c26168c936"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a24f1f30ab3b65b947a32cc2c0427880e" id="r_a24f1f30ab3b65b947a32cc2c0427880e"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a24f1f30ab3b65b947a32cc2c0427880e">refine_box</a></td></tr>
+<tr class="memdesc:a24f1f30ab3b65b947a32cc2c0427880e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enable box-based local refinement.  <br /></td></tr>
+<tr class="separator:a24f1f30ab3b65b947a32cc2c0427880e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adc6ce9522a05a98cdf290059439a17eb" id="r_adc6ce9522a05a98cdf290059439a17eb"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#adc6ce9522a05a98cdf290059439a17eb">rand_center</a></td></tr>
+<tr class="memdesc:adc6ce9522a05a98cdf290059439a17eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Randomise center (avoid symmetry artifacts)  <br /></td></tr>
+<tr class="separator:adc6ce9522a05a98cdf290059439a17eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a230d04b7ead695aca162c51c8526a788" id="r_a230d04b7ead695aca162c51c8526a788"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a230d04b7ead695aca162c51c8526a788">scale_level</a></td></tr>
+<tr class="memdesc:a230d04b7ead695aca162c51c8526a788"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scale-based refinement level.  <br /></td></tr>
+<tr class="separator:a230d04b7ead695aca162c51c8526a788"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac9ccf3d2e3f523d1f70c716d0023f147" id="r_ac9ccf3d2e3f523d1f70c716d0023f147"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac9ccf3d2e3f523d1f70c716d0023f147">scale_level_min_box</a></td></tr>
+<tr class="memdesc:ac9ccf3d2e3f523d1f70c716d0023f147"><td class="mdescLeft">&#160;</td><td class="mdescRight">Min scale level inside the box.  <br /></td></tr>
+<tr class="separator:ac9ccf3d2e3f523d1f70c716d0023f147"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6645595cafb6442ba9d968a328b350ee" id="r_a6645595cafb6442ba9d968a328b350ee"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6645595cafb6442ba9d968a328b350ee">scale</a></td></tr>
+<tr class="separator:a6645595cafb6442ba9d968a328b350ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad353d781f1f1a3b90f7e460755d4c400" id="r_ad353d781f1f1a3b90f7e460755d4c400"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad353d781f1f1a3b90f7e460755d4c400">scale_min</a></td></tr>
+<tr class="separator:ad353d781f1f1a3b90f7e460755d4c400"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad5aaf8bf529d89fe67e18ffb446bdb60" id="r_ad5aaf8bf529d89fe67e18ffb446bdb60"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad5aaf8bf529d89fe67e18ffb446bdb60">scale_max</a></td></tr>
+<tr class="memdesc:ad5aaf8bf529d89fe67e18ffb446bdb60"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scaling parameters for stretched mesh.  <br /></td></tr>
+<tr class="separator:ad5aaf8bf529d89fe67e18ffb446bdb60"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a72ae4e7e3a980f8692a81704b74a7417" id="r_a72ae4e7e3a980f8692a81704b74a7417"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a72ae4e7e3a980f8692a81704b74a7417">perfil1</a></td></tr>
+<tr class="separator:a72ae4e7e3a980f8692a81704b74a7417"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a599f98621e7b94d2a3ae326fc16fe1f3" id="r_a599f98621e7b94d2a3ae326fc16fe1f3"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a599f98621e7b94d2a3ae326fc16fe1f3">perfil2</a></td></tr>
+<tr class="memdesc:a599f98621e7b94d2a3ae326fc16fe1f3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stretching profile control points.  <br /></td></tr>
+<tr class="separator:a599f98621e7b94d2a3ae326fc16fe1f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa192b55665beeeafcbab572a7338c05f" id="r_aa192b55665beeeafcbab572a7338c05f"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aa192b55665beeeafcbab572a7338c05f">loc_ref</a> = 0</td></tr>
+<tr class="memdesc:aa192b55665beeeafcbab572a7338c05f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Local refinement flag.  <br /></td></tr>
+<tr class="separator:aa192b55665beeeafcbab572a7338c05f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ada5938a7624000c1545700c2c72aa6e5" id="r_ada5938a7624000c1545700c2c72aa6e5"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ada5938a7624000c1545700c2c72aa6e5">aligned</a> = 0</td></tr>
+<tr class="memdesc:ada5938a7624000c1545700c2c72aa6e5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Align mesh to axes flag.  <br /></td></tr>
+<tr class="separator:ada5938a7624000c1545700c2c72aa6e5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Physical model parameters</div></td></tr>
+<tr class="memitem:ad8b0b210be7ff7fc926789b39b2f4d5f" id="r_ad8b0b210be7ff7fc926789b39b2f4d5f"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad8b0b210be7ff7fc926789b39b2f4d5f">linearized</a></td></tr>
+<tr class="memdesc:ad8b0b210be7ff7fc926789b39b2f4d5f"><td class="mdescLeft">&#160;</td><td class="mdescRight">1 = linearized PBE, 0 = non-linear  <br /></td></tr>
+<tr class="separator:ad8b0b210be7ff7fc926789b39b2f4d5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab66e7d15f0a17db0a01fd36a8e1ad928" id="r_ab66e7d15f0a17db0a01fd36a8e1ad928"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab66e7d15f0a17db0a01fd36a8e1ad928">bc</a></td></tr>
+<tr class="memdesc:ab66e7d15f0a17db0a01fd36a8e1ad928"><td class="mdescLeft">&#160;</td><td class="mdescRight">Boundary condition type (0 = Coulomb, …)  <br /></td></tr>
+<tr class="separator:ab66e7d15f0a17db0a01fd36a8e1ad928"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3469f7059f33dca08462398e264b3ee8" id="r_a3469f7059f33dca08462398e264b3ee8"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3469f7059f33dca08462398e264b3ee8">e_in</a></td></tr>
+<tr class="memdesc:a3469f7059f33dca08462398e264b3ee8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dielectric constant inside the solute.  <br /></td></tr>
+<tr class="separator:a3469f7059f33dca08462398e264b3ee8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a46317d7e6285ea7ee3399fd55f8a0e01" id="r_a46317d7e6285ea7ee3399fd55f8a0e01"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a46317d7e6285ea7ee3399fd55f8a0e01">e_out</a></td></tr>
+<tr class="memdesc:a46317d7e6285ea7ee3399fd55f8a0e01"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dielectric constant of the solvent.  <br /></td></tr>
+<tr class="separator:a46317d7e6285ea7ee3399fd55f8a0e01"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a709782bede1a2ca45a069bd522241782" id="r_a709782bede1a2ca45a069bd522241782"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a709782bede1a2ca45a069bd522241782">ionic_strength</a></td></tr>
+<tr class="memdesc:a709782bede1a2ca45a069bd522241782"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ionic strength [mol/L].  <br /></td></tr>
+<tr class="separator:a709782bede1a2ca45a069bd522241782"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0ce6946c5e7845bbd5209e643d95eb7d" id="r_a0ce6946c5e7845bbd5209e643d95eb7d"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0ce6946c5e7845bbd5209e643d95eb7d">T</a></td></tr>
+<tr class="memdesc:a0ce6946c5e7845bbd5209e643d95eb7d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Temperature [K].  <br /></td></tr>
+<tr class="separator:a0ce6946c5e7845bbd5209e643d95eb7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adb2fab7915f075ead209ccbdec9f92a0" id="r_adb2fab7915f075ead209ccbdec9f92a0"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#adb2fab7915f075ead209ccbdec9f92a0">calc_energy</a></td></tr>
+<tr class="memdesc:adb2fab7915f075ead209ccbdec9f92a0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute solvation energy if non-zero.  <br /></td></tr>
+<tr class="separator:adb2fab7915f075ead209ccbdec9f92a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad403063be44f640737aceb5ae77028e5" id="r_ad403063be44f640737aceb5ae77028e5"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad403063be44f640737aceb5ae77028e5">energy_pol</a> = 0.0</td></tr>
+<tr class="memdesc:ad403063be44f640737aceb5ae77028e5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Polarisation energy contribution [kT].  <br /></td></tr>
+<tr class="separator:ad403063be44f640737aceb5ae77028e5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a27c7259448f173c8bd7d489a25c447c5" id="r_a27c7259448f173c8bd7d489a25c447c5"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a27c7259448f173c8bd7d489a25c447c5">energy_react</a> = 0.0</td></tr>
+<tr class="memdesc:a27c7259448f173c8bd7d489a25c447c5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reaction field energy contribution [kT].  <br /></td></tr>
+<tr class="separator:a27c7259448f173c8bd7d489a25c447c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab3655eec460d181b1847ece9e6434cae" id="r_ab3655eec460d181b1847ece9e6434cae"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab3655eec460d181b1847ece9e6434cae">coul_energy</a> = 0.0</td></tr>
+<tr class="memdesc:ab3655eec460d181b1847ece9e6434cae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Coulombic energy contribution [kT].  <br /></td></tr>
+<tr class="separator:ab3655eec460d181b1847ece9e6434cae"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:affa6db11aac5581ae4000ffbbc8dfd74" id="r_affa6db11aac5581ae4000ffbbc8dfd74"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#affa6db11aac5581ae4000ffbbc8dfd74">calc_coulombic</a></td></tr>
+<tr class="memdesc:affa6db11aac5581ae4000ffbbc8dfd74"><td class="mdescLeft">&#160;</td><td class="mdescRight">Include Coulombic energy term.  <br /></td></tr>
+<tr class="separator:affa6db11aac5581ae4000ffbbc8dfd74"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac57bef06355c4ac951a854c342ce2d5d" id="r_ac57bef06355c4ac951a854c342ce2d5d"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac57bef06355c4ac951a854c342ce2d5d">calc_potential_term</a></td></tr>
+<tr class="memdesc:ac57bef06355c4ac951a854c342ce2d5d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute potential on atoms.  <br /></td></tr>
+<tr class="separator:ac57bef06355c4ac951a854c342ce2d5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a11a18b8dc1f819d78316859b15780891" id="r_a11a18b8dc1f819d78316859b15780891"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a11a18b8dc1f819d78316859b15780891">calc_field_term</a></td></tr>
+<tr class="memdesc:a11a18b8dc1f819d78316859b15780891"><td class="mdescLeft">&#160;</td><td class="mdescRight">Compute electric field on atoms.  <br /></td></tr>
+<tr class="separator:a11a18b8dc1f819d78316859b15780891"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Molecular surface parameters</div></td></tr>
+<tr class="memitem:af4f5f24416210800beb58c2ceceaf806" id="r_af4f5f24416210800beb58c2ceceaf806"><td class="memItemLeft" align="right" valign="top">NS::surface_type&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#af4f5f24416210800beb58c2ceceaf806">surf_type</a></td></tr>
+<tr class="memdesc:af4f5f24416210800beb58c2ceceaf806"><td class="mdescLeft">&#160;</td><td class="mdescRight">Surface type (SES, SAS, …)  <br /></td></tr>
+<tr class="separator:af4f5f24416210800beb58c2ceceaf806"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8ea91522fd792d9b79b485f3c90968c0" id="r_a8ea91522fd792d9b79b485f3c90968c0"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8ea91522fd792d9b79b485f3c90968c0">surf_type_num</a> = 0</td></tr>
+<tr class="memdesc:a8ea91522fd792d9b79b485f3c90968c0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Numeric code for surface type.  <br /></td></tr>
+<tr class="separator:a8ea91522fd792d9b79b485f3c90968c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aff5baddd56f7f2eb414ab76188c1b764" id="r_aff5baddd56f7f2eb414ab76188c1b764"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aff5baddd56f7f2eb414ab76188c1b764">surf_param</a></td></tr>
+<tr class="memdesc:aff5baddd56f7f2eb414ab76188c1b764"><td class="mdescLeft">&#160;</td><td class="mdescRight">Surface smoothing parameter.  <br /></td></tr>
+<tr class="separator:aff5baddd56f7f2eb414ab76188c1b764"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0e7a690caa1f6e499f2c23febb2e9e56" id="r_a0e7a690caa1f6e499f2c23febb2e9e56"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0e7a690caa1f6e499f2c23febb2e9e56">prb_radius</a> = 1.4</td></tr>
+<tr class="memdesc:a0e7a690caa1f6e499f2c23febb2e9e56"><td class="mdescLeft">&#160;</td><td class="mdescRight">Probe radius for SES [Å].  <br /></td></tr>
+<tr class="separator:a0e7a690caa1f6e499f2c23febb2e9e56"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a712206ec0622882bd66649ec89aaa246" id="r_a712206ec0622882bd66649ec89aaa246"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a712206ec0622882bd66649ec89aaa246">stern_layer_surf</a></td></tr>
+<tr class="memdesc:a712206ec0622882bd66649ec89aaa246"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enable Stern layer on solute surface.  <br /></td></tr>
+<tr class="separator:a712206ec0622882bd66649ec89aaa246"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac92de7cf4d19bb910098b007817403af" id="r_ac92de7cf4d19bb910098b007817403af"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac92de7cf4d19bb910098b007817403af">stern_layer</a></td></tr>
+<tr class="memdesc:ac92de7cf4d19bb910098b007817403af"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stern layer thickness [Å].  <br /></td></tr>
+<tr class="separator:ac92de7cf4d19bb910098b007817403af"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afbf780d4c02a0233c0ccccaaf2afbe39" id="r_afbf780d4c02a0233c0ccccaaf2afbe39"><td class="memItemLeft" align="right" valign="top">unsigned&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#afbf780d4c02a0233c0ccccaaf2afbe39">num_threads</a></td></tr>
+<tr class="memdesc:afbf780d4c02a0233c0ccccaaf2afbe39"><td class="mdescLeft">&#160;</td><td class="mdescRight">Number of threads for NanoShaper.  <br /></td></tr>
+<tr class="separator:afbf780d4c02a0233c0ccccaaf2afbe39"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Solver options</div></td></tr>
+<tr class="memitem:a2a13fa4678d6fd832174e499c2274b13" id="r_a2a13fa4678d6fd832174e499c2274b13"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a2a13fa4678d6fd832174e499c2274b13">linear_solver_name</a></td></tr>
+<tr class="memdesc:a2a13fa4678d6fd832174e499c2274b13"><td class="mdescLeft">&#160;</td><td class="mdescRight">"mumps" or "lis"  <br /></td></tr>
+<tr class="separator:a2a13fa4678d6fd832174e499c2274b13"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2be1899b67868330e25315c7d84a4974" id="r_a2be1899b67868330e25315c7d84a4974"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a2be1899b67868330e25315c7d84a4974">linear_solver_options</a></td></tr>
+<tr class="memdesc:a2be1899b67868330e25315c7d84a4974"><td class="mdescLeft">&#160;</td><td class="mdescRight">Options string passed to LIS.  <br /></td></tr>
+<tr class="separator:a2be1899b67868330e25315c7d84a4974"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">MPI and mesh objects</div></td></tr>
+<tr class="memitem:ac58228995612efdf2076c3606cf1c2a0" id="r_ac58228995612efdf2076c3606cf1c2a0"><td class="memItemLeft" align="right" valign="top">MPI_Comm&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac58228995612efdf2076c3606cf1c2a0">mpicomm</a></td></tr>
+<tr class="memdesc:ac58228995612efdf2076c3606cf1c2a0"><td class="mdescLeft">&#160;</td><td class="mdescRight">MPI communicator.  <br /></td></tr>
+<tr class="separator:ac58228995612efdf2076c3606cf1c2a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1c8953fea663682856648664b6e99160" id="r_a1c8953fea663682856648664b6e99160"><td class="memItemLeft" align="right" valign="top">tmesh_3d&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1c8953fea663682856648664b6e99160">tmsh</a></td></tr>
+<tr class="memdesc:a1c8953fea663682856648664b6e99160"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adaptive octree mesh (BIM++ wrapper around p8est)  <br /></td></tr>
+<tr class="separator:a1c8953fea663682856648664b6e99160"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">File name configuration</div></td></tr>
+<tr class="memitem:a1f0f3333c358e84de8b0d5578a73ff6f" id="r_a1f0f3333c358e84de8b0d5578a73ff6f"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1f0f3333c358e84de8b0d5578a73ff6f">optionsfilename</a></td></tr>
+<tr class="memdesc:a1f0f3333c358e84de8b0d5578a73ff6f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Path to options/config file.  <br /></td></tr>
+<tr class="separator:a1f0f3333c358e84de8b0d5578a73ff6f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a65c8927f049a59d175799bfbb31ab250" id="r_a65c8927f049a59d175799bfbb31ab250"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a65c8927f049a59d175799bfbb31ab250">pqrfilename</a></td></tr>
+<tr class="memdesc:a65c8927f049a59d175799bfbb31ab250"><td class="mdescLeft">&#160;</td><td class="mdescRight">Path to input PQR file.  <br /></td></tr>
+<tr class="separator:a65c8927f049a59d175799bfbb31ab250"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9edca2ad6b750e50cae0d7be793741a5" id="r_a9edca2ad6b750e50cae0d7be793741a5"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a9edca2ad6b750e50cae0d7be793741a5">p4estfilename</a></td></tr>
+<tr class="memdesc:a9edca2ad6b750e50cae0d7be793741a5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Path to p4est checkpoint file.  <br /></td></tr>
+<tr class="separator:a9edca2ad6b750e50cae0d7be793741a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6013c2e73a20caab51bfd8c2f25480e0" id="r_a6013c2e73a20caab51bfd8c2f25480e0"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6013c2e73a20caab51bfd8c2f25480e0">surffilename</a></td></tr>
+<tr class="memdesc:a6013c2e73a20caab51bfd8c2f25480e0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Path to NanoShaper surface file.  <br /></td></tr>
+<tr class="separator:a6013c2e73a20caab51bfd8c2f25480e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6e57b67794fb48c5f9c2df7b7c82aae9" id="r_a6e57b67794fb48c5f9c2df7b7c82aae9"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6e57b67794fb48c5f9c2df7b7c82aae9">markerfilename</a></td></tr>
+<tr class="memdesc:a6e57b67794fb48c5f9c2df7b7c82aae9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Path to saved marker file.  <br /></td></tr>
+<tr class="separator:a6e57b67794fb48c5f9c2df7b7c82aae9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1d758b0108160763dddf3e4306b30f50" id="r_a1d758b0108160763dddf3e4306b30f50"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a1d758b0108160763dddf3e4306b30f50">pqr_atoms</a></td></tr>
+<tr class="memdesc:a1d758b0108160763dddf3e4306b30f50"><td class="mdescLeft">&#160;</td><td class="mdescRight">Inline PQR data (alternative to file)  <br /></td></tr>
+<tr class="separator:a1d758b0108160763dddf3e4306b30f50"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Post-processing flags</div></td></tr>
+<tr class="memitem:a07099aa2c65afcf1badd04105fb3a9d2" id="r_a07099aa2c65afcf1badd04105fb3a9d2"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a07099aa2c65afcf1badd04105fb3a9d2">atoms_write</a></td></tr>
+<tr class="memdesc:a07099aa2c65afcf1badd04105fb3a9d2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write potential on atoms if non-zero.  <br /></td></tr>
+<tr class="separator:a07099aa2c65afcf1badd04105fb3a9d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a89f91065362b2f1910da5873b531138b" id="r_a89f91065362b2f1910da5873b531138b"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a89f91065362b2f1910da5873b531138b">surf_write</a></td></tr>
+<tr class="memdesc:a89f91065362b2f1910da5873b531138b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write potential on surface if non-zero.  <br /></td></tr>
+<tr class="separator:a89f91065362b2f1910da5873b531138b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaac1686e5e2b30f68356cffd4589d983" id="r_aaac1686e5e2b30f68356cffd4589d983"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aaac1686e5e2b30f68356cffd4589d983">map_type</a></td></tr>
+<tr class="memdesc:aaac1686e5e2b30f68356cffd4589d983"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of potential map to export.  <br /></td></tr>
+<tr class="separator:aaac1686e5e2b30f68356cffd4589d983"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a47c4338d64840074317ec42e22c00170" id="r_a47c4338d64840074317ec42e22c00170"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a47c4338d64840074317ec42e22c00170">potential_map</a></td></tr>
+<tr class="memdesc:a47c4338d64840074317ec42e22c00170"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enable potential map output.  <br /></td></tr>
+<tr class="separator:a47c4338d64840074317ec42e22c00170"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a579dd0c47dcafe074e0b60925e77ccad" id="r_a579dd0c47dcafe074e0b60925e77ccad"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a579dd0c47dcafe074e0b60925e77ccad">eps_map</a></td></tr>
+<tr class="memdesc:a579dd0c47dcafe074e0b60925e77ccad"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enable dielectric map output.  <br /></td></tr>
+<tr class="separator:a579dd0c47dcafe074e0b60925e77ccad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3a25c156728a7294f90b17cafba125f2" id="r_a3a25c156728a7294f90b17cafba125f2"><td class="memItemLeft" align="right" valign="top">std::map&lt; int, tmesh_3d::quadrant_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a3a25c156728a7294f90b17cafba125f2">lookup_table</a></td></tr>
+<tr class="memdesc:a3a25c156728a7294f90b17cafba125f2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Quadrant lookup cache.  <br /></td></tr>
+<tr class="separator:a3a25c156728a7294f90b17cafba125f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Per-quadrant field arrays (cell-centred)</div></td></tr>
+<tr class="memitem:ae0ceaa5f2aa5ce801c3d4c0d5223c06b" id="r_ae0ceaa5f2aa5ce801c3d4c0d5223c06b"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ae0ceaa5f2aa5ce801c3d4c0d5223c06b">marker</a></td></tr>
+<tr class="memdesc:ae0ceaa5f2aa5ce801c3d4c0d5223c06b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Quadrant classification: 0=inside, 0.5=boundary, 1=outside.  <br /></td></tr>
+<tr class="separator:ae0ceaa5f2aa5ce801c3d4c0d5223c06b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad2d97878a54ee20cd1530b21c9e11400" id="r_ad2d97878a54ee20cd1530b21c9e11400"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ad2d97878a54ee20cd1530b21c9e11400">marker_k</a></td></tr>
+<tr class="memdesc:ad2d97878a54ee20cd1530b21c9e11400"><td class="mdescLeft">&#160;</td><td class="mdescRight">Quadrant classification including Stern layer.  <br /></td></tr>
+<tr class="separator:ad2d97878a54ee20cd1530b21c9e11400"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a84d44521fbde6ddad9c133ae5a03e957" id="r_a84d44521fbde6ddad9c133ae5a03e957"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a84d44521fbde6ddad9c133ae5a03e957">epsilon</a></td></tr>
+<tr class="memdesc:a84d44521fbde6ddad9c133ae5a03e957"><td class="mdescLeft">&#160;</td><td class="mdescRight">Dielectric constant per quadrant.  <br /></td></tr>
+<tr class="separator:a84d44521fbde6ddad9c133ae5a03e957"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7b510f8e7f268c325e075d882ec29da3" id="r_a7b510f8e7f268c325e075d882ec29da3"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a7b510f8e7f268c325e075d882ec29da3">epsilon_in</a></td></tr>
+<tr class="memdesc:a7b510f8e7f268c325e075d882ec29da3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Interior dielectric per quadrant.  <br /></td></tr>
+<tr class="separator:a7b510f8e7f268c325e075d882ec29da3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a698245e830f0274771d2e08f3ae5879f" id="r_a698245e830f0274771d2e08f3ae5879f"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a698245e830f0274771d2e08f3ae5879f">epsilon_out</a></td></tr>
+<tr class="memdesc:a698245e830f0274771d2e08f3ae5879f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Exterior dielectric per quadrant.  <br /></td></tr>
+<tr class="separator:a698245e830f0274771d2e08f3ae5879f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6c880680bf2608788374a5bfd77f1591" id="r_a6c880680bf2608788374a5bfd77f1591"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6c880680bf2608788374a5bfd77f1591">reaction</a></td></tr>
+<tr class="memdesc:a6c880680bf2608788374a5bfd77f1591"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reaction (κ²) parameter per quadrant.  <br /></td></tr>
+<tr class="separator:a6c880680bf2608788374a5bfd77f1591"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abb0a067ea4ad9a1738bd7b9744095e1a" id="r_abb0a067ea4ad9a1738bd7b9744095e1a"><td class="memItemLeft" align="right" valign="top">std::vector&lt; int &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abb0a067ea4ad9a1738bd7b9744095e1a">border_quad</a></td></tr>
+<tr class="memdesc:abb0a067ea4ad9a1738bd7b9744095e1a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Indices of boundary quadrants.  <br /></td></tr>
+<tr class="separator:abb0a067ea4ad9a1738bd7b9744095e1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a64e4ff0bcec1ca2c451dbd458baeec19" id="r_a64e4ff0bcec1ca2c451dbd458baeec19"><td class="memItemLeft" align="right" valign="top">std::vector&lt; double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a64e4ff0bcec1ca2c451dbd458baeec19">const_ones</a></td></tr>
+<tr class="memdesc:a64e4ff0bcec1ca2c451dbd458baeec19"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constant-1 auxiliary vector.  <br /></td></tr>
+<tr class="separator:a64e4ff0bcec1ca2c451dbd458baeec19"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr><td colspan="2"><div class="groupHeader">Distributed node-centred fields (BIM++)</div></td></tr>
+<tr class="memitem:ab3daea492c5690b67e91e033ac2f6085" id="r_ab3daea492c5690b67e91e033ac2f6085"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_vector &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab3daea492c5690b67e91e033ac2f6085">markn</a></td></tr>
+<tr class="memdesc:ab3daea492c5690b67e91e033ac2f6085"><td class="mdescLeft">&#160;</td><td class="mdescRight">Node-level marker.  <br /></td></tr>
+<tr class="separator:ab3daea492c5690b67e91e033ac2f6085"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aedaed5a229714981786df08d60809b77" id="r_aedaed5a229714981786df08d60809b77"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_vector &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aedaed5a229714981786df08d60809b77">epsilon_nodes</a></td></tr>
+<tr class="memdesc:aedaed5a229714981786df08d60809b77"><td class="mdescLeft">&#160;</td><td class="mdescRight">Node-level dielectric.  <br /></td></tr>
+<tr class="separator:aedaed5a229714981786df08d60809b77"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acdf7e0afa452648bb77e20653f30cc4a" id="r_acdf7e0afa452648bb77e20653f30cc4a"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_vector &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#acdf7e0afa452648bb77e20653f30cc4a">reaction_nodes</a></td></tr>
+<tr class="memdesc:acdf7e0afa452648bb77e20653f30cc4a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Node-level κ² field.  <br /></td></tr>
+<tr class="separator:acdf7e0afa452648bb77e20653f30cc4a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8713255678e5afc12b3f55686b2a88cf" id="r_a8713255678e5afc12b3f55686b2a88cf"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8713255678e5afc12b3f55686b2a88cf">net_charge</a></td></tr>
+<tr class="memdesc:a8713255678e5afc12b3f55686b2a88cf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Total charge of the solute [e].  <br /></td></tr>
+<tr class="separator:a8713255678e5afc12b3f55686b2a88cf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a36064372d1201f079e8441c94929cc75" id="r_a36064372d1201f079e8441c94929cc75"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_vector &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a36064372d1201f079e8441c94929cc75">phi</a></td></tr>
+<tr class="memdesc:a36064372d1201f079e8441c94929cc75"><td class="mdescLeft">&#160;</td><td class="mdescRight">Electric potential solution [kT/e].  <br /></td></tr>
+<tr class="separator:a36064372d1201f079e8441c94929cc75"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a26443a3b714ac95b374d26221d317b99" id="r_a26443a3b714ac95b374d26221d317b99"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_vector &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a26443a3b714ac95b374d26221d317b99">rho_fixed</a></td></tr>
+<tr class="memdesc:a26443a3b714ac95b374d26221d317b99"><td class="mdescLeft">&#160;</td><td class="mdescRight">Fixed charge density RHS.  <br /></td></tr>
+<tr class="separator:a26443a3b714ac95b374d26221d317b99"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a89703f64fb5be267fc302fb4c50cf7a0" id="r_a89703f64fb5be267fc302fb4c50cf7a0"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_vector &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a89703f64fb5be267fc302fb4c50cf7a0">ones</a></td></tr>
+<tr class="memdesc:a89703f64fb5be267fc302fb4c50cf7a0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Auxiliary all-ones vector.  <br /></td></tr>
+<tr class="separator:a89703f64fb5be267fc302fb4c50cf7a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8dcc76e631ea0c321af718fa87cfe014" id="r_a8dcc76e631ea0c321af718fa87cfe014"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_vector &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a8dcc76e631ea0c321af718fa87cfe014">rhs</a></td></tr>
+<tr class="memdesc:a8dcc76e631ea0c321af718fa87cfe014"><td class="mdescLeft">&#160;</td><td class="mdescRight">Right-hand side vector.  <br /></td></tr>
+<tr class="separator:a8dcc76e631ea0c321af718fa87cfe014"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abb8d4910e22c9bfdb970e0afa6b8ee41" id="r_abb8d4910e22c9bfdb970e0afa6b8ee41"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; distributed_sparse_matrix &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abb8d4910e22c9bfdb970e0afa6b8ee41">A</a></td></tr>
+<tr class="memdesc:abb8d4910e22c9bfdb970e0afa6b8ee41"><td class="mdescLeft">&#160;</td><td class="mdescRight">System matrix.  <br /></td></tr>
+<tr class="separator:abb8d4910e22c9bfdb970e0afa6b8ee41"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
@@ -372,14 +564,43 @@ Static Public Attributes</h2></td></tr>
 <tr class="memitem:ab5dccc00e94971b70343d94dee05536c" id="r_ab5dccc00e94971b70343d94dee05536c"><td class="memItemLeft" align="right" valign="top">static constexpr std::array&lt; int, 24 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ab5dccc00e94971b70343d94dee05536c">edge2nodes</a></td></tr>
 <tr class="separator:ab5dccc00e94971b70343d94dee05536c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
-Friends</h2></td></tr>
+<tr class="heading"><td colspan="2"><h2 class="groupheader">Option parsing and I/O</h2></td></tr>
+<tr class="memitem:a089bd6acbb0d02d356aec241c2b5b231" id="r_a089bd6acbb0d02d356aec241c2b5b231"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a089bd6acbb0d02d356aec241c2b5b231">parse_options</a> (int argc, char **argv)</td></tr>
+<tr class="memdesc:a089bd6acbb0d02d356aec241c2b5b231"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parse command-line arguments and populate all configuration fields.  <br /></td></tr>
+<tr class="separator:a089bd6acbb0d02d356aec241c2b5b231"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a003cd682f654be8009b2287758d72bf5" id="r_a003cd682f654be8009b2287758d72bf5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a003cd682f654be8009b2287758d72bf5">print_options</a> ()</td></tr>
+<tr class="memdesc:a003cd682f654be8009b2287758d72bf5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Print the current configuration to stdout (rank 0 only).  <br /></td></tr>
+<tr class="separator:a003cd682f654be8009b2287758d72bf5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac6808467c1c2d595fdd958a6f31a12b4" id="r_ac6808467c1c2d595fdd958a6f31a12b4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac6808467c1c2d595fdd958a6f31a12b4">read_atoms_from_pqr</a> (std::basic_istream&lt; char &gt; &amp;inputfile)</td></tr>
+<tr class="memdesc:ac6808467c1c2d595fdd958a6f31a12b4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Read atoms from a PQR-format input stream.  <br /></td></tr>
+<tr class="separator:ac6808467c1c2d595fdd958a6f31a12b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a671627ee501d5957ff11aa46d6cad9a7" id="r_a671627ee501d5957ff11aa46d6cad9a7"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a671627ee501d5957ff11aa46d6cad9a7">read_atoms_from_pdb</a> (std::basic_istream&lt; char &gt; &amp;inputfile)</td></tr>
+<tr class="memdesc:a671627ee501d5957ff11aa46d6cad9a7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Read atoms from a PDB-format input stream (charges and radii loaded separately).  <br /></td></tr>
+<tr class="separator:a671627ee501d5957ff11aa46d6cad9a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a86beea6d47af16e2d2d5cbdeaa713be1" id="r_a86beea6d47af16e2d2d5cbdeaa713be1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a86beea6d47af16e2d2d5cbdeaa713be1">read_atoms_from_class</a> ()</td></tr>
+<tr class="memdesc:a86beea6d47af16e2d2d5cbdeaa713be1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Read atoms from the inline <code>pqr_atoms</code> string field.  <br /></td></tr>
+<tr class="separator:a86beea6d47af16e2d2d5cbdeaa713be1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a60b2381dc5f9c24601cd6c83f84c38fd" id="r_a60b2381dc5f9c24601cd6c83f84c38fd"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a60b2381dc5f9c24601cd6c83f84c38fd">broadcast_vectors</a> ()</td></tr>
+<tr class="memdesc:a60b2381dc5f9c24601cd6c83f84c38fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Broadcast atomic data (positions, charges, radii) from rank 0 to all MPI ranks.  <br /></td></tr>
+<tr class="separator:a60b2381dc5f9c24601cd6c83f84c38fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aec61a2906caa3cc5d599e76bc7b28f1c" id="r_aec61a2906caa3cc5d599e76bc7b28f1c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aec61a2906caa3cc5d599e76bc7b28f1c">write_atoms_to_pqr</a> (std::basic_ostream&lt; char &gt; &amp;outputfile)</td></tr>
+<tr class="memdesc:aec61a2906caa3cc5d599e76bc7b28f1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write atomic data to a PQR-format output stream.  <br /></td></tr>
+<tr class="separator:aec61a2906caa3cc5d599e76bc7b28f1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac4b08e11c8bdbeb0f23bb9b8f7f94dd6" id="r_ac4b08e11c8bdbeb0f23bb9b8f7f94dd6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#ac4b08e11c8bdbeb0f23bb9b8f7f94dd6">write_potential_on_atoms</a> ()</td></tr>
+<tr class="memdesc:ac4b08e11c8bdbeb0f23bb9b8f7f94dd6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write the electric potential evaluated at each atom position to file.  <br /></td></tr>
+<tr class="separator:ac4b08e11c8bdbeb0f23bb9b8f7f94dd6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6bfe0b0a6cd30aedeab72978e845b99c" id="r_a6bfe0b0a6cd30aedeab72978e845b99c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a6bfe0b0a6cd30aedeab72978e845b99c">write_potential_on_atoms_fast</a> ()</td></tr>
+<tr class="memdesc:a6bfe0b0a6cd30aedeab72978e845b99c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write the electric potential at atom positions using fast interpolation.  <br /></td></tr>
+<tr class="separator:a6bfe0b0a6cd30aedeab72978e845b99c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a54fc217eeb0c8b26e9b494bad1422bdd" id="r_a54fc217eeb0c8b26e9b494bad1422bdd"><td class="memItemLeft" align="right" valign="top">std::basic_istream&lt; char &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a54fc217eeb0c8b26e9b494bad1422bdd">operator&gt;&gt;</a> (std::basic_istream&lt; char &gt; &amp;inputfile, NS::Atom &amp;a)</td></tr>
 <tr class="separator:a54fc217eeb0c8b26e9b494bad1422bdd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa050ae9c3805d8ecae282994091cbc3d" id="r_aa050ae9c3805d8ecae282994091cbc3d"><td class="memItemLeft" align="right" valign="top">std::basic_istream&lt; char &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aa050ae9c3805d8ecae282994091cbc3d">operator&gt;&gt;</a> (std::basic_istream&lt; char &gt; &amp;inputfile, std::array&lt; float, 5 &gt; &amp;a)</td></tr>
 <tr class="separator:aa050ae9c3805d8ecae282994091cbc3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Main struct for the NextGenPB Poisson-Boltzmann solver. </p>
+<p>Holds all configuration parameters, mesh data, distributed linear algebra objects, and solver methods. Instantiated once per run; all MPI ranks share the same struct layout, with data partitioned via p4est and BIM++. </p>
+</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="ae8a8828beb453fac022899a45aa71080" name="ae8a8828beb453fac022899a45aa71080"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ae8a8828beb453fac022899a45aa71080">&#9670;&#160;</a></span>poisson_boltzmann()</h2>
 
@@ -475,6 +696,14 @@ Friends</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
+<p>Replace each nodal value in <code>phi</code> with its absolute value (in-place). </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">phi</td><td>Distributed vector to modify. </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="a5afeb9dbce6ab41d2c3394c319ad48c3" name="a5afeb9dbce6ab41d2c3394c319ad48c3"></a>
@@ -491,6 +720,8 @@ Friends</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Compute the analytical Debye-Hückel potential on the full mesh and export. </p>
 
 </div>
 </div>
@@ -518,6 +749,43 @@ Friends</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
+<p>Evaluate the analytical Debye-Hückel solution at a single point. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">x</td><td>X-coordinate [Å]. </td></tr>
+    <tr><td class="paramname">y</td><td>Y-coordinate [Å]. </td></tr>
+    <tr><td class="paramname">z</td><td>Z-coordinate [Å]. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Analytical potential value [kT/e]. </dd></dl>
+
+</div>
+</div>
+<a id="adccd692c47a2b21c2492373399f49f1d" name="adccd692c47a2b21c2492373399f49f1d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adccd692c47a2b21c2492373399f49f1d">&#9670;&#160;</a></span>assemple_system_matrix()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void poisson_boltzmann::assemple_system_matrix </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;</td>          <td class="paramname"><span class="paramname"><em>ray_cache</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Assemble the FEM system matrix A and right-hand side rhs. </p>
+<p>Iterates over all local quadrants, integrates the bilinear form (ε ∇φ, ∇v) + (κ² φ, v) using quadrature, and assembles the distributed sparse matrix A and vector rhs with boundary conditions.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Ray cache for surface intersection queries. </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="a60b2381dc5f9c24601cd6c83f84c38fd" name="a60b2381dc5f9c24601cd6c83f84c38fd"></a>
@@ -534,6 +802,8 @@ Friends</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Broadcast atomic data (positions, charges, radii) from rank 0 to all MPI ranks. </p>
 
 </div>
 </div>
@@ -571,6 +841,8 @@ Friends</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
+<p>p4est search callback used during atom-to-quadrant mapping. </p>
+
 </div>
 </div>
 <a id="a530d2c030025f0f0a99624b671d043c5" name="a530d2c030025f0f0a99624b671d043c5"></a>
@@ -592,22 +864,111 @@ Friends</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
+<p>Classify a quadrant by the standard marching-cubes algorithm. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">quadrant</td><td>Quadrant to classify. </td></tr>
+    <tr><td class="paramname">isolevel</td><td>Iso-value for surface extraction. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Cube index (0–255) for the marching-cubes lookup table. </dd></dl>
+
 </div>
 </div>
-<a id="a9468821e793841db22e55b21da6f19d2" name="a9468821e793841db22e55b21da6f19d2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9468821e793841db22e55b21da6f19d2">&#9670;&#160;</a></span>classifyCube_flux()</h2>
+<a id="acb8f442acde1eea9b6aa5cb45779e635" name="acb8f442acde1eea9b6aa5cb45779e635"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acb8f442acde1eea9b6aa5cb45779e635">&#9670;&#160;</a></span>classifyCube_fast()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">std::tuple&lt; std::array&lt; double, 8 &gt;, std::array&lt; double, 8 &gt;, std::vector&lt; double &gt;, std::vector&lt; int &gt; &gt; poisson_boltzmann::classifyCube_flux </td>
+          <td class="memname">int poisson_boltzmann::classifyCube_fast </td>
           <td>(</td>
-          <td class="paramtype">tmesh_3d::quadrant_iterator &amp;</td>          <td class="paramname"><span class="paramname"><em>quadrant</em></span></td><td>)</td>
+          <td class="paramtype">tmesh_3d::quadrant_iterator &amp;</td>          <td class="paramname"><span class="paramname"><em>quadrant</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
           <td></td>
+          <td class="paramtype">double</td>          <td class="paramname"><span class="paramname"><em>isolevel</em></span>&#160;)</td>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Classify a quadrant using the fast (precomputed) marching-cubes path. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">quadrant</td><td>Quadrant to classify. </td></tr>
+    <tr><td class="paramname">isolevel</td><td>Iso-value for surface extraction. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Cube index (0–255). </dd></dl>
+
+</div>
+</div>
+<a id="a6e1c70c347c346067e902b7f9f85541a" name="a6e1c70c347c346067e902b7f9f85541a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6e1c70c347c346067e902b7f9f85541a">&#9670;&#160;</a></span>classifyCube_flux()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::tuple&lt; std::array&lt; double, 8 &gt;, std::array&lt; double, 8 &gt;, std::vector&lt; int &gt;, std::vector&lt; int &gt; &gt; poisson_boltzmann::classifyCube_flux </td>
+          <td>(</td>
+          <td class="paramtype">tmesh_3d::quadrant_iterator &amp;</td>          <td class="paramname"><span class="paramname"><em>quadrant</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::array&lt; double, 8 &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>tmp_phi</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::array&lt; double, 8 &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>tmp_eps</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Classify a quadrant and return potential/dielectric values on edges with flux information. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">quadrant</td><td>Quadrant to classify. </td></tr>
+    <tr><td class="paramname">tmp_phi</td><td>Output: potential values at the 8 nodes. </td></tr>
+    <tr><td class="paramname">tmp_eps</td><td>Output: dielectric values at the 8 nodes. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Tuple (phi, eps, edge_indices, flux_directions). </dd></dl>
+
+</div>
+</div>
+<a id="a66ca50a2395a6ed47d98cfdc593d3799" name="a66ca50a2395a6ed47d98cfdc593d3799"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a66ca50a2395a6ed47d98cfdc593d3799">&#9670;&#160;</a></span>classifyCube_flux_fast()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::tuple&lt; std::array&lt; double, 8 &gt;, std::array&lt; double, 8 &gt;, std::vector&lt; int &gt;, std::vector&lt; int &gt; &gt; poisson_boltzmann::classifyCube_flux_fast </td>
+          <td>(</td>
+          <td class="paramtype">tmesh_3d::quadrant_iterator &amp;</td>          <td class="paramname"><span class="paramname"><em>quadrant</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::array&lt; double, 8 &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>tmp_phi</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::array&lt; double, 8 &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>tmp_eps</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Fast version of classifyCube_flux using precomputed fields. </p>
 
 </div>
 </div>
@@ -629,6 +990,16 @@ Friends</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>p4est point-search callback: checks if atom <code>i</code> is inside <code>quadrant</code>. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">i</td><td>Atom index. </td></tr>
+    <tr><td class="paramname">quadrant</td><td>p4est quadrant to test. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>True if the atom lies inside the quadrant. </dd></dl>
 
 </div>
 </div>
@@ -655,6 +1026,42 @@ Friends</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Compute the Coulomb (Debye-Hückel) boundary potential at a point. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">x</td><td>X-coordinate [Å]. </td></tr>
+    <tr><td class="paramname">y</td><td>Y-coordinate [Å]. </td></tr>
+    <tr><td class="paramname">z</td><td>Z-coordinate [Å]. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Boundary potential value [kT/e]. </dd></dl>
+
+</div>
+</div>
+<a id="a01495c9266fb32ee986b43b8033473f8" name="a01495c9266fb32ee986b43b8033473f8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a01495c9266fb32ee986b43b8033473f8">&#9670;&#160;</a></span>create_density_map()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void poisson_boltzmann::create_density_map </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;</td>          <td class="paramname"><span class="paramname"><em>ray_cache</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Compute the fixed-charge density map on the octree nodes. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Ray cache for surface intersection queries. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -728,6 +1135,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Build the adaptive octree mesh from atomic positions (standard mode). </p>
+
 </div>
 </div>
 <a id="ae30ca6de93b5007013d36a0c15ae7233" name="ae30ca6de93b5007013d36a0c15ae7233"></a>
@@ -745,6 +1154,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Build the adaptive octree mesh using a NanoShaper-defined domain. </p>
+
 </div>
 </div>
 <a id="a6425a8be9d2e3794a2ccce9e7b1216d8" name="a6425a8be9d2e3794a2ccce9e7b1216d8"></a>
@@ -761,6 +1172,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Build the adaptive octree mesh with scale-based stretching. </p>
 
 </div>
 </div>
@@ -783,6 +1196,16 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Compute the fraction of each quadrant edge that lies inside the molecular surface. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">quadrant</td><td>Quadrant to analyse. </td></tr>
+    <tr><td class="paramname">ray_cache</td><td>Ray cache for surface queries. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Array of 12 fractional intersection lengths (one per edge). </dd></dl>
+
 </div>
 </div>
 <a id="a22fc8312ed89a977fb4726cfedf19278" name="a22fc8312ed89a977fb4726cfedf19278"></a>
@@ -799,6 +1222,14 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Compute and print the solvation energy components (standard path). </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Ray cache for surface intersection queries. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -817,6 +1248,14 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Compute and print the solvation energy components using fast interpolation. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Ray cache for surface intersection queries. </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="a374bdbb8bd2c5a24081b02dab0296ff0" name="a374bdbb8bd2c5a24081b02dab0296ff0"></a>
@@ -833,6 +1272,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Export the mesh with marker values to VTK format. </p>
 
 </div>
 </div>
@@ -851,6 +1292,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Save the current p4est forest to a checkpoint file. </p>
+
 </div>
 </div>
 <a id="a80090bff7521b64888126a4803c0fd80" name="a80090bff7521b64888126a4803c0fd80"></a>
@@ -868,6 +1311,14 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Export the electric potential field to a binary map file. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Ray cache used during export. </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="a115288511e9c1376e9da1d7684751411" name="a115288511e9c1376e9da1d7684751411"></a>
@@ -884,6 +1335,14 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Export the marked mesh to VTK format for visualisation. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Ray cache used to evaluate the surface field. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -906,6 +1365,16 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Look up the triangle connectivity for a marching-cubes cube index. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">cubeindex</td><td>Cube classification index (0–255). </td></tr>
+    <tr><td class="paramname">triangles</td><td>Output: up to 5 triangles, each with 3 vertex indices. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Number of triangles generated. </dd></dl>
+
 </div>
 </div>
 <a id="a50f995bf3630328870d6ce12dee2cddf" name="a50f995bf3630328870d6ce12dee2cddf"></a>
@@ -922,6 +1391,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Initialise the p4est forest with uniform refinement (level = unilevel). </p>
 
 </div>
 </div>
@@ -940,6 +1411,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Initialise the p4est forest with scale-based refinement inside a box. </p>
+
 </div>
 </div>
 <a id="ada2c67497ddcab8b622e8863d0a24d79" name="ada2c67497ddcab8b622e8863d0a24d79"></a>
@@ -956,6 +1429,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Initialise the p4est forest with scale-based refinement. </p>
 
 </div>
 </div>
@@ -977,6 +1452,16 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Test whether atom <code>i</code> is geometrically inside quadrant <code>q</code>. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">i</td><td>Atom to test. </td></tr>
+    <tr><td class="paramname">q</td><td>Octree quadrant to test against. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>True if the atom centre lies inside the quadrant. </dd></dl>
 
 </div>
 </div>
@@ -1150,6 +1635,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Test whether atom <code>i</code> is geometrically inside a refined quadrant <code>q</code>. </p>
+
 </div>
 </div>
 <a id="a6c5b54f4a40fe7b43914052f2bd4c691" name="a6c5b54f4a40fe7b43914052f2bd4c691"></a>
@@ -1193,6 +1680,14 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Solve the system Aφ = rhs using the LIS iterative solver. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Ray cache (used for ghost synchronisation after solve). </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="a804c4eaed5e1621c7e847403a0f6cd94" name="a804c4eaed5e1621c7e847403a0f6cd94"></a>
@@ -1209,6 +1704,14 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Solve the system Aφ = rhs using the MUMPS direct solver. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Ray cache (used for ghost synchronisation after solve). </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -1246,6 +1749,18 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Compute the surface normal and edge fraction at a boundary edge intersection. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">quadrant</td><td>Quadrant containing the edge. </td></tr>
+    <tr><td class="paramname">ray_cache</td><td>Ray cache for surface queries. </td></tr>
+    <tr><td class="paramname">edge</td><td>Edge index (0–11). </td></tr>
+    <tr><td class="paramname">norm</td><td>Output: outward unit normal at the intersection point. </td></tr>
+    <tr><td class="paramname">frac</td><td>Output: fractional distance from the first node to the intersection. </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="a089bd6acbb0d02d356aec241c2b5b231" name="a089bd6acbb0d02d356aec241c2b5b231"></a>
@@ -1267,6 +1782,66 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Parse command-line arguments and populate all configuration fields. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">argc</td><td>Argument count from <a class="el" href="poisson__boltzmann_8cpp.html#a3c04138a5bfe5d72780bb7e82a18e627">main()</a>. </td></tr>
+    <tr><td class="paramname">argv</td><td>Argument values from <a class="el" href="poisson__boltzmann_8cpp.html#a3c04138a5bfe5d72780bb7e82a18e627">main()</a>. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>0 on success, non-zero on error. </dd></dl>
+
+</div>
+</div>
+<a id="a3308de1061ad3f513015c0b7b28ad858" name="a3308de1061ad3f513015c0b7b28ad858"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3308de1061ad3f513015c0b7b28ad858">&#9670;&#160;</a></span>pot_field()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void poisson_boltzmann::pot_field </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;</td>          <td class="paramname"><span class="paramname"><em>ray_cache</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Compute and export the electric potential and field on atom positions (standard path). </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Ray cache for surface intersection queries. </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a477f23b8f77d301bdd30f77543ad5084" name="a477f23b8f77d301bdd30f77543ad5084"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a477f23b8f77d301bdd30f77543ad5084">&#9670;&#160;</a></span>pot_field_fast()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void poisson_boltzmann::pot_field_fast </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structray__cache__t.html">ray_cache_t</a> &amp;</td>          <td class="paramname"><span class="paramname"><em>ray_cache</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Compute and export the electric potential and field on atom positions (fast path). </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Ray cache for surface intersection queries. </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="a003cd682f654be8009b2287758d72bf5" name="a003cd682f654be8009b2287758d72bf5"></a>
@@ -1283,6 +1858,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Print the current configuration to stdout (rank 0 only). </p>
 
 </div>
 </div>
@@ -1301,6 +1878,33 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Read atoms from the inline <code>pqr_atoms</code> string field. </p>
+
+</div>
+</div>
+<a id="a671627ee501d5957ff11aa46d6cad9a7" name="a671627ee501d5957ff11aa46d6cad9a7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a671627ee501d5957ff11aa46d6cad9a7">&#9670;&#160;</a></span>read_atoms_from_pdb()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void poisson_boltzmann::read_atoms_from_pdb </td>
+          <td>(</td>
+          <td class="paramtype">std::basic_istream&lt; char &gt; &amp;</td>          <td class="paramname"><span class="paramname"><em>inputfile</em></span></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Read atoms from a PDB-format input stream (charges and radii loaded separately). </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">inputfile</td><td>Opened input stream for a .pdb file. </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="ac6808467c1c2d595fdd958a6f31a12b4" name="ac6808467c1c2d595fdd958a6f31a12b4"></a>
@@ -1317,6 +1921,14 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Read atoms from a PQR-format input stream. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">inputfile</td><td>Opened input stream for a .pqr file. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -1335,6 +1947,14 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Refine only the quadrants that straddle the molecular surface (no interior refinement). </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Populated ray cache for surface intersection queries. </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="abd0234d354952b2c942ca3ec211804be" name="abd0234d354952b2c942ca3ec211804be"></a>
@@ -1352,6 +1972,14 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Refine quadrants near the molecular surface until maxlevel is reached. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Populated ray cache for surface intersection queries. </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="adb158be89b73d31e6703b5cab7472027" name="adb158be89b73d31e6703b5cab7472027"></a>
@@ -1368,6 +1996,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Perform p4est point search to map all atoms to their owning quadrants. </p>
 
 </div>
 </div>
@@ -1394,6 +2024,8 @@ Notes</h3>
 </table>
 </div><div class="memdoc">
 
+<p>p4est refinement callback that always returns 1 (refine every quadrant). </p>
+
 </div>
 </div>
 <a id="aec61a2906caa3cc5d599e76bc7b28f1c" name="aec61a2906caa3cc5d599e76bc7b28f1c"></a>
@@ -1410,6 +2042,14 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Write atomic data to a PQR-format output stream. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">outputfile</td><td>Opened output stream for a .pqr file. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -1428,6 +2068,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Write the electric potential evaluated at each atom position to file. </p>
+
 </div>
 </div>
 <a id="a6bfe0b0a6cd30aedeab72978e845b99c" name="a6bfe0b0a6cd30aedeab72978e845b99c"></a>
@@ -1445,6 +2087,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Write the electric potential at atom positions using fast interpolation. </p>
+
 </div>
 </div>
 <a id="a97e49efcfc205f254c0cf82496014a0c" name="a97e49efcfc205f254c0cf82496014a0c"></a>
@@ -1461,6 +2105,14 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Write the electric potential sampled on the molecular surface to file. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ray_cache</td><td>Ray cache for surface intersection queries. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -1524,6 +2176,38 @@ Notes</h3>
 </div>
 </div>
 <h2 class="groupheader">Member Data Documentation</h2>
+<a id="abb8d4910e22c9bfdb970e0afa6b8ee41" name="abb8d4910e22c9bfdb970e0afa6b8ee41"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abb8d4910e22c9bfdb970e0afa6b8ee41">&#9670;&#160;</a></span>A</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::unique_ptr&lt;distributed_sparse_matrix&gt; poisson_boltzmann::A</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>System matrix. </p>
+
+</div>
+</div>
+<a id="ada5938a7624000c1545700c2c72aa6e5" name="ada5938a7624000c1545700c2c72aa6e5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ada5938a7624000c1545700c2c72aa6e5">&#9670;&#160;</a></span>aligned</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int poisson_boltzmann::aligned = 0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Align mesh to axes flag. </p>
+
+</div>
+</div>
 <a id="aaf0802ca2d2e4c159b03246f50cd1b33" name="aaf0802ca2d2e4c159b03246f50cd1b33"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aaf0802ca2d2e4c159b03246f50cd1b33">&#9670;&#160;</a></span>atoms</h2>
 
@@ -1535,6 +2219,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Full atom list (NanoShaper format) </p>
 
 </div>
 </div>
@@ -1550,6 +2236,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Write potential on atoms if non-zero. </p>
+
 </div>
 </div>
 <a id="ab66e7d15f0a17db0a01fd36a8e1ad928" name="ab66e7d15f0a17db0a01fd36a8e1ad928"></a>
@@ -1563,6 +2251,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Boundary condition type (0 = Coulomb, …) </p>
 
 </div>
 </div>
@@ -1578,6 +2268,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Boundary cell pairs. </p>
+
 </div>
 </div>
 <a id="abb0a067ea4ad9a1738bd7b9744095e1a" name="abb0a067ea4ad9a1738bd7b9744095e1a"></a>
@@ -1591,6 +2283,24 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Indices of boundary quadrants. </p>
+
+</div>
+</div>
+<a id="affa6db11aac5581ae4000ffbbc8dfd74" name="affa6db11aac5581ae4000ffbbc8dfd74"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#affa6db11aac5581ae4000ffbbc8dfd74">&#9670;&#160;</a></span>calc_coulombic</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int poisson_boltzmann::calc_coulombic</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Include Coulombic energy term. </p>
 
 </div>
 </div>
@@ -1606,6 +2316,40 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Compute solvation energy if non-zero. </p>
+
+</div>
+</div>
+<a id="a11a18b8dc1f819d78316859b15780891" name="a11a18b8dc1f819d78316859b15780891"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a11a18b8dc1f819d78316859b15780891">&#9670;&#160;</a></span>calc_field_term</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int poisson_boltzmann::calc_field_term</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Compute electric field on atoms. </p>
+
+</div>
+</div>
+<a id="ac57bef06355c4ac951a854c342ce2d5d" name="ac57bef06355c4ac951a854c342ce2d5d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac57bef06355c4ac951a854c342ce2d5d">&#9670;&#160;</a></span>calc_potential_term</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int poisson_boltzmann::calc_potential_term</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Compute potential on atoms. </p>
+
 </div>
 </div>
 <a id="a3bdf63e7b7cab2be4cf74a017ae37e38" name="a3bdf63e7b7cab2be4cf74a017ae37e38"></a>
@@ -1619,6 +2363,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Center of the bounding box [Å]. </p>
 
 </div>
 </div>
@@ -1634,6 +2380,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Center for focusing mesh [Å]. </p>
+
 </div>
 </div>
 <a id="af998f20b72a695f7b080116dbee90c95" name="af998f20b72a695f7b080116dbee90c95"></a>
@@ -1647,6 +2395,56 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Partial charges [e]. </p>
+
+</div>
+</div>
+<a id="aa3df357e8c8aad146b56d022cbf16260" name="aa3df357e8c8aad146b56d022cbf16260"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa3df357e8c8aad146b56d022cbf16260">&#9670;&#160;</a></span>chargefilename</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string poisson_boltzmann::chargefilename</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>File with partial charges. </p>
+
+</div>
+</div>
+<a id="a64e4ff0bcec1ca2c451dbd458baeec19" name="a64e4ff0bcec1ca2c451dbd458baeec19"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a64e4ff0bcec1ca2c451dbd458baeec19">&#9670;&#160;</a></span>const_ones</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;double&gt; poisson_boltzmann::const_ones</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Constant-1 auxiliary vector. </p>
+
+</div>
+</div>
+<a id="ab3655eec460d181b1847ece9e6434cae" name="ab3655eec460d181b1847ece9e6434cae"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab3655eec460d181b1847ece9e6434cae">&#9670;&#160;</a></span>coul_energy</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double poisson_boltzmann::coul_energy = 0.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Coulombic energy contribution [kT]. </p>
 
 </div>
 </div>
@@ -1662,6 +2460,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Dielectric constant inside the solute. </p>
+
 </div>
 </div>
 <a id="a46317d7e6285ea7ee3399fd55f8a0e01" name="a46317d7e6285ea7ee3399fd55f8a0e01"></a>
@@ -1675,6 +2475,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Dielectric constant of the solvent. </p>
 
 </div>
 </div>
@@ -1750,6 +2552,38 @@ Notes</h3>
 
 </div>
 </div>
+<a id="ad403063be44f640737aceb5ae77028e5" name="ad403063be44f640737aceb5ae77028e5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad403063be44f640737aceb5ae77028e5">&#9670;&#160;</a></span>energy_pol</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double poisson_boltzmann::energy_pol = 0.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Polarisation energy contribution [kT]. </p>
+
+</div>
+</div>
+<a id="a27c7259448f173c8bd7d489a25c447c5" name="a27c7259448f173c8bd7d489a25c447c5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a27c7259448f173c8bd7d489a25c447c5">&#9670;&#160;</a></span>energy_react</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double poisson_boltzmann::energy_react = 0.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Reaction field energy contribution [kT]. </p>
+
+</div>
+</div>
 <a id="a579dd0c47dcafe074e0b60925e77ccad" name="a579dd0c47dcafe074e0b60925e77ccad"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a579dd0c47dcafe074e0b60925e77ccad">&#9670;&#160;</a></span>eps_map</h2>
 
@@ -1761,6 +2595,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Enable dielectric map output. </p>
 
 </div>
 </div>
@@ -1776,6 +2612,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Dielectric constant per quadrant. </p>
+
 </div>
 </div>
 <a id="a7b510f8e7f268c325e075d882ec29da3" name="a7b510f8e7f268c325e075d882ec29da3"></a>
@@ -1789,6 +2627,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Interior dielectric per quadrant. </p>
 
 </div>
 </div>
@@ -1804,6 +2644,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Node-level dielectric. </p>
+
 </div>
 </div>
 <a id="a698245e830f0274771d2e08f3ae5879f" name="a698245e830f0274771d2e08f3ae5879f"></a>
@@ -1818,19 +2660,39 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Exterior dielectric per quadrant. </p>
+
 </div>
 </div>
-<a id="af840403e584d64807c3d6ddcff9b792a" name="af840403e584d64807c3d6ddcff9b792a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af840403e584d64807c3d6ddcff9b792a">&#9670;&#160;</a></span>int_nodes</h2>
+<a id="a184c2e1c77989684f4d9c8f52895b09f" name="a184c2e1c77989684f4d9c8f52895b09f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a184c2e1c77989684f4d9c8f52895b09f">&#9670;&#160;</a></span>filetype</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">std::set&lt;std::array&lt;int, 2&gt; &gt; poisson_boltzmann::int_nodes</td>
+          <td class="memname">std::string poisson_boltzmann::filetype</td>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Input file type ("pqr", "pdb", …) </p>
+
+</div>
+</div>
+<a id="a4ab1d18f724a0024d68c7147c4604bc5" name="a4ab1d18f724a0024d68c7147c4604bc5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4ab1d18f724a0024d68c7147c4604bc5">&#9670;&#160;</a></span>index_atoms</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;int&gt; poisson_boltzmann::index_atoms</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Atom index mapping. </p>
 
 </div>
 </div>
@@ -1846,6 +2708,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Ionic strength [mol/L]. </p>
+
 </div>
 </div>
 <a id="af71100dfe72d7c718bd7a5e0a3ea4d29" name="af71100dfe72d7c718bd7a5e0a3ea4d29"></a>
@@ -1859,6 +2723,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Focusing sub-box: min corner [Å]. </p>
 
 </div>
 </div>
@@ -1874,6 +2740,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Stretched mesh: min (x,y,z) corner [Å]. </p>
+
 </div>
 </div>
 <a id="ad1a35cfa08a4182b5ed26a69e811e2bd" name="ad1a35cfa08a4182b5ed26a69e811e2bd"></a>
@@ -1887,6 +2755,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Refined sub-box: min corner [Å]. </p>
 
 </div>
 </div>
@@ -1902,6 +2772,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Side length of the coarsest tree [Å]. </p>
+
 </div>
 </div>
 <a id="a2a13fa4678d6fd832174e499c2274b13" name="a2a13fa4678d6fd832174e499c2274b13"></a>
@@ -1915,6 +2787,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>"mumps" or "lis" </p>
 
 </div>
 </div>
@@ -1930,6 +2804,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Options string passed to LIS. </p>
+
 </div>
 </div>
 <a id="ad8b0b210be7ff7fc926789b39b2f4d5f" name="ad8b0b210be7ff7fc926789b39b2f4d5f"></a>
@@ -1943,6 +2819,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>1 = linearized PBE, 0 = non-linear </p>
 
 </div>
 </div>
@@ -1958,6 +2836,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Cubic mesh: min (x,y,z) corner [Å]. </p>
+
 </div>
 </div>
 <a id="aa192b55665beeeafcbab572a7338c05f" name="aa192b55665beeeafcbab572a7338c05f"></a>
@@ -1971,6 +2851,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Local refinement flag. </p>
 
 </div>
 </div>
@@ -1986,6 +2868,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Enable local refinement near surface. </p>
+
 </div>
 </div>
 <a id="a3a25c156728a7294f90b17cafba125f2" name="a3a25c156728a7294f90b17cafba125f2"></a>
@@ -1999,6 +2883,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Quadrant lookup cache. </p>
 
 </div>
 </div>
@@ -2014,6 +2900,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Type of potential map to export. </p>
+
 </div>
 </div>
 <a id="ae0ceaa5f2aa5ce801c3d4c0d5223c06b" name="ae0ceaa5f2aa5ce801c3d4c0d5223c06b"></a>
@@ -2027,6 +2915,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Quadrant classification: 0=inside, 0.5=boundary, 1=outside. </p>
 
 </div>
 </div>
@@ -2042,6 +2932,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Quadrant classification including Stern layer. </p>
+
 </div>
 </div>
 <a id="a6e57b67794fb48c5f9c2df7b7c82aae9" name="a6e57b67794fb48c5f9c2df7b7c82aae9"></a>
@@ -2055,6 +2947,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Path to saved marker file. </p>
 
 </div>
 </div>
@@ -2070,6 +2964,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Node-level marker. </p>
+
 </div>
 </div>
 <a id="ada70a8b8390e0a273d44ea1be8b12237" name="ada70a8b8390e0a273d44ea1be8b12237"></a>
@@ -2083,6 +2979,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Maximum octree refinement level. </p>
 
 </div>
 </div>
@@ -2098,6 +2996,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>0 = cubic, 1 = stretched, 2 = custom </p>
+
 </div>
 </div>
 <a id="a8d0fbc088f8db88c9e68b680a048169b" name="a8d0fbc088f8db88c9e68b680a048169b"></a>
@@ -2111,6 +3011,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Minimum octree refinement level. </p>
 
 </div>
 </div>
@@ -2126,6 +3028,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>MPI communicator. </p>
+
 </div>
 </div>
 <a id="a4094f5d90666822dc20feb754d2a7779" name="a4094f5d90666822dc20feb754d2a7779"></a>
@@ -2139,6 +3043,40 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Grid resolution for focusing region. </p>
+
+</div>
+</div>
+<a id="a83bd2a1a34c285fc882b55113f5e0964" name="a83bd2a1a34c285fc882b55113f5e0964"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a83bd2a1a34c285fc882b55113f5e0964">&#9670;&#160;</a></span>name_pqr</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string poisson_boltzmann::name_pqr</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Base name for PQR output. </p>
+
+</div>
+</div>
+<a id="a8713255678e5afc12b3f55686b2a88cf" name="a8713255678e5afc12b3f55686b2a88cf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8713255678e5afc12b3f55686b2a88cf">&#9670;&#160;</a></span>net_charge</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double poisson_boltzmann::net_charge</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Total charge of the solute [e]. </p>
 
 </div>
 </div>
@@ -2154,6 +3092,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Number of threads for NanoShaper. </p>
+
 </div>
 </div>
 <a id="a8ff44147adfe9489114a7ee804cc7c54" name="a8ff44147adfe9489114a7ee804cc7c54"></a>
@@ -2168,19 +3108,23 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Number of octree trees per axis. </p>
+
 </div>
 </div>
-<a id="acd4e8ee8e42b10514e17fa886a4e0286" name="acd4e8ee8e42b10514e17fa886a4e0286"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acd4e8ee8e42b10514e17fa886a4e0286">&#9670;&#160;</a></span>ones_in</h2>
+<a id="a89703f64fb5be267fc302fb4c50cf7a0" name="a89703f64fb5be267fc302fb4c50cf7a0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a89703f64fb5be267fc302fb4c50cf7a0">&#9670;&#160;</a></span>ones</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">std::vector&lt;double&gt; poisson_boltzmann::ones_in</td>
+          <td class="memname">std::unique_ptr&lt;distributed_vector&gt; poisson_boltzmann::ones</td>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Auxiliary all-ones vector. </p>
 
 </div>
 </div>
@@ -2196,6 +3140,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Path to options/config file. </p>
+
 </div>
 </div>
 <a id="a70ab9b61836e45760a0449ebfb140dd4" name="a70ab9b61836e45760a0449ebfb140dd4"></a>
@@ -2210,6 +3156,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Refinement level in outer region. </p>
+
 </div>
 </div>
 <a id="a9edca2ad6b750e50cae0d7be793741a5" name="a9edca2ad6b750e50cae0d7be793741a5"></a>
@@ -2223,6 +3171,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Path to p4est checkpoint file. </p>
 
 </div>
 </div>
@@ -2252,6 +3202,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Stretching profile control points. </p>
+
 </div>
 </div>
 <a id="a36064372d1201f079e8441c94929cc75" name="a36064372d1201f079e8441c94929cc75"></a>
@@ -2265,6 +3217,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Electric potential solution [kT/e]. </p>
 
 </div>
 </div>
@@ -2280,6 +3234,24 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Atomic positions [Å]. </p>
+
+</div>
+</div>
+<a id="a26ef58cd79162cbf259302d9814d94fa" name="a26ef58cd79162cbf259302d9814d94fa"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a26ef58cd79162cbf259302d9814d94fa">&#9670;&#160;</a></span>pot_bc</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">double poisson_boltzmann::pot_bc = 0.0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Potential value at outer boundary [kT/e]. </p>
+
 </div>
 </div>
 <a id="a47c4338d64840074317ec42e22c00170" name="a47c4338d64840074317ec42e22c00170"></a>
@@ -2293,6 +3265,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Enable potential map output. </p>
 
 </div>
 </div>
@@ -2308,6 +3282,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Inline PQR data (alternative to file) </p>
+
 </div>
 </div>
 <a id="a65c8927f049a59d175799bfbb31ab250" name="a65c8927f049a59d175799bfbb31ab250"></a>
@@ -2321,6 +3297,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Path to input PQR file. </p>
 
 </div>
 </div>
@@ -2336,6 +3314,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Probe radius for SES [Å]. </p>
+
 </div>
 </div>
 <a id="ae687636e97546958daadd62f42999c9a" name="ae687636e97546958daadd62f42999c9a"></a>
@@ -2349,6 +3329,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Van der Waals radii [Å]. </p>
 
 </div>
 </div>
@@ -2364,6 +3346,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Focusing sub-box: max corner [Å]. </p>
+
 </div>
 </div>
 <a id="a5de7c54d4190b7af042e18fcd2cf3670" name="a5de7c54d4190b7af042e18fcd2cf3670"></a>
@@ -2377,6 +3361,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Stretched mesh: max (x,y,z) corner [Å]. </p>
 
 </div>
 </div>
@@ -2392,6 +3378,40 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Refined sub-box: max corner [Å]. </p>
+
+</div>
+</div>
+<a id="a2a2dfb9c4f6a544fcb4c06f8a45a68af" name="a2a2dfb9c4f6a544fcb4c06f8a45a68af"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2a2dfb9c4f6a544fcb4c06f8a45a68af">&#9670;&#160;</a></span>radiusfilename</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string poisson_boltzmann::radiusfilename</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>File with van der Waals radii. </p>
+
+</div>
+</div>
+<a id="adc6ce9522a05a98cdf290059439a17eb" name="adc6ce9522a05a98cdf290059439a17eb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adc6ce9522a05a98cdf290059439a17eb">&#9670;&#160;</a></span>rand_center</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int poisson_boltzmann::rand_center</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Randomise center (avoid symmetry artifacts) </p>
+
 </div>
 </div>
 <a id="a6c880680bf2608788374a5bfd77f1591" name="a6c880680bf2608788374a5bfd77f1591"></a>
@@ -2405,6 +3425,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Reaction (κ²) parameter per quadrant. </p>
 
 </div>
 </div>
@@ -2420,6 +3442,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Node-level κ² field. </p>
+
 </div>
 </div>
 <a id="a24f1f30ab3b65b947a32cc2c0427880e" name="a24f1f30ab3b65b947a32cc2c0427880e"></a>
@@ -2433,6 +3457,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Enable box-based local refinement. </p>
 
 </div>
 </div>
@@ -2448,6 +3474,24 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Fixed charge density RHS. </p>
+
+</div>
+</div>
+<a id="a8dcc76e631ea0c321af718fa87cfe014" name="a8dcc76e631ea0c321af718fa87cfe014"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8dcc76e631ea0c321af718fa87cfe014">&#9670;&#160;</a></span>rhs</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::unique_ptr&lt;distributed_vector&gt; poisson_boltzmann::rhs</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Right-hand side vector. </p>
+
 </div>
 </div>
 <a id="a20ec98e36fcfec6afbe072a8f1f4bf65" name="a20ec98e36fcfec6afbe072a8f1f4bf65"></a>
@@ -2461,6 +3505,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Cubic mesh: max (x,y,z) corner [Å]. </p>
 
 </div>
 </div>
@@ -2490,6 +3536,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Scale-based refinement level. </p>
+
 </div>
 </div>
 <a id="ac9ccf3d2e3f523d1f70c716d0023f147" name="ac9ccf3d2e3f523d1f70c716d0023f147"></a>
@@ -2504,6 +3552,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Min scale level inside the box. </p>
+
 </div>
 </div>
 <a id="ad5aaf8bf529d89fe67e18ffb446bdb60" name="ad5aaf8bf529d89fe67e18ffb446bdb60"></a>
@@ -2517,6 +3567,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Scaling parameters for stretched mesh. </p>
 
 </div>
 </div>
@@ -2546,6 +3598,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Number of trees in the octree. </p>
+
 </div>
 </div>
 <a id="ad4080b9b085cddcbb3ed8254ff566870" name="ad4080b9b085cddcbb3ed8254ff566870"></a>
@@ -2559,6 +3613,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Number of mesh vertices. </p>
 
 </div>
 </div>
@@ -2574,6 +3630,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Vertex coordinate array. </p>
+
 </div>
 </div>
 <a id="a8c46bf974c4b145df7d331388f840c7d" name="a8c46bf974c4b145df7d331388f840c7d"></a>
@@ -2587,6 +3645,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Tree-to-vertex connectivity. </p>
 
 </div>
 </div>
@@ -2602,6 +3662,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Stern layer thickness [Å]. </p>
+
 </div>
 </div>
 <a id="a712206ec0622882bd66649ec89aaa246" name="a712206ec0622882bd66649ec89aaa246"></a>
@@ -2615,6 +3677,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Enable Stern layer on solute surface. </p>
 
 </div>
 </div>
@@ -2630,6 +3694,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Surface smoothing parameter. </p>
+
 </div>
 </div>
 <a id="af4f5f24416210800beb58c2ceceaf806" name="af4f5f24416210800beb58c2ceceaf806"></a>
@@ -2643,6 +3709,24 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Surface type (SES, SAS, …) </p>
+
+</div>
+</div>
+<a id="a8ea91522fd792d9b79b485f3c90968c0" name="a8ea91522fd792d9b79b485f3c90968c0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8ea91522fd792d9b79b485f3c90968c0">&#9670;&#160;</a></span>surf_type_num</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int poisson_boltzmann::surf_type_num = 0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Numeric code for surface type. </p>
 
 </div>
 </div>
@@ -2658,6 +3742,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Write potential on surface if non-zero. </p>
+
 </div>
 </div>
 <a id="a6013c2e73a20caab51bfd8c2f25480e0" name="a6013c2e73a20caab51bfd8c2f25480e0"></a>
@@ -2671,6 +3757,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Path to NanoShaper surface file. </p>
 
 </div>
 </div>
@@ -2686,6 +3774,8 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Temperature [K]. </p>
+
 </div>
 </div>
 <a id="a1c8953fea663682856648664b6e99160" name="a1c8953fea663682856648664b6e99160"></a>
@@ -2699,6 +3789,8 @@ Notes</h3>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Adaptive octree mesh (BIM++ wrapper around p8est) </p>
 
 </div>
 </div>
@@ -2742,11 +3834,33 @@ Notes</h3>
       </table>
 </div><div class="memdoc">
 
+<p>Uniform (base) refinement level. </p>
+
+</div>
+</div>
+<a id="a543b587b9467df75e3121fbe26e4b1c8" name="a543b587b9467df75e3121fbe26e4b1c8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a543b587b9467df75e3121fbe26e4b1c8">&#9670;&#160;</a></span>write_pqr</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int poisson_boltzmann::write_pqr</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Write PQR file if non-zero. </p>
+
 </div>
 </div>
 <hr/>The documentation for this struct was generated from the following files:<ul>
-<li>/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/<a class="el" href="pb__class_8h_source.html">pb_class.h</a></li>
-<li>/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/src/<a class="el" href="pb__class_8cpp.html">pb_class.cpp</a></li>
+<li>/Users/vincenzo/Documents/PhD/PBE/LPBe/NextGenPB/include/<a class="el" href="pb__class_8h_source.html">pb_class.h</a></li>
+<li>/Users/vincenzo/Documents/PhD/PBE/LPBe/NextGenPB/src/<a class="el" href="pb__assembly_8cpp.html">pb_assembly.cpp</a></li>
+<li>/Users/vincenzo/Documents/PhD/PBE/LPBe/NextGenPB/src/<a class="el" href="pb__io_8cpp.html">pb_io.cpp</a></li>
+<li>/Users/vincenzo/Documents/PhD/PBE/LPBe/NextGenPB/src/<a class="el" href="pb__mesh_8cpp.html">pb_mesh.cpp</a></li>
+<li>/Users/vincenzo/Documents/PhD/PBE/LPBe/NextGenPB/src/<a class="el" href="pb__postproc_8cpp.html">pb_postproc.cpp</a></li>
+<li>/Users/vincenzo/Documents/PhD/PBE/LPBe/NextGenPB/src/<a class="el" href="pb__surface_8cpp.html">pb_surface.cpp</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

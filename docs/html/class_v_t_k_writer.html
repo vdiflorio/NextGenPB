@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=11"/>
 <meta name="generator" content="Doxygen 1.11.0"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>My Project: VTKWriter Class Reference</title>
+<title>NextGenPB: VTKWriter Class Reference</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -25,7 +25,7 @@
  <tbody>
  <tr id="projectrow">
   <td id="projectalign">
-   <div id="projectname">My Project
+   <div id="projectname">NextGenPB
    </div>
   </td>
  </tr>
@@ -91,22 +91,37 @@ $(function(){ initResizable(false); });
 </div><!--header-->
 <div class="contents">
 
+<p>Writes a scalar field on an adaptive octree to binary VTU/PVTU files.  
+ <a href="#details">More...</a></p>
+
 <p><code>#include &lt;<a class="el" href="vtk__class_8h_source.html">vtk_class.h</a>&gt;</code></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a062468d679a3eae7698a78924a95f308" id="r_a062468d679a3eae7698a78924a95f308"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a062468d679a3eae7698a78924a95f308">VTKWriter</a> (std::string basename_=&quot;default&quot;, int rank_=0)</td></tr>
+<tr class="memdesc:a062468d679a3eae7698a78924a95f308"><td class="mdescLeft">&#160;</td><td class="mdescRight">Construct a <a class="el" href="class_v_t_k_writer.html" title="Writes a scalar field on an adaptive octree to binary VTU/PVTU files.">VTKWriter</a> for the given base filename and MPI rank.  <br /></td></tr>
 <tr class="separator:a062468d679a3eae7698a78924a95f308"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0e7d0f785abe530ec6441c005d8d184f" id="r_a0e7d0f785abe530ec6441c005d8d184f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a0e7d0f785abe530ec6441c005d8d184f">setBaseName</a> (std::string basename_, int rank_)</td></tr>
+<tr class="memdesc:a0e7d0f785abe530ec6441c005d8d184f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Change the output base name and rank after construction.  <br /></td></tr>
 <tr class="separator:a0e7d0f785abe530ec6441c005d8d184f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9ca43853a2b0bff84260cf1a540b46a0" id="r_a9ca43853a2b0bff84260cf1a540b46a0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#a9ca43853a2b0bff84260cf1a540b46a0">writeFieldVtuBinary</a> (tmesh_3d &amp;tmsh, const distributed_vector &amp;field, std::string &amp;fieldname_)</td></tr>
+<tr class="memdesc:a9ca43853a2b0bff84260cf1a540b46a0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write a distributed scalar field on <code>tmsh</code> to a binary VTU file.  <br /></td></tr>
 <tr class="separator:a9ca43853a2b0bff84260cf1a540b46a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afa78a1e9b30cc7d4ee62f43e8173ae6d" id="r_afa78a1e9b30cc7d4ee62f43e8173ae6d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#afa78a1e9b30cc7d4ee62f43e8173ae6d">writeFieldVtuBinary_local</a> (tmesh_3d &amp;tmsh, const distributed_vector &amp;field, std::string &amp;fieldname_, double *l_cr, double *r_cr)</td></tr>
+<tr class="memdesc:afa78a1e9b30cc7d4ee62f43e8173ae6d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Write only the sub-region [<code>l_cr</code>, <code>r_cr</code>] of the field to a VTU file.  <br /></td></tr>
 <tr class="separator:afa78a1e9b30cc7d4ee62f43e8173ae6d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abaedbe56ea82117c4c1c00e646f12726" id="r_abaedbe56ea82117c4c1c00e646f12726"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#abaedbe56ea82117c4c1c00e646f12726">createPvtuFile</a> (std::vector&lt; std::string &gt; &amp;fieldNames, std::vector&lt; std::string &gt; &amp;baseNames, int numRanks)</td></tr>
+<tr class="memdesc:abaedbe56ea82117c4c1c00e646f12726"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create the parallel PVTU metadata file that links all per-rank VTU files.  <br /></td></tr>
 <tr class="separator:abaedbe56ea82117c4c1c00e646f12726"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p>Writes a scalar field on an adaptive octree to binary VTU/PVTU files. </p>
+<p>Each MPI rank writes its own <code>&lt;basename&gt;_XXXX.vtu</code> file. After all ranks have written, rank 0 creates a <code>&lt;basename&gt;.pvtu</code> that links them together.</p>
+<p>Typical usage: </p><div class="fragment"><div class="line"><a class="code hl_class" href="class_v_t_k_writer.html">VTKWriter</a> writer(<span class="stringliteral">&quot;phi&quot;</span>, rank);</div>
+<div class="line">writer.writeFieldVtuBinary(tmsh, *phi, fieldname);</div>
+<div class="line">writer.createPvtuFile(fieldNames, baseNames, size);</div>
+<div class="ttc" id="aclass_v_t_k_writer_html"><div class="ttname"><a href="class_v_t_k_writer.html">VTKWriter</a></div><div class="ttdoc">Writes a scalar field on an adaptive octree to binary VTU/PVTU files.</div><div class="ttdef"><b>Definition</b> vtk_class.h:57</div></div>
+</div><!-- fragment --> </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a062468d679a3eae7698a78924a95f308" name="a062468d679a3eae7698a78924a95f308"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a062468d679a3eae7698a78924a95f308">&#9670;&#160;</a></span>VTKWriter()</h2>
 
@@ -133,6 +148,15 @@ Public Member Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+
+<p>Construct a <a class="el" href="class_v_t_k_writer.html" title="Writes a scalar field on an adaptive octree to binary VTU/PVTU files.">VTKWriter</a> for the given base filename and MPI rank. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">basename_</td><td>Base name for output files (without extension). </td></tr>
+    <tr><td class="paramname">rank_</td><td>MPI rank of this process. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -161,6 +185,16 @@ Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
+<p>Create the parallel PVTU metadata file that links all per-rank VTU files. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">fieldNames</td><td>List of field names included in this dataset. </td></tr>
+    <tr><td class="paramname">baseNames</td><td>Corresponding VTU base names. </td></tr>
+    <tr><td class="paramname">numRanks</td><td>Total number of MPI ranks. </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <a id="a0e7d0f785abe530ec6441c005d8d184f" name="a0e7d0f785abe530ec6441c005d8d184f"></a>
@@ -181,6 +215,8 @@ Public Member Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Change the output base name and rank after construction. </p>
 
 </div>
 </div>
@@ -207,6 +243,16 @@ Public Member Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+<p>Write a distributed scalar field on <code>tmsh</code> to a binary VTU file. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">tmsh</td><td>The adaptive octree mesh. </td></tr>
+    <tr><td class="paramname">field</td><td>The distributed scalar field to write. </td></tr>
+    <tr><td class="paramname">fieldname_</td><td>Name tag written inside the VTU XML. </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>
@@ -244,11 +290,23 @@ Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
+<p>Write only the sub-region [<code>l_cr</code>, <code>r_cr</code>] of the field to a VTU file. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">tmsh</td><td>The adaptive octree mesh. </td></tr>
+    <tr><td class="paramname">field</td><td>The distributed scalar field to write. </td></tr>
+    <tr><td class="paramname">fieldname_</td><td>Name tag written inside the VTU XML. </td></tr>
+    <tr><td class="paramname">l_cr</td><td>Lower corner of the sub-region [Å]. </td></tr>
+    <tr><td class="paramname">r_cr</td><td>Upper corner of the sub-region [Å]. </td></tr>
+  </table>
+  </dd>
+</dl>
+
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following files:<ul>
-<li>/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/include/<a class="el" href="vtk__class_8h_source.html">vtk_class.h</a></li>
-<li>/Users/vincenzo/Documents/PhD/PBE/LPBe/nextgenPB/src/<a class="el" href="vtk__class_8cpp.html">vtk_class.cpp</a></li>
+<li>/Users/vincenzo/Documents/PhD/PBE/LPBe/NextGenPB/include/<a class="el" href="vtk__class_8h_source.html">vtk_class.h</a></li>
+<li>/Users/vincenzo/Documents/PhD/PBE/LPBe/NextGenPB/src/<a class="el" href="vtk__class_8cpp.html">vtk_class.cpp</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->
