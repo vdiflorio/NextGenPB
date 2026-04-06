@@ -1,0 +1,117 @@
+# ===================================
+# NextGenPB — Membrane Protein Example
+# ===================================
+# This parameter file enables the membrane mode.
+# Replace protein.pqr and lipids.pqr with real structures.
+
+######################################
+# Input Settings
+######################################
+[input]
+
+filetype = pqr
+filename = protein.pqr
+
+write_pqr = 0
+name_pqr  = output.pqr
+
+[../]
+
+######################################
+# Mesh Settings
+######################################
+[mesh]
+
+# mesh_shape = 6 will use xy-periodic p4est connectivity (TBD — not yet implemented).
+# Use mesh_shape = 0 in the meantime.
+mesh_shape = 0
+
+perfil1 = 0.8
+perfil2 = 0.5
+scale   = 2.0
+
+[../]
+
+######################################
+# Electrostatic Model Settings
+######################################
+[model]
+
+linearized = 1
+bc_type    = 2
+
+molecular_dielectric_constant = 2
+solvent_dielectric_constant   = 80
+ionic_strength                = 0.145
+T                             = 298.15
+
+calc_energy    = 2
+calc_coulombic = 1
+
+atoms_write   = 0
+map_type      = vtu
+potential_map = 1
+eps_map       = 1
+surf_write    = 0
+
+[../]
+
+######################################
+# Surface Definition (NanoShaper)
+######################################
+[surface]
+
+surface_type      = 0
+surface_parameter = 1.4
+
+stern_layer_surf      = 0
+stern_layer_thickness = 2.0
+
+number_of_threads = 1
+
+[../]
+
+######################################
+# Solver and Algorithm Settings
+######################################
+[algorithm]
+
+linear_solver  = lis
+solver_options = -p\ ssor\ -ssor_omega\ 0.51\ -i\ cgs\ -tol\ 1.e-6\ -print\ 2\ -conv_cond\ 2\ -tol_w\ 0
+
+[../]
+
+######################################
+# Membrane / Periodic BC Settings
+######################################
+[membrane]
+
+# Enable membrane mode (0 = disabled, 1 = enabled)
+enabled        = 1
+
+# Lipid atoms file (PQR or PDB format)
+lipid_file     = lipids.pqr
+lipid_filetype = pqr
+
+# Periodic boundary conditions in xy (0 = disabled, 1 = enabled)
+periodic_x    = 1
+periodic_y    = 1
+
+# Unit cell dimensions in the xy plane [Angstrom]
+cell_length_x = 80.0
+cell_length_y = 80.0
+
+# Membrane dielectric constant (typically ~2 for lipid bilayer)
+membrane_dielectric = 2.0
+
+# Ionic strength on each side of the membrane [mol/L]
+# kappa_in:  intracellular side
+# kappa_out: extracellular side (defaults to ionic_strength above if not set)
+kappa_in  = 0.0
+kappa_out = 0.145
+
+# Stern layer on membrane surface (0 = disabled, 1 = enabled)
+stern_membrane   = 0
+stern_membrane_d = 2.0
+
+[../]

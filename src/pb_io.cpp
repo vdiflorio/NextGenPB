@@ -192,6 +192,22 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   markerfilename = g2 ( (out_options + "markerfilename").c_str (), "poisson_boltzmann_marker_0");
   surffilename = g2 ( (out_options + "surffilename").c_str (), "poisson_boltzmann_surface_0");
 
+  // --- membrane ---
+  const std::string mem_options = "membrane/";
+  membrane_enabled = g2 ( (mem_options + "enabled").c_str (), 0);
+  if (membrane_enabled) {
+    lipid_file     = g2 ( (mem_options + "lipid_file").c_str (),    std::string ("lipids.pqr"));
+    lipid_filetype = g2 ( (mem_options + "lipid_filetype").c_str (), std::string ("pqr"));
+    periodic_x     = g2 ( (mem_options + "periodic_x").c_str (), 0);
+    periodic_y     = g2 ( (mem_options + "periodic_y").c_str (), 0);
+    cell_length_x  = g2 ( (mem_options + "cell_length_x").c_str (), 0.0);
+    cell_length_y  = g2 ( (mem_options + "cell_length_y").c_str (), 0.0);
+    e_mem          = g2 ( (mem_options + "membrane_dielectric").c_str (), 2.0);
+    kappa_in       = g2 ( (mem_options + "kappa_in").c_str (), 0.0);
+    kappa_out      = g2 ( (mem_options + "kappa_out").c_str (), ionic_strength);
+    stern_membrane   = g2 ( (mem_options + "stern_membrane").c_str (), 0);
+    stern_membrane_d = g2 ( (mem_options + "stern_membrane_d").c_str (), 0.0);
+  }
 
   return 0;
 }

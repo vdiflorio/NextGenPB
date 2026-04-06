@@ -1,0 +1,4 @@
+REMARK  Placeholder protein PQR file for membrane example.
+REMARK  Replace with a real membrane protein structure.
+ATOM      1  CA  ALA A   1       0.000   0.000   0.000  0.00  1.80
+END

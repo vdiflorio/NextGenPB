@@ -230,6 +230,40 @@ struct
   std::unique_ptr<distributed_sparse_matrix> A;  ///< System matrix
   /// @}
 
+  /// @name Membrane and periodic boundary conditions
+  /// @{
+
+  bool membrane_enabled = false; ///< Enable membrane mode
+
+  /// @name Lipid atom data (read from a separate PQR/PDB file)
+  /// @{
+  std::string lipid_file;                             ///< Path to lipid PQR/PDB file
+  std::string lipid_filetype;                         ///< "pqr" or "pdb"
+  std::vector<NS::Atom>             lipid_atoms;      ///< Lipid atom list
+  std::vector<std::array<double,3>> pos_lipid_atoms;  ///< Lipid positions [Å]
+  std::vector<double>               charge_lipid_atoms; ///< Lipid partial charges [e]
+  std::vector<double>               r_lipid_atoms;    ///< Lipid van der Waals radii [Å]
+  /// @}
+
+  /// @name Periodic cell geometry
+  /// @{
+  bool   periodic_x    = false; ///< Periodic boundary condition in x
+  bool   periodic_y    = false; ///< Periodic boundary condition in y
+  double cell_length_x = 0.0;  ///< Unit cell length in x [Å]
+  double cell_length_y = 0.0;  ///< Unit cell length in y [Å]
+  // [PLACEHOLDER] NanoShaper replication parameters (TBD)
+  /// @}
+
+  /// @name Membrane dielectric and ionic profile
+  /// @{
+  double e_mem          = 2.0;  ///< Membrane dielectric constant
+  double kappa_in       = 0.0;  ///< Ionic strength — intracellular side [mol/L]
+  double kappa_out      = 0.0;  ///< Ionic strength — extracellular side [mol/L]
+  bool   stern_membrane = false; ///< Enable Stern layer on membrane surface
+  double stern_membrane_d = 0.0; ///< Stern layer thickness on membrane [Å]
+  /// @}
+
+  /// @}
 
   static constexpr
   std::array<int, 12> edge_axis = {0,1,0,1,0,1,0,1,2,2,2,2};

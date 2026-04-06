@@ -1,0 +1,5 @@
+REMARK  Placeholder lipid PQR file for membrane example.
+REMARK  Replace with a real lipid bilayer structure (e.g. from CHARMM-GUI).
+ATOM      1  P   POPC L   1      20.000   0.000  -10.000  0.00  2.00
+ATOM      2  P   POPC L   2     -20.000   0.000   10.000  0.00  2.00
+END

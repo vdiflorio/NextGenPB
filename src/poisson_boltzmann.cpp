@@ -20,6 +20,7 @@
 #include <mpi.h>
 
 #include "pb_class.h"
+#include "pb_membrane.h"
 #include "readpdb.h"
 #include "vtk_class.h"
 
@@ -95,12 +96,17 @@ main (int argc, char **argv)
 
     inputfile.close ();
     pb.read_atoms_from_class ();
+
+    if (pb.membrane_enabled)
+      read_lipids (pb);
   }
 
   MPI_Barrier (mpicomm);
 
   if (size > 1) {
     pb.broadcast_vectors ();
+    if (pb.membrane_enabled)
+      broadcast_lipid_vectors (pb);
   }
 
   // if (rank == 0) {
@@ -122,7 +128,14 @@ main (int argc, char **argv)
 
   if (rank == 0) {
     std::cout << "\n=== [ Building Surface with NanoShaper ] ===\n";
-    ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+    if (pb.membrane_enabled) {
+      // [PLACEHOLDER] Build supercell: protein + (replicated) lipid atoms.
+      // Replication strategy for lipid atoms is TBD — currently uses central cell only.
+      auto ns_atoms = build_ns_supercell (pb);
+      ray_cache.init_analytical_surf_ns (ns_atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+    } else {
+      ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+    }
     std::vector<NS::Atom> ().swap (pb.atoms);
     std::cout << "\n============================================\n";
   }
