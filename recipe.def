@@ -5,6 +5,9 @@ From: rockylinux:9
     Maintainer vincenzo.diflorio@iit.it
     Description "NextGenPB in an Apptainer container"
 
+%arguments
+    NATIVE=false
+
 %environment
     export PATH="/opt/openmpi/bin:/usr/local/nextgenPB/src:$PATH"
     export LD_LIBRARY_PATH="/opt/openmpi/lib:$LD_LIBRARY_PATH"
@@ -31,7 +34,11 @@ From: rockylinux:9
     
 
     
-    export CFLAGS="-O2 -mtune=generic"
+    if [ "{{ NATIVE }}" = "true" ]; then
+        export CFLAGS="-Ofast -mtune=native -march=native"
+    else
+        export CFLAGS="-O2 -mtune=generic"
+    fi
     export CXXFLAGS="$CFLAGS"
     export FCFLAGS="$CFLAGS"
     
