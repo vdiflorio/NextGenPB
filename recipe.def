@@ -26,7 +26,7 @@ From: rockylinux:9
         libibverbs rdma-core boost boost-devel \
         zlib-devel json-c jansson jansson-devel gmp gmp-devel mpfr mpfr-devel \
         openssl-devel tar bison openblas-devel autoconf automake \
-        libtool scotch scotch-devel \
+        libtool scotch scotch-devel redhat-rpm-config \
         MUMPS MUMPS-devel qhull-devel octave octave-devel cmake tbb \
         tbb-devel CGAL-devel && \
     dnf clean all
