@@ -103,7 +103,8 @@ From: rockylinux:9
             	    --disable-static \
             	    --disable-vtk-binary \
             	    --without-blas \
-                    CPPFLAGS="-I/opt/openmpi/include -DSC_LOG_PRIORITY=SC_LP_ESSENTIAL" && \
+                    CPPFLAGS="-I/opt/openmpi/include -DSC_LOG_PRIORITY=SC_LP_ESSENTIAL" \
+                    LIBS="-lm" && \
     	make -j$(nproc) && \
     	make install && \
     	cd /opt && rm -rf p4est-${P4EST_VERSION}
