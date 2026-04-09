@@ -7,25 +7,26 @@ LABEL maintainer="vincenzo.diflorio@iit.it"
 # Log message during image build
 RUN echo "Installing NextGenPB 1.0.0"
 
-# Set compiler optimization flags for generic architecture
-ENV CFLAGS="-O2 -mtune=generic"
-# Uncomment the following line to optimize the build for your machine's architecture
-# ENV CFLAGS="-Ofast -mtune=native -march=native"
-ENV CXXFLAGS="$CFLAGS"
-ENV FCFLAGS="$CFLAGS"
+# Set compiler optimization flags.
+# Default: generic (portable). For native optimization pass --build-arg CFLAGS="-Ofast -mtune=native -march=native"
+# Note: native images must be built on the target machine and are not portable.
+ARG CFLAGS="-O2 -mtune=generic"
+ENV CFLAGS=${CFLAGS}
+ENV CXXFLAGS=${CFLAGS}
+ENV FCFLAGS=${CFLAGS}
 
 # Install dependencies and clean up
 RUN dnf upgrade -y && \
     dnf --enablerepo=crb install -y epel-release && \
     dnf --enablerepo=crb install -y \
-        gcc gcc-c++ gcc-gfortran make python3 texinfo nano gawk procps wget \
-        openssh-clients p11-kit diffutils which git rsync zip unzip bzip2 \
-        glibc-static patch xz perl-locale perl-Unicode-Normalize \
-        infiniband-diags libibverbs libibverbs-utils rdma-core boost boost-devel \
+        gcc gcc-c++ gcc-gfortran make python3 gawk wget \
+        diffutils which git unzip bzip2 bzip2-devel \
+        patch xz perl-locale perl-Unicode-Normalize \
+        libibverbs rdma-core boost boost-devel \
         zlib-devel json-c jansson jansson-devel gmp gmp-devel mpfr mpfr-devel \
-        openssl-devel tar glpk-utils bison openblas-devel autoconf automake \
-        libtool scotch scotch-devel redhat-rpm-config libasan bzip2 bzip2-devel \
-        MUMPS MUMPS-devel qhull-devel arpack-devel octave octave-devel cmake tbb \
+        openssl-devel tar bison openblas-devel autoconf automake \
+        libtool scotch scotch-devel \
+        MUMPS MUMPS-devel qhull-devel octave octave-devel cmake tbb \
         tbb-devel CGAL-devel && \
     dnf clean all
 
@@ -66,7 +67,7 @@ ENV LD_LIBRARY_PATH=/opt/openmpi/lib:$LD_LIBRARY_PATH
 ### === NanoShaper === ###
 # Clone and build the NanoShaper surface generation library
 WORKDIR /opt
-RUN git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
+RUN git clone --branch master_backup https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
     cd nanoshaper && \
     cp CMakeLists_so.txt CMakeLists.txt && \
     mkdir -p build_lib && cd build_lib && \
@@ -161,7 +162,7 @@ RUN cp /usr/local/nextgenPB/local_setting/local_settings_rocky.mk /usr/local/nex
 
 # Clean up unnecessary files
 RUN rm -rf /opt/nanoshaper/{example,src_client,test}
-RUN rm -rf /usr/local/nextgenPB/{docs, data}
+RUN rm -rf /usr/local/nextgenPB/{docs,data}
 
 
 WORKDIR /opt

@@ -6,23 +6,24 @@ LABEL maintainer="vincenzo.diflorio@iit.it"
 # Log message during image build
 RUN echo "Installing NextGenPB 1.0.0"
 
-# Set compiler optimization flags for generic architecture
-ENV CFLAGS="-O2 -mtune=generic"
-# Uncomment the following line to optimize the build for your machine's architecture
-# ENV CFLAGS="-Ofast -mtune=native -march=native"
-ENV CXXFLAGS="$CFLAGS"
-ENV FCFLAGS="$CFLAGS"
+# Set compiler optimization flags.
+# Default: generic (portable). For native optimization pass --build-arg CFLAGS="-Ofast -mtune=native -march=native"
+# Note: native images must be built on the target machine and are not portable.
+ARG CFLAGS="-O2 -mtune=generic"
+ENV CFLAGS=${CFLAGS}
+ENV CXXFLAGS=${CFLAGS}
+ENV FCFLAGS=${CFLAGS}
 
 
 # Install dependencies and clean up
 RUN apt-get update && apt-get upgrade -y && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    build-essential gfortran cmake make python3 texinfo nano \
-    gawk procps wget openssh-client diffutils git rsync zip unzip bzip2 \
+    build-essential gfortran cmake make python3 \
+    wget diffutils git unzip bzip2 \
     patch xz-utils perl libboost-all-dev zlib1g-dev libjson-c-dev openmpi-bin libopenmpi-dev \
-    libjansson-dev libgmp-dev libmpfr-dev libssl-dev libblas-dev liblapack-dev \
+    libjansson-dev libgmp-dev libmpfr-dev libssl-dev \
     libopenblas-dev autoconf automake libtool libqhull-dev \
-    libarpack2-dev octave octave-dev libscotch-dev libbz2-dev glpk-utils bison libtbb-dev libmumps-dev libcgal-dev \
+    octave octave-dev libscotch-dev libbz2-dev libtbb-dev libmumps-dev libcgal-dev \
     libp4est-2.3 libp4est-dev && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -30,7 +31,7 @@ RUN apt-get update && apt-get upgrade -y && \
 ### === NanoShaper === ###
 # Clone and build the NanoShaper surface generation library
 WORKDIR /opt
-RUN git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
+RUN git clone --branch master_backup https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
     cd nanoshaper && \
     cp CMakeLists_so.txt CMakeLists.txt && \
     mkdir -p build_lib && cd build_lib && \
@@ -103,7 +104,7 @@ RUN cp /usr/local/nextgenPB/local_setting/local_settings_ubuntu.mk /usr/local/ne
 
 # Clean up unnecessary files
 RUN rm -rf /opt/nanoshaper/{example,src_client,test}
-RUN rm -rf /usr/local/nextgenPB/{docs, data}
+RUN rm -rf /usr/local/nextgenPB/{docs,data}
 
 ### Final Setup ###
 ENV PATH="/usr/local/nextgenPB/src:$PATH"
