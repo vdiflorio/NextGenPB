@@ -5,6 +5,9 @@ From: rockylinux:9
     Maintainer vincenzo.diflorio@iit.it
     Description "NextGenPB in an Apptainer container"
 
+%arguments
+    NATIVE=false
+
 %environment
     export PATH="/opt/openmpi/bin:/usr/local/nextgenPB/src:$PATH"
     export LD_LIBRARY_PATH="/opt/openmpi/lib:$LD_LIBRARY_PATH"
@@ -17,24 +20,25 @@ From: rockylinux:9
     dnf upgrade -y && \
     dnf --enablerepo=crb install -y epel-release && \
     dnf --enablerepo=crb install -y \
-        gcc gcc-c++ gcc-gfortran make python3 texinfo nano gawk procps wget \
-        openssh-clients p11-kit diffutils which git rsync zip unzip bzip2 \
-        glibc-static patch xz perl-locale perl-Unicode-Normalize \
-        infiniband-diags libibverbs libibverbs-utils rdma-core boost boost-devel \
+        gcc gcc-c++ gcc-gfortran make python3 gawk wget \
+        diffutils which git unzip bzip2 bzip2-devel \
+        patch xz perl-locale perl-Unicode-Normalize \
+        libibverbs rdma-core boost boost-devel \
         zlib-devel json-c jansson jansson-devel gmp gmp-devel mpfr mpfr-devel \
-        openssl-devel tar glpk-utils bison openblas-devel autoconf automake \
-        libtool scotch scotch-devel redhat-rpm-config libasan bzip2 bzip2-devel \
-        MUMPS MUMPS-devel qhull-devel arpack-devel octave octave-devel cmake tbb \
+        openssl-devel tar bison openblas-devel autoconf automake \
+        libtool scotch scotch-devel redhat-rpm-config \
+        MUMPS MUMPS-devel qhull-devel octave octave-devel cmake tbb \
         tbb-devel CGAL-devel && \
     dnf clean all
 	
     
 
     
-    export CFLAGS="-O2 -mtune=generic"
-    # Uncomment the following line to optimize the build for your machine's architecture
-    # export CFLAGS="-O3 -mtune=native -march=native"
-    
+    if [ "{{ NATIVE }}" = "true" ]; then
+        export CFLAGS="-Ofast -mtune=native -march=native"
+    else
+        export CFLAGS="-O2 -mtune=generic"
+    fi
     export CXXFLAGS="$CFLAGS"
     export FCFLAGS="$CFLAGS"
     
@@ -68,11 +72,12 @@ From: rockylinux:9
     
     echo "Building NanoShaper..."
     cd /opt && \
-        git clone https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
+        git clone --branch master_backup https://gitlab.iit.it/SDecherchi/nanoshaper.git && \
         cd nanoshaper && \
         cp CMakeLists_so.txt CMakeLists.txt && \
         cd build_lib && \
-        cmake .. -DCMAKE_BUILD_TYPE="Release" && \
+        cmake .. -DCMAKE_BUILD_TYPE="Release" \
+                 -DCMAKE_CXX_FLAGS_RELEASE="$CXXFLAGS -DNDEBUG" && \
         make -j$(nproc)
 
     echo "Installing LIS..."
@@ -85,10 +90,11 @@ From: rockylinux:9
         cd /opt && rm -rf lis-2.1.6 lis-2.1.6.zip
 
     echo "Installing p4est..."
-    wget https://p4est.github.io/release/p4est-2.8.6.tar.gz && \
-    	tar -xzf p4est-2.8.6.tar.gz && \
-    	rm -rf p4est-2.8.6.tar.gz && \
-    	cd /opt/p4est-2.8.6 && \
+    P4EST_VERSION=2.8.6
+    wget https://p4est.github.io/release/p4est-${P4EST_VERSION}.tar.gz && \
+    	tar -xzf p4est-${P4EST_VERSION}.tar.gz && \
+    	rm -rf p4est-${P4EST_VERSION}.tar.gz && \
+    	cd /opt/p4est-${P4EST_VERSION} && \
     	mkdir build && \
     	cd build && \
     	CC=mpicc CXX=mpic++ ../configure --prefix="/opt/p4est" \
@@ -97,7 +103,8 @@ From: rockylinux:9
             	    --disable-static \
             	    --disable-vtk-binary \
             	    --without-blas \
-                    CPPFLAGS="-I/opt/openmpi/include -DSC_LOG_PRIORITY=SC_LP_ESSENTIAL" && \
+                    CPPFLAGS="-I/opt/openmpi/include -DSC_LOG_PRIORITY=SC_LP_ESSENTIAL" \
+                    LIBS="-lm" && \
     	make -j$(nproc) && \
     	make install && \
     	cd /opt && rm -rf p4est-${P4EST_VERSION}
@@ -147,7 +154,7 @@ F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc  \
 
 
     rm -rf /opt/nanoshaper/{example,src_client,test}
-    rm -rf /usr/local/nextgenPB/{docs, data} 
+    rm -rf /usr/local/nextgenPB/{docs,data}
 
 %startscript
     #echo "Starting NextGenPB container..."
