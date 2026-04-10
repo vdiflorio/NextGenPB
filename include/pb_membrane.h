@@ -1,7 +1,5 @@
 /*
- *  Copyright (C) 2019-2025 Carlo de Falco
- *  Copyright (C) 2020-2021 Martina Politi
- *  Copyright (C) 2021-2025 Vincenzo Di Florio
+ *  Copyright (C) 2021-2026 Vincenzo Di Florio
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -59,21 +57,24 @@ void read_lipids (poisson_boltzmann& pb);
  */
 void broadcast_lipid_vectors (poisson_boltzmann& pb);
 
-// ─── NanoShaper supercell (PBC workaround) ───────────────────────────────────
+// ─── NanoShaper supercell ────────────────────────────────────────────────────
 
 /**
- * @brief Build a NanoShaper supercell by combining protein atoms with replicated lipids.
+ * @brief Build the NanoShaper atom list by combining protein and lipid atoms.
  *
- * Since NanoShaper does not natively support periodic boundary conditions,
- * this function replicates `pb.lipid_atoms` across the neighbouring periodic
- * images in xy and returns a combined atom list (protein + replicated lipids)
- * suitable for passing to `ray_cache_t::init_analytical_surf_ns()`.
+ * Returns a single atom list (protein + lipid central cell) suitable for passing
+ * to `ray_cache_t::init_analytical_surf_ns()`.  Periodicity in xy is handled by
+ * applying periodic BCs on the potential, not by replicating the geometry.
+ * The caller is responsible for extending the NanoShaper bounding box in xy by
+ * 3 × probe_radius per side so that the membrane surface closes outside the
+ * computational domain (see poisson_boltzmann.cpp).
  *
- * The replication strategy (number of images, domain extension) is
- * @b [PLACEHOLDER] — to be defined.
+ * @note TODO: when lipid charges are added to the FEM assembly, atoms whose centre
+ *       lies within (atom_radius + probe_radius) of the xy domain boundary should
+ *       have their charge zeroed to avoid singularities incompatible with the PBC.
  *
  * @param pb Solver instance with protein and lipid atoms populated.
- * @return Combined atom list for the NanoShaper supercell.
+ * @return Combined atom list for NanoShaper.
  */
 std::vector<NS::Atom>
 build_ns_supercell (const poisson_boltzmann& pb);

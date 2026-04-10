@@ -102,7 +102,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   unilevel = g2 ( (mesh_options + "unilevel").c_str (), 5);
   outlevel = g2 ( (mesh_options + "outlevel").c_str (), 1);
   loc_refinement = g2 ( (mesh_options + "loc_refinement").c_str (), 0);
-  mesh_shape = g2 ( (mesh_options + "mesh_shape").c_str (), 1);
+  mesh_shape = g2 ( (mesh_options + "mesh_shape").c_str (), 0);
   refine_box = g2 ( (mesh_options + "refine_box").c_str (), 0);
   rand_center = g2 ( (mesh_options + "rand_center").c_str (), 0);
   aligned = g2 ( (mesh_options + "aligned").c_str (), 0);
@@ -178,7 +178,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   // else if (surf_type_num == 2) surf_type = NS::blobby;
   else surf_type = NS::ses;
 
-  surf_param = g2 ( (surf_options + "surface_parameter").c_str (), 0.45);
+  surf_param = g2 ( (surf_options + "surface_parameter").c_str (), 1.4);
   stern_layer_surf = g2 ( (surf_options + "stern_layer_surf").c_str (), 0);
   stern_layer = g2 ( (surf_options + "stern_layer_thickness").c_str (), 2.);
   num_threads = g2 ( (surf_options + "number_of_threads").c_str (), 1);
@@ -207,6 +207,17 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     kappa_out      = g2 ( (mem_options + "kappa_out").c_str (), ionic_strength);
     stern_membrane   = g2 ( (mem_options + "stern_membrane").c_str (), 0);
     stern_membrane_d = g2 ( (mem_options + "stern_membrane_d").c_str (), 0.0);
+
+    // When the membrane is enabled and the user has not explicitly chosen a
+    // mesh shape (default 0), automatically switch to mesh_shape 4 (adaptive
+    // scaling), which is better suited for protein-in-membrane systems.
+    // perfil1/perfil2 are already read above (mesh_shape 0 falls in the
+    // mesh_shape < 2 block); only scale_min/scale_max need to be read here.
+    if (mesh_shape == 0) {
+      mesh_shape = 4;
+      scale_min = g2 ( (mesh_options + "scale_min").c_str (), 0.5);
+      scale_max = g2 ( (mesh_options + "scale_max").c_str (), 2.0);
+    }
   }
 
   return 0;

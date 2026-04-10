@@ -129,10 +129,16 @@ main (int argc, char **argv)
   if (rank == 0) {
     std::cout << "\n=== [ Building Surface with NanoShaper ] ===\n";
     if (pb.membrane_enabled) {
-      // [PLACEHOLDER] Build supercell: protein + (replicated) lipid atoms.
-      // Replication strategy for lipid atoms is TBD — currently uses central cell only.
+      // Extend the NanoShaper box by 3 × probe radius in xy so that the
+      // membrane surface closes outside the computational domain.
+      // PBC in xy is enforced on the potential, not on the geometry.
+      // z bounds are left unchanged (the membrane is already closed in z by the solvent).
+      const double ns_margin = 3.0 * pb.surf_param;
+      double l_cr_ns[3] = { pb.l_cr[0] - ns_margin, pb.l_cr[1] - ns_margin, pb.l_cr[2] };
+      double r_cr_ns[3] = { pb.r_cr[0] + ns_margin, pb.r_cr[1] + ns_margin, pb.r_cr[2] };
+
       auto ns_atoms = build_ns_supercell (pb);
-      ray_cache.init_analytical_surf_ns (ns_atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+      ray_cache.init_analytical_surf_ns (ns_atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, l_cr_ns, r_cr_ns, pb.scale);
     } else {
       ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
     }

@@ -1,7 +1,5 @@
 /*
- *  Copyright (C) 2019-2025 Carlo de Falco
- *  Copyright (C) 2020-2021 Martina Politi
- *  Copyright (C) 2021-2025 Vincenzo Di Florio
+ *  Copyright (C) 2021-2026 Vincenzo Di Florio
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -44,8 +42,9 @@ read_lipids (poisson_boltzmann& pb)
       pb.lipid_atoms.push_back (a);
 
   } else if (pb.lipid_filetype == "pdb") {
-    read_pdb (pb.lipid_file, pb.lipid_atoms);
-    // TODO: load radii and charges from parameter files if needed
+    read_pdb     (pb.lipid_file,      pb.lipid_atoms);
+    load_radii   (pb.radiusfilename,  pb.lipid_atoms);
+    load_charges (pb.chargefilename,  pb.lipid_atoms);
 
   } else {
     throw std::runtime_error ("read_lipids: unknown filetype '" + pb.lipid_filetype + "'");
@@ -88,7 +87,7 @@ broadcast_lipid_vectors (poisson_boltzmann& pb)
   }
 }
 
-// ─── NanoShaper supercell (PBC workaround) ───────────────────────────────────
+// ─── NanoShaper supercell ────────────────────────────────────────────────────
 
 std::vector<NS::Atom>
 build_ns_supercell (const poisson_boltzmann& pb)
@@ -96,9 +95,9 @@ build_ns_supercell (const poisson_boltzmann& pb)
   // Start with the protein atoms
   std::vector<NS::Atom> supercell = pb.atoms;
 
-  // [PLACEHOLDER] Replicate lipid atoms across periodic images in xy.
-  // The replication strategy (number of images, domain extension passed to NS)
-  // is TBD.  For now, append the lipid atoms of the central cell only.
+  // Append lipid atoms of the central cell only.
+  // Periodicity in xy is handled by applying periodic BCs on the potential,
+  // not by replicating the geometry into NanoShaper.
   for (const NS::Atom& a : pb.lipid_atoms)
     supercell.push_back (a);
 
