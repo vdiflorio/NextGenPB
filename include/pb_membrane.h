@@ -69,15 +69,38 @@ void broadcast_lipid_vectors (poisson_boltzmann& pb);
  * 3 × probe_radius per side so that the membrane surface closes outside the
  * computational domain (see poisson_boltzmann.cpp).
  *
- * @note TODO: when lipid charges are added to the FEM assembly, atoms whose centre
- *       lies within (atom_radius + probe_radius) of the xy domain boundary should
- *       have their charge zeroed to avoid singularities incompatible with the PBC.
- *
  * @param pb Solver instance with protein and lipid atoms populated.
  * @return Combined atom list for NanoShaper.
  */
 std::vector<NS::Atom>
 build_ns_supercell (const poisson_boltzmann& pb);
+
+// ─── Post-NanoShaper lipid trimming ──────────────────────────────────────────
+
+/**
+ * @brief Remove lipid atoms that lie outside the computational domain in xy.
+ *
+ * Must be called after NanoShaper has finished (the atoms were included in the
+ * NS supercell to allow surface closure at the periodic boundary).  Rebuilds
+ * `pb.pos_lipid_atoms`, `pb.charge_lipid_atoms`, and `pb.r_lipid_atoms` to
+ * match the trimmed `pb.lipid_atoms`.  Safe to call on all MPI ranks.
+ *
+ * @param pb Solver instance with `l_cr`/`r_cr` already set by create_mesh().
+ */
+void trim_lipid_atoms (poisson_boltzmann& pb);
+
+/**
+ * @brief Zero charges of membrane residues near the xy domain boundary.
+ *
+ * Any residue that has at least one atom within (max_vdw_radius + probe_radius)
+ * of the xy domain boundary has all its atomic charges set to zero — both in
+ * `pb.lipid_atoms` and in the flat `pb.charge_lipid_atoms` vector.
+ * This prevents singularities near the periodic faces and ensures consistent
+ * postprocessing.  Call after trim_lipid_atoms().  Safe on all MPI ranks.
+ *
+ * @param pb Solver instance with `l_cr`/`r_cr` and trimmed lipid_atoms.
+ */
+void zero_boundary_residue_charges (poisson_boltzmann& pb);
 
 // ─── Assembly placeholder ────────────────────────────────────────────────────
 

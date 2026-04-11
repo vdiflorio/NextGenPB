@@ -208,16 +208,13 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     stern_membrane   = g2 ( (mem_options + "stern_membrane").c_str (), 0);
     stern_membrane_d = g2 ( (mem_options + "stern_membrane_d").c_str (), 0.0);
 
-    // When the membrane is enabled and the user has not explicitly chosen a
-    // mesh shape (default 0), automatically switch to mesh_shape 4 (adaptive
-    // scaling), which is better suited for protein-in-membrane systems.
-    // perfil1/perfil2 are already read above (mesh_shape 0 falls in the
-    // mesh_shape < 2 block); only scale_min/scale_max need to be read here.
-    if (mesh_shape == 0) {
-      mesh_shape = 4;
-      scale_min = g2 ( (mesh_options + "scale_min").c_str (), 0.5);
-      scale_max = g2 ( (mesh_options + "scale_max").c_str (), 2.0);
-    }
+    // Membrane mode always uses MESH_SHAPE_MEM (slab mesh). The user cannot
+    // override this: the slab geometry and level structure are determined by
+    // cell_length_x/y and the lipid/protein atom extents at mesh-build time.
+    mesh_shape = MESH_SHAPE_MEM;
+    scale_max = g2 ( (mesh_options + "scale_max").c_str (), 2.0);
+    nlev_mem  = g2 ( (mesh_options + "nlev_mem").c_str (),  2);
+    nlev_sol  = g2 ( (mesh_options + "nlev_sol").c_str (),  4);
   }
 
   return 0;

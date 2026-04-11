@@ -143,7 +143,12 @@ struct
   double perfil1, perfil2;            ///< Stretching profile control points
   int loc_ref = 0;   ///< Local refinement flag
   int aligned = 0;   ///< Align mesh to axes flag
+  int nlev_mem = 2;  ///< Levels coarser than maxlevel for membrane slab (MESH_SHAPE_MEM)
+  int nlev_sol = 4;  ///< Levels coarser than maxlevel for solvent (MESH_SHAPE_MEM)
   /// @}
+
+  /// @brief Identifier for the membrane slab mesh (forced when membrane_enabled = true).
+  static constexpr int MESH_SHAPE_MEM = 6;
 
   /// @name Physical model parameters
   /// @{

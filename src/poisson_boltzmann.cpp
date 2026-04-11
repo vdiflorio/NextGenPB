@@ -129,11 +129,13 @@ main (int argc, char **argv)
   if (rank == 0) {
     std::cout << "\n=== [ Building Surface with NanoShaper ] ===\n";
     if (pb.membrane_enabled) {
-      // Extend the NanoShaper box by 3 × probe radius in xy so that the
-      // membrane surface closes outside the computational domain.
-      // PBC in xy is enforced on the potential, not on the geometry.
-      // z bounds are left unchanged (the membrane is already closed in z by the solvent).
-      const double ns_margin = 3.0 * pb.surf_param;
+      // Extend the NanoShaper box in xy so that the membrane surface can close
+      // outside the computational domain (PBC is on the potential, not the geometry).
+      // The margin is snapped to the nearest grid-cell boundary so that pb.l_cr/r_cr
+      // remain aligned with NanoShaper's internal grid (both share pb.scale).
+      // z bounds are left unchanged.
+      const int margin_cells = static_cast<int> (std::ceil (3.0 * pb.surf_param * pb.scale));
+      const double ns_margin  = margin_cells / pb.scale;
       double l_cr_ns[3] = { pb.l_cr[0] - ns_margin, pb.l_cr[1] - ns_margin, pb.l_cr[2] };
       double r_cr_ns[3] = { pb.r_cr[0] + ns_margin, pb.r_cr[1] + ns_margin, pb.r_cr[2] };
 
@@ -147,6 +149,13 @@ main (int argc, char **argv)
   }
 
   TOC ("Building Surface with NanoShaper");
+
+  // After NanoShaper: trim out-of-domain lipid atoms and zero boundary residues.
+  // Both operations are deterministic from pb.l_cr/r_cr, so all ranks execute them.
+  if (pb.membrane_enabled) {
+    trim_lipid_atoms             (pb);
+    zero_boundary_residue_charges(pb);
+  }
 
   MPI_Barrier (mpicomm);
 

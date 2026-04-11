@@ -694,6 +694,116 @@ poisson_boltzmann::create_mesh ()
       simple_conn_p[3*i + j++] += l_cr[1];
       simple_conn_p[3*i + j] += l_cr[2];
     }
+  } else if (mesh_shape == MESH_SHAPE_MEM) {
+
+    // ── Membrane slab mesh ────────────────────────────────────────────────
+    // Cubic box of side max(cell_length_x, cell_length_y).
+    // The membrane fills the xy face; the slab in z covers both the membrane
+    // and the protein (which may extend above/below the membrane).
+    //
+    // Level structure:
+    //   outlevel  = maxlevel - nlev_sol   (far solvent)
+    //   scale_level = maxlevel - nlev_mem  (membrane slab)
+    //   maxlevel                           (near molecular surface, loc_refinement)
+
+    // --- lipid atom extents in all three directions ---
+    auto minmax_lip_x = std::minmax_element (pos_lipid_atoms.begin (), pos_lipid_atoms.end (), comp_pos_x);
+    auto minmax_lip_y = std::minmax_element (pos_lipid_atoms.begin (), pos_lipid_atoms.end (), comp_pos_y);
+    auto minmax_lip_z = std::minmax_element (pos_lipid_atoms.begin (), pos_lipid_atoms.end (), comp_pos_z);
+
+    double maxrad_lip = r_lipid_atoms.empty () ? 0.0
+                      : *std::max_element (r_lipid_atoms.begin (), r_lipid_atoms.end ());
+    double maxrad = std::max (maxradius, maxrad_lip);
+
+    // --- z-slab bounds: covers both membrane and protein (protein may be taller) ---
+    double z_prot_min = (*minmax_z.first)[2];
+    double z_prot_max = (*minmax_z.second)[2];
+    double z_lip_min  = pos_lipid_atoms.empty () ? z_prot_min : (*minmax_lip_z.first)[2];
+    double z_lip_max  = pos_lipid_atoms.empty () ? z_prot_max : (*minmax_lip_z.second)[2];
+
+    double z_slab_bot = std::min (z_prot_min, z_lip_min) - maxrad - 2.0 * prb_radius;
+    double z_slab_top = std::max (z_prot_max, z_lip_max) + maxrad + 2.0 * prb_radius;
+    double z_slab_cc  = 0.5 * (z_slab_top + z_slab_bot);
+
+    // --- xy extent of the membrane from lipid atoms + vdw radii ---
+    // box_side is the minimum enclosing square: (max_pos + r_vdw) - (min_pos - r_vdw)
+    double x_lip_min = (*minmax_lip_x.first)[0];
+    double x_lip_max = (*minmax_lip_x.second)[0];
+    double y_lip_min = (*minmax_lip_y.first)[1];
+    double y_lip_max = (*minmax_lip_y.second)[1];
+
+    double lip_lx = (x_lip_max + maxrad_lip) - (x_lip_min - maxrad_lip);
+    double lip_ly = (y_lip_max + maxrad_lip) - (y_lip_min - maxrad_lip);
+
+    // If lip_lx != lip_ly, use the smaller side so the square fits inside the
+    // membrane patch on all ranks; atoms outside the square are trimmed after NS.
+    double box_side = std::min (lip_lx, lip_ly);
+
+    // Center of the membrane patch in xy (overrides preamble's protein-only cc)
+    cc[0] = 0.5 * (x_lip_max + x_lip_min);
+    cc[1] = 0.5 * (y_lip_max + y_lip_min);
+    cc[2] = z_slab_cc;
+
+    // --- square outer box (cubic: same side in x, y, z) ---
+    ll[0] = cc[0] - box_side / 2.0;  rr[0] = cc[0] + box_side / 2.0;
+    ll[1] = cc[1] - box_side / 2.0;  rr[1] = cc[1] + box_side / 2.0;
+    ll[2] = cc[2] - box_side / 2.0;  rr[2] = cc[2] + box_side / 2.0;
+
+    // --- levels ---
+    maxlevel    = (int) std::ceil (std::log2 (box_side * scale_max));
+    scale       = (double)(1 << maxlevel) / box_side;
+    unilevel    = maxlevel - nlev_sol;
+    outlevel    = maxlevel - nlev_sol;
+    scale_level = maxlevel - nlev_mem;
+    scale_level_min_box = maxlevel;
+
+    // --- l_c / r_c: slab bounds for the refinement callback ---
+    // xy spans the full box (condition always satisfied → only z filters)
+    l_c[0] = ll[0];      r_c[0] = rr[0];
+    l_c[1] = ll[1];      r_c[1] = rr[1];
+    l_c[2] = z_slab_bot; r_c[2] = z_slab_top;
+
+    // --- l_cr / r_cr: NS box, aligned to the grid (square in xy) ---
+    int nx = (int) ((box_side / 2.0) * scale + 0.5);
+    int ny = (int) ((box_side / 2.0) * scale + 0.5);
+    int nz = (int) ((z_slab_top - z_slab_cc) * scale + 0.5);
+    l_cr[0] = cc[0] - nx / scale;     r_cr[0] = cc[0] + nx / scale;
+    l_cr[1] = cc[1] - ny / scale;     r_cr[1] = cc[1] + ny / scale;
+    l_cr[2] = z_slab_cc - nz / scale; r_cr[2] = z_slab_cc + nz / scale;
+
+    if (rank == 0) {
+      std::cout << "cx: " << cc[0] << "  cy: " << cc[1] << "  cz: " << cc[2] << '\n';
+      std::cout << "x: "  << ll[0] << " , " << rr[0] << '\n';
+      std::cout << "y: "  << ll[1] << " , " << rr[1] << '\n';
+      std::cout << "z: "  << ll[2] << " , " << rr[2] << '\n';
+      std::cout << "z_slab: " << z_slab_bot << " , " << z_slab_top << '\n';
+      std::cout << "maxlevel: "    << maxlevel
+                << "  scale_level: " << scale_level
+                << "  unilevel: "    << unilevel << '\n';
+    }
+
+    simple_conn_num_vertices = 8;
+    simple_conn_num_trees    = 1;
+
+    simple_conn_p = std::make_unique<double[]> (simple_conn_num_vertices * 3);
+    simple_conn_t = std::make_unique<p4est_topidx_t[]> (simple_conn_num_vertices);
+
+    auto tmp_p = {ll[0], ll[1], ll[2],
+                  rr[0], ll[1], ll[2],
+                  ll[0], rr[1], ll[2],
+                  rr[0], rr[1], ll[2],
+                  ll[0], ll[1], rr[2],
+                  rr[0], ll[1], rr[2],
+                  ll[0], rr[1], rr[2],
+                  rr[0], rr[1], rr[2]};
+    auto tmp_t = {1, 2, 3, 4, 5, 6, 7, 8};
+
+    std::copy (tmp_p.begin (), tmp_p.end (), simple_conn_p.get ());
+    std::copy (tmp_t.begin (), tmp_t.end (), simple_conn_t.get ());
+
+    for (int i = 0; i < 6; i++)
+      bcells.push_back (std::make_pair (0, i));
+
   } else {
     if (rank == 0) {
       std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
