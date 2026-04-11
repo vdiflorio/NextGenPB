@@ -49,7 +49,7 @@ int parse_line_to_atom_radius (const std::string& line, NS::Atom& atom)
     count++;
   }
 
-  // Inizializza campi non presenti
+  // Initialise fields not present in this record format
   // atom.ai.resNum = 1;
   // atom.ai.chain = 'X';
   // atom.charge = 0.0f;
@@ -98,7 +98,7 @@ int parse_line_to_atom_charge (const std::string& line, NS::Atom& atom)
     count++;
   }
 
-  // Inizializza campi non presenti
+  // Initialise fields not present in this record format
   // atom.ai.resNum = 1;
   // atom.ai.chain = 'X';
   // atom.charge = 0.0f;
@@ -238,7 +238,7 @@ void write_pqr (const std::string& filename, const std::vector<NS::Atom>& atoms)
                   i + 1,
                   a.ai.name.c_str(),
                   a.ai.resName.c_str(),
-                  a.ai.chain.empty() ? ' ' : a.ai.chain[0], // Usa solo il primo carattere
+                  a.ai.chain.empty() ? ' ' : a.ai.chain[0], // PDB chain field is one character
                   a.ai.resNum,
                   a.pos[0],
                   a.pos[1],

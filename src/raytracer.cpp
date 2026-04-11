@@ -567,7 +567,7 @@ ray_cache_t::read_map (const std::vector<unsigned char>& data,
   size_t num_maps = *psize;
 
   std::vector<size_t> num_flags (num_maps);
-  size_t size_num_flags = sizeof (size_t) * num_maps + sizeof (size_t); //da dove iniziano i dati
+  size_t size_num_flags = sizeof (size_t) * num_maps + sizeof (size_t); // byte offset where data begins
 
   psize++;
 

@@ -48,7 +48,7 @@ VTKWriter:: writeFieldVtuBinary_local (tmesh_3d& tmsh,
 void
 VTKWriter::createPvtuFile (std::vector<std::string> &fieldNames, std::vector<std::string> &baseNames, int numRanks)
 {
-  // Nome del file pvtu
+  // Build the .pvtu filename
   if (fieldNames.size() != baseNames.size()) {
     throw std::runtime_error ("Error: different number of field and names! ");
   }
@@ -57,19 +57,19 @@ VTKWriter::createPvtuFile (std::vector<std::string> &fieldNames, std::vector<std
 
     std::string pvtuFilename = "total_"+baseNames[i]+".pvtu";
 
-    // Apri il file
+    // Open the .pvtu file for writing
     std::ofstream pvtuFile (pvtuFilename);
 
     if (!pvtuFile.is_open()) {
       throw std::runtime_error ("Error: impossible to create the file " + pvtuFilename);
     }
 
-    // Scrivi l'intestazione
+    // Write the XML header
     pvtuFile << "<?xml version=\"1.0\"?>\n";
     pvtuFile << "<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
     pvtuFile << "  <PUnstructuredGrid>\n";
 
-    // Scrivi le sezioni PPoints, PCells e PPointData
+    // Write PPoints, PCells and PPointData sections
     pvtuFile << "    <PPoints>\n";
     pvtuFile << "      <PDataArray type=\"Float64\" NumberOfComponents=\"3\" Name=\"Array\"/>\n";
     pvtuFile << "    </PPoints>\n";
@@ -80,23 +80,22 @@ VTKWriter::createPvtuFile (std::vector<std::string> &fieldNames, std::vector<std
     pvtuFile << "      <PDataArray type=\"Int32\" Name=\"types\"/>\n";
     pvtuFile << "    </PCells>\n";
 
-    // Aggiungi i dati per ogni campo
+    // Add point data for each field
     pvtuFile << "    <PPointData>\n";
     pvtuFile << "      <PDataArray type=\"Float64\" Name=\"" << fieldNames[i] << "\"/>\n";
     pvtuFile << "    </PPointData>\n";
 
-    // Aggiungi i riferimenti ai file .vtu per ogni campo e rank
+    // Add per-rank .vtu piece references
     for (int rank = 0; rank < numRanks; ++rank)
       pvtuFile << "    <Piece Source=\""
                << baseNames[i] << "_" << std::setfill ('0') << std::setw (4) << rank << ".vtu\"/>\n";
 
-    // Chiudi le sezioni
+    // Close the root sections
     pvtuFile << "  </PUnstructuredGrid>\n";
     pvtuFile << "</VTKFile>\n";
 
-    // Chiudi il file
     pvtuFile.close();
-    std::cout << "File .pvtu create: " << pvtuFilename << std::endl;
+    std::cout << ".pvtu file created: " << pvtuFilename << std::endl;
   }
 }
 
@@ -163,43 +162,43 @@ void VTKWriter::preparingData_local (const distributed_vector& field,
   nelems = 0;
   nnodes = 0;
 
-  // Array di indici per i nodi univoci, inizializzati a -1
+  // Index map from global node index to local VTK node index; -1 = not yet added
   std::vector<int> global_to_local (tmsh.num_owned_nodes(), -1);
 
   for (auto quadrant = tmsh.begin_quadrant_sweep();
        quadrant != tmsh.end_quadrant_sweep();
        ++quadrant) {
 
-    // Coordinate dei nodi estremi del quadrante
+    // Corner coordinates of the current quadrant
     double x1 = quadrant->p (0, 0), y1 = quadrant->p (1, 0), z1 = quadrant->p (2, 0);
     double x2 = quadrant->p (0, 7), y2 = quadrant->p (1, 7), z2 = quadrant->p (2, 7);
 
-    // Controllo se il quadrante è nella regione desiderata
+    // Skip quadrants that lie outside the requested region
     if ((x1 > l_cr[0]) && (x2 < r_cr[0]) &&
         (y1 > l_cr[1]) && (y2 < r_cr[1]) &&
         (z1 > l_cr[2]) && (z2 < r_cr[2])) {
-      // Itera sui nodi del quadrante
+      // Iterate over the 8 corner nodes of the quadrant
       for (int ii = 0; ii < 8; ++ii) {
         int global_index = quadrant->gt (ii);
 
-        // Verifica se il nodo è già stato aggiunto
+        // Check whether this node has already been added to the local list
         if (global_to_local[global_index] == -1) {
           if (rank==1) {
             std::cout << f_loc.size()<<" " << global_to_local[global_index] << "  " << global_index <<std::endl;
           }
 
-          // Nodo nuovo: aggiungilo a p e aggiorna il mapping
+          // New node: append its coordinates and update the global→local map
           for (int jj = 0; jj < 3; ++jj) {
             p.push_back (quadrant->p (jj, ii));
           }
 
-          // Calcola il valore del campo per il nodo
+          // Compute the field value at this node
           double field_value = 0.0;
 
           if (!quadrant->is_hanging (ii)) {
             field_value = field[global_index];
           } else {
-            // Media dei valori dei nodi parent
+            // Hanging node: average over parent node values
             int num_parents = quadrant->num_parents (ii);
 
             for (int pp = 0; pp < num_parents; ++pp) {
@@ -211,11 +210,11 @@ void VTKWriter::preparingData_local (const distributed_vector& field,
 
           f_loc.push_back (field_value);
 
-          // Registra il nodo nella lista dei nodi univoci
+          // Record the new local index for this node
           global_to_local[global_index] = nnodes++;
         }
 
-        // Aggiungi l'indice del nodo al vettore di connettività
+        // Append the local node index to the connectivity vector
         t.push_back (global_to_local[global_index]);
       }
 
@@ -224,23 +223,23 @@ void VTKWriter::preparingData_local (const distributed_vector& field,
     }
   }
 
-  // Calcolo del numero di nodi
+  // Update the total node count from the field value vector
   nnodes = f_loc.size();
 }
 
 void
 VTKWriter::setBaseName (std::string basename_, int rank_)
 {
-  // Se il basename è vuoto, usa 'default'
+  // Fall back to "default" when no basename is provided
   basename = basename_.empty() ? "default" : basename_;
   rank = rank_;
 
-  // Genera il nuovo nome del file
+  // Build the per-rank .vtu filename
   snprintf (filename, sizeof (filename), "%s_%4.4d.vtu", basename.c_str(), rank);
 
-  // Azzerare l'offset quando viene cambiato il nome del file
+  // Reset the byte offset counter whenever the filename changes
   offsetCounter = 0;
-  // Azzera il datacontainer e gli alti ogetti
+  // Reset the binary data container and associated buffers
   ByteArray().swap (dataContainer);
   int nnodes;
   int nelems;
@@ -263,14 +262,14 @@ VTKWriter::setFieldName (std::string &fieldname_)
 void
 VTKWriter::initializeFile()
 {
-  // Apre il file in modalità sovrascrittura
+  // Open the file in binary write mode, truncating any existing content
   file.open (filename, std::ios::binary | std::ios::trunc);
 
   if (!file.is_open()) {
-    throw std::runtime_error ("Errore: impossibile aprire il file " + std::string (filename));
+    throw std::runtime_error ("Error: cannot open file " + std::string (filename));
   }
 
-  // Scrive l'intestazione del file
+  // Write the VTK XML file header
   file << "<?xml version=\"1.0\"?>\n";
   file << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
   file << "<UnstructuredGrid>\n";
@@ -302,12 +301,12 @@ template <typename T>
 ByteArray serializeDataWithHeader (const std::vector<T>& data)
 {
   ByteArray rawData;
-  // Intestazione con la dimensione del blocco (in byte)
+  // Prepend the block size (in bytes) as a 4-byte header, as required by VTK appended format
   int32_t blockSize = static_cast<int32_t> (data.size() * sizeof (T));
   const char* headerBytes = reinterpret_cast<const char*> (&blockSize);
   rawData.insert (rawData.end(), headerBytes, headerBytes + sizeof (int32_t));
 
-  // Aggiungere i dati veri e propri
+  // Append the actual data bytes
   const char* dataBytes = reinterpret_cast<const char*> (data.data());
   rawData.insert (rawData.end(), dataBytes, dataBytes + blockSize);
 
@@ -317,10 +316,10 @@ ByteArray serializeDataWithHeader (const std::vector<T>& data)
 void
 VTKWriter::appendData (const ByteArray& rawData)
 {
-  // Aggiunge i dati binari al contenitore principale
+  // Append binary data to the main container
   dataContainer.insert (dataContainer.end(), rawData.begin(), rawData.end());
 
-  // Aggiorna l'offset (la dimensione totale dei dati scritti finora)
+  // Update the running byte offset (total bytes written so far)
   offsetCounter += rawData.size();
   // size_t alignTo = 8; // Multiplo di 8 per l'allineamento
   // offsetCounter = (offsetCounter + alignTo - 1) & ~(alignTo - 1);
@@ -346,15 +345,15 @@ void VTKWriter::writeConnectivity()
   file << "<DataArray type=\"Int32\" Name=\"connectivity\" format=\"appended\" offset=\"" << offsetCounter << "\">\n";
   file << "</DataArray>\n";
 
-  // ByteArray rawData = serializeData(t); // Serializza i dati come Int32
-  ByteArray rawData = serializeDataWithHeader (t); // Serializza i dati come Int32
-  appendData (rawData); // Aggiunge al contenitore binario
+  // ByteArray rawData = serializeData(t);
+  ByteArray rawData = serializeDataWithHeader (t); // Int32 connectivity with VTK block header
+  appendData (rawData);
 }
 
 void VTKWriter::writeOffsets()
 {
   std::vector<int> offsets (nelems);
-  int nodesPerCell = 8; // Supponendo celle cubiche 3D
+  int nodesPerCell = 8; // 3D hexahedral cells
 
   for (int i = 0; i < nelems; ++i) {
     offsets[i] = (i + 1) * nodesPerCell;
@@ -370,7 +369,7 @@ void VTKWriter::writeOffsets()
 
 void VTKWriter::writeCellTypes()
 {
-  int cellType = 11; // Per celle cubiche 3D
+  int cellType = 11; // VTK_VOXEL (3D hexahedral cell type)
   std::vector<int> types (nelems, cellType);
 
   file << "<DataArray type=\"Int32\" Name=\"types\" format=\"appended\" offset=\"" << offsetCounter << "\">\n";
@@ -385,13 +384,13 @@ void
 VTKWriter::writeGrid()
 {
   file << "<Points>\n";
-  writeDataArray ("Float64", "Array", 3, p, nnodes); // Scrive i nodi della mesh
+  writeDataArray ("Float64", "Array", 3, p, nnodes); // Node coordinates
   file << "</Points>\n";
 
   file << "<Cells>\n";
-  writeConnectivity(); // Scrive la connettività
-  writeOffsets(); // Scrive gli offset
-  writeCellTypes(); // Scrive i tipi delle celle
+  writeConnectivity(); // Cell-to-node connectivity
+  writeOffsets();      // Per-cell node count offsets
+  writeCellTypes();    // VTK cell type codes
   file << "</Cells>\n";
 }
 

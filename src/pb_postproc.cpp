@@ -118,7 +118,7 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
     local_lines.push_back (oss.str());
   }
 
-  // Serializzazione delle stringhe
+  // Serialise each rank's lines into a flat buffer for MPI_Gatherv
   std::string local_data;
 
   for (const auto& line : local_lines)
@@ -148,7 +148,7 @@ poisson_boltzmann::write_potential_on_atoms_fast ()
                all_sizes.data(), displs.data(), MPI_CHAR,
                0, mpicomm);
 
-  // Solo rank 0 scrive sul file
+  // Only rank 0 writes the collected data to disk
   if (rank == 0) {
     std::ofstream phi_atoms ("phi_on_atoms.txt");
     phi_atoms << global_data;
@@ -168,10 +168,10 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
 
   // ===========================
-  // Costanti fisiche e scalari
+  // Physical constants and scaling factors
   // ===========================
   const double inv_4pi = 1.0 / (4.0 * pi);
-  const double eps0 = e_0; // Permittività del vuoto
+  const double eps0 = e_0; // vacuum permittivity
   const double eps_in = 4.0 * pi * eps0 * e_in * kb * T * Angs / (e * e);
   const double eps_out = 4.0 * pi * eps0 * e_out * kb * T * Angs / (e * e);
 
@@ -442,10 +442,10 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
     std::cout << "\n================ [ Electrostatic Energy ] =================\n";
 
   // ===========================
-  // Costanti fisiche e scalari
+  // Physical constants and scaling factors
   // ===========================
   const double inv_4pi = 1.0 / (4.0 * pi);
-  const double eps0 = e_0; // Permittività del vuoto
+  const double eps0 = e_0; // vacuum permittivity
   const double eps_in = 4.0 * pi * eps0 * e_in * kb * T * Angs / (e * e);
   const double eps_out = 4.0 * pi * eps0 * e_out * kb * T * Angs / (e * e);
 
@@ -990,10 +990,10 @@ poisson_boltzmann::pot_field_fast (ray_cache_t & ray_cache)
     std::cout << "\n================ [ Calculating Potential & Field Components ] =================\n";
 
   // ===========================
-  // Costanti fisiche e scalari
+  // Physical constants and scaling factors
   // ===========================
   const double inv_4pi = 1.0 / (4.0 * pi);
-  const double eps0 = e_0; // Permittività del vuoto
+  const double eps0 = e_0; // vacuum permittivity
   const double eps_in = 4.0 * pi * eps0 * e_in * kb * T * Angs / (e * e);
   const double eps_out = 4.0 * pi * eps0 * e_out * kb * T * Angs / (e * e);
 
@@ -1648,10 +1648,10 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
     std::cout << "\n================ [ Calculating Potential & Field Components ] =================\n";
 
   // ===========================
-  // Costanti fisiche e scalari
+  // Physical constants and scaling factors
   // ===========================
   const double inv_4pi = 1.0 / (4.0 * pi);
-  const double eps0 = e_0; // Permittività del vuoto
+  const double eps0 = e_0; // vacuum permittivity
   const double eps_in = 4.0 * pi * eps0 * e_in * kb * T * Angs / (e * e);
   const double eps_out = 4.0 * pi * eps0 * e_out * kb * T * Angs / (e * e);
 

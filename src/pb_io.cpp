@@ -32,7 +32,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   GetPot g (argc, argv);
 
   // =============================
-  // 1. Leggi file dei parametri
+  // 1. Load the parameters file
   // =============================
   if (!g.search ("--prmfile") && !g.search ("--potfile")) {
     if (rank == 0)
@@ -40,7 +40,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
                 << "\nTo select one use --prmfile or --potfile option followed by the desired file.\n";
   }
 
-  // Cerca il file, dando precedenza a --prmfile se entrambi sono presenti
+  // --prmfile takes precedence if both --prmfile and --potfile are given
   if (g.search ("--prmfile")) {
     optionsfilename = g.next ("../../data/options.prm");
   } else if (g.search ("--potfile")) {
@@ -62,7 +62,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   GetPot g2 (optionsfilename.c_str());
 
   // =============================
-  // 2. Leggi parametri input/
+  // 2. Parse [input] section
   // =============================
   const std::string input_section = "input/";
   std::string filename_from_file;
@@ -77,11 +77,11 @@ poisson_boltzmann::parse_options (int argc, char **argv)
 
 
   // =============================
-  // 3. Override da riga di comando: --pqrfile
+  // 3. Command-line override: --pqrfile
   // =============================
   if (g.search ("--pqrfile")) {
     pqrfilename = g.next ("");
-    filetype = "pqr"; // Forza il filetype a pqr se viene specificato un file
+    filetype = "pqr"; // Force filetype to pqr when the file is given on the command line
   }
 
   if (rank == 0)
@@ -203,8 +203,6 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     cell_length_x  = g2 ( (mem_options + "cell_length_x").c_str (), 0.0);
     cell_length_y  = g2 ( (mem_options + "cell_length_y").c_str (), 0.0);
     e_mem          = g2 ( (mem_options + "membrane_dielectric").c_str (), 2.0);
-    kappa_in       = g2 ( (mem_options + "kappa_in").c_str (), 0.0);
-    kappa_out      = g2 ( (mem_options + "kappa_out").c_str (), ionic_strength);
     stern_membrane   = g2 ( (mem_options + "stern_membrane").c_str (), 0);
     stern_membrane_d = g2 ( (mem_options + "stern_membrane_d").c_str (), 0.0);
 
@@ -221,17 +219,17 @@ poisson_boltzmann::parse_options (int argc, char **argv)
 }
 
 // ====================================
-// Autovettore dominante per matrice 3x3 simmetrica
-// Usa il metodo di Jacobi (iterativo, robusto)
+// Dominant eigenvector of a 3×3 symmetric matrix.
+// Uses the power-iteration method (robust, iterative).
 // ====================================
 void compute_dominant_eigenvector (double cov[3][3], double axis[3])
 {
-  // Inizializza axis = (1,0,0)
+  // Initialise axis = (1, 0, 0)
   axis[0] = 1.0;
   axis[1] = 0.0;
   axis[2] = 0.0;
 
-  // Potenza iterativa per il vettore principale
+  // Power iteration to find the principal eigenvector
   for (int iter = 0; iter < 20; ++iter) {
     double x = cov[0][0]*axis[0] + cov[0][1]*axis[1] + cov[0][2]*axis[2];
     double y = cov[1][0]*axis[0] + cov[1][1]*axis[1] + cov[1][2]*axis[2];
@@ -428,13 +426,13 @@ poisson_boltzmann::broadcast_vectors ()
   int size_vec = charge_atoms.size ();
   MPI_Bcast (&size_vec, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  // Ogni processo alloca il vettore
+  // Each process allocates its copy of the broadcast vectors
   pos_atoms.resize (size_vec);
   charge_atoms.resize (size_vec);
   r_atoms.resize (size_vec);
   index_atoms.resize (size_vec);
 
-  // Effettuare il broadcast del vettore
+  // Broadcast flat atom arrays from rank 0 to all ranks
   MPI_Bcast (pos_atoms.data (), size_vec * 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast (charge_atoms.data (), size_vec, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast (r_atoms.data (), size_vec, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -477,19 +475,19 @@ operator>> (std::basic_istream<char>& inputfile, NS::Atom &a)
   std::string token;
   inputfile >> token;
 
-  // Verifica se è un numero (resNum) oppure una stringa (chain)
+  // Determine whether the next token is resNum (an integer) or chain ID (a string)
   bool is_number = !token.empty() &&
                    (std::isdigit (token[0]) || token[0] == '-' || token[0] == '+');
 
   if (is_number) {
-    // Era resNum - metti solo il token indietro nello stream
+    // Token is resNum: push it back so the subsequent >> reads it correctly
     for (auto it = token.rbegin(); it != token.rend(); ++it) {
       inputfile.putback (*it);
     }
 
-    a.ai.chain.clear(); // Nessuna catena specificata
+    a.ai.chain.clear(); // No chain ID in this record
   } else {
-    // Era chain - leggi il resNum successivo
+    // Token is chain ID: read resNum next
     a.ai.chain = token;
   }
 

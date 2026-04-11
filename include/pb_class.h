@@ -261,9 +261,7 @@ struct
 
   /// @name Membrane dielectric and ionic profile
   /// @{
-  double e_mem          = 2.0;  ///< Membrane dielectric constant
-  double kappa_in       = 0.0;  ///< Ionic strength — intracellular side [mol/L]
-  double kappa_out      = 0.0;  ///< Ionic strength — extracellular side [mol/L]
+  double e_mem          = 2.0;  ///< Membrane dielectric constant (default = protein dielectric)
   bool   stern_membrane = false; ///< Enable Stern layer on membrane surface
   double stern_membrane_d = 0.0; ///< Stern layer thickness on membrane [Å]
   /// @}

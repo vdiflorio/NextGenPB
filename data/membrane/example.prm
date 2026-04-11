@@ -1,16 +1,23 @@
 # ===================================
 # NextGenPB — Membrane Protein Example
 # ===================================
-# This parameter file enables the membrane mode.
-# Replace protein.pqr and lipids.pqr with real structures.
+# Parameter file for a protein-in-membrane system.
+# Replace protein.pqr and lipids.pqr with your actual structures.
 
 ######################################
 # Input Settings
 ######################################
 [input]
 
+# File format of the protein structure:
+#   pqr  — positions, charges and radii in a single file (default)
+#   pdb  — standard PDB format; requires radius_file and charge_file below
 filetype = pqr
 filename = protein.pqr
+
+# Only required when filetype = pdb:
+# radius_file = ../../data/radius.siz
+# charge_file = ../../data/charge.crg
 
 write_pqr = 0
 name_pqr  = output.pqr
@@ -22,13 +29,25 @@ name_pqr  = output.pqr
 ######################################
 [mesh]
 
-# mesh_shape = 6 will use xy-periodic p4est connectivity (TBD — not yet implemented).
-# Use mesh_shape = 0 in the meantime.
-mesh_shape = 0
+# NOTE: when membrane mode is enabled (see [membrane] below), mesh_shape is
+# forced to MESH_SHAPE_MEM (= 6) regardless of any value set here.
+# The following parameters control the slab-layered refinement:
 
-perfil1 = 0.8
-perfil2 = 0.5
-scale   = 2.0
+# Target finest-level resolution [cells/Å].
+# maxlevel = ceil(log2(box_side × scale_max)); effective scale = 2^maxlevel / box_side.
+scale_max = 2.0
+
+# Integer level difference between maxlevel and the membrane slab level.
+# Cells in the slab (covering the lipid bilayer + protein) are 2^nlev_mem times
+# coarser than cells near the molecular surface (loc_refinement).
+nlev_mem = 2
+
+# Integer level difference between maxlevel and the far-solvent level.
+# Cells in the bulk solvent are 2^nlev_sol times coarser than near the surface.
+nlev_sol = 4
+
+# Enable local refinement near the molecular surface:
+loc_refinement = 0
 
 [../]
 
@@ -37,16 +56,16 @@ scale   = 2.0
 ######################################
 [model]
 
-linearized = 1
-bc_type    = 2
+linearized = 1          # 1 = linearized Poisson–Boltzmann equation
+bc_type    = 1          # 0 = Neumann  1 = Dirichlet  2 = Coulombic
 
-molecular_dielectric_constant = 2
-solvent_dielectric_constant   = 80
-ionic_strength                = 0.145
-T                             = 298.15
+molecular_dielectric_constant = 2      # Dielectric constant inside the molecule
+solvent_dielectric_constant   = 80     # Dielectric constant of the solvent
+ionic_strength                = 0.145  # Bulk ionic strength [mol/L]
+T                             = 298.15 # Temperature [K]
 
-calc_energy    = 2
-calc_coulombic = 1
+calc_energy    = 2   # 0 = none  1 = polarization  2 = polarization + ionic solvation
+calc_coulombic = 1   # 1 = also compute the Coulombic (vacuum) energy term
 
 atoms_write   = 0
 map_type      = vtu
@@ -61,8 +80,10 @@ surf_write    = 0
 ######################################
 [surface]
 
+# 0 = Solvent Excluded Surface (SES)
+# 1 = Skin surface
 surface_type      = 0
-surface_parameter = 1.4
+surface_parameter = 1.4    # Probe radius [Å] for SES
 
 stern_layer_surf      = 0
 stern_layer_thickness = 2.0
@@ -86,31 +107,30 @@ solver_options = -p\ ssor\ -ssor_omega\ 0.51\ -i\ cgs\ -tol\ 1.e-6\ -print\ 2\ -
 ######################################
 [membrane]
 
-# Enable membrane mode (0 = disabled, 1 = enabled)
+# Enable membrane mode (0 = disabled, 1 = enabled).
+# When enabled:
+#   - mesh_shape is forced to MESH_SHAPE_MEM (slab refinement, see [mesh] above)
+#   - NanoShaper receives protein + lipid atoms together for a unified SES/SAS surface
+#   - The NS bounding box is extended by 3 × probe_radius in xy so surfaces close
+#     at the periodic boundary; the FEM domain is not extended
+#   - Lipid atoms outside the computational domain are removed after NS
+#   - Atoms of membrane residues near the xy boundary have their charge set to zero
 enabled        = 1
 
-# Lipid atoms file (PQR or PDB format)
+# Lipid atom file (PQR or PDB format, controlled by lipid_filetype).
 lipid_file     = lipids.pqr
 lipid_filetype = pqr
 
-# Periodic boundary conditions in xy (0 = disabled, 1 = enabled)
-periodic_x    = 1
-periodic_y    = 1
+# Periodic boundary conditions applied on the electrostatic potential in xy.
+periodic_x = 1
+periodic_y = 1
 
-# Unit cell dimensions in the xy plane [Angstrom]
-cell_length_x = 80.0
-cell_length_y = 80.0
-
-# Membrane dielectric constant (typically ~2 for lipid bilayer)
+# Membrane dielectric constant.
+# Default: same as the protein (molecular_dielectric_constant = 2).
+# A spatially varying membrane dielectric is not yet implemented.
 membrane_dielectric = 2.0
 
-# Ionic strength on each side of the membrane [mol/L]
-# kappa_in:  intracellular side
-# kappa_out: extracellular side (defaults to ionic_strength above if not set)
-kappa_in  = 0.0
-kappa_out = 0.145
-
-# Stern layer on membrane surface (0 = disabled, 1 = enabled)
+# Stern (ion-exclusion) layer on the membrane surface.
 stern_membrane   = 0
 stern_membrane_d = 2.0
 
