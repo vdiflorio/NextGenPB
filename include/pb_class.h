@@ -120,6 +120,10 @@ struct
   double r_cr[3];    ///< Refined sub-box: max corner [Å]
   double l_box[3];   ///< Focusing sub-box: min corner [Å]
   double r_box[3];   ///< Focusing sub-box: max corner [Å]
+  double l_prot[3];  ///< Protein bounding box: min corner [Å] (MESH_SHAPE_MEM two-box refinement)
+  double r_prot[3];  ///< Protein bounding box: max corner [Å] (MESH_SHAPE_MEM two-box refinement)
+  double l_mem[3];   ///< Membrane (lipid) refinement box: min corner [Å] (MESH_SHAPE_MEM)
+  double r_mem[3];   ///< Membrane (lipid) refinement box: max corner [Å] (MESH_SHAPE_MEM)
   double pot_bc = 0.0; ///< Potential value at outer boundary [kT/e]
   p4est_topidx_t num_trees[3]; ///< Number of octree trees per axis
   double len;        ///< Side length of the coarsest tree [Å]
@@ -143,8 +147,9 @@ struct
   double perfil1, perfil2;            ///< Stretching profile control points
   int loc_ref = 0;   ///< Local refinement flag
   int aligned = 0;   ///< Align mesh to axes flag
-  int nlev_mem = 2;  ///< Levels coarser than maxlevel for membrane slab (MESH_SHAPE_MEM)
-  int nlev_sol = 4;  ///< Levels coarser than maxlevel for solvent (MESH_SHAPE_MEM)
+  int nlev_mem  = 2; ///< Levels above scale_level for surface refinement (MESH_SHAPE_MEM)
+  int nlev_sol  = 4; ///< Levels below scale_level for far solvent (MESH_SHAPE_MEM)
+  int nlev_prot = 1; ///< Extra levels above scale_level for protein box (MESH_SHAPE_MEM, 0 < nlev_prot < nlev_mem)
   /// @}
 
   /// @brief Identifier for the membrane slab mesh (forced when membrane_enabled = true).
@@ -207,6 +212,7 @@ struct
   std::string map_type; ///< Type of potential map to export
   int potential_map;   ///< Enable potential map output
   int eps_map;         ///< Enable dielectric map output
+  int dry_run;         ///< Stop after epsilon/density map, skip assembly and solve
   std::map<int, tmesh_3d::quadrant_t> lookup_table; ///< Quadrant lookup cache
   /// @}
 
@@ -774,6 +780,12 @@ struct
   /// @brief Initialise the p4est forest with scale-based refinement inside a box.
   void
   init_tmesh_with_refine_box_scale ();
+
+  /// @brief Two-box refinement for membrane+protein systems (MESH_SHAPE_MEM).
+  /// Protein box (l_prot/r_prot) → maxlevel; membrane box (l_c/r_c) → scale_level.
+  /// Overlapping region takes maxlevel.
+  void
+  init_tmesh_mem_two_box ();
 
   /// @}
 

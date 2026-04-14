@@ -170,6 +170,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   map_type = g2 ( (model_options + "map_type").c_str (), "vtu");
   potential_map = g2 ( (model_options + "potential_map").c_str (), 0);
   eps_map = g2 ( (model_options + "eps_map").c_str (), 0);
+  dry_run = g2 ( (model_options + "dry_run").c_str (), 0);
   const std::string surf_options = "surface/";
   surf_type_num = g2 ( (surf_options + "surface_type").c_str (), 0);
 
@@ -213,6 +214,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     scale_max = g2 ( (mesh_options + "scale_max").c_str (), 2.0);
     nlev_mem  = g2 ( (mesh_options + "nlev_mem").c_str (),  2);
     nlev_sol  = g2 ( (mesh_options + "nlev_sol").c_str (),  4);
+    nlev_prot = g2 ( (mesh_options + "nlev_prot").c_str (), 1);
   }
 
   return 0;

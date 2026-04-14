@@ -80,7 +80,7 @@ poisson_boltzmann::create_mesh ()
     std::cout << "============================================\n\n";
   }
 
-  if (mesh_shape !=2) {
+  if (mesh_shape !=2 && mesh_shape != MESH_SHAPE_MEM) {
     l_c[0] = (*minmax_x.first)[0] - maxradius - 2*prb_radius;
     l_c[1] = (*minmax_y.first)[1] - maxradius - 2*prb_radius;
     l_c[2] = (*minmax_z.first)[2] - maxradius - 2*prb_radius;
@@ -714,12 +714,14 @@ poisson_boltzmann::create_mesh ()
     double maxrad_lip = r_lipid_atoms.empty () ? 0.0
                       : *std::max_element (r_lipid_atoms.begin (), r_lipid_atoms.end ());
     double maxrad = std::max (maxradius, maxrad_lip);
-
+    
     // --- z-slab bounds: covers both membrane and protein (protein may be taller) ---
     double z_prot_min = (*minmax_z.first)[2];
     double z_prot_max = (*minmax_z.second)[2];
-    double z_lip_min  = pos_lipid_atoms.empty () ? z_prot_min : (*minmax_lip_z.first)[2];
-    double z_lip_max  = pos_lipid_atoms.empty () ? z_prot_max : (*minmax_lip_z.second)[2];
+    // double z_lip_min  = pos_lipid_atoms.empty () ? z_prot_min : (*minmax_lip_z.first)[2];
+    // double z_lip_max  = pos_lipid_atoms.empty () ? z_prot_max : (*minmax_lip_z.second)[2];
+    double z_lip_min  = (*minmax_lip_z.first)[2];
+    double z_lip_max  = (*minmax_lip_z.second)[2];
 
     double z_slab_bot = std::min (z_prot_min, z_lip_min) - maxrad - 2.0 * prb_radius;
     double z_slab_top = std::max (z_prot_max, z_lip_max) + maxrad + 2.0 * prb_radius;
@@ -731,6 +733,7 @@ poisson_boltzmann::create_mesh ()
     double x_lip_max = (*minmax_lip_x.second)[0];
     double y_lip_min = (*minmax_lip_y.first)[1];
     double y_lip_max = (*minmax_lip_y.second)[1];
+    
 
     double lip_lx = (x_lip_max + maxrad_lip) - (x_lip_min - maxrad_lip);
     double lip_ly = (y_lip_max + maxrad_lip) - (y_lip_min - maxrad_lip);
@@ -738,6 +741,31 @@ poisson_boltzmann::create_mesh ()
     // If lip_lx != lip_ly, use the smaller side so the square fits inside the
     // membrane patch on all ranks; atoms outside the square are trimmed after NS.
     double box_side = std::min (lip_lx, lip_ly);
+
+    // --- box protein and membrane extents in all three directions ---
+    l_prot[0] = (*minmax_x.first)[0] - maxradius - 2*prb_radius;
+    l_prot[1] = (*minmax_y.first)[1] - maxradius - 2*prb_radius;
+    l_prot[2] = (*minmax_z.first)[2] - maxradius - 2*prb_radius;
+    r_prot[0] = (*minmax_x.second)[0] + maxradius + 2*prb_radius;
+    r_prot[1] = (*minmax_y.second)[1] + maxradius + 2*prb_radius;
+    r_prot[2] = (*minmax_z.second)[2] + maxradius + 2*prb_radius;
+
+    l_mem[0] = x_lip_min - maxrad - 2*prb_radius;
+    l_mem[1] = y_lip_min - maxrad - 2*prb_radius;
+    l_mem[2] = z_lip_min - maxrad - 2*prb_radius;
+    r_mem[0] = x_lip_max + maxrad + 2*prb_radius;
+    r_mem[1] = y_lip_max + maxrad + 2*prb_radius;
+    r_mem[2] = z_lip_max + maxrad + 2*prb_radius;
+
+    std::cout << "\n=== [ MESH_SHAPE_MEM: system extents ] ===\n";
+    std::cout << "  Protein extents (with VdW):\n";
+    std::cout << "    x: [" << l_prot[0] << ", " << r_prot[0] << "] Å\n";
+    std::cout << "    y: [" << l_prot[1] << ", " << r_prot[1] << "] Å\n";
+    std::cout << "    z: [" << l_prot[2] << ", " << r_prot[2] << "] Å\n";
+    std::cout << "  Membrane patch extents (with VdW):\n";
+    std::cout << "    x: [" << l_mem[0] << ", " << r_mem[0] << "] Å\n";
+    std::cout << "    y: [" << l_mem[1] << ", " << r_mem[1] << "] Å\n";
+    std::cout << "    z: [" << l_mem[2] << ", " << r_mem[2] << "] Å\n";
 
     // Center of the membrane patch in xy (overrides preamble's protein-only cc)
     cc[0] = 0.5 * (x_lip_max + x_lip_min);
@@ -772,14 +800,32 @@ poisson_boltzmann::create_mesh ()
     l_cr[2] = z_slab_cc - nz / scale; r_cr[2] = z_slab_cc + nz / scale;
 
     if (rank == 0) {
-      std::cout << "cx: " << cc[0] << "  cy: " << cc[1] << "  cz: " << cc[2] << '\n';
-      std::cout << "x: "  << ll[0] << " , " << rr[0] << '\n';
-      std::cout << "y: "  << ll[1] << " , " << rr[1] << '\n';
-      std::cout << "z: "  << ll[2] << " , " << rr[2] << '\n';
-      std::cout << "z_slab: " << z_slab_bot << " , " << z_slab_top << '\n';
-      std::cout << "maxlevel: "    << maxlevel
-                << "  scale_level: " << scale_level
-                << "  unilevel: "    << unilevel << '\n';
+      std::cout << "\n=== [ MESH_SHAPE_MEM debug ] ===\n";
+      std::cout << "  Lipid patch extents (+ VdW):  lx = " << lip_lx
+                << " Å   ly = " << lip_ly << " Å\n";
+      std::cout << "  Box side (min lx,ly)        : " << box_side << " Å\n";
+      std::cout << "  Center (cx, cy, cz)         : "
+                << cc[0] << "  " << cc[1] << "  " << cc[2] << " Å\n";
+      std::cout << "  Outer box x                 : [" << ll[0] << ", " << rr[0] << "] Å\n";
+      std::cout << "  Outer box y                 : [" << ll[1] << ", " << rr[1] << "] Å\n";
+      std::cout << "  Outer box z                 : [" << ll[2] << ", " << rr[2] << "] Å\n";
+      std::cout << "  Slab z                      : [" << z_slab_bot << ", " << z_slab_top
+                << "] Å  (thickness " << z_slab_top - z_slab_bot << " Å)\n";
+      std::cout << "  FEM domain (l_cr / r_cr) x  : [" << l_cr[0] << ", " << r_cr[0] << "] Å\n";
+      std::cout << "  FEM domain (l_cr / r_cr) y  : [" << l_cr[1] << ", " << r_cr[1] << "] Å\n";
+      std::cout << "  FEM domain (l_cr / r_cr) z  : [" << l_cr[2] << ", " << r_cr[2] << "] Å\n";
+      std::cout << "  scale_max = " << scale_max
+                << "   effective scale = " << scale << " cells/Å\n";
+      std::cout << "  maxlevel = "    << maxlevel
+                << "   scale_level (slab) = " << scale_level
+                << "   outlevel (solvent) = " << unilevel << '\n';
+      if (unilevel >= scale_level || scale_level >= maxlevel)
+        std::cerr << "  [ERROR] Level hierarchy violated: need outlevel < scale_level < maxlevel\n"
+                  << "          Check nlev_mem and nlev_sol.\n";
+      else
+        std::cout << "  Level hierarchy OK: " << unilevel << " < " << scale_level
+                  << " < " << maxlevel << '\n';
+      std::cout << "================================\n\n";
     }
 
     simple_conn_num_vertices = 8;
@@ -941,6 +987,55 @@ poisson_boltzmann::init_tmesh_with_refine_box_scale ()
   };
 
   for (auto i = 0; i < scale_level; ++i) {
+    tmsh.set_refine_marker (refinement);
+    tmsh.refine (0, 1);
+  }
+}
+
+void 
+poisson_boltzmann::init_tmesh_mem_two_box ()
+{
+
+  for (auto i = 0; i < outlevel; ++i) {
+    tmsh.set_refine_marker (uniform_refinement);
+    tmsh.refine (0, 1);
+  }
+
+  
+  auto refinement = [this]
+  (tmesh_3d::quadrant_iterator q) -> int {
+    int currentlevel = static_cast<int> (q->the_quadrant->level);
+    int retval = 0;
+    double x1, y1, z1;
+
+    if (currentlevel >= this->maxlevel)
+      retval = 0;
+    else {
+      for (int ii = 0; ii < 8; ++ii) {
+        if (! q->is_hanging (ii)) {
+          x1 = q -> p (0, ii);
+          y1 = q -> p (1, ii);
+          z1 = q -> p (2, ii);
+
+          if ( (x1 >= this->l_prot[0]) && (x1 <= this->r_prot[0])
+               && (y1 >= this->l_prot[1]) && (y1 <= this->r_prot[1])
+               && (z1 >= this->l_prot[2]) && (z1 <= this->r_prot[2])) {
+            retval = 1;
+            break;
+          } else if ((x1 >= this->l_mem[0]) && (x1 <= this->r_mem[0])
+                     && (y1 >= this->l_mem[1]) && (y1 <= this->r_mem[1])
+                     && (z1 >= this->l_mem[2]) && (z1 <= this->r_mem[2]) && (currentlevel <= this->scale_level)) {
+            retval = 1;
+            break;
+          }
+        }
+      }
+    }
+
+    return (retval);
+  };
+
+  for (auto i = 0; i < maxlevel; ++i) {
     tmsh.set_refine_marker (refinement);
     tmsh.refine (0, 1);
   }

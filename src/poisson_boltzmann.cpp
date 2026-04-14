@@ -139,7 +139,25 @@ main (int argc, char **argv)
       double l_cr_ns[3] = { pb.l_cr[0] - ns_margin, pb.l_cr[1] - ns_margin, pb.l_cr[2] };
       double r_cr_ns[3] = { pb.r_cr[0] + ns_margin, pb.r_cr[1] + ns_margin, pb.r_cr[2] };
 
+      std::cout << "\n=== [ Membrane NS / FEM domain debug ] ===\n";
+      std::cout << "  scale = " << pb.scale << " cells/Å"
+                << "   NS xy margin = " << ns_margin << " Å (" << margin_cells << " cells)\n";
+      std::cout << "  FEM domain  x : [" << pb.l_cr[0] << ", " << pb.r_cr[0] << "] Å"
+                << "  size = " << pb.r_cr[0] - pb.l_cr[0] << " Å\n";
+      std::cout << "  FEM domain  y : [" << pb.l_cr[1] << ", " << pb.r_cr[1] << "] Å"
+                << "  size = " << pb.r_cr[1] - pb.l_cr[1] << " Å\n";
+      std::cout << "  FEM domain  z : [" << pb.l_cr[2] << ", " << pb.r_cr[2] << "] Å"
+                << "  size = " << pb.r_cr[2] - pb.l_cr[2] << " Å\n";
+      std::cout << "  NS box (xy+)  x : [" << l_cr_ns[0] << ", " << r_cr_ns[0] << "] Å"
+                << "  size = " << r_cr_ns[0] - l_cr_ns[0] << " Å\n";
+      std::cout << "  NS box (xy+)  y : [" << l_cr_ns[1] << ", " << r_cr_ns[1] << "] Å"
+                << "  size = " << r_cr_ns[1] - l_cr_ns[1] << " Å\n";
+      std::cout << "  NS box        z : [" << l_cr_ns[2] << ", " << r_cr_ns[2] << "] Å"
+                << "  (unchanged)\n";
+      std::cout << "==========================================\n\n";
+
       auto ns_atoms = build_ns_supercell (pb);
+      std::cout << "  Total atoms passed to NanoShaper: " << ns_atoms.size () << '\n';
       ray_cache.init_analytical_surf_ns (ns_atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, l_cr_ns, r_cr_ns, pb.scale);
     } else {
       ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
@@ -170,6 +188,8 @@ main (int argc, char **argv)
     pb.init_tmesh_with_refine_scale();
   } else if (pb.mesh_shape == 3) {
     pb.init_tmesh_with_refine_box_scale();
+  } else if (pb.mesh_shape == poisson_boltzmann::MESH_SHAPE_MEM) {
+    pb.init_tmesh_mem_two_box();
   } else {
     pb.init_tmesh();
   }
@@ -245,6 +265,36 @@ main (int argc, char **argv)
     std::cout << "============================================\n";
 
   TOC ("create density map");
+
+  if (pb.dry_run) {
+    if (rank == 0)
+      std::cout << "\n[dry_run] Stopping after epsilon/density map.\n";
+
+    if (pb.eps_map == 1) {
+      if (pb.map_type == "oct") {
+        TIC ();
+        pb.export_tmesh (ray_cache);
+        TOC ("export epsilon map");
+      } else if (pb.map_type == "vtu") {
+        TIC ();
+        std::vector<std::string> fieldNames, baseNames;
+        VTKWriter vtk ("");
+        std::string fieldname = "eps";
+        std::string basename  = "eps_map";
+        fieldNames.push_back (fieldname);
+        baseNames.push_back (basename);
+        vtk.setBaseName (basename, rank);
+        vtk.writeFieldVtuBinary (pb.tmsh, *pb.epsilon_nodes, fieldname);
+        TOC ("export epsilon map");
+        MPI_Barrier (mpicomm);
+        if (rank == 0)
+          vtk.createPvtuFile (fieldNames, baseNames, size);
+      }
+    }
+
+    MPI_Finalize ();
+    return 0;
+  }
 
   TIC();
 

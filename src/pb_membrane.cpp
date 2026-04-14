@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <set>
 #include <utility>
 #include <mpi.h>
@@ -121,16 +122,32 @@ trim_lipid_atoms (poisson_boltzmann& pb)
 
   std::vector<NS::Atom> kept;
   kept.reserve (pb.lipid_atoms.size ());
-  for (const NS::Atom& a : pb.lipid_atoms)
-    if (a.pos[0] >= x_lo && a.pos[0] <= x_hi &&
-        a.pos[1] >= y_lo && a.pos[1] <= y_hi)
+  std::size_t out_x = 0, out_y = 0, out_xy = 0;
+  for (const NS::Atom& a : pb.lipid_atoms) {
+    bool in_x = (a.pos[0] >= x_lo && a.pos[0] <= x_hi);
+    bool in_y = (a.pos[1] >= y_lo && a.pos[1] <= y_hi);
+    if (in_x && in_y) {
       kept.push_back (a);
+    } else {
+      if (!in_x && !in_y) ++out_xy;
+      else if (!in_x)     ++out_x;
+      else                ++out_y;
+    }
+  }
 
   int rank;
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-  if (rank == 0)
-    std::cout << "  Lipid atoms after xy trim: " << kept.size ()
-              << " (removed " << pb.lipid_atoms.size () - kept.size () << ")\n";
+  if (rank == 0) {
+    std::cout << "\n=== [ Lipid atom xy-trim debug ] ===\n";
+    std::cout << "  FEM domain  x : [" << x_lo << ", " << x_hi << "] Å\n";
+    std::cout << "  FEM domain  y : [" << y_lo << ", " << y_hi << "] Å\n";
+    std::cout << "  Lipid atoms before trim : " << pb.lipid_atoms.size () << '\n';
+    std::cout << "  Removed (outside x only): " << out_x  << '\n';
+    std::cout << "  Removed (outside y only): " << out_y  << '\n';
+    std::cout << "  Removed (outside x & y) : " << out_xy << '\n';
+    std::cout << "  Lipid atoms after trim  : " << kept.size () << '\n';
+    std::cout << "====================================\n\n";
+  }
 
   pb.lipid_atoms = std::move (kept);
 
@@ -165,13 +182,20 @@ zero_boundary_residue_charges (poisson_boltzmann& pb)
     max_r = std::max (max_r, static_cast<double> (a.radius));
   const double cutoff = max_r + pb.surf_param;
 
-  // Collect residue IDs (chain string + resNum) that straddle the boundary
+  // Collect residue IDs (chain string + resNum) that straddle the boundary.
+  // Also store (resName, chain, resNum) for the diagnostic print.
   using ResID = std::pair<std::string, int>;
   std::set<ResID> boundary_res;
-  for (const NS::Atom& a : pb.lipid_atoms)
+  // Map ResID → resName for the diagnostic listing
+  std::map<ResID, std::string> res_name_map;
+  for (const NS::Atom& a : pb.lipid_atoms) {
     if (a.pos[0] < x_lo + cutoff || a.pos[0] > x_hi - cutoff ||
-        a.pos[1] < y_lo + cutoff || a.pos[1] > y_hi - cutoff)
-      boundary_res.insert ({a.ai.chain, a.ai.resNum});
+        a.pos[1] < y_lo + cutoff || a.pos[1] > y_hi - cutoff) {
+      ResID rid {a.ai.chain, a.ai.resNum};
+      boundary_res.insert (rid);
+      res_name_map.emplace (rid, a.ai.resName);
+    }
+  }
 
   // Zero charges of all atoms in those residues
   std::size_t n_zeroed = 0;
@@ -186,9 +210,21 @@ zero_boundary_residue_charges (poisson_boltzmann& pb)
 
   int rank;
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
-  if (rank == 0)
-    std::cout << "  Boundary membrane residues zeroed: " << boundary_res.size ()
-              << " residues (" << n_zeroed << " atoms)\n";
+  if (rank == 0) {
+    std::cout << "\n=== [ Boundary residue charge-zeroing debug ] ===\n";
+    std::cout << "  Cutoff (max_r + probe_r): " << cutoff << " Å\n";
+    std::cout << "  FEM domain  x : [" << x_lo << ", " << x_hi << "] Å\n";
+    std::cout << "  FEM domain  y : [" << y_lo << ", " << y_hi << "] Å\n";
+    std::cout << "  Zeroed residues (" << boundary_res.size () << "):\n";
+    for (const auto& rid : boundary_res) {
+      const std::string& rname = res_name_map.at (rid);
+      std::cout << "    " << rname
+                << "  chain=" << (rid.first.empty () ? "-" : rid.first)
+                << "  resNum=" << rid.second << '\n';
+    }
+    std::cout << "  Total atoms zeroed: " << n_zeroed << '\n';
+    std::cout << "=================================================\n\n";
+  }
 }
 
 // ─── Assembly placeholder ────────────────────────────────────────────────────
