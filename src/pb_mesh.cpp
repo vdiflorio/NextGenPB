@@ -37,7 +37,6 @@ poisson_boltzmann::create_mesh ()
   int nx, ny, nz;
   double scale_tmp, scale_x, scale_y, scale_z;
   double lmax = 0;
-  double max_len = 0;
   double l[3];
   scale_level = unilevel;
   double maxradius = *std::max_element (r_atoms.begin (), r_atoms.end ());
@@ -106,9 +105,12 @@ poisson_boltzmann::create_mesh ()
         cc[n] = tmp_cc[n] + dis (gen);
       }
 
-      std::cout << tmp_cc[0] << "  " << cc[0] << "  " << std::abs (tmp_cc[0] -cc[0]) << std::endl;
-      std::cout << tmp_cc[1] << "  " << cc[1] << "  " << std::abs (tmp_cc[1] -cc[1]) << std::endl;
-      std::cout << tmp_cc[2] << "  " << cc[2] << "  " << std::abs (tmp_cc[2] -cc[2]) << std::endl;
+      if (rank == 0) {
+        std::cout << "  Random grid displacement [Å]:\n";
+        std::cout << "    x: " << tmp_cc[0] << " -> " << cc[0] << "  (delta " << std::abs (tmp_cc[0] - cc[0]) << ")\n";
+        std::cout << "    y: " << tmp_cc[1] << " -> " << cc[1] << "  (delta " << std::abs (tmp_cc[1] - cc[1]) << ")\n";
+        std::cout << "    z: " << tmp_cc[2] << " -> " << cc[2] << "  (delta " << std::abs (tmp_cc[2] - cc[2]) << ")\n";
+      }
     }
 
     for (int kk = 0; kk < 3; ++kk) {
@@ -369,9 +371,12 @@ poisson_boltzmann::create_mesh ()
       r_cr[1] = cc_tmp[1] + ny*1.0/scale_y;
       r_cr[2] = cc_tmp[2] + nz*1.0/scale_z;
 
-      std::cout << "xb: " << l_cr[0] << ", " << r_cr[0] << std::endl;
-      std::cout << "yb: " << l_cr[1] << ", " << r_cr[1] << std::endl;
-      std::cout << "zb: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
+      if (rank == 0) {
+        std::cout << "  Refined inner box [Å]:\n";
+        std::cout << "      x = [" << l_cr[0] << ", " << r_cr[0] << "]\n";
+        std::cout << "      y = [" << l_cr[1] << ", " << r_cr[1] << "]\n";
+        std::cout << "      z = [" << l_cr[2] << ", " << r_cr[2] << "]\n";
+      }
     }
 
     simple_conn_num_vertices = 8;
@@ -500,7 +505,7 @@ poisson_boltzmann::create_mesh ()
       }
     }
 
-    //calcolo outlevel
+    // compute outlevel
     unsigned int ratio_l_b;
     double len_box_foc = n_grid/scale;
     double len_box = rr[0]-ll[0];
@@ -515,8 +520,6 @@ poisson_boltzmann::create_mesh ()
     }
 
     outlevel = ratio_l_b;
-    // outlevel = 1;
-    ////////////////////////////////////////
 
 
     if (rank == 0) {
@@ -581,7 +584,6 @@ poisson_boltzmann::create_mesh ()
     maxlevel = 0;
 
     for (int ii = 0; ii<28; ++ii) {
-      std::cout << size << "  " << maxlevel << std::endl;
       size *= 2;
       maxlevel ++;
 
@@ -617,15 +619,16 @@ poisson_boltzmann::create_mesh ()
 
 
     if (rank == 0) {
-      std::cout << "cx: " << cc[0]
-                << " , cy: " << cc[1]
-                << " , cz: " << cc[2] << std::endl;
-
-      std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
-      std::cout << "y: " << ll[1] << ", " << rr[1] << std::endl;
-      std::cout << "z: " << ll[2] << ", " << rr[2] << std::endl;
-
-      std::cout << minlevel <<" "<<maxlevel << "  " << unilevel <<std::endl;
+      std::cout << "========== [ Domain Information ] ==========\n";
+      std::cout << "  Center of the System [Å]:";
+      std::cout << "  [" << cc[0] << ", " << cc[1] << ", " << cc[2] << "]\n";
+      std::cout << "  Complete Domain Box Size [Å]:\n";
+      std::cout << "      x = [" << ll[0] << ", " << rr[0] << "]\n";
+      std::cout << "      y = [" << ll[1] << ", " << rr[1] << "]\n";
+      std::cout << "      z = [" << ll[2] << ", " << rr[2] << "]\n";
+      std::cout << "  Levels: min = " << minlevel << "  max = " << maxlevel
+                << "  uniform = " << unilevel << '\n';
+      std::cout << "============================================\n";
     }
 
     simple_conn_num_vertices = 8;
@@ -664,16 +667,17 @@ poisson_boltzmann::create_mesh ()
     else
       scale = (num_trees[0]* (1<<unilevel))/ (len);
 
-    //////////////////////////////
     num_trees[1] = num_trees[0];
     num_trees[2] = num_trees[0];
 
-    /////////////////////////////
     if (rank == 0) {
-      std::cout << "x: " << l_cr[0] << ", " << r_cr[0] << std::endl;
-      std::cout << "y: " << l_cr[1] << ", " << r_cr[1] << std::endl;
-      std::cout << "z: " << l_cr[2] << ", " << r_cr[2] << "\n" << std::endl;
-      std::cout << "Number of trees: " << num_trees[0] << std::endl;
+      std::cout << "========== [ Domain Information ] ==========\n";
+      std::cout << "  Complete Domain Box Size [Å]:\n";
+      std::cout << "      x = [" << l_cr[0] << ", " << r_cr[0] << "]\n";
+      std::cout << "      y = [" << l_cr[1] << ", " << r_cr[1] << "]\n";
+      std::cout << "      z = [" << l_cr[2] << ", " << r_cr[2] << "]\n";
+      std::cout << "  Number of trees: " << num_trees[0] << '\n';
+      std::cout << "============================================\n";
     }
 
     double bound_x = std::abs (r_cr[0]-l_cr[0]);
@@ -683,7 +687,6 @@ poisson_boltzmann::create_mesh ()
                        bound_y/num_trees[1],
                        bound_z/num_trees[2]
                      };
-    double bound[3] = {bound_x, bound_y, bound_z};
     make_connectivity_3d (num_trees, step, simple_conn_p,
                           simple_conn_num_vertices, simple_conn_t,
                           simple_conn_num_trees, bcells);
@@ -718,8 +721,6 @@ poisson_boltzmann::create_mesh ()
     // --- z-slab bounds: covers both membrane and protein (protein may be taller) ---
     double z_prot_min = (*minmax_z.first)[2];
     double z_prot_max = (*minmax_z.second)[2];
-    // double z_lip_min  = pos_lipid_atoms.empty () ? z_prot_min : (*minmax_lip_z.first)[2];
-    // double z_lip_max  = pos_lipid_atoms.empty () ? z_prot_max : (*minmax_lip_z.second)[2];
     double z_lip_min  = (*minmax_lip_z.first)[2];
     double z_lip_max  = (*minmax_lip_z.second)[2];
 
@@ -757,15 +758,6 @@ poisson_boltzmann::create_mesh ()
     r_mem[1] = y_lip_max + maxrad + 2*prb_radius;
     r_mem[2] = z_lip_max + maxrad + 2*prb_radius;
 
-    std::cout << "\n=== [ MESH_SHAPE_MEM: system extents ] ===\n";
-    std::cout << "  Protein extents (with VdW):\n";
-    std::cout << "    x: [" << l_prot[0] << ", " << r_prot[0] << "] Å\n";
-    std::cout << "    y: [" << l_prot[1] << ", " << r_prot[1] << "] Å\n";
-    std::cout << "    z: [" << l_prot[2] << ", " << r_prot[2] << "] Å\n";
-    std::cout << "  Membrane patch extents (with VdW):\n";
-    std::cout << "    x: [" << l_mem[0] << ", " << r_mem[0] << "] Å\n";
-    std::cout << "    y: [" << l_mem[1] << ", " << r_mem[1] << "] Å\n";
-    std::cout << "    z: [" << l_mem[2] << ", " << r_mem[2] << "] Å\n";
 
     // Center of the membrane patch in xy (overrides preamble's protein-only cc)
     cc[0] = 0.5 * (x_lip_max + x_lip_min);
@@ -800,9 +792,16 @@ poisson_boltzmann::create_mesh ()
     l_cr[2] = z_slab_cc - nz / scale; r_cr[2] = z_slab_cc + nz / scale;
 
     if (rank == 0) {
-      std::cout << "\n=== [ MESH_SHAPE_MEM debug ] ===\n";
-      std::cout << "  Lipid patch extents (+ VdW):  lx = " << lip_lx
-                << " Å   ly = " << lip_ly << " Å\n";
+      std::cout << "========== [ Domain Information ] ==========\n";
+      std::cout << "  Protein extents (with VdW):\n";
+      std::cout << "    x: [" << l_prot[0] << ", " << r_prot[0] << "] Å\n";
+      std::cout << "    y: [" << l_prot[1] << ", " << r_prot[1] << "] Å\n";
+      std::cout << "    z: [" << l_prot[2] << ", " << r_prot[2] << "] Å\n";
+      std::cout << "  Membrane patch extents (with VdW):\n";
+      std::cout << "    x: [" << l_mem[0] << ", " << r_mem[0] << "] Å\n";
+      std::cout << "    y: [" << l_mem[1] << ", " << r_mem[1] << "] Å\n";
+      std::cout << "    z: [" << l_mem[2] << ", " << r_mem[2] << "] Å\n";
+      std::cout << "  Lipid patch size: lx = " << lip_lx << " Å   ly = " << lip_ly << " Å\n";
       std::cout << "  Box side (min lx,ly)        : " << box_side << " Å\n";
       std::cout << "  Center (cx, cy, cz)         : "
                 << cc[0] << "  " << cc[1] << "  " << cc[2] << " Å\n";
@@ -825,7 +824,7 @@ poisson_boltzmann::create_mesh ()
       else
         std::cout << "  Level hierarchy OK: " << unilevel << " < " << scale_level
                   << " < " << maxlevel << '\n';
-      std::cout << "================================\n\n";
+      std::cout << "============================================\n\n";
     }
 
     simple_conn_num_vertices = 8;
@@ -971,14 +970,6 @@ poisson_boltzmann::init_tmesh_with_refine_box_scale ()
             retval = 1;
             break;
           }
-
-          // else if ((x1 >= this->l_c[0]) && (x1 <= this->r_c[0])
-          // && (y1 >= this->l_c[1]) && (y1 <= this->r_c[1])
-          // && (z1 >= this->l_c[2]) && (z1 <= this->r_c[2])
-          // &&currentlevel < this->scale_level_min_box) {
-          // retval = 1;
-          // break;
-          // }
         }
       }
     }
