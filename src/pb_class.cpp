@@ -18,8 +18,8 @@
  */
 
 // Implementation has been split into:
-//   pb_mesh.cpp      — mesh generation and initialization
-//   pb_io.cpp        — option parsing, atom I/O, MPI broadcast
-//   pb_surface.cpp   — surface detection, markers, refinement, marching cubes
-//   pb_assembly.cpp  — system matrix assembly, linear solvers, boundary conditions
-//   pb_postproc.cpp  — energy, fields, potential export, mesh export
+// pb_mesh.cpp      — mesh generation and initialization
+// pb_io.cpp        — option parsing, atom I/O, MPI broadcast
+// pb_surface.cpp   — surface detection, markers, refinement, marching cubes
+// pb_assembly.cpp  — system matrix assembly, linear solvers, boundary conditions
+// pb_postproc.cpp  — energy, fields, potential export, mesh export

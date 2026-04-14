@@ -106,8 +106,8 @@ ray_cache_t::fill_cache ()
 
     if (rank == 0) {
       for (int i = 1; i < size; i++) {
-        displ_ser_rays_vec[i] = displ_ser_rays_vec[i-1] + proc_ser_rays_len[i-1];
-        cum_rays_vec[i] = cum_rays_vec[i-1] + proc_num_req_rays[i];
+        displ_ser_rays_vec[i] = displ_ser_rays_vec[i - 1] + proc_ser_rays_len[i - 1];
+        cum_rays_vec[i] = cum_rays_vec[i - 1] + proc_num_req_rays[i];
       }
 
       global_ser_rays_vec.resize (global_ser_rays_len);
@@ -132,17 +132,17 @@ ray_cache_t::fill_cache ()
       for (int i = 1; i < size; i++) {
         local_req_rays_map.clear ();
 
-        std::transform (rays_vector.begin () + cum_rays_vec[i-1],
+        std::transform (rays_vector.begin () + cum_rays_vec[i - 1],
                         rays_vector.begin () + cum_rays_vec[i],
                         std::inserter (local_req_rays_map, end (local_req_rays_map)),
-        [this,idir] (std::array<double,2> arr) {
-          return (std::pair<std::array<double,2>, crossings_t> (arr, (*this) (arr[0], arr[1],idir)));
+        [this, idir] (std::array<double, 2> arr) {
+          return (std::pair<std::array<double, 2>, crossings_t> (arr, (*this) (arr[0], arr[1], idir)));
         }); //return ((this->rays).find(arr));
 
         local_ser_map = write_map (local_req_rays_map);
         proc_ser_map_len[i] = local_ser_map.size ();
         global_ser_map.insert (global_ser_map.end (), local_ser_map.begin (), local_ser_map.end ());
-        displ_ser_map[i] = displ_ser_map[i-1] + proc_ser_map_len[i-1];
+        displ_ser_map[i] = displ_ser_map[i - 1] + proc_ser_map_len[i - 1];
       }
 
       global_ser_map_len = global_ser_map.size ();
@@ -335,29 +335,29 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
 
 
 void
-ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
-                                      const double & surf_param, const double & stern_layer, const unsigned & num_threads,
-                                      double* l_cr, double* r_cr, double scale, const std::string* configFile)
+ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> &atoms, const NS::surface_type &surf_type,
+                                      const double &surf_param, const double &stern_layer, const unsigned &num_threads,
+                                      double *l_cr, double *r_cr, double scale, const std::string *configFile)
 {
-  ns = std::make_unique<NS::NanoShaper> (atoms, surf_type, surf_param, stern_layer, num_threads,configFile);
+  ns = std::make_unique<NS::NanoShaper> (atoms, surf_type, surf_param, stern_layer, num_threads, configFile);
   // set here a consistent grid scale
   ns->setConfig<double> ("Grid_scale", scale);
-  ns->setConfig<bool> ("Accurate_Triangulation",true);
+  ns->setConfig<bool> ("Accurate_Triangulation", true);
   ns->setConfig<double> ("Self_Intersections_Grid_Coefficient", 1.5);
 
-  ns->setConfig<bool> ("Build_epsilon_maps",true);
+  ns->setConfig<bool> ("Build_epsilon_maps", true);
 
   // build the grid in the new mode
-  ns->setConfig<bool> ("PB_grid_mode",true);
+  ns->setConfig<bool> ("PB_grid_mode", true);
 
   // impose here the min and max of the cube
-  ns->setConfig<double> ("xmin",l_cr[0]);
-  ns->setConfig<double> ("ymin",l_cr[1]);
-  ns->setConfig<double> ("zmin",l_cr[2]);
+  ns->setConfig<double> ("xmin", l_cr[0]);
+  ns->setConfig<double> ("ymin", l_cr[1]);
+  ns->setConfig<double> ("zmin", l_cr[2]);
 
-  ns->setConfig<double> ("xmax",r_cr[0]);
-  ns->setConfig<double> ("ymax",r_cr[1]);
-  ns->setConfig<double> ("zmax",r_cr[2]);
+  ns->setConfig<double> ("xmax", r_cr[0]);
+  ns->setConfig<double> ("ymax", r_cr[1]);
+  ns->setConfig<double> ("zmax", r_cr[2]);
   ns->buildAnalyticalSurface ();
 
   // remember to set this to true in order to collect rays intersections data
@@ -377,7 +377,7 @@ ray_cache_t::init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const
 
 
 void
-ray_cache_t::compute_ns_inters (crossings_t & ct)
+ray_cache_t::compute_ns_inters (crossings_t &ct)
 {
 
   if (ct.dir == 0) {
@@ -392,7 +392,7 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
 
     std::cout << "Sending new ray in x direction for NS!" << std::endl;
     ns->setDirection (ct.dir);
-    std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
+    std::vector<std::pair<double, double *>> ints_norms; //intersections and normals
     ns->castAxisOrientedRay (start_ray, r_c[ct.dir], ints_norms, ct.dir, compute_normals);
 
     if (ints_norms.size () != 0) {
@@ -400,8 +400,8 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
         ct.inters.push_back (ints_norms[i].first);
 
         ct.normals.push_back (* (ints_norms[i].second));
-        ct.normals.push_back (* (ints_norms[i].second+1));
-        ct.normals.push_back (* (ints_norms[i].second+2));
+        ct.normals.push_back (* (ints_norms[i].second + 1));
+        ct.normals.push_back (* (ints_norms[i].second + 2));
       }
     }
 
@@ -420,7 +420,7 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
 
     std::cout << "Sending new ray in y direction for NS!" << std::endl;
     ns->setDirection (ct.dir);
-    std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
+    std::vector<std::pair<double, double *>> ints_norms; //intersections and normals
     ns->castAxisOrientedRay (start_ray, r_c[ct.dir], ints_norms, ct.dir, compute_normals);
 
     if (ints_norms.size () != 0) {
@@ -428,8 +428,8 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
         ct.inters.push_back (ints_norms[i].first);
 
         ct.normals.push_back (* (ints_norms[i].second));
-        ct.normals.push_back (* (ints_norms[i].second+1));
-        ct.normals.push_back (* (ints_norms[i].second+2));
+        ct.normals.push_back (* (ints_norms[i].second + 1));
+        ct.normals.push_back (* (ints_norms[i].second + 2));
       }
     }
 
@@ -448,7 +448,7 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
 
     std::cout << "Sending new ray in z direction for NS!" << std::endl;
     ns->setDirection (ct.dir);
-    std::vector<std::pair<double,double*>> ints_norms; //intersections and normals
+    std::vector<std::pair<double, double *>> ints_norms; //intersections and normals
     ns->castAxisOrientedRay (start_ray, r_c[ct.dir], ints_norms, ct.dir, compute_normals);
 
     if (ints_norms.size () != 0) {
@@ -456,8 +456,8 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
         ct.inters.push_back (ints_norms[i].first);
 
         ct.normals.push_back (* (ints_norms[i].second));
-        ct.normals.push_back (* (ints_norms[i].second+1));
-        ct.normals.push_back (* (ints_norms[i].second+2));
+        ct.normals.push_back (* (ints_norms[i].second + 1));
+        ct.normals.push_back (* (ints_norms[i].second + 2));
       }
     }
 
@@ -472,15 +472,15 @@ ray_cache_t::compute_ns_inters (crossings_t & ct)
 //!  be saved to a binary file or transmitted through
 //!  a channel such as a socket or sent as an MPI message.
 std::vector<unsigned char>
-ray_cache_t::write_ct (const crossings_t& ct)
+ray_cache_t::write_ct (const crossings_t &ct)
 {
 
-  size_t N = sizeof (unsigned) + sizeof (bool) + sizeof (double)*2;
+  size_t N = sizeof (unsigned) + sizeof (bool) + sizeof (double) * 2;
   std::vector<unsigned char> res (N, 0);
 
-  std::copy (&ct.dir, &ct.dir+1, reinterpret_cast<unsigned*> (& (res[0])));
-  std::copy (&ct.init, &ct.init+1, reinterpret_cast<bool*> (& (res[sizeof (unsigned)])));
-  std::copy (ct.point, ct.point+2, reinterpret_cast<double*> (& (res[sizeof (bool)+sizeof (unsigned)])));
+  std::copy (&ct.dir, &ct.dir + 1, reinterpret_cast<unsigned *> (& (res[0])));
+  std::copy (&ct.init, &ct.init + 1, reinterpret_cast<bool *> (& (res[sizeof (unsigned)])));
+  std::copy (ct.point, ct.point + 2, reinterpret_cast<double *> (& (res[sizeof (bool) + sizeof (unsigned)])));
 
   std::vector<unsigned char> tmp = serialize::write (ct.inters);
   res.insert (res.end (), tmp.begin (), tmp.end ());
@@ -490,26 +490,26 @@ ray_cache_t::write_ct (const crossings_t& ct)
 }
 
 void
-ray_cache_t::read_ct (const std::vector<unsigned char>& data, crossings_t& ct)
+ray_cache_t::read_ct (const std::vector<unsigned char> &data, crossings_t &ct)
 {
 
-  size_t size_fixed = sizeof (unsigned) + sizeof (bool) + sizeof (double)*2;
-  size_t size_non_fixed = 4*sizeof (double); // + sizeof(bool);
+  size_t size_fixed = sizeof (unsigned) + sizeof (bool) + sizeof (double) * 2;
+  size_t size_non_fixed = 4 * sizeof (double); // + sizeof(bool);
   size_t numel_flags = ( (data.size () * sizeof (unsigned char)) - size_fixed) / size_non_fixed;
 
   std::copy (data.begin (), data.begin () + sizeof (unsigned),
-             reinterpret_cast<unsigned char*> (& (ct.dir)));
+             reinterpret_cast<unsigned char *> (& (ct.dir)));
 
   auto init = data.begin () + sizeof (unsigned);
   std::copy (init, init + sizeof (bool),
-             reinterpret_cast<unsigned char*> (& (ct.init)));
+             reinterpret_cast<unsigned char *> (& (ct.init)));
 
   init = init + sizeof (bool);
-  std::copy (init, init + sizeof (double)*2,
-             reinterpret_cast<unsigned char*> (& (ct.point)));
+  std::copy (init, init + sizeof (double) * 2,
+             reinterpret_cast<unsigned char *> (& (ct.point)));
 
   if (numel_flags != 0) {
-    init = init + sizeof (double)*2;
+    init = init + sizeof (double) * 2;
     //ct.flags.resize (numel_flags);
     //std::copy (init, init + sizeof(bool)*numel_flags,
     //reinterpret_cast<unsigned char*> (&(ct.flags[0])));
@@ -517,20 +517,20 @@ ray_cache_t::read_ct (const std::vector<unsigned char>& data, crossings_t& ct)
     //init = init + sizeof(bool)*numel_flags;
     ct.inters.resize (numel_flags);
     std::copy (init, init + sizeof (double)*numel_flags,
-               reinterpret_cast<unsigned char*> (& (ct.inters[0])));
+               reinterpret_cast<unsigned char *> (& (ct.inters[0])));
 
-    init = init + sizeof (double)*numel_flags;
-    ct.normals.resize (3*numel_flags);
+    init = init + sizeof (double) * numel_flags;
+    ct.normals.resize (3 * numel_flags);
     std::copy (init, data.end (),
-               reinterpret_cast<unsigned char*> (& (ct.normals[0])));
+               reinterpret_cast<unsigned char *> (& (ct.normals[0])));
   }
 }
 
 std::vector<unsigned char>
-ray_cache_t::write_map (const std::map<std::array<double, 2>, crossings_t, map_compare>& container)
+ray_cache_t::write_map (const std::map<std::array<double, 2>, crossings_t, map_compare> &container)
 {
   size_t numel = container.size (); //number of elements inside the container
-  size_t size = numel * (sizeof (double)*2); //array of double
+  size_t size = numel * (sizeof (double) * 2); //array of double
 
   std::vector<unsigned char> res (size, 0);
 
@@ -560,10 +560,10 @@ ray_cache_t::write_map (const std::map<std::array<double, 2>, crossings_t, map_c
 }
 
 void
-ray_cache_t::read_map (const std::vector<unsigned char>& data,
-                       std::map<std::array<double, 2>, crossings_t, map_compare>& container)
+ray_cache_t::read_map (const std::vector<unsigned char> &data,
+                       std::map<std::array<double, 2>, crossings_t, map_compare> &container)
 {
-  const size_t *psize = (reinterpret_cast<const size_t*> (& (data[0])));
+  const size_t *psize = (reinterpret_cast<const size_t *> (& (data[0])));
   size_t num_maps = *psize;
 
   std::vector<size_t> num_flags (num_maps);
@@ -580,15 +580,15 @@ ray_cache_t::read_map (const std::vector<unsigned char>& data,
     container[*destf];
 
   size_t jj = 0;
-  auto destdir = reinterpret_cast<const unsigned*> (destf);
+  auto destdir = reinterpret_cast<const unsigned *> (destf);
 
   for (auto ii = container.begin (); ii != container.end (); ++ii) {
     ii->second.dir = *destdir;
     destdir++;
-    auto destinit = reinterpret_cast<const bool*> (destdir);
+    auto destinit = reinterpret_cast<const bool *> (destdir);
     ii->second.init = *destinit;
     destinit++;
-    auto destpoint = reinterpret_cast<const double*> (destinit);
+    auto destpoint = reinterpret_cast<const double *> (destinit);
     ii->second.point[0] = *destpoint;
     destpoint++;
     ii->second.point[1] = *destpoint;
@@ -599,13 +599,13 @@ ray_cache_t::read_map (const std::vector<unsigned char>& data,
       ii->second.inters.resize (num_flags[jj]);
       std::copy (destpoint, end, ii->second.inters.begin ());
       destpoint = end;
-      end = destpoint + 3*num_flags[jj];
-      ii->second.normals.resize (3*num_flags[jj]);
+      end = destpoint + 3 * num_flags[jj];
+      ii->second.normals.resize (3 * num_flags[jj]);
       std::copy (destpoint, end, ii->second.normals.begin ());
       destpoint = end;
     }
 
-    destdir = reinterpret_cast<const unsigned*> (destpoint);
+    destdir = reinterpret_cast<const unsigned *> (destpoint);
     jj++;
   }
 }

@@ -33,7 +33,7 @@ namespace serialize
 //!  sent as an MPI message.
 template <class T>
 std::vector<unsigned char>
-write (const std::vector<T>& container)
+write (const std::vector<T> &container)
 {
   static_assert (std::is_trivial<T>::value,
                  "Cannot serialize vector of this type");
@@ -43,7 +43,7 @@ write (const std::vector<T>& container)
   std::vector<unsigned char> res (size, 0);
 
   std::copy (container.begin (), container.end (),
-             reinterpret_cast<T*> (& (res[0])));
+             reinterpret_cast<T *> (& (res[0])));
 
   return res;
 }
@@ -52,7 +52,7 @@ write (const std::vector<T>& container)
 //!  from a vector of bytes.
 template <class T>
 void
-read (const std::vector<unsigned char>& data,
+read (const std::vector<unsigned char> &data,
       std::vector<T> &container)
 {
   static_assert (std::is_trivial<T>::value,
@@ -63,7 +63,7 @@ read (const std::vector<unsigned char>& data,
   container.resize (numel);
 
   std::copy (data.begin (), data.end (),
-             reinterpret_cast<unsigned char*> (& (container[0])));
+             reinterpret_cast<unsigned char *> (& (container[0])));
 }
 
 //! Convert an std::map<F,S>, where F, S are trivial types,
@@ -72,7 +72,7 @@ read (const std::vector<unsigned char>& data,
 //!  sent as an MPI message.
 template <class F, class S>
 std::vector<unsigned char>
-write (const std::map<F,S>& container)
+write (const std::map<F, S> &container)
 {
   static_assert (std::is_trivial<F>::value
                  && std::is_trivial<S>::value,
@@ -81,13 +81,13 @@ write (const std::map<F,S>& container)
   size_t size = (sizeof (F) + sizeof (S)) * numel;
   std::vector<unsigned char> res (size, 0);
 
-  auto destf = reinterpret_cast<F*> (& (res[0]));
+  auto destf = reinterpret_cast<F *> (& (res[0]));
 
   for (auto ii = container.begin ();
        ii != container.end (); ++ii, ++destf)
     *destf = ii->first;
 
-  auto dests = reinterpret_cast<S*> (destf);
+  auto dests = reinterpret_cast<S *> (destf);
 
   for (auto ii = container.begin ();
        ii != container.end (); ++ii, ++dests)
@@ -100,8 +100,8 @@ write (const std::map<F,S>& container)
 //!  from a vector of bytes.
 template <class F, class S, class C>
 void
-read (const std::vector<unsigned char>& data,
-      std::map<F,S,C> &container)
+read (const std::vector<unsigned char> &data,
+      std::map<F, S, C> &container)
 {
   static_assert (std::is_trivial<F>::value
                  && std::is_trivial<S>::value,
@@ -110,12 +110,12 @@ read (const std::vector<unsigned char>& data,
   size_t size = (sizeof (F) + sizeof (S));
   size_t numel = data.size () * sizeof (unsigned char) / size;
 
-  auto destf = reinterpret_cast<const F*> (& (data[0]));
+  auto destf = reinterpret_cast<const F *> (& (data[0]));
 
   for (auto ii = 0; ii < numel; ++ii, ++destf)
     container[*destf];
 
-  auto dests = reinterpret_cast<const S*> (destf);
+  auto dests = reinterpret_cast<const S *> (destf);
 
   for (auto ii = container.begin ();
        ii != container.end (); ++ii, ++dests)
@@ -128,7 +128,7 @@ read (const std::vector<unsigned char>& data,
 //!  a channel such as a socket or sent as an MPI message.
 template <class F, class S, class C>
 std::vector<unsigned char>
-write (const std::vector<std::map<F, S,C>>& container)
+write (const std::vector<std::map<F, S, C>> &container)
 {
 
   // sizeof (F) = nF
@@ -151,7 +151,7 @@ write (const std::vector<std::map<F, S,C>>& container)
   tmp[0] = (N); // N
 
   for (int ii = 1; ii < N + 1; ++ii)
-    tmp[ii]= container[ii-1].size (); // Ni
+    tmp[ii] = container[ii - 1].size (); // Ni
 
   size_t ntotel = std::accumulate (tmp.begin () + 1,
                                    tmp.end (), 0);
@@ -160,7 +160,7 @@ write (const std::vector<std::map<F, S,C>>& container)
   res.reserve (ntotel * (sizeof (F) + sizeof (S)));
 
   for (int ii = 1; ii < N + 1; ++ii) {
-    std::vector<unsigned char> tmp2 = write (container[ii-1]);
+    std::vector<unsigned char> tmp2 = write (container[ii - 1]);
     res.insert (res.end (), tmp2.begin (), tmp2.end ());
   }
 
@@ -171,8 +171,8 @@ write (const std::vector<std::map<F, S,C>>& container)
 //!  are trivial types, from a vector of bytes.
 template <class F, class S>
 void
-read (const std::vector<unsigned char>& data,
-      std::vector<std::map<F,S>> &container)
+read (const std::vector<unsigned char> &data,
+      std::vector<std::map<F, S>> &container)
 {
   static_assert (std::is_trivial<F>::value
                  && std::is_trivial<S>::value,
@@ -180,7 +180,7 @@ read (const std::vector<unsigned char>& data,
 
   size_t pair_size = (sizeof (F) + sizeof (S));
   const size_t *psize =
-    (reinterpret_cast<const size_t*> (& (data[0])));
+    (reinterpret_cast<const size_t *> (& (data[0])));
   size_t num_maps = *psize;
 
   container.resize (num_maps);
@@ -191,15 +191,15 @@ read (const std::vector<unsigned char>& data,
   for (ii = 0, ++psize; ii < num_maps; ++ii, ++psize)
     size_vec[ii] = (*psize);
 
-  auto dests = reinterpret_cast<const S*> (psize);
+  auto dests = reinterpret_cast<const S *> (psize);
 
   for (size_t kk = 0; kk < num_maps; ++kk) {
-    auto destf = reinterpret_cast<const F*> (dests);
+    auto destf = reinterpret_cast<const F *> (dests);
 
     for (auto ii = 0; ii < size_vec[kk]; ++ii, ++destf)
       container[kk][*destf];
 
-    dests = reinterpret_cast<const S*> (destf);
+    dests = reinterpret_cast<const S *> (destf);
 
     for (auto ii = container[kk].begin ();
          ii != container[kk].end (); ++ii, ++dests)

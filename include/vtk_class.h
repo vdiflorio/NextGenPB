@@ -74,8 +74,8 @@ public:
   /// @param tmsh       The adaptive octree mesh.
   /// @param field      The distributed scalar field to write.
   /// @param fieldname_ Name tag written inside the VTU XML.
-  void writeFieldVtuBinary (tmesh_3d& tmsh,
-                            const distributed_vector& field,
+  void writeFieldVtuBinary (tmesh_3d &tmsh,
+                            const distributed_vector &field,
                             std::string &fieldname_);
 
   /// @brief Write only the sub-region [@p l_cr, @p r_cr] of the field to a VTU file.
@@ -84,9 +84,9 @@ public:
   /// @param fieldname_ Name tag written inside the VTU XML.
   /// @param l_cr       Lower corner of the sub-region [Å].
   /// @param r_cr       Upper corner of the sub-region [Å].
-  void writeFieldVtuBinary_local (tmesh_3d& tmsh,
-                                  const distributed_vector& field,
-                                  std::string &fieldname_, double* l_cr, double* r_cr);
+  void writeFieldVtuBinary_local (tmesh_3d &tmsh,
+                                  const distributed_vector &field,
+                                  std::string &fieldname_, double *l_cr, double *r_cr);
 
   /// @brief Create the parallel PVTU metadata file that links all per-rank VTU files.
   /// @param fieldNames List of field names included in this dataset.
@@ -95,39 +95,39 @@ public:
   void createPvtuFile (std::vector<std::string> &fieldNames, std::vector<std::string> &baseNames, int numRanks);
 
 private:
-  std::string basename;   ///< Base filename (no rank suffix, no extension)
-  std::string fieldname;  ///< Current field name tag
-  char filename[255];     ///< Full per-rank filename (e.g. "phi_0001.vtu")
-  std::ofstream file;     ///< Output file stream
+  std::string basename; ///< Base filename (no rank suffix, no extension)
+  std::string fieldname; ///< Current field name tag
+  char filename[255]; ///< Full per-rank filename (e.g. "phi_0001.vtu")
+  std::ofstream file; ///< Output file stream
   ByteArray dataContainer;///< Binary data buffer for appended VTK section
-  int nnodes;             ///< Number of nodes in the local piece
-  int nelems;             ///< Number of elements in the local piece
-  std::vector<double> p;  ///< Node coordinates (x0,y0,z0, x1,y1,z1, …)
+  int nnodes; ///< Number of nodes in the local piece
+  int nelems; ///< Number of elements in the local piece
+  std::vector<double> p; ///< Node coordinates (x0,y0,z0, x1,y1,z1, …)
   std::vector<double> f_loc; ///< Local field values at nodes
-  std::vector<int> t;     ///< Element connectivity
-  int offsetCounter;      ///< Running byte offset for the appended data section
-  int rank;               ///< MPI rank
+  std::vector<int> t; ///< Element connectivity
+  int offsetCounter; ///< Running byte offset for the appended data section
+  int rank; ///< MPI rank
 
   /// @brief Extract and sort nodal coordinates and field values from the mesh.
-  void preparingData (const distributed_vector& field, tmesh_3d& tmsh);
+  void preparingData (const distributed_vector &field, tmesh_3d &tmsh);
 
   /// @brief Extract nodal data restricted to the sub-region [@p l_cr, @p r_cr].
-  void preparingData_local (const distributed_vector& field, tmesh_3d& tmsh, double* l_cr, double* r_cr);
+  void preparingData_local (const distributed_vector &field, tmesh_3d &tmsh, double *l_cr, double *r_cr);
 
   void setFieldName (std::string &fieldname_); ///< Store field name for VTK header
-  void initializeFile();      ///< Write VTU XML header and open appended data section
-  void writePieceHeader();    ///< Write VTK Piece element with point/cell counts
-  void writeGrid();           ///< Write Points + Cells sections
-  void writeDataPoints();     ///< Write node coordinate DataArray
+  void initializeFile(); ///< Write VTU XML header and open appended data section
+  void writePieceHeader(); ///< Write VTK Piece element with point/cell counts
+  void writeGrid(); ///< Write Points + Cells sections
+  void writeDataPoints(); ///< Write node coordinate DataArray
   /// @brief Write a named DataArray with binary offset reference.
-  void writeDataArray (const std::string& type, const std::string& name, int numComponents,
-                       const std::vector<double>& data, int numEntries);
-  void writeConnectivity();   ///< Write element connectivity DataArray
-  void writeOffsets();        ///< Write element offset DataArray
-  void writeCellTypes();      ///< Write element type DataArray (all VTK_HEXAHEDRON)
-  void appendData (const ByteArray& rawData); ///< Append binary data block
-  void finalizeFile();        ///< Close VTU XML and flush file
-  bool fileExists (std::string& name); ///< Return true if @p name already exists on disk
+  void writeDataArray (const std::string &type, const std::string &name, int numComponents,
+                       const std::vector<double> &data, int numEntries);
+  void writeConnectivity(); ///< Write element connectivity DataArray
+  void writeOffsets(); ///< Write element offset DataArray
+  void writeCellTypes(); ///< Write element type DataArray (all VTK_HEXAHEDRON)
+  void appendData (const ByteArray &rawData); ///< Append binary data block
+  void finalizeFile(); ///< Close VTU XML and flush file
+  bool fileExists (std::string &name); ///< Return true if @p name already exists on disk
 };
 
 #endif //VTKCLASS_H

@@ -63,12 +63,12 @@ const double p4esttol = 1 / std::pow (2, P8EST_QMAXLEVEL);
 
 /// @defgroup constants Physical Constants
 /// @{
-constexpr double e_0  = 8.85418781762e-12; ///< Permittivity of free space [F/m]
-constexpr double kb   = 1.380649e-23;      ///< Boltzmann constant [J/K]
-constexpr double e    = 1.602176634e-19;   ///< Elementary charge [C]
-constexpr double N_av = 6.022e23;          ///< Avogadro's number [mol^-1]
-constexpr double Angs = 1e-10;             ///< Angstrom to metre conversion [m]
-constexpr double pi   = 3.14159265358979323846; ///< Mathematical constant π
+constexpr double e_0 = 8.85418781762e-12; ///< Permittivity of free space [F/m]
+constexpr double kb = 1.380649e-23; ///< Boltzmann constant [J/K]
+constexpr double e = 1.602176634e-19; ///< Elementary charge [C]
+constexpr double N_av = 6.022e23; ///< Avogadro's number [mol^-1]
+constexpr double Angs = 1e-10; ///< Angstrom to metre conversion [m]
+constexpr double pi = 3.14159265358979323846; ///< Mathematical constant π
 /// @}
 
 
@@ -85,70 +85,70 @@ struct
   /// @name Octree mesh connectivity (p4est)
   /// @{
   p4est_topidx_t simple_conn_num_vertices; ///< Number of mesh vertices
-  p4est_topidx_t simple_conn_num_trees;    ///< Number of trees in the octree
-  std::unique_ptr<double[]> simple_conn_p;          ///< Vertex coordinate array
-  std::unique_ptr<p4est_topidx_t[]> simple_conn_t;  ///< Tree-to-vertex connectivity
+  p4est_topidx_t simple_conn_num_trees; ///< Number of trees in the octree
+  std::unique_ptr<double[]> simple_conn_p; ///< Vertex coordinate array
+  std::unique_ptr<p4est_topidx_t[]> simple_conn_t; ///< Tree-to-vertex connectivity
   std::vector<std::pair<p4est_topidx_t, p4est_topidx_t>> bcells; ///< Boundary cell pairs
   /// @}
 
   /// @name Atomic data
   /// @{
-  std::vector<NS::Atom> atoms;                  ///< Full atom list (NanoShaper format)
-  std::vector<std::array<double,3>> pos_atoms;  ///< Atomic positions [Å]
-  std::vector<double> charge_atoms;             ///< Partial charges [e]
-  std::vector<double> r_atoms;                  ///< Van der Waals radii [Å]
-  std::vector<int> index_atoms;                 ///< Atom index mapping
+  std::vector<NS::Atom> atoms; ///< Full atom list (NanoShaper format)
+  std::vector<std::array<double, 3>> pos_atoms; ///< Atomic positions [Å]
+  std::vector<double> charge_atoms; ///< Partial charges [e]
+  std::vector<double> r_atoms; ///< Van der Waals radii [Å]
+  std::vector<int> index_atoms; ///< Atom index mapping
   /// @}
 
   /// @name Input / file options
   /// @{
-  std::string filetype;         ///< Input file type ("pqr", "pdb", …)
-  std::string radiusfilename;   ///< File with van der Waals radii
-  std::string chargefilename;   ///< File with partial charges
-  std::string name_pqr;         ///< Base name for PQR output
-  int write_pqr;                ///< Write PQR file if non-zero
+  std::string filetype; ///< Input file type ("pqr", "pdb", …)
+  std::string radiusfilename; ///< File with van der Waals radii
+  std::string chargefilename; ///< File with partial charges
+  std::string name_pqr; ///< Base name for PQR output
+  int write_pqr; ///< Write PQR file if non-zero
   /// @}
 
   /// @name Domain bounding boxes
   /// @{
-  double cc[3];      ///< Center of the bounding box [Å]
-  double ll[3];      ///< Cubic mesh: min (x,y,z) corner [Å]
-  double rr[3];      ///< Cubic mesh: max (x,y,z) corner [Å]
-  double l_c[3];     ///< Stretched mesh: min (x,y,z) corner [Å]
-  double r_c[3];     ///< Stretched mesh: max (x,y,z) corner [Å]
-  double l_cr[3];    ///< Refined sub-box: min corner [Å]
-  double r_cr[3];    ///< Refined sub-box: max corner [Å]
-  double l_box[3];   ///< Focusing sub-box: min corner [Å]
-  double r_box[3];   ///< Focusing sub-box: max corner [Å]
-  double l_prot[3];  ///< Protein bounding box: min corner [Å] (MESH_SHAPE_MEM two-box refinement)
-  double r_prot[3];  ///< Protein bounding box: max corner [Å] (MESH_SHAPE_MEM two-box refinement)
-  double l_mem[3];   ///< Membrane (lipid) refinement box: min corner [Å] (MESH_SHAPE_MEM)
-  double r_mem[3];   ///< Membrane (lipid) refinement box: max corner [Å] (MESH_SHAPE_MEM)
+  double cc[3]; ///< Center of the bounding box [Å]
+  double ll[3]; ///< Cubic mesh: min (x,y,z) corner [Å]
+  double rr[3]; ///< Cubic mesh: max (x,y,z) corner [Å]
+  double l_c[3]; ///< Stretched mesh: min (x,y,z) corner [Å]
+  double r_c[3]; ///< Stretched mesh: max (x,y,z) corner [Å]
+  double l_cr[3]; ///< Refined sub-box: min corner [Å]
+  double r_cr[3]; ///< Refined sub-box: max corner [Å]
+  double l_box[3]; ///< Focusing sub-box: min corner [Å]
+  double r_box[3]; ///< Focusing sub-box: max corner [Å]
+  double l_prot[3]; ///< Protein bounding box: min corner [Å] (MESH_SHAPE_MEM two-box refinement)
+  double r_prot[3]; ///< Protein bounding box: max corner [Å] (MESH_SHAPE_MEM two-box refinement)
+  double l_mem[3]; ///< Membrane (lipid) refinement box: min corner [Å] (MESH_SHAPE_MEM)
+  double r_mem[3]; ///< Membrane (lipid) refinement box: max corner [Å] (MESH_SHAPE_MEM)
   double pot_bc = 0.0; ///< Potential value at outer boundary [kT/e]
   p4est_topidx_t num_trees[3]; ///< Number of octree trees per axis
-  double len;        ///< Side length of the coarsest tree [Å]
+  double len; ///< Side length of the coarsest tree [Å]
   double cc_focusing[3]; ///< Center for focusing mesh [Å]
-  int n_grid;        ///< Grid resolution for focusing region
+  int n_grid; ///< Grid resolution for focusing region
   /// @}
 
   /// @name Mesh control parameters
   /// @{
-  int maxlevel;           ///< Maximum octree refinement level
-  int minlevel;           ///< Minimum octree refinement level
-  int unilevel;           ///< Uniform (base) refinement level
-  int outlevel;           ///< Refinement level in outer region
-  int loc_refinement;     ///< Enable local refinement near surface
-  int mesh_shape;         ///< 0 = cubic, 1 = stretched, 2 = custom
-  int refine_box;         ///< Enable box-based local refinement
-  int rand_center;        ///< Randomise center (avoid symmetry artifacts)
-  int scale_level;        ///< Scale-based refinement level
+  int maxlevel; ///< Maximum octree refinement level
+  int minlevel; ///< Minimum octree refinement level
+  int unilevel; ///< Uniform (base) refinement level
+  int outlevel; ///< Refinement level in outer region
+  int loc_refinement; ///< Enable local refinement near surface
+  int mesh_shape; ///< 0 = cubic, 1 = stretched, 2 = custom
+  int refine_box; ///< Enable box-based local refinement
+  int rand_center; ///< Randomise center (avoid symmetry artifacts)
+  int scale_level; ///< Scale-based refinement level
   int scale_level_min_box;///< Min scale level inside the box
   double scale, scale_min, scale_max; ///< Scaling parameters for stretched mesh
-  double perfil1, perfil2;            ///< Stretching profile control points
-  int loc_ref = 0;   ///< Local refinement flag
-  int aligned = 0;   ///< Align mesh to axes flag
-  int nlev_mem  = 2; ///< Levels above scale_level for surface refinement (MESH_SHAPE_MEM)
-  int nlev_sol  = 4; ///< Levels below scale_level for far solvent (MESH_SHAPE_MEM)
+  double perfil1, perfil2; ///< Stretching profile control points
+  int loc_ref = 0; ///< Local refinement flag
+  int aligned = 0; ///< Align mesh to axes flag
+  int nlev_mem = 2; ///< Levels above scale_level for surface refinement (MESH_SHAPE_MEM)
+  int nlev_sol = 4; ///< Levels below scale_level for far solvent (MESH_SHAPE_MEM)
   int nlev_prot = 1; ///< Extra levels above scale_level for protein box (MESH_SHAPE_MEM, 0 < nlev_prot < nlev_mem)
   /// @}
 
@@ -157,88 +157,88 @@ struct
 
   /// @name Physical model parameters
   /// @{
-  int linearized;          ///< 1 = linearized PBE, 0 = non-linear
-  int bc;                  ///< Boundary condition type (0 = Coulomb, …)
-  double e_in;             ///< Dielectric constant inside the solute
-  double e_out;            ///< Dielectric constant of the solvent
-  double ionic_strength;   ///< Ionic strength [mol/L]
-  double T;                ///< Temperature [K]
-  int calc_energy;         ///< Compute solvation energy if non-zero
-  double energy_pol  = 0.0;  ///< Polarisation energy contribution [kT]
+  int linearized; ///< 1 = linearized PBE, 0 = non-linear
+  int bc; ///< Boundary condition type (0 = Coulomb, …)
+  double e_in; ///< Dielectric constant inside the solute
+  double e_out; ///< Dielectric constant of the solvent
+  double ionic_strength; ///< Ionic strength [mol/L]
+  double T; ///< Temperature [K]
+  int calc_energy; ///< Compute solvation energy if non-zero
+  double energy_pol = 0.0; ///< Polarisation energy contribution [kT]
   double energy_react = 0.0; ///< Reaction field energy contribution [kT]
-  double coul_energy  = 0.0; ///< Coulombic energy contribution [kT]
-  int calc_coulombic;      ///< Include Coulombic energy term
+  double coul_energy = 0.0; ///< Coulombic energy contribution [kT]
+  int calc_coulombic; ///< Include Coulombic energy term
   int calc_potential_term; ///< Compute potential on atoms
-  int calc_field_term;     ///< Compute electric field on atoms
+  int calc_field_term; ///< Compute electric field on atoms
   /// @}
 
   /// @name Molecular surface parameters
   /// @{
-  NS::surface_type surf_type;    ///< Surface type (SES, SAS, …)
-  int surf_type_num = 0;         ///< Numeric code for surface type
-  double surf_param;             ///< Surface smoothing parameter
-  double prb_radius = 1.4;       ///< Probe radius for SES [Å]
-  int stern_layer_surf;          ///< Enable Stern layer on solute surface
-  double stern_layer;            ///< Stern layer thickness [Å]
-  unsigned num_threads;          ///< Number of threads for NanoShaper
+  NS::surface_type surf_type; ///< Surface type (SES, SAS, …)
+  int surf_type_num = 0; ///< Numeric code for surface type
+  double surf_param; ///< Surface smoothing parameter
+  double prb_radius = 1.4; ///< Probe radius for SES [Å]
+  int stern_layer_surf; ///< Enable Stern layer on solute surface
+  double stern_layer; ///< Stern layer thickness [Å]
+  unsigned num_threads; ///< Number of threads for NanoShaper
   /// @}
 
   /// @name Solver options
   /// @{
-  std::string linear_solver_name;    ///< "mumps" or "lis"
+  std::string linear_solver_name; ///< "mumps" or "lis"
   std::string linear_solver_options; ///< Options string passed to LIS
   /// @}
 
   /// @name MPI and mesh objects
   /// @{
   MPI_Comm mpicomm; ///< MPI communicator
-  tmesh_3d tmsh;    ///< Adaptive octree mesh (BIM++ wrapper around p8est)
+  tmesh_3d tmsh; ///< Adaptive octree mesh (BIM++ wrapper around p8est)
   /// @}
 
   /// @name File name configuration
   /// @{
-  std::string optionsfilename;  ///< Path to options/config file
-  std::string pqrfilename;      ///< Path to input PQR file
-  std::string p4estfilename;    ///< Path to p4est checkpoint file
-  std::string surffilename;     ///< Path to NanoShaper surface file
-  std::string markerfilename;   ///< Path to saved marker file
-  std::string pqr_atoms;        ///< Inline PQR data (alternative to file)
+  std::string optionsfilename; ///< Path to options/config file
+  std::string pqrfilename; ///< Path to input PQR file
+  std::string p4estfilename; ///< Path to p4est checkpoint file
+  std::string surffilename; ///< Path to NanoShaper surface file
+  std::string markerfilename; ///< Path to saved marker file
+  std::string pqr_atoms; ///< Inline PQR data (alternative to file)
   /// @}
 
   /// @name Post-processing flags
   /// @{
-  int atoms_write;     ///< Write potential on atoms if non-zero
-  int surf_write;      ///< Write potential on surface if non-zero
+  int atoms_write; ///< Write potential on atoms if non-zero
+  int surf_write; ///< Write potential on surface if non-zero
   std::string map_type; ///< Type of potential map to export
-  int potential_map;   ///< Enable potential map output
-  int eps_map;         ///< Enable dielectric map output
-  int dry_run;         ///< Stop after epsilon/density map, skip assembly and solve
+  int potential_map; ///< Enable potential map output
+  int eps_map; ///< Enable dielectric map output
+  int dry_run; ///< Stop after epsilon/density map, skip assembly and solve
   std::map<int, tmesh_3d::quadrant_t> lookup_table; ///< Quadrant lookup cache
   /// @}
 
   /// @name Per-quadrant field arrays (cell-centred)
   /// @{
-  std::vector<double> marker;      ///< Quadrant classification: 0=inside, 0.5=boundary, 1=outside
-  std::vector<double> marker_k;    ///< Quadrant classification including Stern layer
-  std::vector<double> epsilon;     ///< Dielectric constant per quadrant
-  std::vector<double> epsilon_in;  ///< Interior dielectric per quadrant
+  std::vector<double> marker; ///< Quadrant classification: 0=inside, 0.5=boundary, 1=outside
+  std::vector<double> marker_k; ///< Quadrant classification including Stern layer
+  std::vector<double> epsilon; ///< Dielectric constant per quadrant
+  std::vector<double> epsilon_in; ///< Interior dielectric per quadrant
   std::vector<double> epsilon_out; ///< Exterior dielectric per quadrant
-  std::vector<double> reaction;    ///< Reaction (κ²) parameter per quadrant
-  std::vector<int> border_quad;    ///< Indices of boundary quadrants
-  std::vector<double> const_ones;  ///< Constant-1 auxiliary vector
+  std::vector<double> reaction; ///< Reaction (κ²) parameter per quadrant
+  std::vector<int> border_quad; ///< Indices of boundary quadrants
+  std::vector<double> const_ones; ///< Constant-1 auxiliary vector
   /// @}
 
   /// @name Distributed node-centred fields (BIM++)
   /// @{
-  std::unique_ptr<distributed_vector> markn;          ///< Node-level marker
-  std::unique_ptr<distributed_vector> epsilon_nodes;  ///< Node-level dielectric
+  std::unique_ptr<distributed_vector> markn; ///< Node-level marker
+  std::unique_ptr<distributed_vector> epsilon_nodes; ///< Node-level dielectric
   std::unique_ptr<distributed_vector> reaction_nodes; ///< Node-level κ² field
   double net_charge; ///< Total charge of the solute [e]
-  std::unique_ptr<distributed_vector> phi;       ///< Electric potential solution [kT/e]
+  std::unique_ptr<distributed_vector> phi; ///< Electric potential solution [kT/e]
   std::unique_ptr<distributed_vector> rho_fixed; ///< Fixed charge density RHS
-  std::unique_ptr<distributed_vector> ones;      ///< Auxiliary all-ones vector
-  std::unique_ptr<distributed_vector> rhs;       ///< Right-hand side vector
-  std::unique_ptr<distributed_sparse_matrix> A;  ///< System matrix
+  std::unique_ptr<distributed_vector> ones; ///< Auxiliary all-ones vector
+  std::unique_ptr<distributed_vector> rhs; ///< Right-hand side vector
+  std::unique_ptr<distributed_sparse_matrix> A; ///< System matrix
   /// @}
 
   /// @name Membrane and periodic boundary conditions
@@ -248,34 +248,34 @@ struct
 
   /// @name Lipid atom data (read from a separate PQR/PDB file)
   /// @{
-  std::string lipid_file;                             ///< Path to lipid PQR/PDB file
-  std::string lipid_filetype;                         ///< "pqr" or "pdb"
-  std::vector<NS::Atom>             lipid_atoms;      ///< Lipid atom list
-  std::vector<std::array<double,3>> pos_lipid_atoms;  ///< Lipid positions [Å]
-  std::vector<double>               charge_lipid_atoms; ///< Lipid partial charges [e]
-  std::vector<double>               r_lipid_atoms;    ///< Lipid van der Waals radii [Å]
+  std::string lipid_file; ///< Path to lipid PQR/PDB file
+  std::string lipid_filetype; ///< "pqr" or "pdb"
+  std::vector<NS::Atom> lipid_atoms; ///< Lipid atom list
+  std::vector<std::array<double, 3>> pos_lipid_atoms; ///< Lipid positions [Å]
+  std::vector<double> charge_lipid_atoms; ///< Lipid partial charges [e]
+  std::vector<double> r_lipid_atoms; ///< Lipid van der Waals radii [Å]
   /// @}
 
   /// @name Periodic cell geometry
   /// @{
-  bool   periodic_x    = false; ///< Periodic boundary condition in x
-  bool   periodic_y    = false; ///< Periodic boundary condition in y
-  double cell_length_x = 0.0;  ///< Unit cell length in x [Å]
-  double cell_length_y = 0.0;  ///< Unit cell length in y [Å]
+  bool periodic_x = false; ///< Periodic boundary condition in x
+  bool periodic_y = false; ///< Periodic boundary condition in y
+  double cell_length_x = 0.0; ///< Unit cell length in x [Å]
+  double cell_length_y = 0.0; ///< Unit cell length in y [Å]
   // [PLACEHOLDER] NanoShaper replication parameters (TBD)
   /// @}
 
   /// @name Membrane dielectric and ionic profile
   /// @{
-  double e_mem          = 2.0;  ///< Membrane dielectric constant (default = protein dielectric)
-  bool   stern_membrane = false; ///< Enable Stern layer on membrane surface
+  double e_mem = 2.0; ///< Membrane dielectric constant (default = protein dielectric)
+  bool stern_membrane = false; ///< Enable Stern layer on membrane surface
   double stern_membrane_d = 0.0; ///< Stern layer thickness on membrane [Å]
   /// @}
 
   /// @}
 
   static constexpr
-  std::array<int, 12> edge_axis = {0,1,0,1,0,1,0,1,2,2,2,2};
+  std::array<int, 12> edge_axis = {0, 1, 0, 1, 0, 1, 0, 1, 2, 2, 2, 2};
 
   static constexpr
   std::array<int, 24> edge2nodes = {
@@ -295,7 +295,7 @@ struct
 
 
 
-  int edgeTable[256]= {
+  int edgeTable[256] = {
     0x0, 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
     0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
     0x190, 0x99, 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
@@ -588,7 +588,7 @@ struct
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
   };
 
-  std::array<std::array<int,3>,5> triangles;
+  std::array<std::array<int, 3>, 5> triangles;
 
   poisson_boltzmann (int maxlevel_ = 9, int minlevel_ = 3, int unilevel_ = 5, int mesh_shape_ = 1,
                      int bc_ = 1, int linearized_ = 1,
@@ -649,7 +649,7 @@ struct
    * - This function is intended to be used within an MPI-based parallel environment.
    */
   double
-  is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir);
+  is_in_ns_surf (ray_cache_t &ray_cache, double x, double y, double z, int dir);
 
   /**
    * @brief Determines whether a point is inside the Stern layer along a specified direction.
@@ -687,7 +687,7 @@ struct
    * - The `sign` variable alternates to evaluate the nesting of intersections.
    */
   double
-  is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, double y, double z, int dir);
+  is_in_ns_surf_stern (ray_cache_t &ray_cache, double x, double y, double z, int dir);
 
   /// @brief p4est refinement callback that always returns 1 (refine every quadrant).
   static int
@@ -750,11 +750,11 @@ struct
   void
   write_atoms_to_pqr (std::basic_ostream<char> &outputfile);
 
-  friend std::basic_istream<char>&
-  operator>> (std::basic_istream<char>& inputfile, NS::Atom &a);
+  friend std::basic_istream<char> &
+  operator>> (std::basic_istream<char> &inputfile, NS::Atom &a);
 
-  friend std::basic_istream<char>&
-  operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a);
+  friend std::basic_istream<char> &
+  operator>> (std::basic_istream<char> &inputfile, std::array<float, 5> &a);
 
   /// @brief Write the electric potential evaluated at each atom position to file.
   void
@@ -797,21 +797,21 @@ struct
   /// @param q Octree quadrant to test against.
   /// @return True if the atom centre lies inside the quadrant.
   bool
-  is_in (const NS::Atom& i, tmesh_3d::quadrant_iterator q);
+  is_in (const NS::Atom &i, tmesh_3d::quadrant_iterator q);
 
   /// @brief Test whether atom @p i is geometrically inside a refined quadrant @p q.
   bool
-  is_in_ref (const NS::Atom& i, tmesh_3d::quadrant_iterator q);
+  is_in_ref (const NS::Atom &i, tmesh_3d::quadrant_iterator q);
 
   /// @brief Refine quadrants near the molecular surface until maxlevel is reached.
   /// @param ray_cache Populated ray cache for surface intersection queries.
   void
-  refine_surface (ray_cache_t & ray_cache);
+  refine_surface (ray_cache_t &ray_cache);
 
   /// @brief Refine only the quadrants that straddle the molecular surface (no interior refinement).
   /// @param ray_cache Populated ray cache for surface intersection queries.
   void
-  refine_only_surface (ray_cache_t & ray_cache);
+  refine_only_surface (ray_cache_t &ray_cache);
 
   /**
    * @brief Initializes and updates markers for quadrants in a forest mesh.
@@ -855,7 +855,7 @@ struct
    *   one cycle for single-process configurations.
    */
   void
-  create_markers (ray_cache_t & ray_cache);
+  create_markers (ray_cache_t &ray_cache);
 
   /// @}
 
@@ -865,12 +865,12 @@ struct
   /// @brief Export the marked mesh to VTK format for visualisation.
   /// @param ray_cache Ray cache used to evaluate the surface field.
   void
-  export_tmesh (ray_cache_t & ray_cache);
+  export_tmesh (ray_cache_t &ray_cache);
 
   /// @brief Export the electric potential field to a binary map file.
   /// @param ray_cache Ray cache used during export.
   void
-  export_potential_map (ray_cache_t & ray_cache);
+  export_potential_map (ray_cache_t &ray_cache);
 
   /// @brief Export the mesh with marker values to VTK format.
   void
@@ -893,22 +893,22 @@ struct
   ///
   /// @param ray_cache Ray cache for surface intersection queries.
   void
-  assemple_system_matrix (ray_cache_t & ray_cache);
+  assemple_system_matrix (ray_cache_t &ray_cache);
 
   /// @brief Compute the fixed-charge density map on the octree nodes.
   /// @param ray_cache Ray cache for surface intersection queries.
   void
-  create_density_map (ray_cache_t & ray_cache);
+  create_density_map (ray_cache_t &ray_cache);
 
   /// @brief Solve the system Aφ = rhs using the MUMPS direct solver.
   /// @param ray_cache Ray cache (used for ghost synchronisation after solve).
   void
-  mumps_compute_electric_potential (ray_cache_t & ray_cache);
+  mumps_compute_electric_potential (ray_cache_t &ray_cache);
 
   /// @brief Solve the system Aφ = rhs using the LIS iterative solver.
   /// @param ray_cache Ray cache (used for ghost synchronisation after solve).
   void
-  lis_compute_electric_potential (ray_cache_t & ray_cache);
+  lis_compute_electric_potential (ray_cache_t &ray_cache);
 
   /// @}
 
@@ -920,30 +920,30 @@ struct
   /// @param isolevel Iso-value for surface extraction.
   /// @return Cube index (0–255) for the marching-cubes lookup table.
   int
-  classifyCube (tmesh_3d::quadrant_iterator& quadrant,double isolevel);
+  classifyCube (tmesh_3d::quadrant_iterator &quadrant, double isolevel);
 
   /// @brief Classify a quadrant using the fast (precomputed) marching-cubes path.
   /// @param quadrant Quadrant to classify.
   /// @param isolevel Iso-value for surface extraction.
   /// @return Cube index (0–255).
   int
-  classifyCube_fast (tmesh_3d::quadrant_iterator& quadrant,double isolevel);
+  classifyCube_fast (tmesh_3d::quadrant_iterator &quadrant, double isolevel);
 
   /// @brief Classify a quadrant and return potential/dielectric values on edges with flux information.
   /// @param quadrant  Quadrant to classify.
   /// @param tmp_phi   Output: potential values at the 8 nodes.
   /// @param tmp_eps   Output: dielectric values at the 8 nodes.
   /// @return Tuple (phi, eps, edge_indices, flux_directions).
-  std::tuple<std::array<double,8>, std::array<double,8>, std::vector<int>,std::vector<int>>
-  classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant,
-                     std::array<double,8>& tmp_phi,
-                     std::array<double,8>& tmp_eps);
+  std::tuple<std::array<double, 8>, std::array<double, 8>, std::vector<int>, std::vector<int>>
+  classifyCube_flux (tmesh_3d::quadrant_iterator &quadrant,
+                     std::array<double, 8> &tmp_phi,
+                     std::array<double, 8> &tmp_eps);
 
   /// @brief Fast version of classifyCube_flux using precomputed fields.
-  std::tuple<std::array<double,8>, std::array<double,8>, std::vector<int>,std::vector<int> >
-  classifyCube_flux_fast (tmesh_3d::quadrant_iterator& quadrant,
-                          std::array<double,8>& tmp_phi,
-                          std::array<double,8>& tmp_eps);
+  std::tuple<std::array<double, 8>, std::array<double, 8>, std::vector<int>, std::vector<int> >
+  classifyCube_flux_fast (tmesh_3d::quadrant_iterator &quadrant,
+                          std::array<double, 8> &tmp_phi,
+                          std::array<double, 8> &tmp_eps);
 
   /// @}
 
@@ -953,17 +953,17 @@ struct
   /// @brief Compute and print the solvation energy components (standard path).
   /// @param ray_cache Ray cache for surface intersection queries.
   void
-  energy (ray_cache_t & ray_cache);
+  energy (ray_cache_t &ray_cache);
 
   /// @brief Compute and print the solvation energy components using fast interpolation.
   /// @param ray_cache Ray cache for surface intersection queries.
   void
-  energy_fast (ray_cache_t & ray_cache);
+  energy_fast (ray_cache_t &ray_cache);
 
   /// @brief Write the electric potential sampled on the molecular surface to file.
   /// @param ray_cache Ray cache for surface intersection queries.
   void
-  write_potential_on_surface (ray_cache_t & ray_cache);
+  write_potential_on_surface (ray_cache_t &ray_cache);
 
   /// @brief Compute the Coulomb (Debye-Hückel) boundary potential at a point.
   /// @param x X-coordinate [Å].
@@ -994,9 +994,9 @@ struct
   /// @param quadrant  Quadrant to analyse.
   /// @param ray_cache Ray cache for surface queries.
   /// @return Array of 12 fractional intersection lengths (one per edge).
-  std::array<double,12>
-  cube_fraction_intersection (tmesh_3d::quadrant_iterator& quadrant,
-                              const ray_cache_t & ray_cache);
+  std::array<double, 12>
+  cube_fraction_intersection (tmesh_3d::quadrant_iterator &quadrant,
+                              const ray_cache_t &ray_cache);
 
   /// @brief Compute the surface normal and edge fraction at a boundary edge intersection.
   /// @param quadrant  Quadrant containing the edge.
@@ -1005,9 +1005,9 @@ struct
   /// @param norm      Output: outward unit normal at the intersection point.
   /// @param frac      Output: fractional distance from the first node to the intersection.
   void
-  normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
-                       const ray_cache_t & ray_cache,
-                       int edge, std::array<double,3> &norm,double &frac);
+  normal_intersection (tmesh_3d::quadrant_iterator &quadrant,
+                       const ray_cache_t &ray_cache,
+                       int edge, std::array<double, 3> &norm, double &frac);
 
   /// @brief Look up the triangle connectivity for a marching-cubes cube index.
   /// @param cubeindex   Cube classification index (0–255).
@@ -1015,7 +1015,7 @@ struct
   /// @return Number of triangles generated.
   int
   getTriangles (int cubeindex,
-                std::array<std::array<int,3>,5> &triangles);
+                std::array<std::array<int, 3>, 5> &triangles);
 
   /// @}
 
@@ -1031,9 +1031,9 @@ struct
 
   /// @brief p4est search callback used during atom-to-quadrant mapping.
   int
-  cerca_atomo (p8est_t * p4est,
+  cerca_atomo (p8est_t *p4est,
                p4est_topidx_t which_tree,
-               p8est_quadrant_t * quadrant,
+               p8est_quadrant_t *quadrant,
                p4est_locidx_t local_num,
                void *point);
 
@@ -1049,18 +1049,18 @@ struct
   /// @brief Compute and export the electric potential and field on atom positions (fast path).
   /// @param ray_cache Ray cache for surface intersection queries.
   void
-  pot_field_fast (ray_cache_t & ray_cache);
+  pot_field_fast (ray_cache_t &ray_cache);
 
   /// @brief Compute and export the electric potential and field on atom positions (standard path).
   /// @param ray_cache Ray cache for surface intersection queries.
   void
-  pot_field (ray_cache_t & ray_cache);
+  pot_field (ray_cache_t &ray_cache);
 
   /// @}
 };
 
-std::basic_istream<char>&
-operator>> (std::basic_istream<char>& inputfile, NS::Atom &a);
-std::basic_istream<char>&
-operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a);
+std::basic_istream<char> &
+operator>> (std::basic_istream<char> &inputfile, NS::Atom &a);
+std::basic_istream<char> &
+operator>> (std::basic_istream<char> &inputfile, std::array<float, 5> &a);
 #endif

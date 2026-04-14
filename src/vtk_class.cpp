@@ -18,8 +18,8 @@
 #include "vtk_class.h"
 
 void
-VTKWriter:: writeFieldVtuBinary (tmesh_3d& tmsh,
-                                 const distributed_vector& field,
+VTKWriter:: writeFieldVtuBinary (tmesh_3d &tmsh,
+                                 const distributed_vector &field,
                                  std::string &fieldname_)
 {
   preparingData (field, tmsh);
@@ -32,9 +32,9 @@ VTKWriter:: writeFieldVtuBinary (tmesh_3d& tmsh,
 }
 
 void
-VTKWriter:: writeFieldVtuBinary_local (tmesh_3d& tmsh,
-                                       const distributed_vector& field,
-                                       std::string &fieldname_, double* l_cr, double* r_cr)
+VTKWriter:: writeFieldVtuBinary_local (tmesh_3d &tmsh,
+                                       const distributed_vector &field,
+                                       std::string &fieldname_, double *l_cr, double *r_cr)
 {
   preparingData_local (field, tmsh, l_cr, r_cr);
   setFieldName (fieldname_);
@@ -55,7 +55,7 @@ VTKWriter::createPvtuFile (std::vector<std::string> &fieldNames, std::vector<std
 
   for (size_t i = 0; i < baseNames.size(); ++i) {
 
-    std::string pvtuFilename = "total_"+baseNames[i]+".pvtu";
+    std::string pvtuFilename = "total_" + baseNames[i] + ".pvtu";
 
     // Open the .pvtu file for writing
     std::ofstream pvtuFile (pvtuFilename);
@@ -100,14 +100,14 @@ VTKWriter::createPvtuFile (std::vector<std::string> &fieldNames, std::vector<std
 }
 
 void
-VTKWriter::preparingData (const distributed_vector& field, tmesh_3d& tmsh)
+VTKWriter::preparingData (const distributed_vector &field, tmesh_3d &tmsh)
 {
   int real_node = tmsh.num_owned_nodes();
   nelems = tmsh.num_local_quadrants ();
 
-  p.assign (3 * real_node,0);
-  f_loc.assign (real_node,0);
-  t.assign (8*nelems, 0);
+  p.assign (3 * real_node, 0);
+  f_loc.assign (real_node, 0);
+  t.assign (8 * nelems, 0);
 
   int ij = 0;
   int triang = 0;
@@ -154,10 +154,10 @@ VTKWriter::preparingData (const distributed_vector& field, tmesh_3d& tmsh)
   nnodes = f_loc.size ();
 }
 
-void VTKWriter::preparingData_local (const distributed_vector& field,
-                                     tmesh_3d& tmsh,
-                                     double* l_cr,
-                                     double* r_cr)
+void VTKWriter::preparingData_local (const distributed_vector &field,
+                                     tmesh_3d &tmsh,
+                                     double *l_cr,
+                                     double *r_cr)
 {
   nelems = 0;
   nnodes = 0;
@@ -183,8 +183,8 @@ void VTKWriter::preparingData_local (const distributed_vector& field,
 
         // Check whether this node has already been added to the local list
         if (global_to_local[global_index] == -1) {
-          if (rank==1) {
-            std::cout << f_loc.size()<<" " << global_to_local[global_index] << "  " << global_index <<std::endl;
+          if (rank == 1) {
+            std::cout << f_loc.size() << " " << global_to_local[global_index] << "  " << global_index << std::endl;
           }
 
           // New node: append its coordinates and update the global→local map
@@ -284,13 +284,13 @@ VTKWriter::writePieceHeader()
 
 
 template <typename T>
-ByteArray serializeData (const std::vector<T>& data)
+ByteArray serializeData (const std::vector<T> &data)
 {
   ByteArray rawData;
   rawData.reserve (data.size() * sizeof (T));
 
   for (const T& value : data) {
-    const char* rawBytes = reinterpret_cast<const char*> (&value);
+    const char* rawBytes = reinterpret_cast<const char *> (&value);
     rawData.insert (rawData.end(), rawBytes, rawBytes + sizeof (T));
   }
 
@@ -298,23 +298,23 @@ ByteArray serializeData (const std::vector<T>& data)
 }
 
 template <typename T>
-ByteArray serializeDataWithHeader (const std::vector<T>& data)
+ByteArray serializeDataWithHeader (const std::vector<T> &data)
 {
   ByteArray rawData;
   // Prepend the block size (in bytes) as a 4-byte header, as required by VTK appended format
   int32_t blockSize = static_cast<int32_t> (data.size() * sizeof (T));
-  const char* headerBytes = reinterpret_cast<const char*> (&blockSize);
+  const char* headerBytes = reinterpret_cast<const char *> (&blockSize);
   rawData.insert (rawData.end(), headerBytes, headerBytes + sizeof (int32_t));
 
   // Append the actual data bytes
-  const char* dataBytes = reinterpret_cast<const char*> (data.data());
+  const char* dataBytes = reinterpret_cast<const char *> (data.data());
   rawData.insert (rawData.end(), dataBytes, dataBytes + blockSize);
 
   return rawData;
 }
 
 void
-VTKWriter::appendData (const ByteArray& rawData)
+VTKWriter::appendData (const ByteArray &rawData)
 {
   // Append binary data to the main container
   dataContainer.insert (dataContainer.end(), rawData.begin(), rawData.end());
@@ -326,8 +326,8 @@ VTKWriter::appendData (const ByteArray& rawData)
 }
 
 void
-VTKWriter::writeDataArray (const std::string& type, const std::string& name, int numComponents,
-                           const std::vector<double>& data, int numEntries)
+VTKWriter::writeDataArray (const std::string &type, const std::string &name, int numComponents,
+                           const std::vector<double> &data, int numEntries)
 {
   file << "<DataArray type=\"" << type << "\" Name=\"" << name
        << "\" NumberOfComponents=\"" << numComponents
@@ -389,8 +389,8 @@ VTKWriter::writeGrid()
 
   file << "<Cells>\n";
   writeConnectivity(); // Cell-to-node connectivity
-  writeOffsets();      // Per-cell node count offsets
-  writeCellTypes();    // VTK cell type codes
+  writeOffsets(); // Per-cell node count offsets
+  writeCellTypes(); // VTK cell type codes
   file << "</Cells>\n";
 }
 
@@ -414,14 +414,14 @@ VTKWriter::finalizeFile()
   file << "</UnstructuredGrid>\n";
   file << " <AppendedData encoding=\"raw\">\n";
   file << "_";
-  file.write (reinterpret_cast<const char*> (dataContainer.data()), dataContainer.size());
+  file.write (reinterpret_cast<const char *> (dataContainer.data()), dataContainer.size());
   file << " </AppendedData>\n";
   file << "</VTKFile>\n";
   file.close();
 }
 
 bool
-VTKWriter::fileExists (std::string& name)
+VTKWriter::fileExists (std::string &name)
 {
   std::ifstream f (name.c_str());
   return f.good();

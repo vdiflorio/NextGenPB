@@ -28,14 +28,14 @@
 
 // int
 // cerca_atomo_wrapper (p8est_t *p4est,
-//                      p4est_topidx_t which_tree,
-//                      p8est_quadrant_t *quadrant,
-//                      p4est_locidx_t local_num,
-//                      void *point)
+// p4est_topidx_t which_tree,
+// p8est_quadrant_t *quadrant,
+// p4est_locidx_t local_num,
+// void *point)
 // {
 
-//   poisson_boltzmann * pb_wrapper = static_cast<poisson_boltzmann*> (pb_global);
-//   return pb_wrapper->cerca_atomo (p4est, which_tree, quadrant, local_num,point);
+// poisson_boltzmann * pb_wrapper = static_cast<poisson_boltzmann*> (pb_global);
+// return pb_wrapper->cerca_atomo (p4est, which_tree, quadrant, local_num,point);
 // }
 
 // static char filename[255];
@@ -48,12 +48,12 @@ int_coord_t ray_cache_t::count_new = 0;
 
 
 void
-print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3>& r);
+print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3> &r);
 
 void
-print_point (const std::array<std::vector<std::array<double, 2>>,3>& r);
+print_point (const std::array<std::vector<std::array<double, 2>>, 3> &r);
 void
-save_ray_cache (nlohmann::json& j, const std::map<std::array<double, 2>, crossings_t, map_compare>& r);
+save_ray_cache (nlohmann::json &j, const std::map<std::array<double, 2>, crossings_t, map_compare> &r);
 
 
 int
@@ -105,6 +105,7 @@ main (int argc, char **argv)
 
   if (size > 1) {
     pb.broadcast_vectors ();
+
     if (pb.membrane_enabled)
       broadcast_lipid_vectors (pb);
   }
@@ -128,14 +129,15 @@ main (int argc, char **argv)
 
   if (rank == 0) {
     std::cout << "\n=== [ Building Surface with NanoShaper ] ===\n";
+
     if (pb.membrane_enabled) {
       // Extend the NanoShaper box in xy so that the membrane surface can close
       // outside the computational domain (PBC is on the potential, not the geometry).
       // The margin is snapped to the nearest grid-cell boundary so that pb.l_cr/r_cr
       // remain aligned with NanoShaper's internal grid (both share pb.scale).
       // z bounds are left unchanged.
-      const int margin_cells = static_cast<int> (std::ceil (3.0 * pb.surf_param * pb.scale));
-      const double ns_margin  = margin_cells / pb.scale;
+      const int margin_cells = static_cast<int> (std::ceil (3.0 * pb.surf_param *pb.scale));
+      const double ns_margin = margin_cells / pb.scale;
       double l_cr_ns[3] = { pb.l_cr[0] - ns_margin, pb.l_cr[1] - ns_margin, pb.l_cr[2] };
       double r_cr_ns[3] = { pb.r_cr[0] + ns_margin, pb.r_cr[1] + ns_margin, pb.r_cr[2] };
 
@@ -162,6 +164,7 @@ main (int argc, char **argv)
     } else {
       ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
     }
+
     std::vector<NS::Atom> ().swap (pb.atoms);
     std::cout << "\n============================================\n";
   }
@@ -171,7 +174,7 @@ main (int argc, char **argv)
   // After NanoShaper: trim out-of-domain lipid atoms and zero boundary residues.
   // Both operations are deterministic from pb.l_cr/r_cr, so all ranks execute them.
   if (pb.membrane_enabled) {
-    trim_lipid_atoms             (pb);
+    trim_lipid_atoms (pb);
     zero_boundary_residue_charges(pb);
   }
 
@@ -280,13 +283,14 @@ main (int argc, char **argv)
         std::vector<std::string> fieldNames, baseNames;
         VTKWriter vtk ("");
         std::string fieldname = "eps";
-        std::string basename  = "eps_map";
+        std::string basename = "eps_map";
         fieldNames.push_back (fieldname);
         baseNames.push_back (basename);
         vtk.setBaseName (basename, rank);
         vtk.writeFieldVtuBinary (pb.tmsh, *pb.epsilon_nodes, fieldname);
         TOC ("export epsilon map");
         MPI_Barrier (mpicomm);
+
         if (rank == 0)
           vtk.createPvtuFile (fieldNames, baseNames, size);
       }
@@ -302,9 +306,9 @@ main (int argc, char **argv)
     std::cout << "\n========== [ Assemble Matricies ] ==========\n";
     std::cout << "Selected BCs          : ";
 
-    if (pb.bc ==1)
+    if (pb.bc == 1)
       std::cout << "Null\n";
-    else if (pb.bc ==2)
+    else if (pb.bc == 2)
       std::cout << "Coulombic\n";
     else
       std::cout << "Neumann\n";
@@ -427,12 +431,12 @@ main (int argc, char **argv)
       if (pb.potential_map == 1 || pb.eps_map == 1)
         vtk.createPvtuFile (fieldNames, baseNames, size);
   } else
-    std::cout << "\n Wrong type of map output! "<<std::endl;
+    std::cout << "\n Wrong type of map output! " << std::endl;
 
 
 
   if (rank == 0) {
-    std::cout<<std::endl;
+    std::cout << std::endl;
     print_timing_report ();
 
     // if (pb.surf_type != 2)
@@ -477,7 +481,7 @@ main (int argc, char **argv)
 
 
 void
-print_point (const std::array<std::vector<std::array<double, 2>>,3>& r)
+print_point (const std::array<std::vector<std::array<double, 2>>, 3> &r)
 {
   std::ofstream ray_cached_file;
 
@@ -490,8 +494,8 @@ print_point (const std::array<std::vector<std::array<double, 2>>,3>& r)
     ray_cached_file.open (filename.c_str ());
 
     if (ray_cached_file.is_open ()) {
-      for (auto it = r[i].begin (); it !=r[i].end (); ++it) {
-        ray_cached_file <<std::setprecision (9)<< "[[" << (*it)[0] << ", " << (*it)[1] << "]" << std::endl;
+      for (auto it = r[i].begin (); it != r[i].end (); ++it) {
+        ray_cached_file << std::setprecision (9) << "[[" << (*it)[0] << ", " << (*it)[1] << "]" << std::endl;
       }
     }
 
@@ -502,7 +506,7 @@ print_point (const std::array<std::vector<std::array<double, 2>>,3>& r)
 
 
 void
-print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3>& r)
+print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_compare>, 3> &r)
 {
   std::ofstream ray_cached_file;
 
@@ -520,9 +524,9 @@ print_map (const std::array<std::map<std::array<double, 2>, crossings_t, map_com
       int count = 0;
 
       for (auto it : r[i]) {
-        ray_cached_file <<std::setprecision (9)<< "[[" << it.first.at (0) << ", " << it.first.at (1) << "]";
+        ray_cached_file << std::setprecision (9) << "[[" << it.first.at (0) << ", " << it.first.at (1) << "]";
 
-        if (it.second.inters.size ()>0) {
+        if (it.second.inters.size () > 0) {
           count++;
         }
 

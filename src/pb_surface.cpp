@@ -32,7 +32,7 @@ poisson_boltzmann::levelsetfun (double x, double y, double z)
     dist += std::exp (surf_param * ( (std::pow (x - i.pos[0], 2) +
                                       std::pow (y - i.pos[1], 2) +
                                       std::pow (z - i.pos[2], 2)) /
-                                     (i.radius*i.radius) - 1.0));
+                                     (i.radius *i.radius) - 1.0));
 
     if (dist > 1.5)
       break;
@@ -44,7 +44,7 @@ poisson_boltzmann::levelsetfun (double x, double y, double z)
 
 
 double
-poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir)
+poisson_boltzmann::is_in_ns_surf (ray_cache_t &ray_cache, double x, double y, double z, int dir)
 {
   int rank;
   MPI_Comm_rank (mpicomm, &rank);
@@ -62,7 +62,7 @@ poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, d
     x3 = y;
   }
 
-  crossings_t & ct = ray_cache (x1, x2, dir);
+  crossings_t &ct = ray_cache (x1, x2, dir);
 
   if (!ct.init && rank != 0) {
     std::array<double, 2> ray = {x1, x2};
@@ -84,13 +84,13 @@ poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, d
 
 
 bool
-poisson_boltzmann::is_in (const NS::Atom& i,
+poisson_boltzmann::is_in (const NS::Atom &i,
                           tmesh_3d::quadrant_iterator q)
 {
-  double tol = p4esttol * (rr[0]-ll[0]);
+  double tol = p4esttol * (rr[0] - ll[0]);
 
   if (mesh_shape == 2)
-    tol = p4esttol * (r_c[0]-l_c[0]);
+    tol = p4esttol * (r_c[0] - l_c[0]);
 
   bool retval = false;
   double l, r, t, b, f, bk;
@@ -123,7 +123,7 @@ poisson_boltzmann::is_in (const NS::Atom& i,
 }
 
 bool
-poisson_boltzmann::is_in_ref (const NS::Atom& i,
+poisson_boltzmann::is_in_ref (const NS::Atom &i,
                               tmesh_3d::quadrant_iterator q)
 {
 
@@ -158,7 +158,7 @@ poisson_boltzmann::is_in_ref (const NS::Atom& i,
 }
 
 void
-poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
+poisson_boltzmann::refine_surface (ray_cache_t &ray_cache)
 {
   int rank, size;
   MPI_Comm_size (mpicomm, &size);
@@ -210,8 +210,8 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
                     std::array<double, 2> ray;
 
-                    std::vector<int> direzioni = {0,1,2};
-                    direzioni.erase (direzioni.begin ()+idir);
+                    std::vector<int> direzioni = {0, 1, 2};
+                    direzioni.erase (direzioni.begin () + idir);
 
                     for (unsigned i = 0; i < direzioni.size (); ++i) {
                       ray[i] = quadrant->p (direzioni[i], ii);
@@ -233,8 +233,8 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
                   std::array<double, 2> ray;
 
-                  std::vector<int> direzioni = {0,1,2};
-                  direzioni.erase (direzioni.begin ()+idir);
+                  std::vector<int> direzioni = {0, 1, 2};
+                  direzioni.erase (direzioni.begin () + idir);
 
                   for (unsigned i = 0; i < direzioni.size (); ++i) {
                     ray[i] = quadrant->p (direzioni[i], ii);
@@ -255,7 +255,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
         ray_cache.fill_cache ();
       }
 
-      auto refinement = [&rcoeff,this]
+      auto refinement = [&rcoeff, this]
       (tmesh_3d::quadrant_iterator q) -> int {
         int currentlevel = static_cast<int> (q->the_quadrant->level);
         int retval = 0;
@@ -344,8 +344,8 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
                     std::array<double, 2> ray;
 
-                    std::vector<int> direzioni = {0,1,2};
-                    direzioni.erase (direzioni.begin ()+idir);
+                    std::vector<int> direzioni = {0, 1, 2};
+                    direzioni.erase (direzioni.begin () + idir);
 
                     for (unsigned i = 0; i < direzioni.size (); ++i) {
                       ray[i] = quadrant->p (direzioni[i], ii);
@@ -368,8 +368,8 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
                   std::array<double, 2> ray;
 
-                  std::vector<int> direzioni = {0,1,2};
-                  direzioni.erase (direzioni.begin ()+idir);
+                  std::vector<int> direzioni = {0, 1, 2};
+                  direzioni.erase (direzioni.begin () + idir);
 
                   for (unsigned i = 0; i < direzioni.size (); ++i) {
                     ray[i] = quadrant->p (direzioni[i], ii);
@@ -390,7 +390,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
         ray_cache.fill_cache ();
       }
 
-      auto coarsening = [&rcoeff,this]
+      auto coarsening = [&rcoeff, this]
       (tmesh_3d::quadrant_iterator q) -> int {
         int currentlevel = static_cast<int> (q->the_quadrant->level);
         int retval = 0;
@@ -440,7 +440,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
 
 double
-poisson_boltzmann::is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, double y, double z, int dir)
+poisson_boltzmann::is_in_ns_surf_stern (ray_cache_t &ray_cache, double x, double y, double z, int dir)
 {
   int rank;
   MPI_Comm_rank (mpicomm, &rank);
@@ -458,7 +458,7 @@ poisson_boltzmann::is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, doubl
     x3 = y;
   }
 
-  crossings_t & ct = ray_cache (x1, x2, dir);
+  crossings_t &ct = ray_cache (x1, x2, dir);
 
   if (!ct.init && rank != 0) {
     std::array<double, 2> ray = {x1, x2};
@@ -469,10 +469,10 @@ poisson_boltzmann::is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, doubl
   int i = 0;
   int sign = 1;
 
-  if (ct.inters.size () == 0 || x3 < (ct.inters[i]- stern_layer))
+  if (ct.inters.size () == 0 || x3 < (ct.inters[i] - stern_layer))
     return 0; //if there are no inters or y_the coord is before the first intersection, the point is outside.
 
-  while (i < ct.inters.size () && x3 > (ct.inters[i] - stern_layer*sign)) {
+  while (i < ct.inters.size () && x3 > (ct.inters[i] - stern_layer * sign)) {
     //go on until the inters is passed
     i++;
     sign *= -1;
@@ -483,33 +483,33 @@ poisson_boltzmann::is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, doubl
 
 
 void
-poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
+poisson_boltzmann::create_markers (ray_cache_t &ray_cache)
 {
 
   int size, rank;
   MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
 
-  double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
-  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+  double eps_in = 4.0 * pi * e_0 * e_in * kb * T * Angs / (e *e); //adim e_in
+  double eps_out = 4.0 * pi * e_0 * e_out * kb * T * Angs / (e *e); //adim e_out
 
   /////////////////////////////////////////////////////////
   //reactions
-  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
-  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
+  double C_0 = 1.0e3 * N_av * ionic_strength; //Bulk concentration of monovalent species
+  double k2 = 2.0 * C_0 * Angs * Angs * e * e / (e_0 *e_out *kb *T);
 
   this->marker.assign (this->tmsh.num_local_quadrants (), 0.0); //marker = 0 -> in
 
   if (stern_layer_surf == 1) {
     this->marker_k.assign (this->tmsh.num_local_quadrants (), 1.0); //marker = 1 -> out stern
-    this->reaction.assign (tmsh.num_local_quadrants (), eps_out*k2);
+    this->reaction.assign (tmsh.num_local_quadrants (), eps_out *k2);
   }
 
-  epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
+  epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
   epsilon_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out);
 
-  reaction_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
-  reaction_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out*k2);
+  reaction_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+  reaction_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out *k2);
 
   int num_cycles = 2;
 
@@ -534,10 +534,10 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
       int num_int_nodes = 0;
       int num_int_nodes_stern = 0;
       int num_hanging[3] = {0, 0, 0};
-      double x,y,z;
+      double x, y, z;
 
       for (int ii = 0; ii < 8; ++ii) {
-        local_num =quadrant->gt (ii);
+        local_num = quadrant->gt (ii);
         x = quadrant->p (0, ii);
         y = quadrant->p (1, ii);
         z = quadrant->p (2, ii);
@@ -553,7 +553,7 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
 
             // std::array<double, 2> ray {x,y};
 
-            ray_cache.rays_list[2].insert ({x,y});
+            ray_cache.rays_list[2].insert ({x, y});
           }
 
           if (this->is_in_ns_surf (ray_cache, x, y, z, 0) < -0.5) {
@@ -561,15 +561,15 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
 
             // std::array<double, 2> ray {y,z};
 
-            ray_cache.rays_list[0].insert ({y,z});
+            ray_cache.rays_list[0].insert ({y, z});
           }
 
           if (this->is_in_ns_surf (ray_cache, x, y, z, 1) < -0.5) {
             ray_cache.num_req_rays[1]++;
 
-            std::array<double, 2> ray {x,z};
+            std::array<double, 2> ray {x, z};
 
-            ray_cache.rays_list[1].insert ({x,z});
+            ray_cache.rays_list[1].insert ({x, z});
           }
 
           if (stern_layer_surf == 1) {
@@ -587,8 +587,8 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
               ray_cache.num_req_rays[idir]++;
               std::array<double, 2> ray;
 
-              std::vector<int> direzioni {0,1,2};
-              direzioni.erase (direzioni.begin ()+idir);
+              std::vector<int> direzioni {0, 1, 2};
+              direzioni.erase (direzioni.begin () + idir);
 
               for (unsigned i = 0; i < direzioni.size (); ++i) {
                 ray[i] = quadrant->p (direzioni[i], ii);
@@ -604,7 +604,7 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
         if (num_int_nodes == 0) { //if there's no node inside the molecule
           this->marker[quadrant->get_forest_quad_idx ()] = 1.0; //quadrant is out
         } else if (num_int_nodes < (8 - num_hanging[2])) { //if the non hanging nodes are not all inside
-          this->marker[quadrant->get_forest_quad_idx ()] = 1.0/2.0; //"border"
+          this->marker[quadrant->get_forest_quad_idx ()] = 1.0 / 2.0; //"border"
           border_quad.push_back (quadrant->get_forest_quad_idx ());
         }
 
@@ -625,7 +625,7 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
     ray_cache.fill_cache ();
   }
 
-  if (size >1) {
+  if (size > 1) {
     bim3a_solution_with_ghosts (tmsh, *epsilon_nodes, replace_op);
 
     if (stern_layer_surf == 0)
@@ -635,9 +635,9 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::array<double,12>
-poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quadrant,
-    const ray_cache_t & ray_cache)
+std::array<double, 12>
+poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator &quadrant,
+    const ray_cache_t &ray_cache)
 
 
 // v6_________e7_________v7
@@ -654,16 +654,16 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
 // |/                  |/
 // v0/_________e1________/v1
 {
-  std::array<double,12> fraction = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
+  std::array<double, 12> fraction = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
 
   int dir;
   int i1, i2;
   double x1, x2;
-  std::array<double,2> ray;
+  std::array<double, 2> ray;
 
   if (marker[quadrant->get_forest_quad_idx ()] == 0.5) {
-    for (int j: {
-           0,2,4,6
+    for (int j : {
+           0, 2, 4, 6
          })
       //x-axis edge
     {
@@ -672,8 +672,8 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       i2 = edge2nodes[2 * j + 1];
       x1 = quadrant->p (dir, i1);
       x2 = quadrant->p (dir, i2);
-      std::vector<int> direzioni {0,1,2};
-      direzioni.erase (direzioni.begin ()+dir);
+      std::vector<int> direzioni {0, 1, 2};
+      direzioni.erase (direzioni.begin () + dir);
 
       for (unsigned i = 0; i < direzioni.size (); ++i) {
         ray[i] = quadrant->p (direzioni[i], i1);
@@ -682,15 +682,15 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       auto it0 = ray_cache.rays[dir].find (ray);
       auto inters = it0->second.inters;
 
-      for (int ii =0; ii<inters.size (); ii++) {
-        if (inters[ii]>= x1 && inters[ii] <=x2) {
-          fraction[j] = (inters[ii] - x1)/ (x2 - x1);
+      for (int ii = 0; ii < inters.size (); ii++) {
+        if (inters[ii] >= x1 && inters[ii] <= x2) {
+          fraction[j] = (inters[ii] - x1) / (x2 - x1);
         }
       }
     }
 
-    for (int j: {
-           1,3,5,7
+    for (int j : {
+           1, 3, 5, 7
          })
       //y-axis edge
     {
@@ -699,8 +699,8 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       i2 = edge2nodes[2 * j + 1];
       x1 = quadrant->p (dir, i1);
       x2 = quadrant->p (dir, i2);
-      std::vector<int> direzioni {0,1,2};
-      direzioni.erase (direzioni.begin ()+dir);
+      std::vector<int> direzioni {0, 1, 2};
+      direzioni.erase (direzioni.begin () + dir);
 
       for (unsigned i = 0; i < direzioni.size (); ++i) {
         ray[i] = quadrant->p (direzioni[i], i1);
@@ -709,15 +709,15 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       auto it0 = ray_cache.rays[dir].find (ray);
       auto inters = it0->second.inters;
 
-      for (int ii =0; ii<inters.size (); ii++) {
-        if (inters[ii]>= x1 && inters[ii] <=x2) {
-          fraction[j] = (inters[ii] - x1)/ (x2 - x1);
+      for (int ii = 0; ii < inters.size (); ii++) {
+        if (inters[ii] >= x1 && inters[ii] <= x2) {
+          fraction[j] = (inters[ii] - x1) / (x2 - x1);
         }
       }
     }
 
-    for (int j: {
-           8,9,10,11
+    for (int j : {
+           8, 9, 10, 11
          })
       //z-axis edge
     {
@@ -726,8 +726,8 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       i2 = edge2nodes[2 * j + 1];
       x1 = quadrant->p (dir, i1);
       x2 = quadrant->p (dir, i2);
-      std::vector<int> direzioni {0,1,2};
-      direzioni.erase (direzioni.begin ()+dir);
+      std::vector<int> direzioni {0, 1, 2};
+      direzioni.erase (direzioni.begin () + dir);
 
       for (unsigned i = 0; i < direzioni.size (); ++i) {
         ray[i] = quadrant->p (direzioni[i], i1);
@@ -736,9 +736,9 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       auto it0 = ray_cache.rays[dir].find (ray);
       auto inters = it0->second.inters;
 
-      for (int ii =0; ii<inters.size (); ii++) {
-        if (inters[ii]>= x1 && inters[ii] <=x2) {
-          fraction[j] = (inters[ii] - x1)/ (x2 - x1);
+      for (int ii = 0; ii < inters.size (); ii++) {
+        if (inters[ii] >= x1 && inters[ii] <= x2) {
+          fraction[j] = (inters[ii] - x1) / (x2 - x1);
         }
       }
     }
@@ -748,20 +748,20 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
 }
 
 void
-poisson_boltzmann::normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
-                                        const ray_cache_t & ray_cache,
-                                        int edge, std::array<double,3> &norm,
+poisson_boltzmann::normal_intersection (tmesh_3d::quadrant_iterator &quadrant,
+                                        const ray_cache_t &ray_cache,
+                                        int edge, std::array<double, 3> &norm,
                                         double &frac)
 {
   int dir = edge_axis[edge];
-  int i1 = edge2nodes[2*edge ];
-  int i2 = edge2nodes[2*edge + 1];
+  int i1 = edge2nodes[2 * edge ];
+  int i2 = edge2nodes[2 * edge + 1];
   double x1 = quadrant->p (dir, i1),
          x2 = quadrant->p (dir, i2);
 
-  std::array<double,2> ray;
-  std::vector<int> direzioni = {0,1,2};
-  direzioni.erase (direzioni.begin ()+dir);
+  std::array<double, 2> ray;
+  std::vector<int> direzioni = {0, 1, 2};
+  direzioni.erase (direzioni.begin () + dir);
 
   for (unsigned i = 0; i < direzioni.size (); ++i) {
     ray[i] = quadrant->p (direzioni[i], i1);
@@ -773,18 +773,18 @@ poisson_boltzmann::normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
 
   frac = 0.5;
 
-  for (int ii =0; ii<inters.size (); ii++) {
-    if (inters[ii]>= x1 && inters[ii] <=x2) {
-      norm[0] = normali[0 + 3*ii];
-      norm[1] = normali[1 + 3*ii];
-      norm[2] = normali[2 + 3*ii];
-      frac = (inters[ii] - x1)/ (x2 - x1);
+  for (int ii = 0; ii < inters.size (); ii++) {
+    if (inters[ii] >= x1 && inters[ii] <= x2) {
+      norm[0] = normali[0 + 3 * ii];
+      norm[1] = normali[1 + 3 * ii];
+      norm[2] = normali[2 + 3 * ii];
+      frac = (inters[ii] - x1) / (x2 - x1);
     }
   }
 }
 
 int
-poisson_boltzmann::classifyCube (tmesh_3d::quadrant_iterator& quadrant,
+poisson_boltzmann::classifyCube (tmesh_3d::quadrant_iterator &quadrant,
                                  double isolevel)
 {
   int cubeindex = 0;
@@ -793,7 +793,7 @@ poisson_boltzmann::classifyCube (tmesh_3d::quadrant_iterator& quadrant,
   constexpr double EPSILON = 1e-10;
 
   for (int ii : {
-         0,1,3,2,4,5,7,6
+         0, 1, 3, 2, 4, 5, 7, 6
        }) {
     if (! quadrant->is_hanging (ii)) {
       if ( (*epsilon_nodes)[quadrant->gt (ii)] < (isolevel - EPSILON)) cubeindex |= index;
@@ -817,7 +817,7 @@ poisson_boltzmann::classifyCube (tmesh_3d::quadrant_iterator& quadrant,
 }
 
 int
-poisson_boltzmann::classifyCube_fast (tmesh_3d::quadrant_iterator& quadrant,
+poisson_boltzmann::classifyCube_fast (tmesh_3d::quadrant_iterator &quadrant,
                                       double isolevel)
 {
   int cubeindex = 0;
@@ -826,7 +826,7 @@ poisson_boltzmann::classifyCube_fast (tmesh_3d::quadrant_iterator& quadrant,
   constexpr double EPSILON = 1e-10;
 
   for (int ii : {
-         0,1,3,2,4,5,7,6
+         0, 1, 3, 2, 4, 5, 7, 6
        }) {
     if ( (*epsilon_nodes)[quadrant->gt (ii)] < (isolevel - EPSILON)) cubeindex |= index;
 
@@ -840,18 +840,18 @@ poisson_boltzmann::classifyCube_fast (tmesh_3d::quadrant_iterator& quadrant,
   return cubeindex;
 }
 
-std::tuple<std::array<double,8>, std::array<double,8>, std::vector<int>,std::vector<int> >
-poisson_boltzmann::classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant,
-                                      std::array<double,8>& tmp_phi,
-                                      std::array<double,8>& tmp_eps)
+std::tuple<std::array<double, 8>, std::array<double, 8>, std::vector<int>, std::vector<int> >
+poisson_boltzmann::classifyCube_flux (tmesh_3d::quadrant_iterator &quadrant,
+                                      std::array<double, 8> &tmp_phi,
+                                      std::array<double, 8> &tmp_eps)
 {
   std::vector<int> edges {};
   std::vector<int> flux {};
 
   for (int ii = 0; ii < 8; ++ii) {
     if (! quadrant->is_hanging (ii)) {
-      tmp_eps[ii]= (*epsilon_nodes)[quadrant->gt (ii)];
-      tmp_phi[ii]= (*phi)[quadrant->gt (ii)];
+      tmp_eps[ii] = (*epsilon_nodes)[quadrant->gt (ii)];
+      tmp_phi[ii] = (*phi)[quadrant->gt (ii)];
     } else {
       tmp_eps[ii] = 0.0;
       tmp_phi[ii] = 0.0;
@@ -864,10 +864,10 @@ poisson_boltzmann::classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant,
   }
 
   for (int ii = 0; ii < 12; ++ii) {
-    if (tmp_eps[edge2nodes[2*ii]] < tmp_eps[edge2nodes[2*ii +1]]) {
+    if (tmp_eps[edge2nodes[2 * ii]] < tmp_eps[edge2nodes[2 * ii + 1]]) {
       flux.push_back (1);
       edges.push_back (ii);
-    } else if (tmp_eps[edge2nodes[2*ii]] > tmp_eps[edge2nodes[2*ii +1]]) {
+    } else if (tmp_eps[edge2nodes[2 * ii]] > tmp_eps[edge2nodes[2 * ii + 1]]) {
       flux.push_back (-1);
       edges.push_back (ii);
     }
@@ -876,25 +876,25 @@ poisson_boltzmann::classifyCube_flux (tmesh_3d::quadrant_iterator& quadrant,
   return make_tuple (tmp_phi, tmp_eps, edges, flux);
 }
 
-std::tuple<std::array<double,8>, std::array<double,8>, std::vector<int>,std::vector<int> >
-poisson_boltzmann::classifyCube_flux_fast (tmesh_3d::quadrant_iterator& quadrant,
-    std::array<double,8>& tmp_phi,
-    std::array<double,8>& tmp_eps)
+std::tuple<std::array<double, 8>, std::array<double, 8>, std::vector<int>, std::vector<int> >
+poisson_boltzmann::classifyCube_flux_fast (tmesh_3d::quadrant_iterator &quadrant,
+    std::array<double, 8> &tmp_phi,
+    std::array<double, 8> &tmp_eps)
 {
   std::vector<int> edges {};
   std::vector<int> flux {};
 
 
   for (int ii = 0; ii < 8; ++ii) {
-    tmp_eps[ii]= (*epsilon_nodes)[quadrant->gt (ii)];
-    tmp_phi[ii]= (*phi)[quadrant->gt (ii)];
+    tmp_eps[ii] = (*epsilon_nodes)[quadrant->gt (ii)];
+    tmp_phi[ii] = (*phi)[quadrant->gt (ii)];
   }
 
   for (int ii = 0; ii < 12; ++ii) {
-    if (tmp_eps[edge2nodes[2*ii]] < tmp_eps[edge2nodes[2*ii +1]]) {
+    if (tmp_eps[edge2nodes[2 * ii]] < tmp_eps[edge2nodes[2 * ii + 1]]) {
       flux.push_back (1);
       edges.push_back (ii);
-    } else if (tmp_eps[edge2nodes[2*ii]] > tmp_eps[edge2nodes[2*ii +1]]) {
+    } else if (tmp_eps[edge2nodes[2 * ii]] > tmp_eps[edge2nodes[2 * ii + 1]]) {
       flux.push_back (-1);
       edges.push_back (ii);
     }
@@ -905,7 +905,7 @@ poisson_boltzmann::classifyCube_flux_fast (tmesh_3d::quadrant_iterator& quadrant
 
 double wha (double eps1, double eps2, double frac)
 {
-  return 1.0/ (frac/eps1 + (1-frac)/eps2);
+  return 1.0 / (frac / eps1 + (1 - frac) / eps2);
 }
 
 double flux_dir (double eps1, double eps2)
@@ -916,37 +916,37 @@ double flux_dir (double eps1, double eps2)
 double phi0 (double eps1, double eps2,
              double phi1, double phi2, double frac)
 {
-  return phi1 + frac*eps2* (phi2-phi1)/ (eps2*frac + eps1* (1-frac));
+  return phi1 + frac * eps2 * (phi2 - phi1) / (eps2 *frac + eps1* (1 - frac));
 }
 
-double areaTriangle (const std::array<std::array<double,3>,3> &triangle)
+double areaTriangle (const std::array<std::array<double, 3>, 3> &triangle)
 {
 
   double area;
-  std::array<double,3> ab;
-  std::array<double,3> ac;
+  std::array<double, 3> ab;
+  std::array<double, 3> ac;
 
   for (int i = 0; i < 3; ++i) {
     ab[i] = triangle[0][i] - triangle[1][i];
     ac[i] = triangle[0][i] - triangle[2][i];
   }
 
-  area = 0.5* std::hypot (ab[1]*ac[2] - ab[2]*ac[1],
-                          ab[0]*ac[2] - ab[2]*ac[0],
-                          ab[1]*ac[0] - ab[0]*ac[1]);
+  area = 0.5 * std::hypot (ab[1] * ac[2] - ab[2] * ac[1],
+                           ab[0] * ac[2] - ab[2] * ac[0],
+                           ab[1] * ac[0] - ab[0] * ac[1]);
   return area;
 }
 
-double SphercalAreaTriangle (const std::array<std::array<double,3>,3> &triangle)
+double SphercalAreaTriangle (const std::array<std::array<double, 3>, 3> &triangle)
 {
 
   double area;
-  double rs =2;
-  double a,b,c, aa, bb, cc, E;
-  double nA,nB,nC;
-  std::array<double,3> A = triangle[0];
-  std::array<double,3> B = triangle[1];
-  std::array<double,3> C = triangle[2];
+  double rs = 2;
+  double a, b, c, aa, bb, cc, E;
+  double nA, nB, nC;
+  std::array<double, 3> A = triangle[0];
+  std::array<double, 3> B = triangle[1];
+  std::array<double, 3> C = triangle[2];
 
   nA = std::hypot (A[0], A[1], A[2]);
   nB = std::hypot (B[0], B[1], B[2]);
@@ -956,47 +956,47 @@ double SphercalAreaTriangle (const std::array<std::array<double,3>,3> &triangle)
   b = std::inner_product (std::begin (A), std::end (A), std::begin (C), 0.0);
   c = std::inner_product (std::begin (B), std::end (B), std::begin (C), 0.0);
 
-  a = a/ (nA*nB);
-  b = b/ (nA*nC);
-  c = c/ (nC*nB);
+  a = a / (nA *nB);
+  b = b / (nA *nC);
+  c = c / (nC *nB);
 
   a = std::acos (a);
   b = std::acos (b);
   c = std::acos (c);
 
-  if (a>pi/2.0)
+  if (a > pi / 2.0)
     a = pi - a;
 
-  if (b>pi/2.0)
+  if (b > pi / 2.0)
     b = pi - b;
 
-  if (c>pi/2.0)
+  if (c > pi / 2.0)
     c = pi - c;
 
-  aa = std::acos ( (cos (a)-cos (b)*cos (c))/ (sin (b)*sin (c)));
-  bb = std::acos ( (cos (b)-cos (c)*cos (a))/ (sin (a)*sin (c)));
-  cc = std::acos ( (cos (c)-cos (b)*cos (a))/ (sin (b)*sin (a)));
+  aa = std::acos ( (cos (a) - cos (b) * cos (c)) / (sin (b) * sin (c)));
+  bb = std::acos ( (cos (b) - cos (c) * cos (a)) / (sin (a) * sin (c)));
+  cc = std::acos ( (cos (c) - cos (b) * cos (a)) / (sin (b) * sin (a)));
 
   E = aa + bb + cc - pi;
 
-  area = rs*rs * E;
+  area = rs * rs * E;
 
   return area;
 }
 
 int
 poisson_boltzmann::getTriangles (int cubeindex,
-                                 std::array<std::array<int,3>,5> &triangles)
+                                 std::array<std::array<int, 3>, 5> &triangles)
 {
   int ntriang = 0;
   int i;
   triangles.fill ({}); //set matrix to zero
 
-  for (i=0; triTable[cubeindex][i]!=-1; i+=3) {
+  for (i = 0; triTable[cubeindex][i] != -1; i += 3) {
     // save all the assigned indexes
     triangles[ntriang][0] = triTable[cubeindex][i ];
-    triangles[ntriang][1] = triTable[cubeindex][i+1];
-    triangles[ntriang][2] = triTable[cubeindex][i+2];
+    triangles[ntriang][1] = triTable[cubeindex][i + 1];
+    triangles[ntriang][2] = triTable[cubeindex][i + 2];
     ntriang++;
   }
 
@@ -1007,18 +1007,18 @@ bool
 poisson_boltzmann::controlla_coordinate (int i, const p8est_quadrant_t *quadrant)
 {
 
-  double tol = p4esttol * (rr[0]-ll[0]);
+  double tol = p4esttol * (rr[0] - ll[0]);
 
   if (mesh_shape == 2)
-    tol = p4esttol * (r_c[0]-l_c[0]);
+    tol = p4esttol * (r_c[0] - l_c[0]);
 
 
   bool retval = false;
 
   p8est_quadrant_t node;
   int ii, jj;
-  double vxyz [3 * 8] = {0,0,0, 0,0,0, 0,0,0, 0,0,0,
-                         0,0,0, 0,0,0, 0,0,0, 0,0,0
+  double vxyz [3 * 8] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
                         };
 
   for (ii = 0; ii < 8; ++ii) {
@@ -1030,29 +1030,29 @@ poisson_boltzmann::controlla_coordinate (int i, const p8est_quadrant_t *quadrant
   double l, r, t, b, f, bk;
 
   l = vxyz[0];
-  r = vxyz[3*7];
+  r = vxyz[3 * 7];
 
   f = vxyz[1];
-  bk = vxyz[3*7 +1];
+  bk = vxyz[3 * 7 + 1];
 
   b = vxyz[2];
-  t = vxyz[3*7 +2];
+  t = vxyz[3 * 7 + 2];
 
   // retval = (atoms[i].pos[0] > l- tol) && (atoms[i].pos[0] <= r- tol); //make sure that the charge is assigned only once
   // retval = retval && (atoms[i].pos[1] > f- tol) && (atoms[i].pos[1] <= bk- tol);
   // retval = retval && (atoms[i].pos[2] > b- tol) && (atoms[i].pos[2] <= t- tol);
-  retval = (pos_atoms[i][0] > l- tol) && (pos_atoms[i][0] <= r- tol); //make sure that the charge is assigned only once
-  retval = retval && (pos_atoms[i][1] > f- tol) && (pos_atoms[i][1] <= bk- tol);
-  retval = retval && (pos_atoms[i][2] > b- tol) && (pos_atoms[i][2] <= t- tol);
+  retval = (pos_atoms[i][0] > l - tol) && (pos_atoms[i][0] <= r - tol); //make sure that the charge is assigned only once
+  retval = retval && (pos_atoms[i][1] > f - tol) && (pos_atoms[i][1] <= bk - tol);
+  retval = retval && (pos_atoms[i][2] > b - tol) && (pos_atoms[i][2] <= t - tol);
 
   return retval;
 }
 
 
 int
-poisson_boltzmann::cerca_atomo (p8est_t * p4est,
+poisson_boltzmann::cerca_atomo (p8est_t *p4est,
                                 p4est_topidx_t which_tree,
-                                p8est_quadrant_t * quadrant,
+                                p8est_quadrant_t *quadrant,
                                 p4est_locidx_t local_num,
                                 void *point)
 {
@@ -1076,28 +1076,28 @@ poisson_boltzmann::cerca_atomo (p8est_t * p4est,
 
 }
 
-void 
+void
 poisson_boltzmann::search_points()
 {
-    size_t count = charge_atoms.size();
-    auto base = std::make_unique<int[]>(count);
+  size_t count = charge_atoms.size();
+  auto base = std::make_unique<int[]>(count);
 
-    for (size_t ii = 0; ii < count; ++ii)
-        base[ii] = ii;
+  for (size_t ii = 0; ii < count; ++ii)
+    base[ii] = ii;
 
-    sc_array_t* points = sc_array_new_data(
-        base.get(), sizeof(int), count);
+  sc_array_t* points = sc_array_new_data(
+                         base.get(), sizeof(int), count);
 
-    // Set the global pointer for the callback
-    pb_global_wrapper = this;
+  // Set the global pointer for the callback
+  pb_global_wrapper = this;
 
-    // call the search function
-    p8est_search_local(
-        tmsh.p8est,
-        0,
-        NULL,
-        cerca_atomo_wrapper,
-        points
-    );
+  // call the search function
+  p8est_search_local(
+    tmsh.p8est,
+    0,
+    NULL,
+    cerca_atomo_wrapper,
+    points
+  );
 }
 

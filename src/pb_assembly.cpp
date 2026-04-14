@@ -25,7 +25,7 @@
 #include <cmath>
 
 void
-poisson_boltzmann::create_density_map (ray_cache_t & ray_cache)
+poisson_boltzmann::create_density_map (ray_cache_t &ray_cache)
 {
   int size, rank;
   MPI_Comm_size (mpicomm, &size);
@@ -134,7 +134,7 @@ poisson_boltzmann::create_density_map (ray_cache_t & ray_cache)
 }
 
 void
-poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
+poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
 {
   int size, rank;
   MPI_Comm_size (mpicomm, &size);
@@ -151,7 +151,7 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
   }
 
   // Function computing fractional volume intersections (for cut-cells)
-  auto func_frac = [&] (tmesh_3d::quadrant_iterator& quadrant) {
+  auto func_frac = [&] (tmesh_3d::quadrant_iterator &quadrant) {
     return cube_fraction_intersection (quadrant, ray_cache);
   };
 
@@ -241,8 +241,9 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
     rhs->assemble();
   }
 }
+
 void
-poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
+poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
 {
   int rank, size;
   MPI_Comm_size (mpicomm, &size);
@@ -286,7 +287,7 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
 
 
 void
-poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
+poisson_boltzmann::lis_compute_electric_potential (ray_cache_t &ray_cache)
 {
   int rank, size;
   MPI_Comm_size (mpicomm, &size);
@@ -309,8 +310,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   lis_vector_set_size (rhs_lis, ln, 0);
   lis_vector_get_range (rhs_lis, &is, &ie);
 
-  for (i=is; i<ie; i++)
-    lis_vector_set_value (LIS_INS_VALUE, i, rhs->get_owned_data ()[i-is], rhs_lis);
+  for (i = is; i < ie; i++)
+    lis_vector_set_value (LIS_INS_VALUE, i, rhs->get_owned_data ()[i - is], rhs_lis);
 
   //cleaning of rhs
   rhs.reset ();
@@ -377,9 +378,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 double
 poisson_boltzmann::coulomb_boundary_conditions (double x, double y, double z)
 {
-  double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
-  double C_0 = 1.0e3*N_av*ionic_strength; //Bulk concentration of monovalent species
-  double k2 = 2.0*C_0*Angs*Angs*e*e/ (e_0*e_out*kb*T);
+  double eps_out = 4.0 * pi * e_0 * e_out * kb * T * Angs / (e *e); //adim e_out
+  double C_0 = 1.0e3 * N_av * ionic_strength; //Bulk concentration of monovalent species
+  double k2 = 2.0 * C_0 * Angs * Angs * e * e / (e_0 *e_out *kb *T);
 
   double dist = 0.0;
   double pot = 0.0;
@@ -387,7 +388,7 @@ poisson_boltzmann::coulomb_boundary_conditions (double x, double y, double z)
 
   for (const NS::Atom& i : atoms) {
     dist = std::hypot ( (i.pos[0] - x), (i.pos[1] - y), (i.pos[2] - z));
-    pot += i.charge*exp (-k*dist)/ (dist*eps_out);
+    pot += i.charge * exp (-k *dist) / (dist *eps_out);
   }
 
   return pot;

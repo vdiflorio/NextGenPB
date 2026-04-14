@@ -4,7 +4,7 @@
 #include "readpdb.h"
 
 
-void read_pdb (const std::string& filename, std::vector<NS::Atom>& atoms)
+void read_pdb (const std::string &filename, std::vector<NS::Atom> &atoms)
 {
   std::ifstream infile (filename);
 
@@ -39,7 +39,7 @@ void read_pdb (const std::string& filename, std::vector<NS::Atom>& atoms)
   std::cout << "Total atoms read: " << atoms.size() << "\n";
 }
 
-int parse_line_to_atom_radius (const std::string& line, NS::Atom& atom)
+int parse_line_to_atom_radius (const std::string &line, NS::Atom &atom)
 {
   std::istringstream iss (line);
   std::string tokens[6];
@@ -88,7 +88,7 @@ int parse_line_to_atom_radius (const std::string& line, NS::Atom& atom)
   return 0;
 }
 
-int parse_line_to_atom_charge (const std::string& line, NS::Atom& atom)
+int parse_line_to_atom_charge (const std::string &line, NS::Atom &atom)
 {
   std::istringstream iss (line);
   std::string tokens[6];
@@ -138,7 +138,7 @@ int parse_line_to_atom_charge (const std::string& line, NS::Atom& atom)
 }
 
 
-void load_radii (const std::string& filename, std::vector<NS::Atom>& atoms)
+void load_radii (const std::string &filename, std::vector<NS::Atom> &atoms)
 {
   std::ifstream infile (filename);
 
@@ -180,7 +180,7 @@ void load_radii (const std::string& filename, std::vector<NS::Atom>& atoms)
   infile.close ();
 }
 
-void load_charges (const std::string& filename, std::vector<NS::Atom>& atoms)
+void load_charges (const std::string &filename, std::vector<NS::Atom> &atoms)
 {
   std::ifstream infile (filename);
 
@@ -222,7 +222,7 @@ void load_charges (const std::string& filename, std::vector<NS::Atom>& atoms)
   infile.close ();
 }
 
-void write_pqr (const std::string& filename, const std::vector<NS::Atom>& atoms)
+void write_pqr (const std::string &filename, const std::vector<NS::Atom> &atoms)
 {
   FILE* fp = std::fopen (filename.c_str(), "w");
 
@@ -232,7 +232,7 @@ void write_pqr (const std::string& filename, const std::vector<NS::Atom>& atoms)
   }
 
   for (std::size_t i = 0; i < atoms.size(); ++i) {
-    const NS::Atom& a = atoms[i];
+    const NS::Atom &a = atoms[i];
     std::fprintf (fp,
                   "ATOM  %5zu %-4s %-3s %c%4d    %8.3f%8.3f%8.3f %7.4f %7.4f\n",
                   i + 1,

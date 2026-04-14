@@ -45,7 +45,7 @@
  *
  * @param pb Solver instance with `lipid_file` and `lipid_filetype` already set.
  */
-void read_lipids (poisson_boltzmann& pb);
+void read_lipids (poisson_boltzmann &pb);
 
 /**
  * @brief Broadcast lipid atom data from rank 0 to all MPI ranks.
@@ -55,7 +55,7 @@ void read_lipids (poisson_boltzmann& pb);
  *
  * @param pb Solver instance (lipid vectors populated on rank 0).
  */
-void broadcast_lipid_vectors (poisson_boltzmann& pb);
+void broadcast_lipid_vectors (poisson_boltzmann &pb);
 
 // ─── NanoShaper supercell ────────────────────────────────────────────────────
 
@@ -73,7 +73,7 @@ void broadcast_lipid_vectors (poisson_boltzmann& pb);
  * @return Combined atom list for NanoShaper.
  */
 std::vector<NS::Atom>
-build_ns_supercell (const poisson_boltzmann& pb);
+build_ns_supercell (const poisson_boltzmann &pb);
 
 // ─── Post-NanoShaper lipid trimming ──────────────────────────────────────────
 
@@ -87,7 +87,7 @@ build_ns_supercell (const poisson_boltzmann& pb);
  *
  * @param pb Solver instance with `l_cr`/`r_cr` already set by create_mesh().
  */
-void trim_lipid_atoms (poisson_boltzmann& pb);
+void trim_lipid_atoms (poisson_boltzmann &pb);
 
 /**
  * @brief Zero charges of membrane residues near the xy domain boundary.
@@ -100,7 +100,7 @@ void trim_lipid_atoms (poisson_boltzmann& pb);
  *
  * @param pb Solver instance with `l_cr`/`r_cr` and trimmed lipid_atoms.
  */
-void zero_boundary_residue_charges (poisson_boltzmann& pb);
+void zero_boundary_residue_charges (poisson_boltzmann &pb);
 
 // ─── Assembly placeholder ────────────────────────────────────────────────────
 
@@ -113,6 +113,6 @@ void zero_boundary_residue_charges (poisson_boltzmann& pb);
  * @param pb        Solver instance.
  * @param ray_cache Ray cache (may be needed for surface queries at the periodic faces).
  */
-void apply_mixing_mass_bc (poisson_boltzmann& pb, ray_cache_t& ray_cache);
+void apply_mixing_mass_bc (poisson_boltzmann &pb, ray_cache_t &ray_cache);
 
 #endif // PB_MEMBRANE_H

@@ -54,10 +54,10 @@ struct
   rays_t rays; ///< All cached rays in 3 directions: rays[dir][(a,b)] → crossings
 
   static int_coord_t count_cache; ///< Total rays served from cache (all ranks)
-  static int_coord_t count_new;   ///< Total rays computed fresh (all ranks)
-  int count_new_dir[3]   = {0, 0, 0}; ///< New rays per direction
+  static int_coord_t count_new; ///< Total rays computed fresh (all ranks)
+  int count_new_dir[3] = {0, 0, 0}; ///< New rays per direction
   int count_cache_dir[3] = {0, 0, 0}; ///< Cached rays per direction
-  int count = 0;                       ///< Total ray lookups this run
+  int count = 0; ///< Total ray lookups this run
 
   std::unique_ptr<NS::NanoShaper> ns; ///< NanoShaper surface instance
 
@@ -87,36 +87,36 @@ struct
   /// @param num_threads Number of threads for NanoShaper.
   /// @param configFile  Optional path to a NanoShaper configuration file.
   void
-  init_analytical_surf (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
-                        const double & surf_param, const double & stern_layer, const unsigned & num_threads,const std::string* configFile=nullptr);
+  init_analytical_surf (const std::vector<NS::Atom> &atoms, const NS::surface_type &surf_type,
+                        const double &surf_param, const double &stern_layer, const unsigned &num_threads, const std::string *configFile = nullptr);
 
   /// @brief Initialise the NanoShaper surface with a custom bounding box and scale (NS mode).
   void
-  init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
-                           const double & surf_param, const double & stern_layer, const unsigned & num_threads,
-                           double* l_cr, double* r_cr, double scale,const std::string* configFile=nullptr);
+  init_analytical_surf_ns (const std::vector<NS::Atom> &atoms, const NS::surface_type &surf_type,
+                           const double &surf_param, const double &stern_layer, const unsigned &num_threads,
+                           double *l_cr, double *r_cr, double scale, const std::string *configFile = nullptr);
 
   /// @brief Compute surface intersections for all rays in @p ct using NanoShaper.
   /// @param ct Crossing data container to populate.
   void
-  compute_ns_inters (crossings_t & ct);
+  compute_ns_inters (crossings_t &ct);
 
   /// @brief Serialise a ray map to a byte array (for MPI communication or checkpointing).
   std::vector<unsigned char>
-  write_map (const std::map<std::array<double, 2>, crossings_t, map_compare>& container);
+  write_map (const std::map<std::array<double, 2>, crossings_t, map_compare> &container);
 
   /// @brief Deserialise a ray map from a byte array.
   void
-  read_map (const std::vector<unsigned char>& data,
-            std::map<std::array<double, 2>, crossings_t, map_compare>& container);
+  read_map (const std::vector<unsigned char> &data,
+            std::map<std::array<double, 2>, crossings_t, map_compare> &container);
 
   /// @brief Serialise a single crossings_t object to a byte array.
   std::vector<unsigned char>
-  write_ct (const crossings_t& ct);
+  write_ct (const crossings_t &ct);
 
   /// @brief Deserialise a single crossings_t object from a byte array.
   void
-  read_ct (const std::vector<unsigned char>& data, crossings_t& ct);
+  read_ct (const std::vector<unsigned char> &data, crossings_t &ct);
 };
 
 #endif //RAYTRACER_H

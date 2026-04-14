@@ -20,17 +20,17 @@
 
 #include "p8est.h"
 
-struct poisson_boltzmann;  // forward declaration
+struct poisson_boltzmann; // forward declaration
 
 // l’unico modo: una variabile globale
-extern poisson_boltzmann* pb_global_wrapper;
+extern poisson_boltzmann *pb_global_wrapper;
 
 int cerca_atomo_wrapper(
-    p8est_t* p4est,
-    p4est_topidx_t which_tree,
-    p8est_quadrant_t* quadrant,
-    p4est_locidx_t local_num,
-    void* point   // p4est gestisce sc_array_t
+  p8est_t *p4est,
+  p4est_topidx_t which_tree,
+  p8est_quadrant_t *quadrant,
+  p4est_locidx_t local_num,
+  void *point // p4est gestisce sc_array_t
 );
 
 #endif

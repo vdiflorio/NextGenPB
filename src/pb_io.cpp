@@ -196,15 +196,16 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   // --- membrane ---
   const std::string mem_options = "membrane/";
   membrane_enabled = g2 ( (mem_options + "enabled").c_str (), 0);
+
   if (membrane_enabled) {
-    lipid_file     = g2 ( (mem_options + "lipid_file").c_str (),    std::string ("lipids.pqr"));
+    lipid_file = g2 ( (mem_options + "lipid_file").c_str (), std::string ("lipids.pqr"));
     lipid_filetype = g2 ( (mem_options + "lipid_filetype").c_str (), std::string ("pqr"));
-    periodic_x     = g2 ( (mem_options + "periodic_x").c_str (), 0);
-    periodic_y     = g2 ( (mem_options + "periodic_y").c_str (), 0);
-    cell_length_x  = g2 ( (mem_options + "cell_length_x").c_str (), 0.0);
-    cell_length_y  = g2 ( (mem_options + "cell_length_y").c_str (), 0.0);
-    e_mem          = g2 ( (mem_options + "membrane_dielectric").c_str (), 2.0);
-    stern_membrane   = g2 ( (mem_options + "stern_membrane").c_str (), 0);
+    periodic_x = g2 ( (mem_options + "periodic_x").c_str (), 0);
+    periodic_y = g2 ( (mem_options + "periodic_y").c_str (), 0);
+    cell_length_x = g2 ( (mem_options + "cell_length_x").c_str (), 0.0);
+    cell_length_y = g2 ( (mem_options + "cell_length_y").c_str (), 0.0);
+    e_mem = g2 ( (mem_options + "membrane_dielectric").c_str (), 2.0);
+    stern_membrane = g2 ( (mem_options + "stern_membrane").c_str (), 0);
     stern_membrane_d = g2 ( (mem_options + "stern_membrane_d").c_str (), 0.0);
 
     // Membrane mode always uses MESH_SHAPE_MEM (slab mesh). The user cannot
@@ -212,8 +213,8 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     // cell_length_x/y and the lipid/protein atom extents at mesh-build time.
     mesh_shape = MESH_SHAPE_MEM;
     scale_max = g2 ( (mesh_options + "scale_max").c_str (), 2.0);
-    nlev_mem  = g2 ( (mesh_options + "nlev_mem").c_str (),  2);
-    nlev_sol  = g2 ( (mesh_options + "nlev_sol").c_str (),  4);
+    nlev_mem = g2 ( (mesh_options + "nlev_mem").c_str (), 2);
+    nlev_sol = g2 ( (mesh_options + "nlev_sol").c_str (), 4);
     nlev_prot = g2 ( (mesh_options + "nlev_prot").c_str (), 1);
   }
 
@@ -233,11 +234,11 @@ void compute_dominant_eigenvector (double cov[3][3], double axis[3])
 
   // Power iteration to find the principal eigenvector
   for (int iter = 0; iter < 20; ++iter) {
-    double x = cov[0][0]*axis[0] + cov[0][1]*axis[1] + cov[0][2]*axis[2];
-    double y = cov[1][0]*axis[0] + cov[1][1]*axis[1] + cov[1][2]*axis[2];
-    double z = cov[2][0]*axis[0] + cov[2][1]*axis[1] + cov[2][2]*axis[2];
+    double x = cov[0][0] * axis[0] + cov[0][1] * axis[1] + cov[0][2] * axis[2];
+    double y = cov[1][0] * axis[0] + cov[1][1] * axis[1] + cov[1][2] * axis[2];
+    double z = cov[2][0] * axis[0] + cov[2][1] * axis[1] + cov[2][2] * axis[2];
 
-    double norm = std::sqrt (x*x + y*y + z*z);
+    double norm = std::sqrt (x *x + y *y + z *z);
 
     if (norm < 1e-12) break;
 
@@ -292,7 +293,7 @@ void align_atoms_to_Z (std::vector<NS::Atom> &atoms)
   compute_dominant_eigenvector (cov, axis);
 
   // Normalizza
-  double norm = std::sqrt (axis[0]*axis[0] + axis[1]*axis[1] + axis[2]*axis[2]);
+  double norm = std::sqrt (axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]);
 
   if (norm > 1e-12) {
     axis[0] /= norm;
@@ -303,12 +304,12 @@ void align_atoms_to_Z (std::vector<NS::Atom> &atoms)
   // 4. Rotazione: porta axis su (0,0,1) usando rotazione di Rodrigues
   double z_axis[3] = {0.0, 0.0, 1.0};
   double v[3] = {
-    axis[1]*z_axis[2] - axis[2]*z_axis[1],
-    axis[2]*z_axis[0] - axis[0]*z_axis[2],
-    axis[0]*z_axis[1] - axis[1]*z_axis[0]
+    axis[1] *z_axis[2] - axis[2] *z_axis[1],
+    axis[2] *z_axis[0] - axis[0] *z_axis[2],
+    axis[0] *z_axis[1] - axis[1] *z_axis[0]
   };
-  double s = std::sqrt (v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-  double c = axis[0]*z_axis[0] + axis[1]*z_axis[1] + axis[2]*z_axis[2];
+  double s = std::sqrt (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+  double c = axis[0] * z_axis[0] + axis[1] * z_axis[1] + axis[2] * z_axis[2];
 
   double R[3][3];
 
@@ -316,25 +317,25 @@ void align_atoms_to_Z (std::vector<NS::Atom> &atoms)
     R[0][0] = R[1][1] = R[2][2] = 1.0;
     R[0][1] = R[0][2] = R[1][0] = R[1][2] = R[2][0] = R[2][1] = 0.0;
   } else {
-    double vx = v[0]/s, vy = v[1]/s, vz = v[2]/s;
+    double vx = v[0] / s, vy = v[1] / s, vz = v[2] / s;
     double k = 1.0 - c;
-    R[0][0] = c + vx*vx*k;
-    R[0][1] = vx*vy*k - vz*s;
-    R[0][2] = vx*vz*k + vy*s;
-    R[1][0] = vy*vx*k + vz*s;
-    R[1][1] = c + vy*vy*k;
-    R[1][2] = vy*vz*k - vx*s;
-    R[2][0] = vz*vx*k - vy*s;
-    R[2][1] = vz*vy*k + vx*s;
-    R[2][2] = c + vz*vz*k;
+    R[0][0] = c + vx * vx * k;
+    R[0][1] = vx * vy * k - vz * s;
+    R[0][2] = vx * vz * k + vy * s;
+    R[1][0] = vy * vx * k + vz * s;
+    R[1][1] = c + vy * vy * k;
+    R[1][2] = vy * vz * k - vx * s;
+    R[2][0] = vz * vx * k - vy * s;
+    R[2][1] = vz * vy * k + vx * s;
+    R[2][2] = c + vz * vz * k;
   }
 
   // 5. Applica rotazione
   for (auto &a : atoms) {
     double x = a.pos[0], y = a.pos[1], z = a.pos[2];
-    a.pos[0] = R[0][0]*x + R[0][1]*y + R[0][2]*z;
-    a.pos[1] = R[1][0]*x + R[1][1]*y + R[1][2]*z;
-    a.pos[2] = R[2][0]*x + R[2][1]*y + R[2][2]*z;
+    a.pos[0] = R[0][0] * x + R[0][1] * y + R[0][2] * z;
+    a.pos[1] = R[1][0] * x + R[1][1] * y + R[1][2] * z;
+    a.pos[2] = R[2][0] * x + R[2][1] * y + R[2][2] * z;
   }
 }
 
@@ -377,9 +378,9 @@ poisson_boltzmann::read_atoms_from_pqr (std::basic_istream<char> &inputfile)
 
     for (int ii = 0; ii < 6; ++ii) {
       std::array<double, 3> new_pos = {
-        max_pos[0] + epsilon * directions[ii][0],
-        max_pos[1] + epsilon * directions[ii][1],
-        max_pos[2] + epsilon * directions[ii][2]
+        max_pos[0] + epsilon *directions[ii][0],
+        max_pos[1] + epsilon *directions[ii][1],
+        max_pos[2] + epsilon *directions[ii][2]
       };
       NS::Atom dummy;
       dummy.pos[0] = new_pos[0];
@@ -395,7 +396,7 @@ poisson_boltzmann::read_atoms_from_pqr (std::basic_istream<char> &inputfile)
 void
 poisson_boltzmann::read_atoms_from_class ()
 {
-  static std::array<double,3> pos;
+  static std::array<double, 3> pos;
 
   if (atoms_write == 1) {
     int atom_number = 1;
@@ -447,7 +448,7 @@ poisson_boltzmann::write_atoms_to_pqr (std::basic_ostream<char> &outputfile)
   int Atom_number = 1;
 
   outputfile << std::setw (10) << std::left << "fieldname" << std::setw (12)
-             << std::left <<"Atom_number" << std::setw (12) << std::left << "Atom_name" << std::setw (16) << std::left
+             << std::left << "Atom_number" << std::setw (12) << std::left << "Atom_name" << std::setw (16) << std::left
              << "Residue_name" << std::setw (16) << std::left << "Residue_number" << std::setw (10) << std::left << "X"
              << std::setw (10) << std::left << "Y" << std::setw (10) << std::left
              << "Z" << std::setw (10) << std::left << "Charge" << std::setw (10) << std::left << "Radius" << std::endl;
@@ -463,8 +464,8 @@ poisson_boltzmann::write_atoms_to_pqr (std::basic_ostream<char> &outputfile)
 
 
 
-std::basic_istream<char>&
-operator>> (std::basic_istream<char>& inputfile, NS::Atom &a)
+std::basic_istream<char> &
+operator>> (std::basic_istream<char> &inputfile, NS::Atom &a)
 {
   int Atom_number;
   std::string Field_name;
@@ -503,8 +504,8 @@ operator>> (std::basic_istream<char>& inputfile, NS::Atom &a)
   return inputfile;
 }
 
-std::basic_istream<char>&
-operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a)
+std::basic_istream<char> &
+operator>> (std::basic_istream<char> &inputfile, std::array<float, 5> &a)
 {
   int Atom_number;
   std::string Field_name;
