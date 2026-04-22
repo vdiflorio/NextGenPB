@@ -269,6 +269,12 @@ main (int argc, char **argv)
     TOC ("Write potential on atoms")
   }
 
+  if (pb.write_dataset == 1) {
+    TIC ();
+    pb.write_dataset (ray_cache);
+    TOC ("Write dataset")
+  }
+
   if (pb.calc_potential_term > 0 || pb.calc_field_term > 0 || pb.calc_energy > 0) {
     TIC ();
     const bool refined = (pb.loc_refinement == 1 || pb.mesh_shape > 2 || (pb.mesh_shape == 2 && pb.refine_box == 1));

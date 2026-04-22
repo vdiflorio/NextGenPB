@@ -162,6 +162,7 @@ struct
   std::string map_type;
   int potential_map;
   int eps_map;
+  int write_dataset;    // 1 = export AI/ML vertex dataset to CSV
   std::map<int, tmesh_3d::quadrant_t> lookup_table;
 
 
@@ -807,10 +808,66 @@ struct
 
   void
   pot_field (ray_cache_t & ray_cache);
+
+  void
+  write_dataset (ray_cache_t & ray_cache);
 };
 
 std::basic_istream<char>&
 operator>> (std::basic_istream<char>& inputfile, NS::Atom &a);
 std::basic_istream<char>&
 operator>> (std::basic_istream<char>& inputfile, std::array<float,5> &a);
+
+
+struct EdgeKey {
+  int a, b;
+  bool operator==(const EdgeKey& other) const {
+    return a == other.a && b == other.b;
+  }
+};
+
+struct EdgeHash {
+  std::size_t operator()(const EdgeKey& k) const {
+    return std::hash<int>()(k.a) ^ (std::hash<int>()(k.b) << 1);
+  }
+};
+
+static constexpr
+std::array<int, 24> edge2nodes_nn1 = {
+  2, 4,  3, 5,  0, 6,  4, 1,  6, 0,  1, 4,
+  4, 2,  0, 5,  1, 2,  0, 3,  2, 1,  3, 0
+};
+static constexpr
+std::array<int, 24> edge2index_nn1 = {
+  0, 2,  0, 3,  1, 2,  0, 2,  0, 3,  1, 3,
+  1, 3,  1, 2,  0, 2,  1, 2,  1, 3,  0, 3
+};
+static constexpr
+std::array<int, 24> edge2nodes_nn2 = {
+  3, 5,  7, 2,  1, 7,  6, 3,  7, 1,  3, 6,
+  5, 3,  2, 7,  5, 6,  4, 7,  6, 5,  7, 4
+};
+static constexpr
+std::array<int, 24> edge2index_nn2 = {
+  0, 2,  0, 3,  1, 2,  0, 2,  0, 3,  1, 3,
+  1, 3,  1, 2,  0, 2,  1, 2,  1, 3,  0, 3
+};
+
+struct VertexData {
+  int axis = -1;
+  double phi0 = 0.0;
+  double alpha = 0.0;
+  double phi1 = 0.0;
+  double phi2 = 0.0;
+  double eps1 = 0.0;
+  double eps2 = 0.0;
+  std::array<double, 3> pos1 = {0.0, 0.0, 0.0};
+  std::array<double, 3> pos0 = {0.0, 0.0, 0.0};
+  std::array<double, 3> N    = {0.0, 0.0, 0.0};
+  std::array<double, 4> phi1_nn = {0.0, 0.0, 0.0, 0.0};
+  std::array<double, 4> eps1_nn = {0.0, 0.0, 0.0, 0.0};
+  std::array<double, 4> phi2_nn = {0.0, 0.0, 0.0, 0.0};
+  std::array<double, 4> eps2_nn = {0.0, 0.0, 0.0, 0.0};
+};
+
 #endif
