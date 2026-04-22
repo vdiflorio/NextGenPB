@@ -120,7 +120,7 @@ atoms_write   = 0     # 1 = write potential at atom centers, 0 = don't
 map_type      = vtu   # Output format: 'vtu' (for ParaView, vtk binary), 'oct' (Octbin internal format)
 potential_map = 0     # 1 = write full potential map to file
 eps_map       = 0     # 1 = write dielectric (epsilon) map to file
-write_dataset = 0     # 1 = export vertex dataset for AI/ML training (CSV)
+dataset_write = 0     # 1 = export vertex dataset for AI/ML training (CSV)
 surf_write    = 0     # 1 = write potential on the molecular surface
 
 [../]

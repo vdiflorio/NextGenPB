@@ -162,7 +162,7 @@ struct
   std::string map_type;
   int potential_map;
   int eps_map;
-  int write_dataset;    // 1 = export AI/ML vertex dataset to CSV
+  int dataset_write;    // 1 = export AI/ML vertex dataset to CSV
   std::map<int, tmesh_3d::quadrant_t> lookup_table;
 
 

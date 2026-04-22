@@ -956,7 +956,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   map_type = g2 ( (model_options + "map_type").c_str (), "vtu");
   potential_map = g2 ( (model_options + "potential_map").c_str (), 0);
   eps_map = g2 ( (model_options + "eps_map").c_str (), 0);
-  write_dataset = g2 ( (model_options + "write_dataset").c_str (), 0);
+  dataset_write = g2 ( (model_options + "dataset_write").c_str (), 0);
   const std::string surf_options = "surface/";
   surf_type_num = g2 ( (surf_options + "surface_type").c_str (), 0);
 

@@ -269,7 +269,7 @@ main (int argc, char **argv)
     TOC ("Write potential on atoms")
   }
 
-  if (pb.write_dataset == 1) {
+  if (pb.dataset_write == 1) {
     TIC ();
     pb.write_dataset (ray_cache);
     TOC ("Write dataset")
