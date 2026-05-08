@@ -28,7 +28,7 @@ all : ngpb
 	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $<
 
 ngpb : poisson_boltzmann.o $(patsubst %.cpp, %.o, $(wildcard *.cpp))
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $? -o $@ $(LIBS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LIBS)
 
 .PHONY : clean distclean
 

@@ -243,11 +243,103 @@ zero_boundary_residue_charges (poisson_boltzmann &pb)
   }
 }
 
-// ─── Assembly placeholder ────────────────────────────────────────────────────
+// ─── Mortar assembly ─────────────────────────────────────────────────────────
 
 void
-apply_mixing_mass_bc (poisson_boltzmann & /*pb*/, ray_cache_t & /*ray_cache*/)
+assemble_mortar_block (distributed_sparse_matrix        &A,
+                       tmesh_3d::quadrant_iterator       q,
+                       int                               face_idx,
+                       const MortarFacePair             &pair,
+                       double                            sign,
+                       int                               nm)
 {
-  // [PLACEHOLDER] Mixing mass / periodic BC contribution to the FEM matrix.
-  // To be implemented once the method is defined.
+  const auto &fnodes = q->ef (face_idx);
+  if (fnodes.empty ()) return;
+
+  const int d0 = pair.d0, d1 = pair.d1;
+
+  // Step 1 — tangential coordinates of the 4 face nodes
+  // fnodes layout (same for all faces in d0/d1):
+  //   [0]: (d0_min, d1_min)  [1]: (d0_max, d1_min)
+  //   [2]: (d0_min, d1_max)  [3]: (d0_max, d1_max)
+  double c0[2], c1[2];
+  c0[0] = q->p (d0, fnodes[0]);  // d0_min
+  c0[1] = q->p (d0, fnodes[1]);  // d0_max
+  c1[0] = q->p (d1, fnodes[0]);  // d1_min
+  c1[1] = q->p (d1, fnodes[2]);  // d1_max
+
+  // Step 2 — Dirichlet filter: skip nodes at z boundaries (d1==2 for both pairs)
+  const double z_lo = pair.d1_min;
+  const double z_hi = pair.d1_min + pair.L1;
+  const double tol  = pair.L1 * 1e-10;
+  bool keep[4];
+  for (int fi = 0; fi < 4; ++fi) {
+    double zi = q->p (2, fnodes[fi]);
+    keep[fi] = (zi > z_lo + tol) && (zi < z_hi - tol);
+  }
+
+  // Step 3 — mortar cell index (physical offset accounted for)
+  double hm0 = pair.L0 / nm;
+  double hm1 = pair.L1 / nm;
+  int j0 = static_cast<int> ((c0[0] - pair.d0_min) / hm0);
+  int j1 = static_cast<int> ((c1[0] - pair.d1_min) / hm1);
+  j0 = std::min (j0, nm - 1);
+  j1 = std::min (j1, nm - 1);
+
+  // Step 4 — 1D mixed hat-function mass matrices (2×2 each)
+  // M[i][jl] = ∫ φ_i(t) ψ_jl(t) dt
+  // φ_i : FEM hat on [c_min, c_max], values (1,0) for i=0, (0,1) for i=1
+  // ψ_jl: mortar hat, evaluated at c_min and c_max → psi[jl][0], psi[jl][1]
+  double orig0 = pair.d0_min + j0 * hm0;
+  double orig1 = pair.d1_min + j1 * hm1;
+
+  double psi_0[2][2], psi_1[2][2];
+  psi_0[0][0] = (hm0 - (c0[0] - orig0)) / hm0;
+  psi_0[0][1] = (hm0 - (c0[1] - orig0)) / hm0;
+  psi_0[1][0] =         (c0[0] - orig0)  / hm0;
+  psi_0[1][1] =         (c0[1] - orig0)  / hm0;
+
+  psi_1[0][0] = (hm1 - (c1[0] - orig1)) / hm1;
+  psi_1[0][1] = (hm1 - (c1[1] - orig1)) / hm1;
+  psi_1[1][0] =         (c1[0] - orig1)  / hm1;
+  psi_1[1][1] =         (c1[1] - orig1)  / hm1;
+
+  double h0 = c0[1] - c0[0], h1 = c1[1] - c1[0];
+  double M_0[2][2], M_1[2][2];
+
+  // Exact: ∫_a^b f·g dt = (b-a)/6·(2·f_a·g_a + f_a·g_b + f_b·g_a + 2·f_b·g_b)
+  for (int jl = 0; jl < 2; ++jl) {
+    M_0[0][jl] = h0 / 6.0 * (2.0 * psi_0[jl][0] +       psi_0[jl][1]);
+    M_0[1][jl] = h0 / 6.0 * (      psi_0[jl][0] + 2.0 * psi_0[jl][1]);
+    M_1[0][jl] = h1 / 6.0 * (2.0 * psi_1[jl][0] +       psi_1[jl][1]);
+    M_1[1][jl] = h1 / 6.0 * (      psi_1[jl][0] + 2.0 * psi_1[jl][1]);
+  }
+  // Trapezi (per confronto, O(h^2) di errore di quadratura):
+  // for (int jl = 0; jl < 2; ++jl) {
+  //   M_0[0][jl] = h0 / 2.0 * psi_0[jl][0];   // φ_0 vale 1 in c_min, 0 in c_max
+  //   M_0[1][jl] = h0 / 2.0 * psi_0[jl][1];   // φ_1 vale 0 in c_min, 1 in c_max
+  //   M_1[0][jl] = h1 / 2.0 * psi_1[jl][0];
+  //   M_1[1][jl] = h1 / 2.0 * psi_1[jl][1];
+  // }
+
+  // Step 5 — accumulate C and C^T into A (tensor product, += element assembly)
+  // d0/d1 local sub-index of each face node (same pattern for all faces)
+  static const int ii0[4] = {0, 1, 0, 1};
+  static const int ii1[4] = {0, 0, 1, 1};
+
+  for (int fi = 0; fi < 4; ++fi) {
+    if (!keep[fi]) continue;
+    size_t row = static_cast<size_t> (q->gt (fnodes[fi]));
+
+    for (int dj0 = 0; dj0 < 2; ++dj0)
+      for (int dj1 = 0; dj1 < 2; ++dj1) {
+        size_t col = pair.mortar_offset
+                     + static_cast<size_t> ((j1 + dj1) * (nm + 1) + (j0 + dj0));
+        double val = sign * M_0[ii0[fi]][dj0] * M_1[ii1[fi]][dj1];
+        A[row][col] += val;   // C block:   FEM row,    mortar col
+        A[col][row] += val;   // C^T block: mortar row, FEM col
+      }
+  }
 }
+
+

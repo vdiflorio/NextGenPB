@@ -152,6 +152,8 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     len = g2 ( (mesh_options + "lato").c_str (), 50.0);
     perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.8);
   }
+  periodic_x = g2 ( (mesh_options + "periodic_x").c_str (), 0);
+  periodic_y = g2 ( (mesh_options + "periodic_y").c_str (), 0);
 
   const std::string model_options = "model/";
   linearized = g2 ( (model_options + "linearized").c_str (), 1);
@@ -200,8 +202,6 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   if (membrane_enabled) {
     lipid_file = g2 ( (mem_options + "lipid_file").c_str (), std::string ("lipids.pqr"));
     lipid_filetype = g2 ( (mem_options + "lipid_filetype").c_str (), std::string ("pqr"));
-    periodic_x = g2 ( (mem_options + "periodic_x").c_str (), 0);
-    periodic_y = g2 ( (mem_options + "periodic_y").c_str (), 0);
     cell_length_x = g2 ( (mem_options + "cell_length_x").c_str (), 0.0);
     cell_length_y = g2 ( (mem_options + "cell_length_y").c_str (), 0.0);
     e_mem = g2 ( (mem_options + "membrane_dielectric").c_str (), 2.0);
@@ -216,6 +216,8 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     nlev_mem = g2 ( (mesh_options + "nlev_mem").c_str (), 2);
     nlev_sol = g2 ( (mesh_options + "nlev_sol").c_str (), 4);
     nlev_prot = g2 ( (mesh_options + "nlev_prot").c_str (), 1);
+    periodic_x = g2 ( (mesh_options + "periodic_x").c_str (), 1);
+    periodic_y = g2 ( (mesh_options + "periodic_y").c_str (), 1);
   }
 
   return 0;

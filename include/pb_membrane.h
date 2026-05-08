@@ -102,17 +102,47 @@ void trim_lipid_atoms (poisson_boltzmann &pb);
  */
 void zero_boundary_residue_charges (poisson_boltzmann &pb);
 
-// ─── Assembly placeholder ────────────────────────────────────────────────────
+// ─── Mortar assembly ─────────────────────────────────────────────────────────
 
 /**
- * @brief [PLACEHOLDER] Apply periodic BC / mixing mass contribution to the system matrix.
+ * @brief Describes one periodic face pair for mortar assembly.
  *
- * This function will implement the "mixing mass" method for periodic boundary
- * conditions once the method is defined.  Currently a no-op stub.
- *
- * @param pb        Solver instance.
- * @param ray_cache Ray cache (may be needed for surface queries at the periodic faces).
+ * face_left / face_right : p4est face indices of the two periodic faces
+ * d0, d1                 : tangential directions (0=x, 1=y, 2=z)
+ * d0_min, L0             : physical range in d0 is [d0_min, d0_min + L0]
+ * d1_min, L1             : physical range in d1 is [d1_min, d1_min + L1]
+ * mortar_offset          : first row/col of this pair's DOFs in the augmented A
  */
-void apply_mixing_mass_bc (poisson_boltzmann &pb, ray_cache_t &ray_cache);
+struct MortarFacePair {
+  int    face_left;
+  int    face_right;
+  int    d0, d1;
+  double d0_min, L0;
+  double d1_min, L1;
+  size_t mortar_offset;
+};
+
+/**
+ * @brief Accumulate mortar C / C^T contributions for one quadrant on one face.
+ *
+ * Implements the per-quadrant mortar integration (bc.md, Punto 2, Steps 1-5):
+ * tensor-product 1D hat-function mass matrices are computed and added to A with
+ * the appropriate sign (+1 left face, -1 right face).  Nodes on z=0 or z=Lz
+ * (Dirichlet) are skipped.
+ *
+ * @param A            Augmented system matrix (already resized to N_phys + 2*ndofm).
+ * @param q            Iterator pointing to the current quadrant.
+ * @param face_idx     Face index (0..3) being assembled.
+ * @param pair         Pair descriptor with tangential directions and mortar offset.
+ * @param sign         +1.0 for left face, -1.0 for right face.
+ * @param nm           2^minlevel  (mortar cells per direction).
+ * @param Lz           Domain extent in z (used for Dirichlet filter).
+ */
+void assemble_mortar_block (distributed_sparse_matrix        &A,
+                            tmesh_3d::quadrant_iterator       q,
+                            int                               face_idx,
+                            const MortarFacePair             &pair,
+                            double                            sign,
+                            int                               nm);
 
 #endif // PB_MEMBRANE_H

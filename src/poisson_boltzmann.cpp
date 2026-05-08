@@ -123,6 +123,17 @@ main (int argc, char **argv)
   pb.create_mesh ();
   // TOC ("create_mesh");
 
+  if (rank == 0 && (pb.periodic_x || pb.periodic_y)) {
+    std::cout << "\n=== [ Periodic Boundary Conditions ] ===\n";
+    std::cout << "  periodic_x : " << pb.periodic_x << '\n';
+    std::cout << "  periodic_y : " << pb.periodic_y << '\n';
+    std::cout << "  minlevel   : " << pb.minlevel
+              << "  →  nm = " << (1 << pb.minlevel)
+              << "  →  ndofm = " << (1 << pb.minlevel) + 1
+              << "^2 = " << ((1 << pb.minlevel) + 1) * ((1 << pb.minlevel) + 1) << '\n';
+    std::cout << "========================================\n";
+  }
+
   std::vector<double> ().swap (pb.r_atoms);
 
   TIC ();

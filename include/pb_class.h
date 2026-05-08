@@ -225,6 +225,7 @@ struct
   std::vector<double> epsilon_out; ///< Exterior dielectric per quadrant
   std::vector<double> reaction; ///< Reaction (κ²) parameter per quadrant
   std::vector<int> border_quad; ///< Indices of boundary quadrants
+
   std::vector<double> const_ones; ///< Constant-1 auxiliary vector
   /// @}
 
@@ -262,6 +263,7 @@ struct
   bool periodic_y = false; ///< Periodic boundary condition in y
   double cell_length_x = 0.0; ///< Unit cell length in x [Å]
   double cell_length_y = 0.0; ///< Unit cell length in y [Å]
+  int ndofm = 0; ///< DOF mortar per coppia: (2^minlevel+1)^2; set during assembly
   // [PLACEHOLDER] NanoShaper replication parameters (TBD)
   /// @}
 
@@ -1055,6 +1057,7 @@ struct
   /// @param ray_cache Ray cache for surface intersection queries.
   void
   pot_field (ray_cache_t &ray_cache);
+
 
   /// @}
 };

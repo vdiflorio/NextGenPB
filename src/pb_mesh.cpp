@@ -156,6 +156,8 @@ poisson_boltzmann::create_mesh ()
         break;
     }
 
+    minlevel = outlevel;
+
     ll[0] = cc[0] - size / 2;
     ll[1] = cc[1] - size / 2;
     ll[2] = cc[2] - size / 2;
@@ -234,6 +236,7 @@ poisson_boltzmann::create_mesh ()
     r_cr[1] = rr[1];
     r_cr[2] = rr[2];
     scale = (1 << unilevel) / (rr[0] - ll[0]);
+    minlevel = unilevel;
 
     if (refine_box == 1) {
       //cubic box with perfil2
@@ -311,6 +314,7 @@ poisson_boltzmann::create_mesh ()
     r_cr[1] = r_c[1];
     r_cr[2] = r_c[2];
     scale = (1 << unilevel) / (r_c[0] - l_c[0]);
+    minlevel = unilevel;
 
     double dist = ((r_cr[0] - l_cr[0]) - lmax) * 0.5;
     pot_bc = std::exp (-k *dist) / (dist *eps_out);
@@ -520,7 +524,7 @@ poisson_boltzmann::create_mesh ()
     }
 
     outlevel = ratio_l_b;
-
+    minlevel = outlevel;
 
     if (rank == 0) {
       std::cout << "========== [ Domain Information ] ==========\n";
@@ -666,6 +670,7 @@ poisson_boltzmann::create_mesh ()
       scale = (num_trees[0]) / (len);
     else
       scale = (num_trees[0] * (1 << unilevel)) / (len);
+    minlevel = unilevel;
 
     num_trees[1] = num_trees[0];
     num_trees[2] = num_trees[0];
@@ -777,6 +782,7 @@ poisson_boltzmann::create_mesh ()
     scale = (double)(1 << maxlevel) / box_side;
     unilevel = maxlevel - nlev_sol;
     outlevel = maxlevel - nlev_sol;
+    minlevel = outlevel;
     scale_level = maxlevel - nlev_mem;
     scale_level_min_box = maxlevel;
 

@@ -18,6 +18,7 @@
  */
 
 #include "pb_class.h"
+#include "pb_membrane.h"
 #include <bim_distributed_vector.h>
 #include <quad_operators_3d.h>
 #include <mumps_class.h>
@@ -155,9 +156,38 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
     return cube_fraction_intersection (quadrant, ray_cache);
   };
 
+  if (rank == 0) {
+    std::cout << "\n========== [ System Assembly ] ==========\n";
+    if (periodic_x || periodic_y) {
+      std::cout << "  PBC active:  x=" << periodic_x << "  y=" << periodic_y << '\n';
+      std::cout << "  Mortar level (minlevel) : " << minlevel << '\n';
+      std::cout << "  nm = 2^minlevel         : " << (1 << minlevel) << " cells/direction\n";
+    } else {
+      std::cout << "  PBC: disabled\n";
+    }
+  }
+
   // Allocate sparse matrix A and RHS vector
   A = std::make_unique<distributed_sparse_matrix> (mpicomm);
   A->set_ranges (tmsh.num_owned_nodes());
+
+  if (periodic_x || periodic_y) {
+    int nm     = (1 << minlevel);
+    ndofm      = (nm + 1) * (nm + 1);
+    int n_pairs = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
+    size_t N_phys = A->rows ();
+    A->resize (N_phys + n_pairs * ndofm);
+    A->m = N_phys + n_pairs * ndofm;
+    if (rank == 0) {
+      std::cout << "  Physical DOFs (N_phys)  : " << N_phys << '\n';
+      std::cout << "  Active mortar pairs     : " << n_pairs << '\n';
+      std::cout << "  Mortar DOFs per pair    : " << ndofm << "  (= (nm+1)^2)\n";
+      std::cout << "  Augmented system size   : " << N_phys + n_pairs * ndofm << '\n';
+    }
+  } else {
+    if (rank == 0)
+      std::cout << "  Physical DOFs           : " << A->rows () << '\n';
+  }
 
   rhs = std::make_unique<distributed_vector> (tmsh.num_owned_nodes(), mpicomm);
 
@@ -191,7 +221,67 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
   std::vector<double>().swap (marker);
 
   // ------------------------------------------------------------
-  // 3) APPLY BOUNDARY CONDITIONS
+  // 3) MORTAR ASSEMBLY (PBC, before Dirichlet)
+  // ------------------------------------------------------------
+
+  if (periodic_x || periodic_y) {
+    int    nm     = (1 << minlevel);
+    size_t N_phys = static_cast<size_t> (tmsh.num_owned_nodes ());
+    double Lx = r_cr[0] - l_cr[0];
+    double Ly = r_cr[1] - l_cr[1];
+    double Lz = r_cr[2] - l_cr[2];
+
+    // Build only the active pairs; mortar offsets are assigned sequentially
+    // so that inactive directions leave no zero rows in the augmented matrix.
+    std::vector<MortarFacePair> pairs;
+    size_t mortar_offset = N_phys;
+    if (periodic_x) {
+      pairs.push_back ({ 0, 1,  1, 2,  l_cr[1], Ly,  l_cr[2], Lz,  mortar_offset });
+      mortar_offset += ndofm;
+    }
+    if (periodic_y) {
+      pairs.push_back ({ 2, 3,  0, 2,  l_cr[0], Lx,  l_cr[2], Lz,  mortar_offset });
+      mortar_offset += ndofm;
+    }
+
+    for (auto& pair : pairs) {
+      const char* dir = (pair.face_left < 2) ? "x" : "y";
+      if (rank == 0)
+        std::cout << "  Mortar assembly: face pair " << dir << "± ...\n";
+
+      for (auto q = tmsh.begin_quadrant_sweep ();
+           q != tmsh.end_quadrant_sweep (); ++q) {
+        if (!q->ef (pair.face_left).empty ())
+          assemble_mortar_block (*A, q, pair.face_left,  pair, +1.0, nm);
+        if (!q->ef (pair.face_right).empty ())
+          assemble_mortar_block (*A, q, pair.face_right, pair, -1.0, nm);
+      }
+
+      if (rank == 0)
+        std::cout << "  Mortar assembly: face pair " << dir << "± done\n";
+    }
+
+    // Mortar DOFs at j1=0 (z_lo) and j1=nm (z_hi) touch only physical nodes
+    // on the Dirichlet z-boundaries, which are skipped by the keep[] filter in
+    // assemble_mortar_block.  Those mortar rows are structurally zero → singular.
+    // Enforce F=0 there with an identity row (RHS is already zero).
+    int n_bd = 0;
+    for (auto& pair : pairs) {
+      for (int j0 = 0; j0 <= nm; ++j0) {
+        for (int j1_bd : {0, nm}) {
+          size_t col = pair.mortar_offset + static_cast<size_t> (j1_bd) * (nm + 1) + j0;
+          (*A)[col].clear ();
+          (*A)[col][col] = 1.0;
+          ++n_bd;
+        }
+      }
+    }
+    if (rank == 0)
+      std::cout << "  Mortar z-boundary constraints: " << n_bd << " DOFs fixed to zero\n";
+  }
+
+  // ------------------------------------------------------------
+  // 4) APPLY BOUNDARY CONDITIONS
   // ------------------------------------------------------------
   // Build Dirichlet boundary list
   dirichlet_bcs3 bcs;
@@ -201,6 +291,8 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
       std::cerr << "[WARNING] Boundary conditions may be inaccurate!!\n";
 
     for (auto const& ibc : bcells) {
+      if (periodic_x && (ibc.second == 0 || ibc.second == 1)) continue;
+      if (periodic_y && (ibc.second == 2 || ibc.second == 3)) continue;
       bcs.emplace_back (ibc.first, ibc.second,
       [] (double, double, double) {
         return 0.0;
@@ -212,6 +304,8 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
 
   if (bc == 2) { // Coulombic Dirichlet BC
     for (auto const& ibc : bcells) {
+      if (periodic_x && (ibc.second == 0 || ibc.second == 1)) continue;
+      if (periodic_y && (ibc.second == 2 || ibc.second == 3)) continue;
       bcs.emplace_back (ibc.first, ibc.second,
       [&] (double x, double y, double z) {
         return coulomb_boundary_conditions (x, y, z);
@@ -223,6 +317,8 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
 
   if (bc == 3) { // Analytic Dirichlet BC (sphere test case)
     for (auto const& ibc : bcells) {
+      if (periodic_x && (ibc.second == 0 || ibc.second == 1)) continue;
+      if (periodic_y && (ibc.second == 2 || ibc.second == 3)) continue;
       bcs.emplace_back (ibc.first, ibc.second,
       [&] (double x, double y, double z) {
         return analytic_solution (x, y, z);
@@ -232,8 +328,33 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
     bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs);
   }
 
+  if (rank == 0 && (periodic_x || periodic_y)) {
+    static const char* fname[6] = {"x-","x+","y-","y+","z-","z+"};
+    int cnt[6] = {};
+    for (auto const& ibc : bcells) cnt[ibc.second]++;
+    std::cout << "  Dirichlet BC nodes per face (0=skipped for PBC):\n";
+    for (int f = 0; f < 6; ++f)
+      std::cout << "    face " << fname[f] << " : "
+                << (((f<2)&&periodic_x)||((f>=2&&f<4)&&periodic_y) ? 0 : cnt[f])
+                << '\n';
+  }
+
   // ------------------------------------------------------------
-  // 4) PARALLEL ASSEMBLY (MPI)
+  // 5) EXTEND RHS FOR MORTAR DOFs
+  // ------------------------------------------------------------
+  // The mortar rows of the K_static rhs are zero by construction (C^T u = 0).
+  // We append n_pairs*ndofm zeros to the local owned data so that the buffer
+  // passed to MUMPS covers the full augmented system.
+  // Note: rhs->size() (from distributed_vector::ranges) still reports N_phys.
+
+  if (periodic_x || periodic_y) {
+    int n_pairs = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
+    rhs->get_owned_data ().resize (
+      rhs->get_owned_data ().size () + n_pairs * ndofm, 0.0);
+  }
+
+  // ------------------------------------------------------------
+  // 6) PARALLEL ASSEMBLY (MPI)
   // ------------------------------------------------------------
 
   if (size > 1) {
@@ -255,14 +376,53 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
   std::vector<double> vals;
   std::vector<int> irow, jcol;
 
-  (*A).aij (vals, irow, jcol, mumps_solver.get_index_base ());
+  int n_pairs  = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
+  int n_system = (periodic_x || periodic_y)
+                 ? tmsh.num_global_nodes () + n_pairs * ndofm
+                 : tmsh.num_global_nodes ();
 
-  mumps_solver.set_lhs_distributed ();
-  mumps_solver.set_distributed_lhs_structure (tmsh.num_global_nodes (), irow, jcol);
-  mumps_solver.set_distributed_lhs_data (vals);
-  mumps_solver.set_rhs_distributed (*rhs);
+  if (periodic_x || periodic_y) {
+    // distributed_sparse_matrix::aij() only exports [is, ie) rows; mortar rows
+    // (N_phys..N_phys+n_pairs*ndofm-1) are outside that window.
+    // flag=true calls sparse_matrix::aij() which iterates ALL rows in the vector,
+    // so mortar rows (C^T and identity) are included.
+    // Use centralized MUMPS input (ICNTL(18)=0, rank-0 only) — no set_lhs_distributed().
+    (*A).aij (vals, irow, jcol, mumps_solver.get_index_base (), true);
+    mumps_solver.set_lhs_structure (n_system, irow, jcol);
+    mumps_solver.set_lhs_data (vals);
+  } else {
+    (*A).aij (vals, irow, jcol, mumps_solver.get_index_base ());
+    mumps_solver.set_lhs_distributed ();
+    mumps_solver.set_distributed_lhs_structure (n_system, irow, jcol);
+    mumps_solver.set_distributed_lhs_data (vals);
+  }
+
+  // For the PBC path, set_rhs() stores a raw pointer into rhs->get_owned_data().
+  // If we reset rhs before solve(), that pointer dangles and MUMPS writes to
+  // freed memory.  Copy the buffer first so it outlives rhs.reset().
+  // After solve() MUMPS writes the solution back in-place into this buffer.
+  std::vector<double> pbc_rhs_buf;
+
+  if (periodic_x || periodic_y) {
+    if (rank == 0) {
+      pbc_rhs_buf = rhs->get_owned_data ();   // copy before rhs is destroyed
+      mumps_solver.set_rhs (pbc_rhs_buf);     // id.rhs → pbc_rhs_buf (persists)
+    }
+  } else {
+    mumps_solver.set_rhs_distributed (*rhs);
+  }
+
   rhs.reset ();
   A.reset ();
+
+  if (rank == 0) {
+    std::cout << "  System size: " << n_system;
+    if (periodic_x || periodic_y)
+      std::cout << "  (N_phys=" << tmsh.num_global_nodes ()
+                << " + " << n_pairs << "*ndofm=" << n_pairs * ndofm << ")";
+    std::cout << '\n';
+  }
+
   std::cout << "mumps_solver.analyze () = "
             << mumps_solver.analyze ()
             << std::endl;
@@ -274,12 +434,52 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
             << std::endl;
 
   phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
-  (*phi) = mumps_solver.get_distributed_solution ();
+
+  if (periodic_x || periodic_y) {
+    // MUMPS wrote the solution in-place into pbc_rhs_buf.
+    // Copy only the physical DOFs; the mortar multipliers (tail of pbc_rhs_buf)
+    // are discarded — post-processing only needs the physical solution.
+    if (rank == 0) {
+      size_t n_own = tmsh.num_owned_nodes ();
+      phi->get_owned_data ().assign (pbc_rhs_buf.begin (),
+                                     pbc_rhs_buf.begin () + n_own);
+    }
+  } else {
+    (*phi) = mumps_solver.get_distributed_solution ();
+  }
 
   if (size > 1)
     bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
 
-  ///////
+  if (rank == 0) {
+    const auto& sol = phi->get_owned_data ();
+    std::cout << "\n=== [ Solution debug ] ===\n";
+    static const char* fname[6] = {"x-","x+","y-","y+","z-","z+"};
+    for (int face : {0, 1, 2, 3, 4, 5}) {
+      bool is_pbc = ((face < 2) && periodic_x) || ((face >= 2 && face < 4) && periodic_y);
+      std::vector<std::pair<size_t, double>> fnodes;
+      for (auto q = tmsh.begin_quadrant_sweep ();
+           q != tmsh.end_quadrant_sweep (); ++q) {
+        for (auto local_idx : q->ef (face)) {
+          // ef() returns LOCAL node indices; use gt() to convert to global DOF
+          size_t global = static_cast<size_t> (q->gt (local_idx));
+          if (global < sol.size ())
+            fnodes.emplace_back (global, sol[global]);
+        }
+      }
+      std::sort (fnodes.begin (), fnodes.end ());
+      fnodes.erase (std::unique (fnodes.begin (), fnodes.end (),
+        [] (auto& a, auto& b) { return a.first == b.first; }), fnodes.end ());
+      if (fnodes.empty ()) continue;
+      double fmin = fnodes[0].second, fmax = fnodes[0].second;
+      for (auto& p : fnodes) { fmin = std::min (fmin, p.second); fmax = std::max (fmax, p.second); }
+      std::cout << "  face " << fname[face]
+                << (is_pbc ? " [PBC]" : " [Dir]")
+                << "  nodes=" << fnodes.size ()
+                << "  phi=[" << fmin << ", " << fmax << "]\n";
+    }
+    std::cout << "=========================\n";
+  }
 
   mumps_solver.cleanup ();
 }
@@ -301,10 +501,10 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t &ray_cache)
   (*A).csr (vals, jcol, irow);
 
   // lis RHS
+  // ln = local size including mortar DOFs appended in assemple_system_matrix
   LIS_INT i, is, ie, n_rhs, ln;
   LIS_VECTOR rhs_lis;
-  //n_rhs = tmsh.num_global_nodes();
-  ln = rhs->get_owned_data ().size ();
+  ln = rhs->get_owned_data ().size ();  // N_phys_owned [+ n_pairs*ndofm for PBC]
 
   lis_vector_create (mpicomm, &rhs_lis);
   lis_vector_set_size (rhs_lis, ln, 0);
@@ -322,7 +522,6 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t &ray_cache)
 
   lis_vector_create (mpicomm, &phi_lis);
   lis_vector_set_size (phi_lis, ln, 0);
-  //lis_vector_set_size(phi_lis, 0, n_rhs);
   lis_vector_get_range (phi_lis, &is, &ie);
 
   // lis MATRIX
@@ -332,8 +531,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t &ray_cache)
   LIS_SCALAR *value; //array of double stores non-zero elements of matrix A along the row
   LIS_MATRIX A_lis; //array of integer containing the col index of non zero elems
 
-  nnz = (*A).owned_nnz ();
-  n = tmsh.num_owned_nodes ();
+  nnz = vals.size ();  // total nnz from csr(), includes mortar rows for PBC
+  n   = ln;            // augmented local size (= num_owned_nodes + n_pairs*ndofm for PBC)
 
   A.reset ();
 
@@ -365,13 +564,43 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t &ray_cache)
 
   phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
 
-  lis_vector_get_values (phi_lis, is, ln, phi->get_owned_data ().data ());
+  // For PBC ln > num_owned_nodes(): extract only the physical DOFs.
+  LIS_INT n_phys = tmsh.num_owned_nodes ();
+  lis_vector_get_values (phi_lis, is, n_phys, phi->get_owned_data ().data ());
 
   lis_vector_destroy (phi_lis);
 
   if (size > 1)
     bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
 
+  if (rank == 0) {
+    const auto& sol = phi->get_owned_data ();
+    std::cout << "\n=== [ Solution debug (LIS) ] ===\n";
+    static const char* fname[6] = {"x-","x+","y-","y+","z-","z+"};
+    for (int face : {0, 1, 2, 3, 4, 5}) {
+      bool is_pbc = ((face < 2) && periodic_x) || ((face >= 2 && face < 4) && periodic_y);
+      std::vector<std::pair<size_t, double>> fnodes;
+      for (auto q = tmsh.begin_quadrant_sweep ();
+           q != tmsh.end_quadrant_sweep (); ++q) {
+        for (auto local_idx : q->ef (face)) {
+          size_t global = static_cast<size_t> (q->gt (local_idx));
+          if (global < sol.size ())
+            fnodes.emplace_back (global, sol[global]);
+        }
+      }
+      std::sort (fnodes.begin (), fnodes.end ());
+      fnodes.erase (std::unique (fnodes.begin (), fnodes.end (),
+        [] (auto& a, auto& b) { return a.first == b.first; }), fnodes.end ());
+      if (fnodes.empty ()) continue;
+      double fmin = fnodes[0].second, fmax = fnodes[0].second;
+      for (auto& p : fnodes) { fmin = std::min (fmin, p.second); fmax = std::max (fmax, p.second); }
+      std::cout << "  face " << fname[face]
+                << (is_pbc ? " [PBC]" : " [Dir]")
+                << "  nodes=" << fnodes.size ()
+                << "  phi=[" << fmin << ", " << fmax << "]\n";
+    }
+    std::cout << "================================\n";
+  }
 }
 
 
