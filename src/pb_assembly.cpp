@@ -289,19 +289,27 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
                   MPI_SUM, 0, mpicomm);
     }
 
-    // LIS single-rank: add ε to mortar diagonal to prevent zero pivots in ILU/SAINV.
-    // Multi-rank LIS: mortar rows are appended by lis_compute_electric_potential on rank size-1.
-    if (linear_solver_name == "lis" && size == 1) {
-      double max_diag = 0.0;
-      for (size_t ii = 0; ii < N_own; ++ii)
+    // LIS: compute eps_reg = max diagonal of K *before* Dirichlet BCs are applied
+    // (Dirichlet penalty ~1e15 would pollute a post-BC estimate).
+    // Single-rank: local max suffices.  Multi-rank: MPI_Allreduce.
+    if (linear_solver_name == "lis") {
+      double local_max = 0.0;
+      for (int ii = A->range_start (); ii < A->range_end (); ++ii)
         if ((*A)[ii].count (ii))
-          max_diag = std::max (max_diag, std::abs ((*A)[ii].at (ii)));
-      double eps_reg = 1.e-2;
-      for (auto& pair : pairs)
-        for (size_t kk = 0; kk < static_cast<size_t> (ndofm); ++kk)
-          (*A)[pair.mortar_row_offset + kk][pair.mortar_col_offset + kk] += eps_reg;
+          local_max = std::max (local_max, std::abs ((*A)[ii].at (ii)));
+      if (size > 1)
+        MPI_Allreduce (&local_max, &mortar_eps_reg, 1, MPI_DOUBLE, MPI_MAX, mpicomm);
+      else
+        mortar_eps_reg = local_max;
+      if (mortar_eps_reg <= 0.0) mortar_eps_reg = 1.0;
+
+      if (size == 1) {
+        for (auto& pair : pairs)
+          for (size_t kk = 0; kk < static_cast<size_t> (ndofm); ++kk)
+            (*A)[pair.mortar_row_offset + kk][pair.mortar_col_offset + kk] += mortar_eps_reg;
+      }
       if (rank == 0)
-        std::cout << "  Mortar diagonal regularization: eps = " << eps_reg << '\n';
+        std::cout << "  Mortar diagonal regularization: eps = " << mortar_eps_reg << '\n';
     }
 
     // Enforce F=0 for z-boundary mortar DOFs (j1=0 and j1=nm):
@@ -643,115 +651,213 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t &ray_cache)
   MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
 
-  //CSR
+  bool pbc = (periodic_x || periodic_y);
+
   std::vector<double> vals;
-  std::vector<int> irow, jcol;
+  std::vector<int>    irow, jcol;
 
+  LIS_INT is, ie;
 
-  // flag=true exports ALL rows including mortar rows (N_phys..N_phys+n_pairs*ndofm-1).
-  // Default flag=false only exports owned rows [is,ie) = [0,N_phys), dropping the mortar block.
-  (*A).csr (vals, jcol, irow, 0, (periodic_x || periodic_y));
+  if (pbc && size > 1) {
+    // ── Multi-rank PBC ─────────────────────────────────────────────────────
+    // Physical block: each rank exports only its owned rows (flag=false).
+    // Mortar rows: rank size-1 appends them manually from mortar_C.
+    // mortar_C was MPI_Reduce'd to rank 0 in assemple_system_matrix; broadcast
+    // here so rank size-1 can build the mortar CSR block.
+    // ───────────────────────────────────────────────────────────────────────
 
-  // lis RHS
-  // ln = local size including mortar DOFs appended in assemple_system_matrix
-  LIS_INT i, is, ie, n_rhs, ln;
-  LIS_VECTOR rhs_lis;
-  ln = rhs->get_owned_data ().size ();  // N_phys_owned [+ n_pairs*ndofm for PBC]
+    int    n_pairs    = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
+    int    nm         = (1 << minlevel);
+    int    N_global   = static_cast<int> (tmsh.num_global_nodes ());
+    int    mortar_C_n = n_pairs * ndofm;
 
-  lis_vector_create (mpicomm, &rhs_lis);
-  lis_vector_set_size (rhs_lis, ln, 0);
-  lis_vector_get_range (rhs_lis, &is, &ie);
+    (*A).csr (vals, jcol, irow, 0, false);
+    A.reset ();
 
-  for (i = is; i < ie; i++)
-    lis_vector_set_value (LIS_INS_VALUE, i, rhs->get_owned_data ()[i - is], rhs_lis);
+    MPI_Bcast (mortar_C.data (), mortar_C_n * N_global, MPI_DOUBLE, 0, mpicomm);
 
-  //cleaning of rhs
-  rhs.reset ();
+    if (rank == 0)
+      std::cout << "  [PBC multi-rank LIS] eps_reg = " << mortar_eps_reg << '\n';
 
-  //lis_vector_print(rhs_lis);
-  // lis PHI
-  LIS_VECTOR phi_lis;
+    if (rank == size - 1) {
+      for (int drow = 0; drow < mortar_C_n; ++drow) {
+        int  j1      = (drow % ndofm) / (nm + 1);
+        bool is_zbdy = (j1 == 0 || j1 == nm);
+        int  gcol    = N_global + drow;
 
-  lis_vector_create (mpicomm, &phi_lis);
-  lis_vector_set_size (phi_lis, ln, 0);
-  lis_vector_get_range (phi_lis, &is, &ie);
+        if (is_zbdy) {
+          jcol.push_back (gcol);
+          vals.push_back (1.0);
+        } else {
+          for (int c = 0; c < N_global; ++c) {
+            double v = mortar_C[static_cast<size_t> (drow) * N_global + c];
+            if (v != 0.0) {
+              jcol.push_back (c);
+              vals.push_back (v);
+            }
+          }
+          jcol.push_back (gcol);
+          vals.push_back (mortar_eps_reg);
+        }
+        irow.push_back (static_cast<int> (jcol.size ()));
+      }
+    }
 
-  // lis MATRIX
-  LIS_INT n, nnz; //n: matrix dim ; nnz: numb of non zero elems
-  LIS_INT *index; //array of integer containing the col index of non zero elems
-  LIS_INT *ptr; //array of integer with starting points of rows
-  LIS_SCALAR *value; //array of double stores non-zero elements of matrix A along the row
-  LIS_MATRIX A_lis; //array of integer containing the col index of non zero elems
+    LIS_INT n_own = static_cast<LIS_INT> (tmsh.num_owned_nodes ());
+    LIS_INT ln    = n_own + (rank == size - 1
+                              ? static_cast<LIS_INT> (mortar_C_n) : 0);
+    LIS_INT nnz   = static_cast<LIS_INT> (vals.size ());
 
-  nnz = vals.size ();  // total nnz from csr(), includes mortar rows for PBC
-  n   = ln;            // augmented local size (= num_owned_nodes + n_pairs*ndofm for PBC)
+    LIS_VECTOR rhs_lis;
+    lis_vector_create (mpicomm, &rhs_lis);
+    lis_vector_set_size (rhs_lis, ln, 0);
+    lis_vector_get_range (rhs_lis, &is, &ie);
+    for (LIS_INT i = is; i < ie; i++)
+      lis_vector_set_value (LIS_INS_VALUE, i,
+                            rhs->get_owned_data ()[i - is], rhs_lis);
+    rhs.reset ();
 
-  A.reset ();
+    LIS_VECTOR phi_lis;
+    lis_vector_create (mpicomm, &phi_lis);
+    lis_vector_set_size (phi_lis, ln, 0);
 
-  lis_matrix_create (mpicomm, &A_lis);
+    LIS_MATRIX A_lis;
+    lis_matrix_create (mpicomm, &A_lis);
+    lis_matrix_set_size (A_lis, ln, 0);
+    lis_matrix_set_csr (nnz, irow.data (), jcol.data (), vals.data (), A_lis);
+    lis_matrix_assemble (A_lis);
 
-  lis_matrix_set_size (A_lis, n, 0);
-  ptr = &irow[0];
-  index = &jcol[0];
-  value = &vals[0];
+    LIS_SOLVER solver;
+    lis_solver_create (&solver);
+    std::string opts = linear_solver_options;
+    lis_solver_set_option (&opts[0], solver);
+    lis_solve (A_lis, rhs_lis, phi_lis, solver);
+    lis_solver_destroy (solver);
+    lis_vector_destroy (rhs_lis);
 
-  lis_matrix_set_csr (nnz, ptr, index, value, A_lis);
+    phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+    lis_vector_get_values (phi_lis, is, n_own, phi->get_owned_data ().data ());
+    lis_vector_destroy (phi_lis);
 
+  } else {
+    // ── Non-PBC or single-rank ─────────────────────────────────────────────
+    // flag=pbc: single-rank PBC exports mortar rows already in A (fill_mortar_rows=true).
+    // flag=false for non-PBC or multi-rank without PBC.
+    // ───────────────────────────────────────────────────────────────────────
+    (*A).csr (vals, jcol, irow, 0, pbc);
 
-  lis_matrix_assemble (A_lis);
+    LIS_INT i, ln;
+    LIS_VECTOR rhs_lis;
+    ln = static_cast<LIS_INT> (rhs->get_owned_data ().size ());
 
-  //Solve linear system
-  LIS_SOLVER solver;
+    lis_vector_create (mpicomm, &rhs_lis);
+    lis_vector_set_size (rhs_lis, ln, 0);
+    lis_vector_get_range (rhs_lis, &is, &ie);
+    for (i = is; i < ie; i++)
+      lis_vector_set_value (LIS_INS_VALUE, i,
+                            rhs->get_owned_data ()[i - is], rhs_lis);
+    rhs.reset ();
 
-  lis_solver_create (&solver);
+    LIS_VECTOR phi_lis;
+    lis_vector_create (mpicomm, &phi_lis);
+    lis_vector_set_size (phi_lis, ln, 0);
+    lis_vector_get_range (phi_lis, &is, &ie);
 
-  std::string opts = linear_solver_options;
+    LIS_INT n   = ln;
+    LIS_INT nnz = static_cast<LIS_INT> (vals.size ());
+    A.reset ();
 
-  lis_solver_set_option (&opts[0], solver);
+    LIS_MATRIX A_lis;
+    lis_matrix_create (mpicomm, &A_lis);
+    lis_matrix_set_size (A_lis, n, 0);
+    lis_matrix_set_csr (nnz, &irow[0], &jcol[0], &vals[0], A_lis);
+    lis_matrix_assemble (A_lis);
 
-  lis_solve (A_lis, rhs_lis, phi_lis, solver);
+    LIS_SOLVER solver;
+    lis_solver_create (&solver);
+    std::string opts = linear_solver_options;
+    lis_solver_set_option (&opts[0], solver);
+    lis_solve (A_lis, rhs_lis, phi_lis, solver);
+    lis_solver_destroy (solver);
+    lis_vector_destroy (rhs_lis);
 
-  lis_solver_destroy (solver);
-  lis_vector_destroy (rhs_lis);
-
-  phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
-
-  // For PBC ln > num_owned_nodes(): extract only the physical DOFs.
-  LIS_INT n_phys = tmsh.num_owned_nodes ();
-  lis_vector_get_values (phi_lis, is, n_phys, phi->get_owned_data ().data ());
-
-  lis_vector_destroy (phi_lis);
+    phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+    LIS_INT n_phys = static_cast<LIS_INT> (tmsh.num_owned_nodes ());
+    lis_vector_get_values (phi_lis, is, n_phys, phi->get_owned_data ().data ());
+    lis_vector_destroy (phi_lis);
+  }
 
   if (size > 1)
     bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
 
-  if (rank == 0) {
-    const auto& sol = phi->get_owned_data ();
-    std::cout << "\n=== [ Solution debug (LIS) ] ===\n";
+  // Collective debug — same pattern as MUMPS: each rank contributes its owned
+  // face nodes via MPI_Gatherv, rank 0 prints the summary.
+  {
     static const char* fname[6] = {"x-","x+","y-","y+","z-","z+"};
+    const int phi_is = static_cast<int> (phi->get_range_start ());
+    const int phi_ie = phi_is + static_cast<int> (phi->get_owned_data ().size ());
+
+    if (rank == 0)
+      std::cout << "\n=== [ Solution debug (LIS) ] ===\n";
+
     for (int face : {0, 1, 2, 3, 4, 5}) {
       bool is_pbc = ((face < 2) && periodic_x) || ((face >= 2 && face < 4) && periodic_y);
-      std::vector<std::pair<size_t, double>> fnodes;
+
+      std::map<int, double> face_map;
       for (auto q = tmsh.begin_quadrant_sweep ();
-           q != tmsh.end_quadrant_sweep (); ++q) {
+           q != tmsh.end_quadrant_sweep (); ++q)
         for (auto local_idx : q->ef (face)) {
-          size_t global = static_cast<size_t> (q->gt (local_idx));
-          if (global < sol.size ())
-            fnodes.emplace_back (global, sol[global]);
+          int g = q->gt (local_idx);
+          if (g >= phi_is && g < phi_ie)
+            face_map[g] = phi->get_owned_data ()[g - phi_is];
         }
+
+      std::vector<int>    local_gidx;
+      std::vector<double> local_vals;
+      local_gidx.reserve (face_map.size ());
+      local_vals.reserve (face_map.size ());
+      for (const auto& kv : face_map) {
+        local_gidx.push_back (kv.first);
+        local_vals.push_back (kv.second);
       }
-      std::sort (fnodes.begin (), fnodes.end ());
-      fnodes.erase (std::unique (fnodes.begin (), fnodes.end (),
-        [] (auto& a, auto& b) { return a.first == b.first; }), fnodes.end ());
-      if (fnodes.empty ()) continue;
-      double fmin = fnodes[0].second, fmax = fnodes[0].second;
-      for (auto& p : fnodes) { fmin = std::min (fmin, p.second); fmax = std::max (fmax, p.second); }
-      std::cout << "  face " << fname[face]
-                << (is_pbc ? " [PBC]" : " [Dir]")
-                << "  nodes=" << fnodes.size ()
-                << "  phi=[" << fmin << ", " << fmax << "]\n";
+
+      int local_n = static_cast<int> (local_gidx.size ());
+      std::vector<int> all_ns (size, 0), displs (size, 0);
+      MPI_Gather (&local_n, 1, MPI_INT, all_ns.data (), 1, MPI_INT, 0, mpicomm);
+
+      int total_n = 0;
+      std::vector<int>    all_gidx;
+      std::vector<double> all_vals;
+      if (rank == 0) {
+        for (int r = 1; r < size; ++r)
+          displs[r] = displs[r - 1] + all_ns[r - 1];
+        total_n = displs[size - 1] + all_ns[size - 1];
+        all_gidx.resize (total_n);
+        all_vals.resize (total_n);
+      }
+
+      MPI_Gatherv (local_gidx.data (), local_n, MPI_INT,
+                   all_gidx.data (), all_ns.data (), displs.data (), MPI_INT,
+                   0, mpicomm);
+      MPI_Gatherv (local_vals.data (), local_n, MPI_DOUBLE,
+                   all_vals.data (), all_ns.data (), displs.data (), MPI_DOUBLE,
+                   0, mpicomm);
+
+      if (rank == 0 && total_n > 0) {
+        double fmin = all_vals[0], fmax = all_vals[0];
+        for (int ii = 1; ii < total_n; ++ii) {
+          fmin = std::min (fmin, all_vals[ii]);
+          fmax = std::max (fmax, all_vals[ii]);
+        }
+        std::cout << "  face " << fname[face]
+                  << (is_pbc ? " [PBC]" : " [Dir]")
+                  << "  nodes=" << total_n
+                  << "  phi=[" << fmin << ", " << fmax << "]\n";
+      }
     }
-    std::cout << "================================\n";
+
+    if (rank == 0)
+      std::cout << "================================\n";
   }
 }
 
