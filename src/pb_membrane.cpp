@@ -247,17 +247,20 @@ zero_boundary_residue_charges (poisson_boltzmann &pb)
 
 void
 assemble_mortar_block (distributed_sparse_matrix        &A,
+                       std::vector<double>              &mortar_C,
+                       size_t                            N_global,
                        tmesh_3d::quadrant_iterator       q,
                        int                               face_idx,
                        const MortarFacePair             &pair,
                        double                            sign,
-                       int                               nm)
+                       int                               nm,
+                       bool                              fill_mortar_rows)
 {
   const auto &fnodes = q->ef (face_idx);
   if (fnodes.empty ()) return;
 
   const int d0 = pair.d0, d1 = pair.d1;
-
+  
   // Step 1 — tangential coordinates of the 4 face nodes
   // fnodes layout (same for all faces in d0/d1):
   //   [0]: (d0_min, d1_min)  [1]: (d0_max, d1_min)
@@ -267,7 +270,7 @@ assemble_mortar_block (distributed_sparse_matrix        &A,
   c0[1] = q->p (d0, fnodes[1]);  // d0_max
   c1[0] = q->p (d1, fnodes[0]);  // d1_min
   c1[1] = q->p (d1, fnodes[2]);  // d1_max
-
+  
   // Step 2 — Dirichlet filter: skip nodes at z boundaries (d1==2 for both pairs)
   const double z_lo = pair.d1_min;
   const double z_hi = pair.d1_min + pair.L1;
@@ -281,10 +284,8 @@ assemble_mortar_block (distributed_sparse_matrix        &A,
   // Step 3 — mortar cell index (physical offset accounted for)
   double hm0 = pair.L0 / nm;
   double hm1 = pair.L1 / nm;
-  int j0 = static_cast<int> ((c0[0] - pair.d0_min) / hm0);
-  int j1 = static_cast<int> ((c1[0] - pair.d1_min) / hm1);
-  j0 = std::min (j0, nm - 1);
-  j1 = std::min (j1, nm - 1);
+  int j0 = std::min (static_cast<int> ((c0[0] - pair.d0_min) / hm0), nm - 1);
+  int j1 = std::min (static_cast<int> ((c1[0] - pair.d1_min) / hm1), nm - 1);
 
   // Step 4 — 1D mixed hat-function mass matrices (2×2 each)
   // M[i][jl] = ∫ φ_i(t) ψ_jl(t) dt
@@ -329,15 +330,20 @@ assemble_mortar_block (distributed_sparse_matrix        &A,
 
   for (int fi = 0; fi < 4; ++fi) {
     if (!keep[fi]) continue;
-    size_t row = static_cast<size_t> (q->gt (fnodes[fi]));
+    size_t phys = static_cast<size_t> (q->gt (fnodes[fi]));  // global node index
 
     for (int dj0 = 0; dj0 < 2; ++dj0)
       for (int dj1 = 0; dj1 < 2; ++dj1) {
-        size_t col = pair.mortar_offset
-                     + static_cast<size_t> ((j1 + dj1) * (nm + 1) + (j0 + dj0));
-        double val = sign * M_0[ii0[fi]][dj0] * M_1[ii1[fi]][dj1];
-        A[row][col] += val;   // C block:   FEM row,    mortar col
-        A[col][row] += val;   // C^T block: mortar row, FEM col
+        size_t k        = static_cast<size_t> ((j1 + dj1) * (nm + 1) + (j0 + dj0));
+        size_t gcol     = pair.mortar_col_offset  + k;  // global mortar column
+        size_t mrow     = pair.mortar_row_offset  + k;  // local mortar row in A (for LIS)
+        size_t drow     = pair.mortar_dense_offset + k; // row in mortar_C (for MUMPS)
+        double val      = sign * M_0[ii0[fi]][dj0] * M_1[ii1[fi]][dj1];
+
+        A[phys][gcol]                        += val;  // C block:   global physical row, global mortar col
+        if (fill_mortar_rows)
+          A[mrow][phys]                      += val;  // C^T block: mortar row in A (for LIS only)
+        mortar_C[drow * N_global + phys]     += val;  // C^T block: dense accumulator (for MUMPS)
       }
   }
 }

@@ -177,7 +177,7 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
     int n_pairs = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
     size_t N_phys = A->rows ();
     A->resize (N_phys + n_pairs * ndofm);
-    A->m = N_phys + n_pairs * ndofm;
+    A->m = static_cast<int> (tmsh.num_global_nodes ()) + n_pairs * ndofm;
     if (rank == 0) {
       std::cout << "  Physical DOFs (N_phys)  : " << N_phys << '\n';
       std::cout << "  Active mortar pairs     : " << n_pairs << '\n';
@@ -225,24 +225,42 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
   // ------------------------------------------------------------
 
   if (periodic_x || periodic_y) {
-    int    nm     = (1 << minlevel);
-    size_t N_phys = static_cast<size_t> (tmsh.num_owned_nodes ());
+    int    nm      = (1 << minlevel);
+    int    n_pairs = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
+    size_t N_own   = static_cast<size_t> (tmsh.num_owned_nodes ());
+    size_t N_global = static_cast<size_t> (tmsh.num_global_nodes ());
     double Lx = r_cr[0] - l_cr[0];
     double Ly = r_cr[1] - l_cr[1];
     double Lz = r_cr[2] - l_cr[2];
 
-    // Build only the active pairs; mortar offsets are assigned sequentially
-    // so that inactive directions leave no zero rows in the augmented matrix.
+    // Build only the active pairs.
+    // mortar_row_offset : local row in A for this pair's mortar DOFs (for LIS)
+    // mortar_col_offset : global column index of mortar DOFs (N_global + cumulative)
+    // mortar_dense_offset: first row in mortar_C dense array for this pair
     std::vector<MortarFacePair> pairs;
-    size_t mortar_offset = N_phys;
+    size_t cumulative = 0;
     if (periodic_x) {
-      pairs.push_back ({ 0, 1,  1, 2,  l_cr[1], Ly,  l_cr[2], Lz,  mortar_offset });
-      mortar_offset += ndofm;
+      pairs.push_back ({ 0, 1,  1, 2,  l_cr[1], Ly,  l_cr[2], Lz,
+                         N_own    + cumulative,   // mortar_row_offset
+                         N_global + cumulative,   // mortar_col_offset
+                         cumulative });           // mortar_dense_offset
+      cumulative += ndofm;
     }
     if (periodic_y) {
-      pairs.push_back ({ 2, 3,  0, 2,  l_cr[0], Lx,  l_cr[2], Lz,  mortar_offset });
-      mortar_offset += ndofm;
+      pairs.push_back ({ 2, 3,  0, 2,  l_cr[0], Lx,  l_cr[2], Lz,
+                         N_own    + cumulative,
+                         N_global + cumulative,
+                         cumulative });
+      cumulative += ndofm;
     }
+
+    // Dense C^T accumulator: n_pairs*ndofm rows × N_global physical columns.
+    // Each rank accumulates its local contributions; MPI_Reduce(SUM) collects on rank 0.
+    // gt() returns GLOBAL node indices; mortar_C column = phys (no rank offset needed).
+    // begin_quadrant_sweep() iterates only over locally owned quadrants.
+    mortar_C.assign (static_cast<size_t> (n_pairs) * ndofm * N_global, 0.0);
+
+    bool fill_mortar_rows = (linear_solver_name == "lis") && (size == 1);
 
     for (auto& pair : pairs) {
       const char* dir = (pair.face_left < 2) ? "x" : "y";
@@ -252,26 +270,61 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
       for (auto q = tmsh.begin_quadrant_sweep ();
            q != tmsh.end_quadrant_sweep (); ++q) {
         if (!q->ef (pair.face_left).empty ())
-          assemble_mortar_block (*A, q, pair.face_left,  pair, +1.0, nm);
+          assemble_mortar_block (*A, mortar_C, N_global, q,
+                                 pair.face_left,  pair, +1.0, nm, fill_mortar_rows);
         if (!q->ef (pair.face_right).empty ())
-          assemble_mortar_block (*A, q, pair.face_right, pair, -1.0, nm);
+          assemble_mortar_block (*A, mortar_C, N_global, q,
+                                 pair.face_right, pair, -1.0, nm, fill_mortar_rows);
       }
 
       if (rank == 0)
         std::cout << "  Mortar assembly: face pair " << dir << "± done\n";
     }
 
-    // Mortar DOFs at j1=0 (z_lo) and j1=nm (z_hi) touch only physical nodes
-    // on the Dirichlet z-boundaries, which are skipped by the keep[] filter in
-    // assemble_mortar_block.  Those mortar rows are structurally zero → singular.
-    // Enforce F=0 there with an identity row (RHS is already zero).
+    // Gather all C^T contributions to rank 0.
+    if (size > 1) {
+      MPI_Reduce (rank == 0 ? MPI_IN_PLACE : mortar_C.data (),
+                  mortar_C.data (),
+                  static_cast<int> (mortar_C.size ()), MPI_DOUBLE,
+                  MPI_SUM, 0, mpicomm);
+    }
+
+    // LIS single-rank: add ε to mortar diagonal to prevent zero pivots in ILU/SAINV.
+    // Multi-rank LIS: mortar rows are appended by lis_compute_electric_potential on rank size-1.
+    if (linear_solver_name == "lis" && size == 1) {
+      double max_diag = 0.0;
+      for (size_t ii = 0; ii < N_own; ++ii)
+        if ((*A)[ii].count (ii))
+          max_diag = std::max (max_diag, std::abs ((*A)[ii].at (ii)));
+      double eps_reg = 1.e-2;
+      for (auto& pair : pairs)
+        for (size_t kk = 0; kk < static_cast<size_t> (ndofm); ++kk)
+          (*A)[pair.mortar_row_offset + kk][pair.mortar_col_offset + kk] += eps_reg;
+      if (rank == 0)
+        std::cout << "  Mortar diagonal regularization: eps = " << eps_reg << '\n';
+    }
+
+    // Enforce F=0 for z-boundary mortar DOFs (j1=0 and j1=nm):
+    //   A  : identity row with global mortar column (for LIS; overwrites eps_reg)
+    //   mortar_C : zero the C^T row on rank 0 (identity diagonal added in mumps_compute)
     int n_bd = 0;
     for (auto& pair : pairs) {
       for (int j0 = 0; j0 <= nm; ++j0) {
         for (int j1_bd : {0, nm}) {
-          size_t col = pair.mortar_offset + static_cast<size_t> (j1_bd) * (nm + 1) + j0;
-          (*A)[col].clear ();
-          (*A)[col][col] = 1.0;
+          size_t k    = static_cast<size_t> (j1_bd) * (nm + 1) + j0;
+          size_t row  = pair.mortar_row_offset  + k;
+          size_t gcol = pair.mortar_col_offset  + k;
+          size_t drow = pair.mortar_dense_offset + k;
+          // For LIS: set identity row in A so the mortar matrix is non-singular.
+          // For MUMPS: skip — the identity diagonal is added explicitly in
+          // mumps_compute_electric_potential via the COO mortar block on rank 0.
+          if (fill_mortar_rows) {
+            (*A)[row].clear ();
+            (*A)[row][gcol] = 1.0;
+          }
+          if (rank == 0)
+            for (size_t c = 0; c < N_global; ++c)
+              mortar_C[drow * N_global + c] = 0.0;
           ++n_bd;
         }
       }
@@ -349,8 +402,12 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
 
   if (periodic_x || periodic_y) {
     int n_pairs = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
-    rhs->get_owned_data ().resize (
-      rhs->get_owned_data ().size () + n_pairs * ndofm, 0.0);
+    // MUMPS: extend on all ranks (MPI_Gatherv in mumps_compute uses num_owned_nodes(), ignores extra zeros).
+    // LIS single-rank: extend the single rank's data.
+    // LIS multi-rank: extend only rank size-1, which owns the mortar rows in the LIS layout.
+    if (linear_solver_name != "lis" || size == 1 || rank == size - 1)
+      rhs->get_owned_data ().resize (
+        rhs->get_owned_data ().size () + n_pairs * ndofm, 0.0);
   }
 
   // ------------------------------------------------------------
@@ -381,33 +438,83 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
                  ? tmsh.num_global_nodes () + n_pairs * ndofm
                  : tmsh.num_global_nodes ();
 
+  // -----------------------------------------------------------------------
+  // Build distributed COO for MUMPS.
+  //
+  // Physical rows: each rank exports its owned rows [is, ie) via aij(flag=false).
+  // Mortar column indices in physical rows are already global (pair.mortar_col_offset + k
+  // = N_global + cumulative + k), so no correction is needed.
+  //
+  // Mortar rows: rank 0 converts mortar_C (dense C^T, already MPI_Reduce'd) to COO,
+  // and appends identity entries for z-boundary DOFs.  Other ranks contribute nothing
+  // to the mortar block.
+  // -----------------------------------------------------------------------
+  (*A).aij (vals, irow, jcol, mumps_solver.get_index_base ());   // flag=false, physical rows
+
   if (periodic_x || periodic_y) {
-    // distributed_sparse_matrix::aij() only exports [is, ie) rows; mortar rows
-    // (N_phys..N_phys+n_pairs*ndofm-1) are outside that window.
-    // flag=true calls sparse_matrix::aij() which iterates ALL rows in the vector,
-    // so mortar rows (C^T and identity) are included.
-    // Use centralized MUMPS input (ICNTL(18)=0, rank-0 only) — no set_lhs_distributed().
-    (*A).aij (vals, irow, jcol, mumps_solver.get_index_base (), true);
-    mumps_solver.set_lhs_structure (n_system, irow, jcol);
-    mumps_solver.set_lhs_data (vals);
-  } else {
-    (*A).aij (vals, irow, jcol, mumps_solver.get_index_base ());
-    mumps_solver.set_lhs_distributed ();
-    mumps_solver.set_distributed_lhs_structure (n_system, irow, jcol);
-    mumps_solver.set_distributed_lhs_data (vals);
+    int    base     = mumps_solver.get_index_base ();
+    int    nm       = (1 << minlevel);
+    size_t N_global = static_cast<size_t> (tmsh.num_global_nodes ());
+
+    if (rank == 0) {
+      size_t n_mortar_rows = static_cast<size_t> (n_pairs * ndofm);
+      for (size_t drow = 0; drow < n_mortar_rows; ++drow) {
+        int global_row = static_cast<int> (N_global + drow) + base;
+
+        // C^T entries from the dense accumulator (z-boundary rows were zeroed in assembly)
+        for (size_t c = 0; c < N_global; ++c) {
+          double v = mortar_C[drow * N_global + c];
+          if (v != 0.0) {
+            irow.push_back (global_row);
+            jcol.push_back (static_cast<int> (c) + base);
+            vals.push_back (v);
+          }
+        }
+
+        // Identity diagonal for z-boundary mortar DOFs (j1 = 0 or nm)
+        int j1 = static_cast<int> (drow % static_cast<size_t> (ndofm)) / (nm + 1);
+        if (j1 == 0 || j1 == nm) {
+          irow.push_back (global_row);
+          jcol.push_back (global_row);
+          vals.push_back (1.0);
+        }
+      }
+      std::cout << "  [Mortar] COO entries appended by rank 0: "
+                << irow.size () << " total\n";
+    }
   }
 
-  // For the PBC path, set_rhs() stores a raw pointer into rhs->get_owned_data().
-  // If we reset rhs before solve(), that pointer dangles and MUMPS writes to
-  // freed memory.  Copy the buffer first so it outlives rhs.reset().
-  // After solve() MUMPS writes the solution back in-place into this buffer.
+  mumps_solver.set_lhs_distributed ();
+  mumps_solver.set_distributed_lhs_structure (n_system, irow, jcol);
+  mumps_solver.set_distributed_lhs_data (vals);
+
+  // -----------------------------------------------------------------------
+  // Step 3 — Gather the full RHS on rank 0 (PBC only).
+  //
+  // rhs->get_owned_data() on each rank holds N_own_r physical entries followed
+  // by n_pairs*ndofm zeros (appended in assemple_system_matrix).  We gather
+  // only the N_own_r physical entries; rank 0 assembles the complete vector
+  //   [ b_0 | b_1 | ... | b_{P-1} | 0 ... 0 ]   (size = n_system)
+  // and passes it to MUMPS as a centralised RHS.
+  // rhs_counts / rhs_displs are reused in Step 5 for the scatter.
+  // -----------------------------------------------------------------------
   std::vector<double> pbc_rhs_buf;
+  std::vector<int>    rhs_counts (size, 0), rhs_displs (size, 0);
 
   if (periodic_x || periodic_y) {
+    int local_n = static_cast<int> (tmsh.num_owned_nodes ());
+    MPI_Gather (&local_n, 1, MPI_INT,
+                rhs_counts.data (), 1, MPI_INT, 0, mpicomm);
     if (rank == 0) {
-      pbc_rhs_buf = rhs->get_owned_data ();   // copy before rhs is destroyed
-      mumps_solver.set_rhs (pbc_rhs_buf);     // id.rhs → pbc_rhs_buf (persists)
+      for (int r = 1; r < size; ++r)
+        rhs_displs[r] = rhs_displs[r - 1] + rhs_counts[r - 1];
+      pbc_rhs_buf.assign (n_system, 0.0);   // physical + mortar zeros
     }
+    MPI_Gatherv (rhs->get_owned_data ().data (), local_n, MPI_DOUBLE,
+                 pbc_rhs_buf.data (), rhs_counts.data (), rhs_displs.data (),
+                 MPI_DOUBLE, 0, mpicomm);
+    if (rank == 0)
+      mumps_solver.set_rhs (pbc_rhs_buf);
   } else {
     mumps_solver.set_rhs_distributed (*rhs);
   }
@@ -436,14 +543,18 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
   phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
 
   if (periodic_x || periodic_y) {
-    // MUMPS wrote the solution in-place into pbc_rhs_buf.
-    // Copy only the physical DOFs; the mortar multipliers (tail of pbc_rhs_buf)
-    // are discarded — post-processing only needs the physical solution.
-    if (rank == 0) {
-      size_t n_own = tmsh.num_owned_nodes ();
-      phi->get_owned_data ().assign (pbc_rhs_buf.begin (),
-                                     pbc_rhs_buf.begin () + n_own);
-    }
+    // -----------------------------------------------------------------------
+    // Step 5 — Scatter physical DOFs from rank 0 to all ranks.
+    //
+    // pbc_rhs_buf (rank 0) holds [ u_0 | u_1 | ... | F_mortar ] after solve.
+    // We scatter only the physical part using the same rhs_counts / rhs_displs
+    // built in Step 3, then discard the mortar multipliers F.
+    // -----------------------------------------------------------------------
+    int local_n = static_cast<int> (tmsh.num_owned_nodes ());
+    MPI_Scatterv (pbc_rhs_buf.data (), rhs_counts.data (), rhs_displs.data (),
+                  MPI_DOUBLE,
+                  phi->get_owned_data ().data (), local_n,
+                  MPI_DOUBLE, 0, mpicomm);
   } else {
     (*phi) = mumps_solver.get_distributed_solution ();
   }
@@ -451,34 +562,73 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
   if (size > 1)
     bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
 
-  if (rank == 0) {
-    const auto& sol = phi->get_owned_data ();
-    std::cout << "\n=== [ Solution debug ] ===\n";
+  // Collective solution debug: each rank contributes its owned face nodes,
+  // then MPI_Gatherv assembles the complete picture on rank 0.
+  {
     static const char* fname[6] = {"x-","x+","y-","y+","z-","z+"};
+    const int phi_is = static_cast<int> (phi->get_range_start ());
+    const int phi_ie = phi_is + static_cast<int> (phi->get_owned_data ().size ());
+
+    if (rank == 0)
+      std::cout << "\n=== [ Solution debug ] ===\n";
+
     for (int face : {0, 1, 2, 3, 4, 5}) {
       bool is_pbc = ((face < 2) && periodic_x) || ((face >= 2 && face < 4) && periodic_y);
-      std::vector<std::pair<size_t, double>> fnodes;
+
+      // Collect owned face nodes (map deduplicates automatically)
+      std::map<int, double> face_map;
       for (auto q = tmsh.begin_quadrant_sweep ();
-           q != tmsh.end_quadrant_sweep (); ++q) {
+           q != tmsh.end_quadrant_sweep (); ++q)
         for (auto local_idx : q->ef (face)) {
-          // ef() returns LOCAL node indices; use gt() to convert to global DOF
-          size_t global = static_cast<size_t> (q->gt (local_idx));
-          if (global < sol.size ())
-            fnodes.emplace_back (global, sol[global]);
+          int g = q->gt (local_idx);
+          if (g >= phi_is && g < phi_ie)
+            face_map[g] = phi->get_owned_data ()[g - phi_is];
         }
+
+      std::vector<int>    local_gidx;
+      std::vector<double> local_vals;
+      local_gidx.reserve (face_map.size ());
+      local_vals.reserve (face_map.size ());
+      for (const auto& kv : face_map) {
+        local_gidx.push_back (kv.first);
+        local_vals.push_back (kv.second);
       }
-      std::sort (fnodes.begin (), fnodes.end ());
-      fnodes.erase (std::unique (fnodes.begin (), fnodes.end (),
-        [] (auto& a, auto& b) { return a.first == b.first; }), fnodes.end ());
-      if (fnodes.empty ()) continue;
-      double fmin = fnodes[0].second, fmax = fnodes[0].second;
-      for (auto& p : fnodes) { fmin = std::min (fmin, p.second); fmax = std::max (fmax, p.second); }
-      std::cout << "  face " << fname[face]
-                << (is_pbc ? " [PBC]" : " [Dir]")
-                << "  nodes=" << fnodes.size ()
-                << "  phi=[" << fmin << ", " << fmax << "]\n";
+
+      int local_n = static_cast<int> (local_gidx.size ());
+      std::vector<int> all_ns (size, 0), displs (size, 0);
+      MPI_Gather (&local_n, 1, MPI_INT, all_ns.data (), 1, MPI_INT, 0, mpicomm);
+
+      int total_n = 0;
+      std::vector<int>    all_gidx;
+      std::vector<double> all_vals;
+      if (rank == 0) {
+        for (int r = 1; r < size; ++r)
+          displs[r] = displs[r - 1] + all_ns[r - 1];
+        total_n = displs[size - 1] + all_ns[size - 1];
+        all_gidx.resize (total_n);
+        all_vals.resize (total_n);
+      }
+
+      MPI_Gatherv (local_gidx.data (), local_n, MPI_INT,
+                   all_gidx.data (), all_ns.data (), displs.data (), MPI_INT, 0, mpicomm);
+      MPI_Gatherv (local_vals.data (), local_n, MPI_DOUBLE,
+                   all_vals.data (), all_ns.data (), displs.data (), MPI_DOUBLE, 0, mpicomm);
+
+      if (rank == 0 && total_n > 0) {
+        double fmin = all_vals[0], fmax = all_vals[0];
+        for (int i = 1; i < total_n; ++i) {
+          fmin = std::min (fmin, all_vals[i]);
+          fmax = std::max (fmax, all_vals[i]);
+        }
+        std::cout << "  face " << fname[face]
+                  << (is_pbc ? " [PBC]" : " [Dir]")
+                  << "  nodes=" << total_n
+                  << "  phi=[" << fmin << ", " << fmax << "]\n";
+      }
     }
-    std::cout << "=========================\n";
+
+    if (rank == 0)
+      std::cout << "=========================\n";
   }
 
   mumps_solver.cleanup ();
@@ -498,7 +648,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t &ray_cache)
   std::vector<int> irow, jcol;
 
 
-  (*A).csr (vals, jcol, irow);
+  // flag=true exports ALL rows including mortar rows (N_phys..N_phys+n_pairs*ndofm-1).
+  // Default flag=false only exports owned rows [is,ie) = [0,N_phys), dropping the mortar block.
+  (*A).csr (vals, jcol, irow, 0, (periodic_x || periodic_y));
 
   // lis RHS
   // ln = local size including mortar DOFs appended in assemple_system_matrix

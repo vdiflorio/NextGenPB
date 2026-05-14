@@ -111,7 +111,12 @@ void zero_boundary_residue_charges (poisson_boltzmann &pb);
  * d0, d1                 : tangential directions (0=x, 1=y, 2=z)
  * d0_min, L0             : physical range in d0 is [d0_min, d0_min + L0]
  * d1_min, L1             : physical range in d1 is [d1_min, d1_min + L1]
- * mortar_offset          : first row/col of this pair's DOFs in the augmented A
+ * mortar_row_offset      : first LOCAL row index of this pair's DOFs in A
+ *                          (= N_own + cumulative_ndofm, used for identity/eps rows)
+ * mortar_col_offset      : first GLOBAL column index for this pair's mortar DOFs
+ *                          (= N_global + cumulative_ndofm, unambiguous across ranks)
+ * mortar_dense_offset    : first row in the dense mortar_C array for this pair
+ *                          (= cumulative_ndofm, i.e. mortar_col_offset - N_global)
  */
 struct MortarFacePair {
   int    face_left;
@@ -119,30 +124,38 @@ struct MortarFacePair {
   int    d0, d1;
   double d0_min, L0;
   double d1_min, L1;
-  size_t mortar_offset;
+  size_t mortar_row_offset;    ///< local A row: N_own + cumulative
+  size_t mortar_col_offset;    ///< global col:  N_global + cumulative
+  size_t mortar_dense_offset;  ///< row in mortar_C dense array: cumulative
 };
 
 /**
  * @brief Accumulate mortar C / C^T contributions for one quadrant on one face.
  *
- * Implements the per-quadrant mortar integration (bc.md, Punto 2, Steps 1-5):
- * tensor-product 1D hat-function mass matrices are computed and added to A with
- * the appropriate sign (+1 left face, -1 right face).  Nodes on z=0 or z=Lz
- * (Dirichlet) are skipped.
+ * C block  (physical rows, mortar columns): written into A using the globally
+ * unambiguous column index pair.mortar_col_offset + k.
  *
- * @param A            Augmented system matrix (already resized to N_phys + 2*ndofm).
+ * C^T block (mortar rows, physical columns): written into the dense array
+ * mortar_C[row * N_global + physical_col], where
+ * row = pair.mortar_dense_offset + k.
+ *
+ * @param A            System matrix (physical block only; no mortar rows needed).
+ * @param mortar_C     Dense C^T accumulator, size n_pairs*ndofm * N_global.
+ * @param N_global     Total number of physical DOFs across all ranks.
  * @param q            Iterator pointing to the current quadrant.
  * @param face_idx     Face index (0..3) being assembled.
- * @param pair         Pair descriptor with tangential directions and mortar offset.
+ * @param pair         Pair descriptor (mortar_col_offset and mortar_dense_offset used).
  * @param sign         +1.0 for left face, -1.0 for right face.
  * @param nm           2^minlevel  (mortar cells per direction).
- * @param Lz           Domain extent in z (used for Dirichlet filter).
  */
 void assemble_mortar_block (distributed_sparse_matrix        &A,
+                            std::vector<double>              &mortar_C,
+                            size_t                            N_global,
                             tmesh_3d::quadrant_iterator       q,
                             int                               face_idx,
                             const MortarFacePair             &pair,
                             double                            sign,
-                            int                               nm);
+                            int                               nm,
+                            bool                              fill_mortar_rows = true);
 
 #endif // PB_MEMBRANE_H

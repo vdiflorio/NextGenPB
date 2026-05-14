@@ -264,6 +264,7 @@ struct
   double cell_length_x = 0.0; ///< Unit cell length in x [Å]
   double cell_length_y = 0.0; ///< Unit cell length in y [Å]
   int ndofm = 0; ///< DOF mortar per coppia: (2^minlevel+1)^2; set during assembly
+  std::vector<double> mortar_C; ///< Dense C^T block [n_pairs*ndofm × N_global]; MPI_Reduce'd to rank 0
   // [PLACEHOLDER] NanoShaper replication parameters (TBD)
   /// @}
 
