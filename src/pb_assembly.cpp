@@ -175,23 +175,28 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
   A = std::make_unique<distributed_sparse_matrix> (mpicomm);
   A->set_ranges (tmsh.num_owned_nodes());
 
-  if (periodic_x || periodic_y) {
-    int nm     = (1 << minlevel);
-    ndofm      = (nm + 1) * (nm + 1);
-    int n_pairs = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
-    size_t N_phys = A->rows ();
-    A->resize (N_phys + n_pairs * ndofm);
-    A->m = static_cast<int> (tmsh.num_global_nodes ()) + n_pairs * ndofm;
-    if (rank == 0) {
-      std::cout << "  Physical DOFs (N_phys)  : " << N_phys << '\n';
-      std::cout << "  Active mortar pairs     : " << n_pairs << '\n';
-      std::cout << "  Mortar DOFs per pair    : " << ndofm << "  (= (nm+1)^2)\n";
-      std::cout << "  Augmented system size   : " << N_phys + n_pairs * ndofm << '\n';
-    }
-  } else {
-    if (rank == 0)
-      std::cout << "  Physical DOFs           : " << A->rows () << '\n';
-  }
+  // === [MORTAR BLOCK — DISABLED FOR STRONG PBC] Zone A: augmented matrix resize ===
+  // if (periodic_x || periodic_y) {
+  //   int nm     = (1 << minlevel);
+  //   ndofm      = (nm + 1) * (nm + 1);
+  //   int n_pairs = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
+  //   size_t N_phys = A->rows ();
+  //   A->resize (N_phys + n_pairs * ndofm);
+  //   A->m = static_cast<int> (tmsh.num_global_nodes ()) + n_pairs * ndofm;
+  //   if (rank == 0) {
+  //     std::cout << "  Physical DOFs (N_phys)  : " << N_phys << '\n';
+  //     std::cout << "  Active mortar pairs     : " << n_pairs << '\n';
+  //     std::cout << "  Mortar DOFs per pair    : " << ndofm << "  (= (nm+1)^2)\n";
+  //     std::cout << "  Augmented system size   : " << N_phys + n_pairs * ndofm << '\n';
+  //   }
+  // } else {
+  //   if (rank == 0)
+  //     std::cout << "  Physical DOFs           : " << A->rows () << '\n';
+  // }
+  // === [END MORTAR BLOCK Zone A] ===
+
+  if (rank == 0)
+    std::cout << "  Physical DOFs           : " << A->rows () << '\n';
 
   rhs = std::make_unique<distributed_vector> (tmsh.num_owned_nodes(), mpicomm);
 
@@ -227,123 +232,102 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
   // ------------------------------------------------------------
   // 3) MORTAR ASSEMBLY (PBC, before Dirichlet)
   // ------------------------------------------------------------
-
-  if (periodic_x || periodic_y) {
-    int    nm      = (1 << minlevel);
-    int    n_pairs = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
-    size_t N_own   = static_cast<size_t> (tmsh.num_owned_nodes ());
-    size_t N_global = static_cast<size_t> (tmsh.num_global_nodes ());
-    double Lx = r_cr[0] - l_cr[0];
-    double Ly = r_cr[1] - l_cr[1];
-    double Lz = r_cr[2] - l_cr[2];
-
-    // Build only the active pairs.
-    // mortar_row_offset : local row in A for this pair's mortar DOFs (for LIS)
-    // mortar_col_offset : global column index of mortar DOFs (N_global + cumulative)
-    // mortar_dense_offset: first row in mortar_C dense array for this pair
-    std::vector<MortarFacePair> pairs;
-    size_t cumulative = 0;
-    if (periodic_x) {
-      pairs.push_back ({ 0, 1,  1, 2,  l_cr[1], Ly,  l_cr[2], Lz,
-                         N_own    + cumulative,   // mortar_row_offset
-                         N_global + cumulative,   // mortar_col_offset
-                         cumulative });           // mortar_dense_offset
-      cumulative += ndofm;
-    }
-    if (periodic_y) {
-      pairs.push_back ({ 2, 3,  0, 2,  l_cr[0], Lx,  l_cr[2], Lz,
-                         N_own    + cumulative,
-                         N_global + cumulative,
-                         cumulative });
-      cumulative += ndofm;
-    }
-
-    // Dense C^T accumulator: n_pairs*ndofm rows × N_global physical columns.
-    // Each rank accumulates its local contributions; MPI_Reduce(SUM) collects on rank 0.
-    // gt() returns GLOBAL node indices; mortar_C column = phys (no rank offset needed).
-    // begin_quadrant_sweep() iterates only over locally owned quadrants.
-    mortar_C.assign (static_cast<size_t> (n_pairs) * ndofm * N_global, 0.0);
-
-    bool fill_mortar_rows = (linear_solver_name == "lis") && (size == 1);
-
-    for (auto& pair : pairs) {
-      const char* dir = (pair.face_left < 2) ? "x" : "y";
-      if (rank == 0)
-        std::cout << "  Mortar assembly: face pair " << dir << "± ...\n";
-
-      for (auto q = tmsh.begin_quadrant_sweep ();
-           q != tmsh.end_quadrant_sweep (); ++q) {
-        if (!q->ef (pair.face_left).empty ())
-          assemble_mortar_block (*A, mortar_C, N_global, q,
-                                 pair.face_left,  pair, +1.0, nm, fill_mortar_rows);
-        if (!q->ef (pair.face_right).empty ())
-          assemble_mortar_block (*A, mortar_C, N_global, q,
-                                 pair.face_right, pair, -1.0, nm, fill_mortar_rows);
-      }
-
-      if (rank == 0)
-        std::cout << "  Mortar assembly: face pair " << dir << "± done\n";
-    }
-
-    // Gather all C^T contributions to rank 0.
-    if (size > 1) {
-      MPI_Reduce (rank == 0 ? MPI_IN_PLACE : mortar_C.data (),
-                  mortar_C.data (),
-                  static_cast<int> (mortar_C.size ()), MPI_DOUBLE,
-                  MPI_SUM, 0, mpicomm);
-    }
-
-    // LIS: compute eps_reg = max diagonal of K *before* Dirichlet BCs are applied
-    // (Dirichlet penalty ~1e15 would pollute a post-BC estimate).
-    // Single-rank: local max suffices.  Multi-rank: MPI_Allreduce.
-    if (linear_solver_name == "lis") {
-      double local_max = 0.0;
-      for (int ii = A->range_start (); ii < A->range_end (); ++ii)
-        if ((*A)[ii].count (ii))
-          local_max = std::max (local_max, std::abs ((*A)[ii].at (ii)));
-      if (size > 1)
-        MPI_Allreduce (&local_max, &mortar_eps_reg, 1, MPI_DOUBLE, MPI_MAX, mpicomm);
-      else
-        mortar_eps_reg = local_max;
-      if (mortar_eps_reg <= 0.0) mortar_eps_reg = 1.0;
-
-      if (size == 1) {
-        for (auto& pair : pairs)
-          for (size_t kk = 0; kk < static_cast<size_t> (ndofm); ++kk)
-            (*A)[pair.mortar_row_offset + kk][pair.mortar_col_offset + kk] += mortar_eps_reg;
-      }
-      if (rank == 0)
-        std::cout << "  Mortar diagonal regularization: eps = " << mortar_eps_reg << '\n';
-    }
-
-    // Enforce F=0 for z-boundary mortar DOFs (j1=0 and j1=nm):
-    //   A  : identity row with global mortar column (for LIS; overwrites eps_reg)
-    //   mortar_C : zero the C^T row on rank 0 (identity diagonal added in mumps_compute)
-    int n_bd = 0;
-    for (auto& pair : pairs) {
-      for (int j0 = 0; j0 <= nm; ++j0) {
-        for (int j1_bd : {0, nm}) {
-          size_t k    = static_cast<size_t> (j1_bd) * (nm + 1) + j0;
-          size_t row  = pair.mortar_row_offset  + k;
-          size_t gcol = pair.mortar_col_offset  + k;
-          size_t drow = pair.mortar_dense_offset + k;
-          // For LIS: set identity row in A so the mortar matrix is non-singular.
-          // For MUMPS: skip — the identity diagonal is added explicitly in
-          // mumps_compute_electric_potential via the COO mortar block on rank 0.
-          if (fill_mortar_rows) {
-            (*A)[row].clear ();
-            (*A)[row][gcol] = 1.0;
-          }
-          if (rank == 0)
-            for (size_t c = 0; c < N_global; ++c)
-              mortar_C[drow * N_global + c] = 0.0;
-          ++n_bd;
-        }
-      }
-    }
-    if (rank == 0)
-      std::cout << "  Mortar z-boundary constraints: " << n_bd << " DOFs fixed to zero\n";
-  }
+  // === [MORTAR BLOCK — DISABLED FOR STRONG PBC] Zone B: mortar assembly ===
+  // if (periodic_x || periodic_y) {
+  //   int    nm      = (1 << minlevel);
+  //   int    n_pairs = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
+  //   size_t N_own   = static_cast<size_t> (tmsh.num_owned_nodes ());
+  //   size_t N_global = static_cast<size_t> (tmsh.num_global_nodes ());
+  //   double Lx = r_cr[0] - l_cr[0];
+  //   double Ly = r_cr[1] - l_cr[1];
+  //   double Lz = r_cr[2] - l_cr[2];
+  //
+  //   std::vector<MortarFacePair> pairs;
+  //   size_t cumulative = 0;
+  //   if (periodic_x) {
+  //     pairs.push_back ({ 0, 1,  1, 2,  l_cr[1], Ly,  l_cr[2], Lz,
+  //                        N_own    + cumulative,
+  //                        N_global + cumulative,
+  //                        cumulative });
+  //     cumulative += ndofm;
+  //   }
+  //   if (periodic_y) {
+  //     pairs.push_back ({ 2, 3,  0, 2,  l_cr[0], Lx,  l_cr[2], Lz,
+  //                        N_own    + cumulative,
+  //                        N_global + cumulative,
+  //                        cumulative });
+  //     cumulative += ndofm;
+  //   }
+  //
+  //   mortar_C.assign (static_cast<size_t> (n_pairs) * ndofm * N_global, 0.0);
+  //   bool fill_mortar_rows = (linear_solver_name == "lis") && (size == 1);
+  //
+  //   for (auto& pair : pairs) {
+  //     const char* dir = (pair.face_left < 2) ? "x" : "y";
+  //     if (rank == 0)
+  //       std::cout << "  Mortar assembly: face pair " << dir << "± ...\n";
+  //     for (auto q = tmsh.begin_quadrant_sweep ();
+  //          q != tmsh.end_quadrant_sweep (); ++q) {
+  //       if (!q->ef (pair.face_left).empty ())
+  //         assemble_mortar_block (*A, mortar_C, N_global, q,
+  //                                pair.face_left,  pair, +1.0, nm, fill_mortar_rows);
+  //       if (!q->ef (pair.face_right).empty ())
+  //         assemble_mortar_block (*A, mortar_C, N_global, q,
+  //                                pair.face_right, pair, -1.0, nm, fill_mortar_rows);
+  //     }
+  //     if (rank == 0)
+  //       std::cout << "  Mortar assembly: face pair " << dir << "± done\n";
+  //   }
+  //
+  //   if (size > 1) {
+  //     MPI_Reduce (rank == 0 ? MPI_IN_PLACE : mortar_C.data (),
+  //                 mortar_C.data (),
+  //                 static_cast<int> (mortar_C.size ()), MPI_DOUBLE,
+  //                 MPI_SUM, 0, mpicomm);
+  //   }
+  //
+  //   if (linear_solver_name == "lis") {
+  //     double local_max = 0.0;
+  //     for (int ii = A->range_start (); ii < A->range_end (); ++ii)
+  //       if ((*A)[ii].count (ii))
+  //         local_max = std::max (local_max, std::abs ((*A)[ii].at (ii)));
+  //     if (size > 1)
+  //       MPI_Allreduce (&local_max, &mortar_eps_reg, 1, MPI_DOUBLE, MPI_MAX, mpicomm);
+  //     else
+  //       mortar_eps_reg = local_max;
+  //     if (mortar_eps_reg <= 0.0) mortar_eps_reg = 1.0;
+  //     if (size == 1) {
+  //       for (auto& pair : pairs)
+  //         for (size_t kk = 0; kk < static_cast<size_t> (ndofm); ++kk)
+  //           (*A)[pair.mortar_row_offset + kk][pair.mortar_col_offset + kk] += mortar_eps_reg;
+  //     }
+  //     if (rank == 0)
+  //       std::cout << "  Mortar diagonal regularization: eps = " << mortar_eps_reg << '\n';
+  //   }
+  //
+  //   int n_bd = 0;
+  //   for (auto& pair : pairs) {
+  //     for (int j0 = 0; j0 <= nm; ++j0) {
+  //       for (int j1_bd : {0, nm}) {
+  //         size_t k    = static_cast<size_t> (j1_bd) * (nm + 1) + j0;
+  //         size_t row  = pair.mortar_row_offset  + k;
+  //         size_t gcol = pair.mortar_col_offset  + k;
+  //         size_t drow = pair.mortar_dense_offset + k;
+  //         if (fill_mortar_rows) {
+  //           (*A)[row].clear ();
+  //           (*A)[row][gcol] = 1.0;
+  //         }
+  //         if (rank == 0)
+  //           for (size_t c = 0; c < N_global; ++c)
+  //             mortar_C[drow * N_global + c] = 0.0;
+  //         ++n_bd;
+  //       }
+  //     }
+  //   }
+  //   if (rank == 0)
+  //     std::cout << "  Mortar z-boundary constraints: " << n_bd << " DOFs fixed to zero\n";
+  // }
+  // === [END MORTAR BLOCK Zone B] ===
 
   // ------------------------------------------------------------
   // 4) APPLY BOUNDARY CONDITIONS
@@ -407,20 +391,14 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
   // ------------------------------------------------------------
   // 5) EXTEND RHS FOR MORTAR DOFs
   // ------------------------------------------------------------
-  // The mortar rows of the K_static rhs are zero by construction (C^T u = 0).
-  // We append n_pairs*ndofm zeros to the local owned data so that the buffer
-  // passed to MUMPS covers the full augmented system.
-  // Note: rhs->size() (from distributed_vector::ranges) still reports N_phys.
-
-  if (periodic_x || periodic_y) {
-    int n_pairs = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
-    // MUMPS: extend on all ranks (MPI_Gatherv in mumps_compute uses num_owned_nodes(), ignores extra zeros).
-    // LIS single-rank: extend the single rank's data.
-    // LIS multi-rank: extend only rank size-1, which owns the mortar rows in the LIS layout.
-    if (linear_solver_name != "lis" || size == 1 || rank == size - 1)
-      rhs->get_owned_data ().resize (
-        rhs->get_owned_data ().size () + n_pairs * ndofm, 0.0);
-  }
+  // === [MORTAR BLOCK — DISABLED FOR STRONG PBC] Zone C: RHS extension ===
+  // if (periodic_x || periodic_y) {
+  //   int n_pairs = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
+  //   if (linear_solver_name != "lis" || size == 1 || rank == size - 1)
+  //     rhs->get_owned_data ().resize (
+  //       rhs->get_owned_data ().size () + n_pairs * ndofm, 0.0);
+  // }
+  // === [END MORTAR BLOCK Zone C] ===
 
   // ------------------------------------------------------------
   // 6) PARALLEL ASSEMBLY (MPI)
