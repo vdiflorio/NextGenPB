@@ -474,18 +474,10 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
   // }
   // === [END MORTAR BLOCK Zone D] ===
 
-  mumps_solver.set_lhs_distributed ();
-  mumps_solver.set_distributed_lhs_structure (n_system, irow, jcol);
-  mumps_solver.set_distributed_lhs_data (vals);
-
   // -----------------------------------------------------------------------
   // Step 3 — Gather the full RHS on rank 0 (PBC only).
-  //
-  // rhs->get_owned_data() on each rank holds N_own_r physical entries.
-  // We gather them; rank 0 assembles the complete vector
-  //   [ b_0 | b_1 | ... | b_{P-1} ]   (size = N_phys)
-  // and passes it to MUMPS as a centralised RHS.
-  // rhs_counts / rhs_displs are reused in Step 5 for the scatter.
+  // Moved before the elimination block so pbc_rhs_buf is available there.
+  // rhs_counts / rhs_displs are reused in step 7 for the scatter.
   // -----------------------------------------------------------------------
   std::vector<double> pbc_rhs_buf;
   std::vector<int>    rhs_counts (size, 0), rhs_displs (size, 0);
@@ -497,13 +489,104 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
     if (rank == 0) {
       for (int r = 1; r < size; ++r)
         rhs_displs[r] = rhs_displs[r - 1] + rhs_counts[r - 1];
-      pbc_rhs_buf.assign (n_system, 0.0);   // physical nodes only (no mortar augmentation)
+      pbc_rhs_buf.assign (n_system, 0.0);
     }
     MPI_Gatherv (rhs->get_owned_data ().data (), local_n, MPI_DOUBLE,
                  pbc_rhs_buf.data (), rhs_counts.data (), rhs_displs.data (),
                  MPI_DOUBLE, 0, mpicomm);
+  }
+
+  // -----------------------------------------------------------------------
+  // PBC strong enforcement: eliminate right-face nodes (steps 1–4).
+  //
+  // Steps 1+2: remap right→left in irow/jcol (all ranks) and merge RHS
+  //   entries (rank 0 only, pbc_rhs_buf is rank-0-only).
+  //   y-pairs first, x-pairs second: chain xR_yR→(y)→xR_yL→(x)→xL_yL.
+  // Steps 3+4: build old_to_new (all ranks, deterministic), renumber
+  //   irow/jcol, extract rhs_new[N_new] (rank 0 only).
+  // -----------------------------------------------------------------------
+  const size_t        N_phys_saved = static_cast<size_t> (n_system);
+  std::vector<int>    old_to_new;
+  std::vector<double> rhs_new;
+
+  if (periodic_x || periodic_y) {
+    const int base = mumps_solver.get_index_base ();
+
+    // Step 1 — y-pairs: remap in irow/jcol (all ranks)
+    for (size_t k = 0; k < irow.size (); ++k) {
+      auto ity = pbc_y_right_to_left.find (static_cast<size_t> (irow[k] - base));
+      if (ity != pbc_y_right_to_left.end ())
+        irow[k] = static_cast<int> (ity->second) + base;
+      ity = pbc_y_right_to_left.find (static_cast<size_t> (jcol[k] - base));
+      if (ity != pbc_y_right_to_left.end ())
+        jcol[k] = static_cast<int> (ity->second) + base;
+    }
     if (rank == 0)
-      mumps_solver.set_rhs (pbc_rhs_buf);
+      for (auto it = pbc_y_right_to_left.begin ();
+           it != pbc_y_right_to_left.end (); ++it) {
+        pbc_rhs_buf[it->second] += pbc_rhs_buf[it->first];
+        pbc_rhs_buf[it->first]   = 0.0;
+      }
+
+    // Step 2 — x-pairs: remap in irow/jcol (all ranks)
+    // xR_yR was already replaced by xR_yL in step 1; the x-pass now
+    // maps xR_yL → xL_yL, completing the corner chain.
+    for (size_t k = 0; k < irow.size (); ++k) {
+      auto itx = pbc_x_right_to_left.find (static_cast<size_t> (irow[k] - base));
+      if (itx != pbc_x_right_to_left.end ())
+        irow[k] = static_cast<int> (itx->second) + base;
+      itx = pbc_x_right_to_left.find (static_cast<size_t> (jcol[k] - base));
+      if (itx != pbc_x_right_to_left.end ())
+        jcol[k] = static_cast<int> (itx->second) + base;
+    }
+    if (rank == 0)
+      for (auto it = pbc_x_right_to_left.begin ();
+           it != pbc_x_right_to_left.end (); ++it) {
+        pbc_rhs_buf[it->second] += pbc_rhs_buf[it->first];
+        pbc_rhs_buf[it->first]   = 0.0;
+      }
+
+    // Step 3 — build old_to_new (all ranks, same deterministic computation)
+    std::vector<bool> is_right (N_phys_saved, false);
+    for (auto it = pbc_y_right_to_left.begin ();
+         it != pbc_y_right_to_left.end (); ++it)
+      is_right[it->first] = true;
+    for (auto it = pbc_x_right_to_left.begin ();
+         it != pbc_x_right_to_left.end (); ++it)
+      is_right[it->first] = true;
+
+    old_to_new.assign (N_phys_saved, -1);
+    int new_idx = 0;
+    for (size_t i = 0; i < N_phys_saved; ++i)
+      if (!is_right[i])
+        old_to_new[i] = new_idx++;
+    n_system = new_idx;
+
+    if (rank == 0)
+      std::cout << "  [PBC strong] N_new = " << n_system
+                << "  (eliminated " << (N_phys_saved - static_cast<size_t> (n_system))
+                << " right-face nodes)\n";
+
+    // Step 4 — renumber irow/jcol (all ranks), extract rhs_new (rank 0)
+    for (size_t k = 0; k < irow.size (); ++k) {
+      irow[k] = old_to_new[irow[k] - base] + base;
+      jcol[k] = old_to_new[jcol[k] - base] + base;
+    }
+    if (rank == 0) {
+      rhs_new.resize (n_system);
+      for (size_t i = 0; i < N_phys_saved; ++i)
+        if (old_to_new[i] >= 0)
+          rhs_new[old_to_new[i]] = pbc_rhs_buf[i];
+    }
+  }
+
+  mumps_solver.set_lhs_distributed ();
+  mumps_solver.set_distributed_lhs_structure (n_system, irow, jcol);
+  mumps_solver.set_distributed_lhs_data (vals);
+
+  if (periodic_x || periodic_y) {
+    if (rank == 0)
+      mumps_solver.set_rhs (rhs_new);
   } else {
     mumps_solver.set_rhs_distributed (*rhs);
   }
@@ -511,12 +594,8 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
   rhs.reset ();
   A.reset ();
 
-  if (rank == 0) {
-    if (periodic_x || periodic_y)
-      std::cout << "  [PBC strong] system size (N_phys): " << n_system << '\n';
-    else
-      std::cout << "  System size: " << n_system << '\n';
-  }
+  if (rank == 0)
+    std::cout << "  System size for MUMPS: " << n_system << '\n';
 
   std::cout << "mumps_solver.analyze () = "
             << mumps_solver.analyze ()
@@ -532,12 +611,26 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
 
   if (periodic_x || periodic_y) {
     // -----------------------------------------------------------------------
-    // Step 5 — Scatter physical DOFs from rank 0 to all ranks.
+    // Step 6 — Expand sol_new[N_new] → phi_full[N_phys] on rank 0.
     //
-    // pbc_rhs_buf (rank 0) holds [ u_0 | u_1 | ... | F_mortar ] after solve.
-    // We scatter only the physical part using the same rhs_counts / rhs_displs
-    // built in Step 3, then discard the mortar multipliers F.
+    // x-pairs filled before y-pairs so corner chain resolves correctly:
+    //   x-fill: phi[xR_yL] = phi[xL_yL]
+    //   y-fill: phi[xR_yR] = phi[xR_yL] = phi[xL_yL]
     // -----------------------------------------------------------------------
+    if (rank == 0) {
+      pbc_rhs_buf.assign (N_phys_saved, 0.0);
+      for (size_t i = 0; i < N_phys_saved; ++i)
+        if (old_to_new[i] >= 0)
+          pbc_rhs_buf[i] = rhs_new[old_to_new[i]];
+      for (auto it = pbc_x_right_to_left.begin ();
+           it != pbc_x_right_to_left.end (); ++it)
+        pbc_rhs_buf[it->first] = pbc_rhs_buf[it->second];
+      for (auto it = pbc_y_right_to_left.begin ();
+           it != pbc_y_right_to_left.end (); ++it)
+        pbc_rhs_buf[it->first] = pbc_rhs_buf[it->second];
+    }
+
+    // Step 7 — Scatter phi_full[N_phys] to all ranks.
     int local_n = static_cast<int> (tmsh.num_owned_nodes ());
     MPI_Scatterv (pbc_rhs_buf.data (), rhs_counts.data (), rhs_displs.data (),
                   MPI_DOUBLE,
