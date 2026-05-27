@@ -248,7 +248,15 @@ main (int argc, char **argv)
     TOC ("refine the box");
   }
 
-
+  if (pb.periodic_x || pb.periodic_y) {
+    TIC ();
+    if (rank == 0)
+      std::cout << "\n======== [ PBC Face Balancing ] ============\n";
+    pb.ensure_pbc_face_conformity ();
+    if (rank == 0)
+      std::cout << "============================================\n";
+    TOC ("PBC face balancing");
+  }
 
   TIC ();
 

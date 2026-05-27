@@ -167,6 +167,8 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
     }
   }
 
+  check_pbc_face_conformity ();
+
   // Allocate sparse matrix A and RHS vector
   A = std::make_unique<distributed_sparse_matrix> (mpicomm);
   A->set_ranges (tmsh.num_owned_nodes());

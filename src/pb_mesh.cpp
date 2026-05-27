@@ -18,6 +18,8 @@
  */
 
 #include "pb_class.h"
+#include <map>
+#include <tuple>
 #include <p8est.h>
 #include <random>
 #include <cmath>
@@ -1049,6 +1051,251 @@ poisson_boltzmann::init_tmesh_mem_two_box ()
   for (auto i = 0; i < maxlevel; ++i) {
     tmsh.set_refine_marker (refinement);
     tmsh.refine (0, 1);
+  }
+}
+
+void
+poisson_boltzmann::check_pbc_face_conformity ()
+{
+  if (!periodic_x && !periodic_y)
+    return;
+
+  int size, rank;
+  MPI_Comm_size (mpicomm, &size);
+  MPI_Comm_rank (mpicomm, &rank);
+
+  // Collect face quadrants on this rank as packed doubles:
+  // { c0_min, c0_max, c1_min, c1_max, level } per quadrant (5 values).
+  // d0, d1: tangential directions (bc.md face-node pattern is identical for all faces).
+  auto collect_local = [&] (int face_idx, int d0, int d1) {
+    std::vector<double> buf;
+    for (auto q = tmsh.begin_quadrant_sweep (); q != tmsh.end_quadrant_sweep (); ++q) {
+      auto fn = q->ef (face_idx);
+      if (fn.empty ()) continue;
+      buf.push_back (q->p (d0, fn[0]));  // c0_min
+      buf.push_back (q->p (d0, fn[1]));  // c0_max
+      buf.push_back (q->p (d1, fn[0]));  // c1_min
+      buf.push_back (q->p (d1, fn[2]));  // c1_max
+      buf.push_back (static_cast<double> (q->the_quadrant->level));
+    }
+    return buf;
+  };
+
+  // Gather packed buffers from all ranks to rank 0.
+  auto gather_to_rank0 = [&] (const std::vector<double>& local) {
+    int local_n = static_cast<int> (local.size ());
+    std::vector<int> counts (size, 0), displs (size, 0);
+    MPI_Gather (&local_n, 1, MPI_INT, counts.data (), 1, MPI_INT, 0, mpicomm);
+    std::vector<double> global_buf;
+    if (rank == 0) {
+      for (int r = 1; r < size; ++r)
+        displs[r] = displs[r - 1] + counts[r - 1];
+      global_buf.resize (static_cast<size_t> (displs[size - 1] + counts[size - 1]));
+    }
+    MPI_Gatherv (local.data (), local_n, MPI_DOUBLE,
+                 global_buf.data (), counts.data (), displs.data (),
+                 MPI_DOUBLE, 0, mpicomm);
+    return global_buf;
+  };
+
+  // Compare left vs right face. On rank 0 builds a bbox→level map for the right face
+  // and checks each left-face quadrant against it.
+  auto check_pair = [&] (const char* label, int fl, int fr, int d0, int d1) {
+    auto left_buf  = gather_to_rank0 (collect_local (fl, d0, d1));
+    auto right_buf = gather_to_rank0 (collect_local (fr, d0, d1));
+    if (rank != 0)
+      return;
+
+    using Key = std::tuple<double, double, double, double>;
+    std::map<Key, int> right_map;
+    for (size_t i = 0; i + 5 <= right_buf.size (); i += 5)
+      right_map[{right_buf[i], right_buf[i+1], right_buf[i+2], right_buf[i+3]}]
+        = static_cast<int> (right_buf[i+4]);
+
+    int n_match = 0, n_mismatch = 0;
+    bool printed = false;
+    for (size_t i = 0; i + 5 <= left_buf.size (); i += 5) {
+      Key k {left_buf[i], left_buf[i+1], left_buf[i+2], left_buf[i+3]};
+      int lev_l = static_cast<int> (left_buf[i+4]);
+      auto it   = right_map.find (k);
+      if (it != right_map.end () && it->second == lev_l) {
+        ++n_match;
+      } else {
+        ++n_mismatch;
+        if (!printed) {
+          int lev_r = (it != right_map.end ()) ? it->second : -1;
+          std::cout << "    example: d0=["
+                    << left_buf[i] << "," << left_buf[i+1] << "] d1=["
+                    << left_buf[i+2] << "," << left_buf[i+3] << "]"
+                    << " level_left=" << lev_l
+                    << " level_right=" << lev_r << "\n";
+          printed = true;
+        }
+      }
+    }
+    int total = n_match + n_mismatch;
+    std::cout << "  [PBC check] " << label << ": "
+              << n_match << "/" << total;
+    if (n_mismatch == 0)
+      std::cout << " (CONFORMING)\n";
+    else
+      std::cout << " — " << n_mismatch << " mismatches (NON-CONFORMING)\n";
+  };
+
+  if (rank == 0)
+    std::cout << "  [PBC check] face conformity:\n";
+  if (periodic_x) check_pair ("x±", 0, 1, 1, 2);
+  if (periodic_y) check_pair ("y±", 2, 3, 0, 2);
+}
+
+void
+poisson_boltzmann::ensure_pbc_face_conformity ()
+{
+  if (!periodic_x && !periodic_y)
+    return;
+
+  int size, rank;
+  MPI_Comm_size (mpicomm, &size);
+  MPI_Comm_rank (mpicomm, &rank);
+
+  struct PBCPair { int fl, fr, d0, d1; };
+  std::vector<PBCPair> pairs;
+  if (periodic_x) pairs.push_back ({0, 1, 1, 2});
+  if (periodic_y) pairs.push_back ({2, 3, 0, 2});
+
+  // face_idx → tangential directions, used in the refinement lambda
+  std::map<int, std::pair<int,int>> face_dirs;
+  for (auto& p : pairs) {
+    face_dirs[p.fl] = {p.d0, p.d1};
+    face_dirs[p.fr] = {p.d0, p.d1};
+  }
+
+  const double tol = 1e-10;
+
+  // Collect packed quads on this rank: 5 doubles each (c0min, c0max, c1min, c1max, level)
+  auto collect_local = [&] (int fi, int d0, int d1) {
+    std::vector<double> buf;
+    for (auto q = tmsh.begin_quadrant_sweep (); q != tmsh.end_quadrant_sweep (); ++q) {
+      auto fn = q->ef (fi);
+      if (fn.empty ()) continue;
+      buf.push_back (q->p (d0, fn[0]));
+      buf.push_back (q->p (d0, fn[1]));
+      buf.push_back (q->p (d1, fn[0]));
+      buf.push_back (q->p (d1, fn[2]));
+      buf.push_back ((double) q->the_quadrant->level);
+    }
+    return buf;
+  };
+
+  // MPI collective: gather local double buffers to rank 0
+  auto gather_to_0 = [&] (const std::vector<double>& local) {
+    int local_n = (int) local.size ();
+    std::vector<int> counts (size, 0), displs (size, 0);
+    MPI_Gather (&local_n, 1, MPI_INT, counts.data (), 1, MPI_INT, 0, mpicomm);
+    std::vector<double> global;
+    if (rank == 0) {
+      for (int r = 1; r < size; ++r) displs[r] = displs[r-1] + counts[r-1];
+      global.resize ((size_t)(displs[size-1] + counts[size-1]));
+    }
+    MPI_Gatherv (local.data (), local_n, MPI_DOUBLE,
+                 global.data (), counts.data (), displs.data (), MPI_DOUBLE, 0, mpicomm);
+    return global;
+  };
+
+  // True if inner quad (by index in inner_buf) is strictly smaller and contained in outer quad.
+  // "Strictly smaller" = inner d0-width < outer d0-width.
+  auto strictly_inside = [&] (size_t ii, const std::vector<double>& ib,
+                               size_t oj, const std::vector<double>& ob) {
+    double i_w = ib[ii*5+1] - ib[ii*5];   // inner width in d0
+    double o_w = ob[oj*5+1] - ob[oj*5];   // outer width in d0
+    if (i_w >= o_w - tol) return false;    // inner not strictly smaller
+    return ib[ii*5]   >= ob[oj*5]   - tol &&
+           ib[ii*5+1] <= ob[oj*5+1] + tol &&
+           ib[ii*5+2] >= ob[oj*5+2] - tol &&
+           ib[ii*5+3] <= ob[oj*5+3] + tol;
+  };
+
+  int pass = 0;
+  while (true) {
+    // Find which face quads need refinement. All ranks join the MPI collectives;
+    // only rank 0 builds the result.
+    // A quad Q on face A is marked when any quad on the opposite face is strictly
+    // contained in Q.bbox (opposite side finer → Q must subdivide to match).
+    std::vector<double> to_ref;   // {face_idx, c0min, c0max, c1min, c1max} × n on rank 0
+
+    for (auto& p : pairs) {
+      auto left_buf  = gather_to_0 (collect_local (p.fl, p.d0, p.d1));
+      auto right_buf = gather_to_0 (collect_local (p.fr, p.d0, p.d1));
+      if (rank != 0) continue;
+
+      size_t nl = left_buf.size () / 5;
+      size_t nr = right_buf.size () / 5;
+
+      for (size_t i = 0; i < nl; ++i) {
+        for (size_t j = 0; j < nr; ++j) {
+          if (strictly_inside (j, right_buf, i, left_buf)) {
+            // right quad j is inside left quad i → left is coarser → refine left
+            to_ref.push_back ((double) p.fl);
+            to_ref.insert (to_ref.end (), {left_buf[i*5], left_buf[i*5+1],
+                                           left_buf[i*5+2], left_buf[i*5+3]});
+            break;
+          }
+        }
+      }
+
+      for (size_t j = 0; j < nr; ++j) {
+        for (size_t i = 0; i < nl; ++i) {
+          if (strictly_inside (i, left_buf, j, right_buf)) {
+            // left quad i is inside right quad j → right is coarser → refine right
+            to_ref.push_back ((double) p.fr);
+            to_ref.insert (to_ref.end (), {right_buf[j*5], right_buf[j*5+1],
+                                           right_buf[j*5+2], right_buf[j*5+3]});
+            break;
+          }
+        }
+      }
+    }
+
+    int n = (rank == 0) ? (int) (to_ref.size () / 5) : 0;
+    MPI_Bcast (&n, 1, MPI_INT, 0, mpicomm);
+    if (n == 0) break;
+
+    to_ref.resize ((size_t)(n * 5), 0.0);
+    MPI_Bcast (to_ref.data (), n * 5, MPI_DOUBLE, 0, mpicomm);
+
+    // Build lookup for the refinement lambda (all ranks)
+    using Key5 = std::tuple<int,double,double,double,double>;
+    std::set<Key5> refine_set;
+    for (int k = 0; k < n; ++k)
+      refine_set.insert ({(int) to_ref[k*5], to_ref[k*5+1], to_ref[k*5+2],
+                                              to_ref[k*5+3], to_ref[k*5+4]});
+
+    auto balancer = [&] (tmesh_3d::quadrant_iterator q) -> int {
+      for (auto& [fi, dirs] : face_dirs) {
+        auto fn = q->ef (fi);
+        if (fn.empty ()) continue;
+        auto [d0, d1] = dirs;
+        Key5 k {fi, q->p (d0, fn[0]), q->p (d0, fn[1]),
+                    q->p (d1, fn[0]), q->p (d1, fn[2])};
+        if (refine_set.count (k)) return 1;
+      }
+      return 0;
+    };
+
+    tmsh.set_refine_marker (balancer);
+    tmsh.refine (0, 1);
+    ++pass;
+
+    if (rank == 0)
+      std::cout << "  [PBC balance] pass " << pass
+                << ": refined " << n << " face quad(s)\n";
+  }
+
+  if (rank == 0) {
+    if (pass == 0)
+      std::cout << "  [PBC balance] faces already conforming\n";
+    else
+      std::cout << "  [PBC balance] conformity reached in " << pass << " pass(es)\n";
   }
 }
 

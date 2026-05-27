@@ -791,6 +791,20 @@ struct
   void
   init_tmesh_mem_two_box ();
 
+  /// @brief Check that PBC face pairs have conforming refinement levels.
+  /// For each active periodic pair (x± if periodic_x, y± if periodic_y) compares
+  /// the tangential bounding boxes and levels of all leaf quadrants on the two faces.
+  /// Prints a conformity summary to stdout (rank 0 only). No-op if no PBC is active.
+  void
+  check_pbc_face_conformity ();
+
+  /// @brief Ensure PBC face pairs are conforming by iterative face-level balancing.
+  /// If the two faces of a periodic pair have different refinement structures, refines
+  /// the coarser face until both sides match. Only active when periodic_x or periodic_y.
+  /// Typical cost: zero passes when the adaptive refinement doesn't reach the periodic faces.
+  void
+  ensure_pbc_face_conformity ();
+
   /// @}
 
   /// @name Surface detection and marker creation
