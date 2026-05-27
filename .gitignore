@@ -1,0 +1,51 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Claude Code
+.claude/
+
+# Doxygen generated docs
+docs/html/
+docs/latex/
+
+# Compiled objects and binary
+src/*.o
+src/ngpb
+
+# Local settings (not shared)
+src/local_settings.mk
+local_setting
+
+# Personal notes / work drafts
+bc.md
+pbc.m
+piano_*.md
+
+# Dataset & binary files
+*.csv
+*.dat
+*.pgn
+
+# LaTeX auxiliary files
+*.aux
+*.toc
+*.log
+*.out
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# images
+*.png
+*.jpg
+*.jpeg
+*.bmp
+*.gif
+*.svg
