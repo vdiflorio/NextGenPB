@@ -266,6 +266,8 @@ struct
   int ndofm = 0; ///< DOF mortar per coppia: (2^minlevel+1)^2; set during assembly
   std::vector<double> mortar_C; ///< Dense C^T block [n_pairs*ndofm × N_global]; MPI_Reduce'd to rank 0
   double mortar_eps_reg = 1.0; ///< Mortar diagonal regularization; set in assemple_system_matrix before Dirichlet BCs
+  std::map<size_t, size_t> pbc_x_right_to_left; ///< x-pair: face-1 global node → face-0 global node
+  std::map<size_t, size_t> pbc_y_right_to_left; ///< y-pair: face-3 global node → face-2 global node
   // [PLACEHOLDER] NanoShaper replication parameters (TBD)
   /// @}
 
@@ -804,6 +806,14 @@ struct
   /// Typical cost: zero passes when the adaptive refinement doesn't reach the periodic faces.
   void
   ensure_pbc_face_conformity ();
+
+  /// @brief Build the periodic node map (right → left) for strong PBC enforcement.
+  /// For each active pair populates pbc_x_right_to_left and/or pbc_y_right_to_left
+  /// (global node id of right-face node → global node id of matching left-face node).
+  /// Dirichlet nodes (z at domain boundary) are excluded. All MPI ranks receive the full map.
+  /// No-op if neither periodic_x nor periodic_y.
+  void
+  build_pbc_node_map ();
 
   /// @}
 

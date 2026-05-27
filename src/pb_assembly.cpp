@@ -168,6 +168,8 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
   }
 
   check_pbc_face_conformity ();
+  if (periodic_x || periodic_y)
+    build_pbc_node_map ();
 
   // Allocate sparse matrix A and RHS vector
   A = std::make_unique<distributed_sparse_matrix> (mpicomm);

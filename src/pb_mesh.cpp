@@ -1055,6 +1055,100 @@ poisson_boltzmann::init_tmesh_mem_two_box ()
 }
 
 void
+poisson_boltzmann::build_pbc_node_map ()
+{
+  if (!periodic_x && !periodic_y)
+    return;
+
+  int size, rank;
+  MPI_Comm_size (mpicomm, &size);
+  MPI_Comm_rank (mpicomm, &rank);
+
+  double tol = 1e-10 * std::max ({r_cr[0] - l_cr[0], r_cr[1] - l_cr[1], r_cr[2] - l_cr[2]});
+
+  // Collect (t0, t1, global_node_id) for all non-Dirichlet nodes on a given face.
+  // Packed as 3 doubles per entry. Rank-local deduplication via a seen-set.
+  auto collect_face_nodes = [&] (int face_idx, int d0, int d1) {
+    std::vector<double> buf;
+    std::set<size_t> seen;
+    for (auto q = tmsh.begin_quadrant_sweep (); q != tmsh.end_quadrant_sweep (); ++q) {
+      auto fn = q->ef (face_idx);
+      if (fn.empty ()) continue;
+      for (int fi : fn) {
+        double z = q->p (2, fi);
+        if (std::abs (z - l_cr[2]) < tol || std::abs (z - r_cr[2]) < tol)
+          continue;
+        auto gid = static_cast<size_t> (q->gt (fi));
+        if (!seen.insert (gid).second)
+          continue;
+        buf.push_back (q->p (d0, fi));
+        buf.push_back (q->p (d1, fi));
+        buf.push_back (static_cast<double> (gid));
+      }
+    }
+    return buf;
+  };
+
+  // MPI_Allgatherv: all ranks send their local buffer, all ranks receive the merged result.
+  auto allgatherv = [&] (const std::vector<double>& local) {
+    int local_n = static_cast<int> (local.size ());
+    std::vector<int> counts (size, 0), displs (size, 0);
+    MPI_Allgather (&local_n, 1, MPI_INT, counts.data (), 1, MPI_INT, mpicomm);
+    for (int r = 1; r < size; ++r)
+      displs[r] = displs[r - 1] + counts[r - 1];
+    int total_n = displs[size - 1] + counts[size - 1];
+    std::vector<double> global (static_cast<size_t> (total_n));
+    MPI_Allgatherv (local.data (), local_n, MPI_DOUBLE,
+                    global.data (), counts.data (), displs.data (), MPI_DOUBLE, mpicomm);
+    return global;
+  };
+
+  struct PBCPairDef {
+    int face_left, face_right, d0, d1;
+    const char* label;
+    std::map<size_t, size_t>* map_out;
+  };
+
+  std::vector<PBCPairDef> pairs;
+  if (periodic_x) pairs.push_back ({0, 1, 1, 2, "x±", &pbc_x_right_to_left});
+  if (periodic_y) pairs.push_back ({2, 3, 0, 2, "y±", &pbc_y_right_to_left});
+
+  if (rank == 0)
+    std::cout << "  [PBC map] building node map...\n";
+
+  for (auto& p : pairs) {
+    auto left_all  = allgatherv (collect_face_nodes (p.face_left,  p.d0, p.d1));
+    auto right_all = allgatherv (collect_face_nodes (p.face_right, p.d0, p.d1));
+
+    // Build (t0, t1) → left_gid map.
+    std::map<std::pair<double, double>, size_t> left_map;
+    for (size_t i = 0; i + 3 <= left_all.size (); i += 3)
+      left_map[{left_all[i], left_all[i + 1]}] = static_cast<size_t> (left_all[i + 2]);
+
+    int matched = 0, unmatched = 0;
+    p.map_out->clear ();
+    for (size_t i = 0; i + 3 <= right_all.size (); i += 3) {
+      auto key = std::make_pair (right_all[i], right_all[i + 1]);
+      auto it  = left_map.find (key);
+      if (it != left_map.end ()) {
+        (*p.map_out)[static_cast<size_t> (right_all[i + 2])] = it->second;
+        ++matched;
+      } else {
+        ++unmatched;
+      }
+    }
+
+    if (rank == 0) {
+      std::cout << "  [PBC map] " << p.label << ": "
+                << matched << " matched";
+      if (unmatched > 0)
+        std::cout << ", " << unmatched << " UNMATCHED (mesh not conforming?)";
+      std::cout << '\n';
+    }
+  }
+}
+
+void
 poisson_boltzmann::check_pbc_face_conformity ()
 {
   if (!periodic_x && !periodic_y)
