@@ -424,9 +424,7 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
   std::vector<int> irow, jcol;
 
   int n_pairs  = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
-  int n_system = (periodic_x || periodic_y)
-                 ? tmsh.num_global_nodes () + n_pairs * ndofm
-                 : tmsh.num_global_nodes ();
+  int n_system = static_cast<int> (tmsh.num_global_nodes ());
 
   // -----------------------------------------------------------------------
   // Build distributed COO for MUMPS.
@@ -441,38 +439,40 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
   // -----------------------------------------------------------------------
   (*A).aij (vals, irow, jcol, mumps_solver.get_index_base ());   // flag=false, physical rows
 
-  if (periodic_x || periodic_y) {
-    int    base     = mumps_solver.get_index_base ();
-    int    nm       = (1 << minlevel);
-    size_t N_global = static_cast<size_t> (tmsh.num_global_nodes ());
-
-    if (rank == 0) {
-      size_t n_mortar_rows = static_cast<size_t> (n_pairs * ndofm);
-      for (size_t drow = 0; drow < n_mortar_rows; ++drow) {
-        int global_row = static_cast<int> (N_global + drow) + base;
-
-        // C^T entries from the dense accumulator (z-boundary rows were zeroed in assembly)
-        for (size_t c = 0; c < N_global; ++c) {
-          double v = mortar_C[drow * N_global + c];
-          if (v != 0.0) {
-            irow.push_back (global_row);
-            jcol.push_back (static_cast<int> (c) + base);
-            vals.push_back (v);
-          }
-        }
-
-        // Identity diagonal for z-boundary mortar DOFs (j1 = 0 or nm)
-        int j1 = static_cast<int> (drow % static_cast<size_t> (ndofm)) / (nm + 1);
-        if (j1 == 0 || j1 == nm) {
-          irow.push_back (global_row);
-          jcol.push_back (global_row);
-          vals.push_back (1.0);
-        }
-      }
-      std::cout << "  [Mortar] COO entries appended by rank 0: "
-                << irow.size () << " total\n";
-    }
-  }
+  // === [MORTAR BLOCK — DISABLED] Zone D: mortar COO rows ===
+  // if (periodic_x || periodic_y) {
+  //   int    base     = mumps_solver.get_index_base ();
+  //   int    nm       = (1 << minlevel);
+  //   size_t N_global = static_cast<size_t> (tmsh.num_global_nodes ());
+  //
+  //   if (rank == 0) {
+  //     size_t n_mortar_rows = static_cast<size_t> (n_pairs * ndofm);
+  //     for (size_t drow = 0; drow < n_mortar_rows; ++drow) {
+  //       int global_row = static_cast<int> (N_global + drow) + base;
+  //
+  //       // C^T entries from the dense accumulator (z-boundary rows were zeroed in assembly)
+  //       for (size_t c = 0; c < N_global; ++c) {
+  //         double v = mortar_C[drow * N_global + c];
+  //         if (v != 0.0) {
+  //           irow.push_back (global_row);
+  //           jcol.push_back (static_cast<int> (c) + base);
+  //           vals.push_back (v);
+  //         }
+  //       }
+  //
+  //       // Identity diagonal for z-boundary mortar DOFs (j1 = 0 or nm)
+  //       int j1 = static_cast<int> (drow % static_cast<size_t> (ndofm)) / (nm + 1);
+  //       if (j1 == 0 || j1 == nm) {
+  //         irow.push_back (global_row);
+  //         jcol.push_back (global_row);
+  //         vals.push_back (1.0);
+  //       }
+  //     }
+  //     std::cout << "  [Mortar] COO entries appended by rank 0: "
+  //               << irow.size () << " total\n";
+  //   }
+  // }
+  // === [END MORTAR BLOCK Zone D] ===
 
   mumps_solver.set_lhs_distributed ();
   mumps_solver.set_distributed_lhs_structure (n_system, irow, jcol);
@@ -481,10 +481,9 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
   // -----------------------------------------------------------------------
   // Step 3 — Gather the full RHS on rank 0 (PBC only).
   //
-  // rhs->get_owned_data() on each rank holds N_own_r physical entries followed
-  // by n_pairs*ndofm zeros (appended in assemple_system_matrix).  We gather
-  // only the N_own_r physical entries; rank 0 assembles the complete vector
-  //   [ b_0 | b_1 | ... | b_{P-1} | 0 ... 0 ]   (size = n_system)
+  // rhs->get_owned_data() on each rank holds N_own_r physical entries.
+  // We gather them; rank 0 assembles the complete vector
+  //   [ b_0 | b_1 | ... | b_{P-1} ]   (size = N_phys)
   // and passes it to MUMPS as a centralised RHS.
   // rhs_counts / rhs_displs are reused in Step 5 for the scatter.
   // -----------------------------------------------------------------------
@@ -498,7 +497,7 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
     if (rank == 0) {
       for (int r = 1; r < size; ++r)
         rhs_displs[r] = rhs_displs[r - 1] + rhs_counts[r - 1];
-      pbc_rhs_buf.assign (n_system, 0.0);   // physical + mortar zeros
+      pbc_rhs_buf.assign (n_system, 0.0);   // physical nodes only (no mortar augmentation)
     }
     MPI_Gatherv (rhs->get_owned_data ().data (), local_n, MPI_DOUBLE,
                  pbc_rhs_buf.data (), rhs_counts.data (), rhs_displs.data (),
@@ -513,11 +512,10 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t &ray_cache)
   A.reset ();
 
   if (rank == 0) {
-    std::cout << "  System size: " << n_system;
     if (periodic_x || periodic_y)
-      std::cout << "  (N_phys=" << tmsh.num_global_nodes ()
-                << " + " << n_pairs << "*ndofm=" << n_pairs * ndofm << ")";
-    std::cout << '\n';
+      std::cout << "  [PBC strong] system size (N_phys): " << n_system << '\n';
+    else
+      std::cout << "  System size: " << n_system << '\n';
   }
 
   std::cout << "mumps_solver.analyze () = "
