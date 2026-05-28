@@ -817,47 +817,240 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t &ray_cache)
     // flag=pbc: single-rank PBC exports mortar rows already in A (fill_mortar_rows=true).
     // flag=false for non-PBC or multi-rank without PBC.
     // ───────────────────────────────────────────────────────────────────────
-    (*A).csr (vals, jcol, irow, 0, pbc);
-
-    LIS_INT i, ln;
-    LIS_VECTOR rhs_lis;
-    ln = static_cast<LIS_INT> (rhs->get_owned_data ().size ());
-
-    lis_vector_create (mpicomm, &rhs_lis);
-    lis_vector_set_size (rhs_lis, ln, 0);
-    lis_vector_get_range (rhs_lis, &is, &ie);
-    for (i = is; i < ie; i++)
-      lis_vector_set_value (LIS_INS_VALUE, i,
-                            rhs->get_owned_data ()[i - is], rhs_lis);
-    rhs.reset ();
-
-    LIS_VECTOR phi_lis;
-    lis_vector_create (mpicomm, &phi_lis);
-    lis_vector_set_size (phi_lis, ln, 0);
-    lis_vector_get_range (phi_lis, &is, &ie);
-
-    LIS_INT n   = ln;
-    LIS_INT nnz = static_cast<LIS_INT> (vals.size ());
+    (*A).csr (vals, jcol, irow, 0, false);
     A.reset ();
 
-    LIS_MATRIX A_lis;
-    lis_matrix_create (mpicomm, &A_lis);
-    lis_matrix_set_size (A_lis, n, 0);
-    lis_matrix_set_csr (nnz, &irow[0], &jcol[0], &vals[0], A_lis);
-    lis_matrix_assemble (A_lis);
+    if (pbc) {
+      // Single-rank PBC: strong enforcement via CSR elimination.
+      //
+      // Steps 1+2: remap jcol (y-pass then x-pass, 0-based indices).
+      // row_dest[]: canonical destination row for each source row.
+      // Steps 3+4: old_to_new, N_new, two-pass CSR build + column sort.
+      // RHS merge identical to MUMPS path.
+      const size_t N_phys = static_cast<size_t> (tmsh.num_global_nodes ());
 
-    LIS_SOLVER solver;
-    lis_solver_create (&solver);
-    std::string opts = linear_solver_options;
-    lis_solver_set_option (&opts[0], solver);
-    lis_solve (A_lis, rhs_lis, phi_lis, solver);
-    lis_solver_destroy (solver);
-    lis_vector_destroy (rhs_lis);
+      // Step 1: y-pairs column remap
+      for (size_t k = 0; k < jcol.size (); ++k) {
+        auto ity = pbc_y_right_to_left.find (static_cast<size_t> (jcol[k]));
+        if (ity != pbc_y_right_to_left.end ())
+          jcol[k] = static_cast<int> (ity->second);
+      }
+      // Step 2: x-pairs column remap
+      for (size_t k = 0; k < jcol.size (); ++k) {
+        auto itx = pbc_x_right_to_left.find (static_cast<size_t> (jcol[k]));
+        if (itx != pbc_x_right_to_left.end ())
+          jcol[k] = static_cast<int> (itx->second);
+      }
 
-    phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
-    LIS_INT n_phys = static_cast<LIS_INT> (tmsh.num_owned_nodes ());
-    lis_vector_get_values (phi_lis, is, n_phys, phi->get_owned_data ().data ());
-    lis_vector_destroy (phi_lis);
+      // row_dest[r]: canonical left-face destination for row r.
+      // y-pass sets yR->yL; x-pass follows chain so xR_yR->(y)xL_yR->(x)xL_yL.
+      std::vector<size_t> row_dest (N_phys);
+      for (size_t i = 0; i < N_phys; ++i) row_dest[i] = i;
+      for (auto it = pbc_y_right_to_left.begin ();
+           it != pbc_y_right_to_left.end (); ++it)
+        row_dest[it->first] = it->second;
+      for (auto it = pbc_x_right_to_left.begin ();
+           it != pbc_x_right_to_left.end (); ++it)
+        row_dest[it->first] = row_dest[it->second];
+
+      // Step 3: is_right[], old_to_new[], N_new
+      std::vector<bool> is_right (N_phys, false);
+      for (auto it = pbc_y_right_to_left.begin ();
+           it != pbc_y_right_to_left.end (); ++it)
+        is_right[it->first] = true;
+      for (auto it = pbc_x_right_to_left.begin ();
+           it != pbc_x_right_to_left.end (); ++it)
+        is_right[it->first] = true;
+
+      std::vector<int> old_to_new (N_phys, -1);
+      int new_idx = 0;
+      for (size_t i = 0; i < N_phys; ++i)
+        if (!is_right[i]) old_to_new[i] = new_idx++;
+      int N_new = new_idx;
+
+      if (rank == 0)
+        std::cout << "  [PBC strong LIS] N_new = " << N_new
+                  << "  (eliminated "
+                  << (N_phys - static_cast<size_t> (N_new))
+                  << " right-face nodes)\n";
+
+      // Step 4: build new N_new x N_new CSR (two-pass: count then fill)
+      std::vector<int> new_irow (N_new + 1, 0);
+      for (size_t r = 0; r < N_phys; ++r) {
+        int nd = old_to_new[row_dest[r]];
+        for (int k = irow[r]; k < irow[r + 1]; ++k)
+          if (old_to_new[jcol[k]] >= 0)
+            new_irow[nd + 1]++;
+      }
+      for (int r = 0; r < N_new; ++r) new_irow[r + 1] += new_irow[r];
+      int new_nnz = new_irow[N_new];
+
+      std::vector<int>    new_jcol (new_nnz);
+      std::vector<double> new_vals (new_nnz);
+      {
+        std::vector<int> pos (new_irow.begin (), new_irow.begin () + N_new);
+        for (size_t r = 0; r < N_phys; ++r) {
+          int nd = old_to_new[row_dest[r]];
+          for (int k = irow[r]; k < irow[r + 1]; ++k) {
+            int nc = old_to_new[jcol[k]];
+            if (nc >= 0) {
+              new_jcol[pos[nd]] = nc;
+              new_vals[pos[nd]] = vals[k];
+              pos[nd]++;
+            }
+          }
+        }
+      }
+      // Sort column indices per row, then deduplicate (row merging produces
+      // duplicate (row,col) entries that must be summed, not overwritten).
+      {
+        std::vector<int>    perm, tmp_j;
+        std::vector<double> tmp_v;
+        for (int r = 0; r < N_new; ++r) {
+          int rb = new_irow[r], re = new_irow[r + 1], n = re - rb;
+          if (n <= 1) continue;
+          perm.resize (n); tmp_j.resize (n); tmp_v.resize (n);
+          for (int i = 0; i < n; ++i) perm[i] = i;
+          std::sort (perm.begin (), perm.end (),
+                     [&] (int a, int b)
+                     { return new_jcol[rb + a] < new_jcol[rb + b]; });
+          for (int i = 0; i < n; ++i) {
+            tmp_j[i] = new_jcol[rb + perm[i]];
+            tmp_v[i] = new_vals[rb + perm[i]];
+          }
+          std::copy (tmp_j.begin (), tmp_j.end (), new_jcol.begin () + rb);
+          std::copy (tmp_v.begin (), tmp_v.end (), new_vals.begin () + rb);
+        }
+      }
+      // Deduplicate: adjacent equal-column entries per row are summed.
+      std::vector<int>    ded_irow (N_new + 1, 0);
+      std::vector<int>    ded_jcol;
+      std::vector<double> ded_vals;
+      ded_jcol.reserve (new_nnz);
+      ded_vals.reserve (new_nnz);
+      for (int r = 0; r < N_new; ++r) {
+        ded_irow[r] = static_cast<int> (ded_jcol.size ());
+        const int rb = new_irow[r], re = new_irow[r + 1];
+        for (int k = rb; k < re; ++k) {
+          if (static_cast<int> (ded_jcol.size ()) > ded_irow[r] &&
+              ded_jcol.back () == new_jcol[k])
+            ded_vals.back () += new_vals[k];
+          else {
+            ded_jcol.push_back (new_jcol[k]);
+            ded_vals.push_back (new_vals[k]);
+          }
+        }
+      }
+      ded_irow[N_new] = static_cast<int> (ded_jcol.size ());
+      int ded_nnz = static_cast<int> (ded_jcol.size ());
+
+      // Merge RHS (y-pass then x-pass; single rank owns all N_phys entries)
+      std::vector<double> rhs_vec (rhs->get_owned_data ().begin (),
+                                   rhs->get_owned_data ().end ());
+      rhs.reset ();
+      for (auto it = pbc_y_right_to_left.begin ();
+           it != pbc_y_right_to_left.end (); ++it) {
+        rhs_vec[it->second] += rhs_vec[it->first];
+        rhs_vec[it->first]   = 0.0;
+      }
+      for (auto it = pbc_x_right_to_left.begin ();
+           it != pbc_x_right_to_left.end (); ++it) {
+        rhs_vec[it->second] += rhs_vec[it->first];
+        rhs_vec[it->first]   = 0.0;
+      }
+      std::vector<double> rhs_new (N_new);
+      for (size_t i = 0; i < N_phys; ++i)
+        if (old_to_new[i] >= 0) rhs_new[old_to_new[i]] = rhs_vec[i];
+
+      // LIS solve on N_new x N_new
+      LIS_INT lis_n   = static_cast<LIS_INT> (N_new);
+      LIS_INT lis_nnz = static_cast<LIS_INT> (ded_nnz);
+
+      LIS_VECTOR rhs_lis;
+      lis_vector_create (mpicomm, &rhs_lis);
+      lis_vector_set_size (rhs_lis, lis_n, 0);
+      lis_vector_get_range (rhs_lis, &is, &ie);
+      for (LIS_INT i = is; i < ie; ++i)
+        lis_vector_set_value (LIS_INS_VALUE, i, rhs_new[i], rhs_lis);
+
+      LIS_VECTOR phi_lis;
+      lis_vector_create (mpicomm, &phi_lis);
+      lis_vector_set_size (phi_lis, lis_n, 0);
+      lis_vector_get_range (phi_lis, &is, &ie);
+
+      LIS_MATRIX A_lis;
+      lis_matrix_create (mpicomm, &A_lis);
+      lis_matrix_set_size (A_lis, lis_n, 0);
+      lis_matrix_set_csr (lis_nnz, ded_irow.data (), ded_jcol.data (),
+                          ded_vals.data (), A_lis);
+      lis_matrix_assemble (A_lis);
+
+      LIS_SOLVER solver;
+      lis_solver_create (&solver);
+      std::string opts = linear_solver_options;
+      lis_solver_set_option (&opts[0], solver);
+      lis_solve (A_lis, rhs_lis, phi_lis, solver);
+      lis_solver_destroy (solver);
+      lis_vector_destroy (rhs_lis);
+
+      // Expand sol_new[N_new] -> phi_full[N_phys]; x-fill before y-fill
+      std::vector<double> sol_new (N_new);
+      lis_vector_get_values (phi_lis, is, lis_n, sol_new.data ());
+      lis_vector_destroy (phi_lis);
+
+      phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+      auto& phi_data = phi->get_owned_data ();
+      phi_data.assign (N_phys, 0.0);
+      for (size_t i = 0; i < N_phys; ++i)
+        if (old_to_new[i] >= 0) phi_data[i] = sol_new[old_to_new[i]];
+      for (auto it = pbc_x_right_to_left.begin ();
+           it != pbc_x_right_to_left.end (); ++it)
+        phi_data[it->first] = phi_data[it->second];
+      for (auto it = pbc_y_right_to_left.begin ();
+           it != pbc_y_right_to_left.end (); ++it)
+        phi_data[it->first] = phi_data[it->second];
+
+    } else {
+      // Non-PBC
+      LIS_INT i, ln;
+      LIS_VECTOR rhs_lis;
+      ln = static_cast<LIS_INT> (rhs->get_owned_data ().size ());
+
+      lis_vector_create (mpicomm, &rhs_lis);
+      lis_vector_set_size (rhs_lis, ln, 0);
+      lis_vector_get_range (rhs_lis, &is, &ie);
+      for (i = is; i < ie; i++)
+        lis_vector_set_value (LIS_INS_VALUE, i,
+                              rhs->get_owned_data ()[i - is], rhs_lis);
+      rhs.reset ();
+
+      LIS_VECTOR phi_lis;
+      lis_vector_create (mpicomm, &phi_lis);
+      lis_vector_set_size (phi_lis, ln, 0);
+      lis_vector_get_range (phi_lis, &is, &ie);
+
+      LIS_INT n   = ln;
+      LIS_INT nnz = static_cast<LIS_INT> (vals.size ());
+
+      LIS_MATRIX A_lis;
+      lis_matrix_create (mpicomm, &A_lis);
+      lis_matrix_set_size (A_lis, n, 0);
+      lis_matrix_set_csr (nnz, &irow[0], &jcol[0], &vals[0], A_lis);
+      lis_matrix_assemble (A_lis);
+
+      LIS_SOLVER solver;
+      lis_solver_create (&solver);
+      std::string opts = linear_solver_options;
+      lis_solver_set_option (&opts[0], solver);
+      lis_solve (A_lis, rhs_lis, phi_lis, solver);
+      lis_solver_destroy (solver);
+      lis_vector_destroy (rhs_lis);
+
+      phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+      LIS_INT n_phys = static_cast<LIS_INT> (tmsh.num_owned_nodes ());
+      lis_vector_get_values (phi_lis, is, n_phys, phi->get_owned_data ().data ());
+      lis_vector_destroy (phi_lis);
+    }
   }
 
   if (size > 1)
