@@ -954,7 +954,6 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   calc_potential_term = g2 ( (model_options + "calc_potential_terms").c_str (), 0);
   calc_field_term = g2 ( (model_options + "calc_field_terms").c_str (), 0);
   atoms_write = g2 ( (model_options + "atoms_write").c_str (), 0);
-  surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
   surf_potential = g2 ( (model_options + "surf_potential").c_str (), 0);
   ns_surf_file   = g2 ( (model_options + "ns_surf_file").c_str (), "triangulatedSurf.off");
   surf_output_vtp         = g2 ( (model_options + "surf_output_vtp").c_str (), 1);
@@ -978,6 +977,8 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   num_threads = g2 ( (surf_options + "number_of_threads").c_str (), 1);
   cavity_filling = g2 ( (surf_options + "cavity_filling").c_str (), 0);
   cavity_vol_thresh = g2 ( (surf_options + "cavity_vol_thresh").c_str (), 11.4);
+  coupling_mode = g2 ( (surf_options + "coupling_mode").c_str (), 0);
+  if (coupling_mode != 0 && coupling_mode != 1) coupling_mode = 0;
 
   const std::string alg_options = "algorithm/";
   linear_solver_name = g2 ( (alg_options + "linear_solver").c_str (), "lis");

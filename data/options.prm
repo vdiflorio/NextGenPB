@@ -121,7 +121,6 @@ map_type      = vtu   # Output format: 'vtu' (for ParaView, vtk binary), 'oct' (
 potential_map = 0     # 1 = write full potential map to file
 eps_map       = 0     # 1 = write dielectric (epsilon) map to file
 dataset_write = 0     # 1 = export vertex dataset for AI/ML training (CSV)
-surf_write    = 0     # 1 = write potential on the molecular surface
 
 [../]
 
@@ -130,6 +129,11 @@ surf_write    = 0     # 1 = write potential on the molecular surface
 # Surface Definition (NanoShaper)
 ######################################
 [surface]
+
+# NanoShaper coupling mode:
+# 0 = aligned (PBAlignedSurfaceData, default; supports cavity_filling + surf_potential PLY/VTP)
+# 1 = legacy (castAxisOrientedRay + raysArrayMap; surf_potential -> write_potential_on_surface)
+coupling_mode = 0
 
 # Surface type used to define dielectric boundaries:
 # 0 = Solvent Excluded Surface (SES)

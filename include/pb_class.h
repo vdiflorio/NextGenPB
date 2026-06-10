@@ -145,6 +145,9 @@ struct
   // (eps_in, no mobile ions) via the cavity-filled vertex_colors. Default off.
   int cavity_filling = 0;
   double cavity_vol_thresh = 11.4;
+  // NanoShaper coupling: 0 = aligned (PBAlignedSurfaceData, default),
+  // 1 = legacy (castAxisOrientedRay + raysArrayMap). Legacy ignores cavity_filling.
+  int coupling_mode = 0;
 
   //algorithm:
   std::string linear_solver_name;
@@ -163,7 +166,6 @@ struct
 
   //post_processing
   int atoms_write;
-  int surf_write;
   int surf_potential = 0;
   std::string ns_surf_file = "triangulatedSurf.off";
   int surf_output_vtp         = 1;

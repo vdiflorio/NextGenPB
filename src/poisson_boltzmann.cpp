@@ -122,14 +122,21 @@ main (int argc, char **argv)
 
   if (rank == 0) {
     std::cout << "\n=== [ Building Surface with NanoShaper ] ===\n";
-    ray_cache.init_aligned_surface_ns (pb.atoms, pb.surf_type, pb.surf_param,
-        pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale,
-        nullptr, pb.surf_potential == 1, pb.cavity_filling == 1, pb.cavity_vol_thresh);
+    if (pb.coupling_mode == 1) {          // legacy: castAxisOrientedRay + raysArrayMap
+      if (pb.cavity_filling == 1)
+        std::cout << "[legacy coupling] cavity_filling is ignored in legacy mode.\n";
+      ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param,
+          pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+    } else {                              // aligned (default): PBAlignedSurfaceData
+      ray_cache.init_aligned_surface_ns (pb.atoms, pb.surf_type, pb.surf_param,
+          pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale,
+          nullptr, pb.surf_potential == 1, pb.cavity_filling == 1, pb.cavity_vol_thresh);
+    }
     std::vector<NS::Atom> ().swap (pb.atoms);
     std::cout << "\n============================================\n";
   }
 
-  if (size > 1 && (pb.loc_refinement == 1 || pb.mesh_shape == 4))
+  if (size > 1 && pb.coupling_mode == 0 && (pb.loc_refinement == 1 || pb.mesh_shape == 4))
     ray_cache.broadcast_aligned_surface ();
 
   TOC ("Building Surface with NanoShaper");
@@ -193,7 +200,8 @@ main (int argc, char **argv)
 
   // Replace full broadcast data with per-rank local maps now that the mesh is final.
   TIC ();
-  ray_cache.scatter_aligned_surface (pb.tmsh);
+  if (pb.coupling_mode == 0)
+    ray_cache.scatter_aligned_surface (pb.tmsh);
   TOC ("scatter aligned surface");
 
   TIC ();
@@ -312,16 +320,13 @@ main (int argc, char **argv)
     TOC ("Compute energy")
   }
 
-  if (pb.surf_write == 1) {
-    TIC ();
-    pb.write_potential_on_surface (ray_cache);
-    TOC ("Write potential on the surface")
-  }
-
   if (pb.surf_potential == 1) {
     TIC ();
-    pb.write_ns_vert_potential (pb.ns_surf_file, ray_cache);
-    TOC ("Write potential on NS surface vertices");
+    if (pb.coupling_mode == 0)
+      pb.write_ns_vert_potential (pb.ns_surf_file, ray_cache);   // aligned: phi on NS triangulated vertices
+    else
+      pb.write_potential_on_surface (ray_cache);                 // legacy: phi on FEM-mesh surface
+    TOC ("Write potential on the surface");
   }
 
   if (pb.map_type == "oct") {
