@@ -22,8 +22,10 @@
 
 #include <map>
 #include <set>
+#include <unordered_map>
 #include <vector>
 #include <array>
+#include <cstdint>
 #include <mpi.h>
 #include <nanoshaper.h>
 // #include <raytracer_datatype.h>
@@ -33,11 +35,22 @@
 
 using int_coord_t = unsigned long long int;
 
+class tmesh_3d;
 
 struct
   ray_cache_t {
 
   rays_t rays; //map that contains all the rays in the 3 direction
+  bool aligned_mode = false;
+  NS::PBAlignedSurfaceData aligned_surface;
+  double aligned_tol = 1.e-6;
+
+  // Sparse local storage populated by scatter_aligned_surface().
+  // When use_local_maps is true, vertex_color() and aligned_edge_crossings()
+  // query these instead of the full aligned_surface arrays.
+  bool use_local_maps = false;
+  std::unordered_map<int64_t, uint8_t> local_vertex_colors;
+  std::array<std::unordered_map<int64_t, std::vector<NS::PBEdgeCrossing>>, 3> local_edge_crossings;
 
   static int_coord_t count_cache;
   static int_coord_t count_new;
@@ -67,6 +80,27 @@ struct
   init_analytical_surf_ns (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
                            const double & surf_param, const double & stern_layer, const unsigned & num_threads,
                            double* l_cr, double* r_cr, double scale,const std::string* configFile=nullptr);
+
+  void
+  init_aligned_surface_ns (const std::vector<NS::Atom> & atoms, const NS::surface_type & surf_type,
+                           const double & surf_param, const double & stern_layer, const unsigned & num_threads,
+                           double* l_cr, double* r_cr, double scale, const std::string* configFile=nullptr,
+                           bool do_triangulate=false, bool cavity_fill=false, double cavity_vol=11.4);
+
+  void
+  broadcast_aligned_surface ();
+
+  void
+  scatter_aligned_surface (tmesh_3d& tmsh);
+
+  int
+  vertex_color (double x, double y, double z) const;
+
+  void
+  aligned_edge_crossings (unsigned dir, double x1, double x2,
+                          const std::array<double, 2>& ray,
+                          std::vector<NS::PBEdgeCrossing>& crossings) const;
+
   void
   compute_ns_inters (crossings_t & ct);
 
