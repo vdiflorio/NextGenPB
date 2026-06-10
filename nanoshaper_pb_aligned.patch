@@ -1,0 +1,487 @@
+diff --git a/src/Surface.cpp b/src/Surface.cpp
+index 6ca00fa..6082dda 100644
+--- a/src/Surface.cpp
++++ b/src/Surface.cpp
+@@ -6,6 +6,7 @@
+ //---------------------------------------------------------
+ 
+ #include "Surface.h"
++#include "nanoshaper.h"   // NS::PBAlignedSurfaceData + inline vertexIndex/edgeIndex/edgeCount
+ 
+ VERTEX_TYPE *Surface::allocStableTriple(VERTEX_TYPE a, VERTEX_TYPE b, VERTEX_TYPE c)
+ {
+@@ -14550,6 +14551,111 @@ inline int Surface::getTriangles(double *vertexValues, double isolevel, int **tr
+ }
+ 
+ 
++// PB-aligned export sourced from the triangulation grids (see Surface.h).
++// vertex_colors comes from the cavity-filled verticesInsidenessMap; the per-axis
++// CSR edge_crossings come from the bilevel intersection grids + vertList, so the
++// exported crossing positions are byte-identical to the OFF vertices written by
++// triangulate() (with Smooth_Mesh disabled). stag_grid carries the staggered
++// origin (DS->x[0] - hside) so the lattice coincides with the PB/FEM nodes.
++void Surface::exportStagAlignedData(NS::PBAlignedSurfaceData &out,
++                                    const NS::PBAlignedGridDescriptor &stag_grid)
++{
++	const int NX = delphi->nx;
++	const int NY = delphi->ny;
++	const int NZ = delphi->nz;
++
++	// ---- vertex_colors: cavity-filled inside/outside on the staggered lattice ----
++	const int64_t num_vertices = static_cast<int64_t>(NX) * NY * NZ;
++	out.vertex_colors.assign(static_cast<size_t>(num_vertices), 0);
++	for (int k = 0; k < NZ; ++k)
++		for (int j = 0; j < NY; ++j)
++			for (int i = 0; i < NX; ++i)
++				out.vertex_colors[static_cast<size_t>(NS::vertexIndex(i, j, k, stag_grid))] =
++					static_cast<uint8_t>(getStagVertexColor(i, j, k));
++
++	// ---- edge_crossings CSR (one phase-0 crossing per crossed cell-edge) ----
++	const bool have_normals = computeNormals && !normalsList.empty();
++
++#if defined(OPTIMIZE_INTERSECTIONS_MANAGEMENT)
++	// Read the stored 0-based vertList index for the 'dir' edge rooted at cell
++	// (ci,cj,ck); -1 if no ray crossed that edge.
++	auto edge_vidx = [&](unsigned dir, int ci, int cj, int ck) -> int {
++		if (dir == 0)
++			return readBilevelGrid<int>(bilevel_intersectionsMatrixAlongX, -1, ci, cj, ck, NX, NY, NZ);
++		if (dir == 1)
++			return readBilevelGrid<int>(bilevel_intersectionsMatrixAlongY, -1, ci, cj, ck, NX, NY, NZ);
++		return readBilevelGrid<int>(bilevel_intersectionsMatrixAlongZ, -1, ci, cj, ck, NX, NY, NZ);
++	};
++
++	for (unsigned dir = 0; dir < 3; ++dir)
++	{
++		const int64_t ne = NS::edgeCount(dir, stag_grid);
++
++		// the 'dir' edge needs node (.. +1 ..) along dir, so that axis stops one short
++		const int hi0 = (dir == 0) ? NX - 1 : NX;
++		const int hi1 = (dir == 1) ? NY - 1 : NY;
++		const int hi2 = (dir == 2) ? NZ - 1 : NZ;
++
++		std::vector<uint32_t> counts(static_cast<size_t>(ne) + 1, 0);
++		for (int ck = 0; ck < hi2; ++ck)
++			for (int cj = 0; cj < hi1; ++cj)
++				for (int ci = 0; ci < hi0; ++ci)
++				{
++					if (edge_vidx(dir, ci, cj, ck) < 0) continue;
++					const int64_t eid = NS::edgeIndex(dir, ci, cj, ck, stag_grid);
++					if (eid < 0 || eid >= ne) continue;
++					++counts[static_cast<size_t>(eid) + 1];
++				}
++
++		out.edge_offsets[dir].resize(counts.size());
++		uint32_t running = 0;
++		for (size_t i = 0; i < counts.size(); ++i)
++		{
++			running += counts[i];
++			out.edge_offsets[dir][i] = running;
++		}
++		out.edge_crossings[dir].assign(running, NS::PBEdgeCrossing());
++
++		std::vector<uint32_t> positions = out.edge_offsets[dir];
++		for (int ck = 0; ck < hi2; ++ck)
++			for (int cj = 0; cj < hi1; ++cj)
++				for (int ci = 0; ci < hi0; ++ci)
++				{
++					const int vidx = edge_vidx(dir, ci, cj, ck);
++					if (vidx < 0) continue;
++					const int64_t eid = NS::edgeIndex(dir, ci, cj, ck, stag_grid);
++					if (eid < 0 || eid >= ne) continue;
++
++					NS::PBEdgeCrossing crossing;
++					const VERTEX_TYPE *p = &vertList[static_cast<size_t>(vidx) * 3];
++					crossing.point[0] = p[0];
++					crossing.point[1] = p[1];
++					crossing.point[2] = p[2];
++					if (have_normals)
++					{
++						const VERTEX_TYPE *n = &normalsList[static_cast<size_t>(vidx) * 3];
++						crossing.normal[0] = n[0];
++						crossing.normal[1] = n[1];
++						crossing.normal[2] = n[2];
++					}
++					crossing.flags = 0;
++
++					out.edge_crossings[dir][positions[static_cast<size_t>(eid)]++] = crossing;
++				}
++	}
++#else
++	// Without the bilevel intersection grids the per-edge vertex index is not
++	// available; leave empty (well-formed) CSR offsets. This build configuration
++	// is not used by the PB-aligned coupling.
++	for (unsigned dir = 0; dir < 3; ++dir)
++	{
++		out.edge_offsets[dir].assign(static_cast<size_t>(NS::edgeCount(dir, stag_grid)) + 1, 0);
++		out.edge_crossings[dir].clear();
++	}
++#endif
++}
++
++
+ void Surface::backupStatus()
+ {
+ 	if (!optimizeGrids)
+diff --git a/src/Surface.h b/src/Surface.h
+index 93537a7..4b18243 100644
+--- a/src/Surface.h
++++ b/src/Surface.h
+@@ -333,6 +333,14 @@ load,save,build and getSurf (or ray/projections routine) thus providing all the
+ @author Sergio Decherchi
+ @date 29/06/2013
+ */
++
++// Forward declarations for the PB-aligned export interface (full definitions in
++// nanoshaper.h, included by Surface.cpp where exportStagAlignedData is defined).
++namespace NS {
++	struct PBAlignedSurfaceData;
++	struct PBAlignedGridDescriptor;
++}
++
+ class Surface
+ {
+ #ifdef ENABLE_CGAL 
+@@ -1039,6 +1047,38 @@ public:
+ 		return accurateTriangulation;
+ 	}
+ 
++	/** PB-aligned export: inside/outside flag of the cavity-filled triangulation
++	    grid (verticesInsidenessMap), i.e. the staggered lattice the marching
++	    cubes votes on. Returns 1 if node (i,j,k) is inside the molecule, 0 if
++	    outside. Unlike the STATUS map read by getGridPointStatus, this reflects
++	    cavity filling. Valid only after getSurf() with accurateTriangulation.
++
++	    NOTE on polarity: in verticesInsidenessMap the value is INVERTED w.r.t.
++	    "inside" — fillCavities() sets cavity voxels to false while marking the
++	    epsmap as interior (Surface.cpp ~2390/2406), so false == inside (solute),
++	    true == outside (solvent). We invert here to match the 1==inside convention
++	    used by the PB coupling (getGridPointStatus < 0 ? 1 : 0). */
++	int getStagVertexColor(int i, int j, int k) const
++	{
++	#if !defined(USE_COMPRESSED_GRIDS)
++		return (verticesInsidenessMap != NULL && !verticesInsidenessMap[k][j][i]) ? 1 : 0;
++	#else
++		return (compressed_verticesInsidenessMap != NULL &&
++		        !read32xCompressedGrid(compressed_verticesInsidenessMap, i, j, k,
++		                               delphi->nx, delphi->ny, delphi->nz)) ? 1 : 0;
++	#endif
++	}
++
++	/** PB-aligned export: fill 'out' (vertex_colors + per-axis CSR edge_crossings)
++	    from the triangulation data structures (verticesInsidenessMap + the bilevel
++	    intersection grids / vertList), keyed on stag_grid. Must be called after
++	    getSurf() and before triangulate() (getVertices would add fallback midpoint
++	    vertices on missed edges; here only ray-traced phase-0 crossings are read).
++	    Requires Compute_Vertex_Normals for the crossing normals and Smooth_Mesh
++	    disabled so vertList holds the un-displaced analytical positions. */
++	void exportStagAlignedData(NS::PBAlignedSurfaceData &out,
++	                           const NS::PBAlignedGridDescriptor &stag_grid);
++
+ 	void setTriangulationFlag(bool flag)
+ 	{
+ 		doTriangulation = flag;
+diff --git a/src/nanoshaper.cpp b/src/nanoshaper.cpp
+index cbec461..0f17c46 100644
+--- a/src/nanoshaper.cpp
++++ b/src/nanoshaper.cpp
+@@ -2,6 +2,14 @@
+ #include "nanoshaper.h"
+ #include "DelphiShared.h"
+ #include "Surface.h"
++#include <algorithm>
++#include <cmath>
++#include <thread>
++#include <utility>
++
++// PB-aligned lattice helpers (vertexIndex / edgeCount / edgeIndex) are now inline
++// in nanoshaper.h so Surface.cpp can reuse them; the edge_crossings CSR is built
++// in Surface::exportStagAlignedData().
+ 
+ using namespace NS;
+ 
+@@ -219,7 +227,7 @@ void NanoShaper::pointResolver(double *pb,double coord)
+         pb[0] = coord;
+     else if (currentPanel == 1)
+         pb[2] = coord;
+-    else if (currentPanel=2)
++    else if (currentPanel==2)
+         pb[1] = coord;
+ }
+ 
+@@ -504,6 +512,8 @@ bool NanoShaper::colourGrid(void)
+ 
+ bool NanoShaper::colourGrid(double *surf_volume)
+ {
++    pbAlignedSurfaceData.valid = false;
++
+     // conventional execution mode
+     if (!collectGridRays)
+ 	    return SURF->getSurf(surf_volume,
+@@ -518,18 +528,71 @@ bool NanoShaper::colourGrid(double *surf_volume)
+         // impose to compute normals in order to collect them
+         SURF->setComputeNormals(true);
+ 
++        // Read PB-aligned mode before getSurf: in that mode intersectionsInfo is
++        // never consumed (exportStagAlignedData sources its data from the bilevel
++        // grids + vertList instead), so we pass nullptr below to skip building the
++        // per-thread buffersIntersections_grid buffers inside getSurf.
++        const bool pbAlignedMode = CONFIG->keyExists("PB_aligned_grid_mode") &&
++                                   CONFIG->read<bool>("PB_aligned_grid_mode");
++
+     	bool retVal = SURF->getSurf(surf_volume,
+                                     CONFIG->read<bool>("Optimize_Grids"),
+                                     CONFIG->read<bool>("Cavity_Detection_Filling"),
+                                     CONFIG->read<double>("Conditional_Volume_Filling_Value"),
+-                                    &intersectionsInfo);
++                                    pbAlignedMode ? nullptr : &intersectionsInfo);
+ 
+         if (!retVal)
+             return false;
+ 
++        if (pbAlignedMode)
++        {
++            PBAlignedSurfaceData alignedData;
++            PBAlignedGridDescriptor &grid = alignedData.grid;
++
++            // Staggered descriptor: the marching-cubes triangulation lattice sits
++            // at DS->x[..] - hside. NGPB shifts the NS input box by +hside so that
++            // lattice coincides with the PB/FEM nodes (l_cr + i*h). All export data
++            // (vertex_colors + edge_crossings) is keyed on this staggered frame.
++            grid.ns_origin[0] = DS->x[0] - DS->hside;
++            grid.ns_origin[1] = DS->y[0] - DS->hside;
++            grid.ns_origin[2] = DS->z[0] - DS->hside;
++            grid.h = DS->side;
++            grid.ns_n[0] = static_cast<int>(DS->nx);
++            grid.ns_n[1] = static_cast<int>(DS->ny);
++            grid.ns_n[2] = static_cast<int>(DS->nz);
++
++            // PB sub-box, un-shifted into the staggered frame (config box is +hside).
++            grid.pb_min[0] = CONFIG->read<double>("xmin") - DS->hside;
++            grid.pb_min[1] = CONFIG->read<double>("ymin") - DS->hside;
++            grid.pb_min[2] = CONFIG->read<double>("zmin") - DS->hside;
++            grid.pb_max[0] = CONFIG->read<double>("xmax") - DS->hside;
++            grid.pb_max[1] = CONFIG->read<double>("ymax") - DS->hside;
++            grid.pb_max[2] = CONFIG->read<double>("zmax") - DS->hside;
++
++            for (int d = 0; d < 3; ++d)
++            {
++                int begin = static_cast<int>(std::llround((grid.pb_min[d] - grid.ns_origin[d]) / grid.h));
++                int end = static_cast<int>(std::llround((grid.pb_max[d] - grid.ns_origin[d]) / grid.h));
++                begin = std::max(0, std::min(begin, grid.ns_n[d] - 1));
++                end = std::max(begin, std::min(end, grid.ns_n[d] - 1));
++                grid.pb_begin[d] = begin;
++                grid.pb_n[d] = end - begin + 1;
++            }
++
++            // Fill vertex_colors (cavity-filled) + per-axis CSR edge_crossings from
++            // the triangulation data structures (verticesInsidenessMap + bilevel
++            // grids/vertList). Must run after getSurf() and before triangulate().
++            SURF->exportStagAlignedData(alignedData, grid);
++
++            alignedData.valid = true;
++            pbAlignedSurfaceData = std::move(alignedData);
++            SURF->setComputeNormals(cvn);
++            return true;
++        }
++
+         // clean up in case it is needed
+         for (unsigned k=0; k<3; k++)
+-            raysArrayMap[k].clear(); 
++            raysArrayMap[k].clear();
+ 
+         // it initializes the map with empty crossing_t objects such that the guest code can verify 
+         // that the rays have been cast and no intersections have been found.
+@@ -807,6 +870,7 @@ void NanoShaper::initConfig(const std::string *confFile)
+ 
+         // new grid mode keywords
+         cfl->add<bool>("PB_grid_mode",false);
++        cfl->add<bool>("PB_aligned_grid_mode",false);
+         cfl->add<double>("xmin",-1.0);
+         cfl->add<double>("ymin",-1.0);
+         cfl->add<double>("zmin",-1.0);
+diff --git a/src/nanoshaper.h b/src/nanoshaper.h
+index 7d6bb85..2c17252 100644
+--- a/src/nanoshaper.h
++++ b/src/nanoshaper.h
+@@ -6,6 +6,9 @@
+ #include <stdio.h>
+ #include <string>
+ #include <math.h>
++#include <array>
++#include <cstdint>
++#include <algorithm>
+ #include "raytracer_datatype.h"
+ 
+ 
+@@ -27,7 +30,71 @@ enum surface_type
+ 	blobby = 2
+ };
+ 
+-    
++struct PBAlignedGridDescriptor
++{
++    double ns_origin[3] = {0.0, 0.0, 0.0};
++    double h = 0.0;
++    int ns_n[3] = {0, 0, 0};
++
++    int pb_begin[3] = {0, 0, 0};
++    int pb_n[3] = {0, 0, 0};
++    double pb_min[3] = {0.0, 0.0, 0.0};
++    double pb_max[3] = {0.0, 0.0, 0.0};
++};
++
++struct PBEdgeCrossing
++{
++    double point[3] = {0.0, 0.0, 0.0};
++    double normal[3] = {0.0, 0.0, 0.0};
++    uint8_t flags = 0;
++};
++
++struct PBAlignedSurfaceData
++{
++    PBAlignedGridDescriptor grid;
++    std::vector<uint8_t> vertex_colors;
++    std::array<std::vector<uint32_t>, 3> edge_offsets;
++    std::array<std::vector<PBEdgeCrossing>, 3> edge_crossings;
++    bool valid = false;
++};
++
++// Flat lattice indexing helpers shared by NanoShaper::colourGrid() and
++// Surface::exportStagAlignedData(). They map (i,j,k) node / (i,j,k)+axis edge
++// triples onto the linear layouts used by PBAlignedSurfaceData. Defined inline
++// here (rather than in nanoshaper.cpp's anonymous namespace) so Surface.cpp can
++// build the same CSR layout the PB coupling reads back.
++inline int64_t vertexIndex(int i, int j, int k, const PBAlignedGridDescriptor &grid)
++{
++    return static_cast<int64_t>(i) +
++           static_cast<int64_t>(grid.ns_n[0]) *
++           (static_cast<int64_t>(j) + static_cast<int64_t>(grid.ns_n[1]) * k);
++}
++
++inline int64_t edgeCount(unsigned axis, const PBAlignedGridDescriptor &grid)
++{
++    if (axis == 0)
++        return static_cast<int64_t>(std::max(0, grid.ns_n[0] - 1)) * grid.ns_n[1] * grid.ns_n[2];
++    if (axis == 1)
++        return static_cast<int64_t>(grid.ns_n[0]) * std::max(0, grid.ns_n[1] - 1) * grid.ns_n[2];
++    return static_cast<int64_t>(grid.ns_n[0]) * grid.ns_n[1] * std::max(0, grid.ns_n[2] - 1);
++}
++
++inline int64_t edgeIndex(unsigned axis, int i, int j, int k, const PBAlignedGridDescriptor &grid)
++{
++    if (axis == 0)
++        return static_cast<int64_t>(i) +
++               static_cast<int64_t>(grid.ns_n[0] - 1) *
++               (static_cast<int64_t>(j) + static_cast<int64_t>(grid.ns_n[1]) * k);
++    if (axis == 1)
++        return static_cast<int64_t>(i) +
++               static_cast<int64_t>(grid.ns_n[0]) *
++               (static_cast<int64_t>(j) + static_cast<int64_t>(grid.ns_n[1] - 1) * k);
++    return static_cast<int64_t>(i) +
++           static_cast<int64_t>(grid.ns_n[0]) *
++           (static_cast<int64_t>(j) + static_cast<int64_t>(grid.ns_n[1]) * k);
++}
++
++
+ /**@brief A point in R^3*/
+ class Point
+ {
+@@ -54,7 +121,18 @@ public:
+ 		pos[1] = p.pos[1];
+ 		pos[2] = p.pos[2];
+ 	}
+-	
++
++	Point& operator=(const Point &p)
++	{
++		if (this != &p)
++		{
++			pos[0] = p.pos[0];
++			pos[1] = p.pos[1];
++			pos[2] = p.pos[2];
++		}
++		return *this;
++	}
++
+ 	double squaredDist(const Point *const x)
+ 	{
+ 		double acc = 0;
+@@ -206,6 +284,18 @@ public:
+ 		resName = p.resName;
+ 		chain = p.chain;
+ 	}
++
++	AtomInfo& operator=(const AtomInfo &p)
++	{
++		if (this != &p)
++		{
++			name = p.name;
++			resNum = p.resNum;
++			resName = p.resName;
++			chain = p.chain;
++		}
++		return *this;
++	}
+ };
+ 
+ /**@brief An atom: an atom is a point in R^3 with radius, charge and dielectric value */
+@@ -250,14 +340,29 @@ public:
+ 	Atom(const Atom &p):Point(p)
+ 	{
+ 		radius = p.radius;
++		radius2 = p.radius2;
+ 		charge = p.charge;
+-		dielectric = p.dielectric;        
++		dielectric = p.dielectric;
+ 		ai.setName(p.ai.name);
+ 		ai.setResName(p.ai.resName);
+ 		ai.setChain(p.ai.chain);
+ 		ai.setResNum(p.ai.resNum);
+ 	}
+ 
++	Atom& operator=(const Atom &p)
++	{
++		if (this != &p)
++		{
++			Point::operator=(p);
++			radius = p.radius;
++			radius2 = p.radius2;
++			charge = p.charge;
++			dielectric = p.dielectric;
++			ai = p.ai;
++		}
++		return *this;
++	}
++
+ 	void print()
+ 	{
+ 		std::cout << std::endl << std::endl << "Atom Info:" << std::endl;
+@@ -296,8 +401,9 @@ private:
+     bool optimizeGrids;
+     /* tolerance on the NextGenPB grid check*/
+     double grid_tol;
+-    
+-    
++    PBAlignedSurfaceData pbAlignedSurfaceData;
++
++
+ public :
+ 
+     /** This routine accepts the atoms set, the type of surface, 
+@@ -401,6 +507,16 @@ public :
+         return raysArrayMap;
+     }
+ 
++    const PBAlignedSurfaceData &getPBAlignedSurfaceData() const
++    {
++        return pbAlignedSurfaceData;
++    }
++
++    bool hasPBAlignedSurfaceData() const
++    {
++        return pbAlignedSurfaceData.valid;
++    }
++
+     NanoShaper()
+         : cf(nullptr),
+           ds(nullptr),
