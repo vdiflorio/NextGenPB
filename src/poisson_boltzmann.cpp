@@ -122,10 +122,15 @@ main (int argc, char **argv)
 
   if (rank == 0) {
     std::cout << "\n=== [ Building Surface with NanoShaper ] ===\n";
-    ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+    ray_cache.init_aligned_surface_ns (pb.atoms, pb.surf_type, pb.surf_param,
+        pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale,
+        nullptr, pb.surf_potential == 1, pb.cavity_filling == 1, pb.cavity_vol_thresh);
     std::vector<NS::Atom> ().swap (pb.atoms);
     std::cout << "\n============================================\n";
   }
+
+  if (size > 1 && (pb.loc_refinement == 1 || pb.mesh_shape == 4))
+    ray_cache.broadcast_aligned_surface ();
 
   TOC ("Building Surface with NanoShaper");
 
@@ -186,7 +191,10 @@ main (int argc, char **argv)
     TOC ("refine the box");
   }
 
-
+  // Replace full broadcast data with per-rank local maps now that the mesh is final.
+  TIC ();
+  ray_cache.scatter_aligned_surface (pb.tmsh);
+  TOC ("scatter aligned surface");
 
   TIC ();
 
@@ -308,6 +316,12 @@ main (int argc, char **argv)
     TIC ();
     pb.write_potential_on_surface (ray_cache);
     TOC ("Write potential on the surface")
+  }
+
+  if (pb.surf_potential == 1) {
+    TIC ();
+    pb.write_ns_vert_potential (pb.ns_surf_file, ray_cache);
+    TOC ("Write potential on NS surface vertices");
   }
 
   if (pb.map_type == "oct") {
