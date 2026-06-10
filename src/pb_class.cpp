@@ -772,6 +772,9 @@ poisson_boltzmann::levelsetfun (double x, double y, double z)
 double
 poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir)
 {
+  if (ray_cache.aligned_mode)
+    return ray_cache.vertex_color (x, y, z);
+
   int rank;
   MPI_Comm_rank (mpicomm, &rank);
   double x1 = x;
@@ -952,7 +955,11 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   calc_field_term = g2 ( (model_options + "calc_field_terms").c_str (), 0);
   atoms_write = g2 ( (model_options + "atoms_write").c_str (), 0);
   surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
-  surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
+  surf_potential = g2 ( (model_options + "surf_potential").c_str (), 0);
+  ns_surf_file   = g2 ( (model_options + "ns_surf_file").c_str (), "triangulatedSurf.off");
+  surf_output_vtp         = g2 ( (model_options + "surf_output_vtp").c_str (), 1);
+  surf_output_ply_meshlab = g2 ( (model_options + "surf_output_ply_meshlab").c_str (), 0);
+  surf_output_ply_rgb     = g2 ( (model_options + "surf_output_ply_rgb").c_str (), 0);
   map_type = g2 ( (model_options + "map_type").c_str (), "vtu");
   potential_map = g2 ( (model_options + "potential_map").c_str (), 0);
   eps_map = g2 ( (model_options + "eps_map").c_str (), 0);
@@ -969,6 +976,8 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   stern_layer_surf = g2 ( (surf_options + "stern_layer_surf").c_str (), 0);
   stern_layer = g2 ( (surf_options + "stern_layer_thickness").c_str (), 2.);
   num_threads = g2 ( (surf_options + "number_of_threads").c_str (), 1);
+  cavity_filling = g2 ( (surf_options + "cavity_filling").c_str (), 0);
+  cavity_vol_thresh = g2 ( (surf_options + "cavity_vol_thresh").c_str (), 11.4);
 
   const std::string alg_options = "algorithm/";
   linear_solver_name = g2 ( (alg_options + "linear_solver").c_str (), "lis");
@@ -1478,7 +1487,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
   int num_cycles = 2;
 
-  if (size == 1 || surf_type_num == 2)
+  if (size == 1 || surf_type_num == 2 || ray_cache.aligned_mode)
     num_cycles = 1;
 
   int coars_ref_cycles = (maxlevel - unilevel) > (unilevel - minlevel) ? (maxlevel - unilevel) : (unilevel - minlevel);
@@ -1825,7 +1834,7 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
 
   int num_cycles = 2;
 
-  if (size == 1) {
+  if (size == 1 || ray_cache.aligned_mode) {
     num_cycles = 1;
   }
 
@@ -2449,6 +2458,7 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
   int i1, i2;
   double x1, x2;
   std::array<double,2> ray;
+  std::vector<NS::PBEdgeCrossing> aligned_crossings;
 
   if (marker[quadrant->get_forest_quad_idx ()] == 0.5) {
     for (int j: {
@@ -2466,6 +2476,16 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
 
       for (unsigned i = 0; i < direzioni.size (); ++i) {
         ray[i] = quadrant->p (direzioni[i], i1);
+      }
+
+      if (ray_cache.aligned_mode) {
+        ray_cache.aligned_edge_crossings (dir, x1, x2, ray, aligned_crossings);
+
+        for (const auto& crossing : aligned_crossings)
+          if (crossing.point[dir] >= x1 && crossing.point[dir] <= x2)
+            fraction[j] = (crossing.point[dir] - x1) / (x2 - x1);
+
+        continue;
       }
 
       auto it0 = ray_cache.rays[dir].find (ray);
@@ -2495,6 +2515,16 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
         ray[i] = quadrant->p (direzioni[i], i1);
       }
 
+      if (ray_cache.aligned_mode) {
+        ray_cache.aligned_edge_crossings (dir, x1, x2, ray, aligned_crossings);
+
+        for (const auto& crossing : aligned_crossings)
+          if (crossing.point[dir] >= x1 && crossing.point[dir] <= x2)
+            fraction[j] = (crossing.point[dir] - x1) / (x2 - x1);
+
+        continue;
+      }
+
       auto it0 = ray_cache.rays[dir].find (ray);
       auto inters = it0->second.inters;
 
@@ -2520,6 +2550,16 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
 
       for (unsigned i = 0; i < direzioni.size (); ++i) {
         ray[i] = quadrant->p (direzioni[i], i1);
+      }
+
+      if (ray_cache.aligned_mode) {
+        ray_cache.aligned_edge_crossings (dir, x1, x2, ray, aligned_crossings);
+
+        for (const auto& crossing : aligned_crossings)
+          if (crossing.point[dir] >= x1 && crossing.point[dir] <= x2)
+            fraction[j] = (crossing.point[dir] - x1) / (x2 - x1);
+
+        continue;
       }
 
       auto it0 = ray_cache.rays[dir].find (ray);
@@ -2554,6 +2594,22 @@ poisson_boltzmann::normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
 
   for (unsigned i = 0; i < direzioni.size (); ++i) {
     ray[i] = quadrant->p (direzioni[i], i1);
+  }
+
+  if (ray_cache.aligned_mode) {
+    std::vector<NS::PBEdgeCrossing> aligned_crossings;
+    ray_cache.aligned_edge_crossings (dir, x1, x2, ray, aligned_crossings);
+
+    frac = 0.5;
+    for (const auto& crossing : aligned_crossings) {
+      if (crossing.point[dir] >= x1 && crossing.point[dir] <= x2) {
+        norm[0] = crossing.normal[0];
+        norm[1] = crossing.normal[1];
+        norm[2] = crossing.normal[2];
+        frac = (crossing.point[dir] - x1) / (x2 - x1);
+      }
+    }
+    return;
   }
 
   auto it0 = ray_cache.rays[dir].find (ray);
@@ -3529,6 +3585,300 @@ poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
   // phi_surf_txt.close();
   // std::fclose(phi_nod_delphi);
   // std::fclose(phi_sup_delphi);
+}
+
+
+void
+poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
+                                            ray_cache_t& ray_cache)
+{
+  int rank, size;
+  MPI_Comm_rank (mpicomm, &rank);
+  MPI_Comm_size (mpicomm, &size);
+
+  // Step 1: compute phi0 at every border edge crossing (same logic as
+  // write_potential_on_surface) — each rank processes its local border_quad.
+  struct Crossing { double x, y, z, phi; };
+  std::vector<Crossing> local_crossings;
+
+  const double eps_out_adim = 4.0 * pi * e_0 * e_out * kb * T * Angs / (e * e);
+
+  if (!border_quad.empty ()) {
+    auto quadrant = this->tmsh.begin_quadrant_sweep ();
+
+    for (const int ii : border_quad) {
+      quadrant[ii];
+      int cubeindex = classifyCube (quadrant, eps_out_adim);
+      if (cubeindex == -1) continue;
+
+      const int edge_bits = edgeTable[cubeindex];
+      const std::array<double,3> hh = {
+        quadrant->p (0,7) - quadrant->p (0,0),
+        quadrant->p (1,7) - quadrant->p (1,0),
+        quadrant->p (2,7) - quadrant->p (2,0)
+      };
+
+      auto get_eps_node = [&](int node) {
+        if (!quadrant->is_hanging (node)) return (*epsilon_nodes)[quadrant->gt (node)];
+        double v = 0; int np = quadrant->num_parents (node);
+        for (int k = 0; k < np; ++k) v += (*epsilon_nodes)[quadrant->gparent (k, node)] / np;
+        return v;
+      };
+      auto get_phi_node = [&](int node) {
+        if (!quadrant->is_hanging (node)) return (*phi)[quadrant->gt (node)];
+        double v = 0; int np = quadrant->num_parents (node);
+        for (int k = 0; k < np; ++k) v += (*phi)[quadrant->gparent (k, node)] / np;
+        return v;
+      };
+
+      for (int e = 0; e < 12; ++e) {
+        if (!((edge_bits >> e) & 1)) continue;
+        const int i1 = edge2nodes[2*e], i2 = edge2nodes[2*e+1];
+        const int dir = edge_axis[e];
+
+        std::array<double,3> V = {quadrant->p (0,i1), quadrant->p (1,i1), quadrant->p (2,i1)};
+        std::array<double,3> N;
+        double frac;
+        normal_intersection (quadrant, ray_cache, e, N, frac);
+        V[dir] += frac * hh[dir];
+
+        local_crossings.push_back ({V[0], V[1], V[2],
+          phi0 (get_eps_node (i1), get_eps_node (i2),
+                get_phi_node (i1), get_phi_node (i2), frac)});
+      }
+    }
+  }
+
+  // Step 2: gather all crossings to rank 0.
+  const int local_n = (int)local_crossings.size ();
+  std::vector<int> all_n (size, 0);
+  MPI_Gather (&local_n, 1, MPI_INT, all_n.data (), 1, MPI_INT, 0, mpicomm);
+
+  std::vector<Crossing> all_crossings;
+  std::vector<int> byte_counts (size, 0), byte_displs (size, 0);
+  if (rank == 0) {
+    int total = 0;
+    for (int r = 0; r < size; ++r) {
+      byte_displs[r] = total;
+      byte_counts[r] = all_n[r] * (int)sizeof (Crossing);
+      total += byte_counts[r];
+    }
+    all_crossings.resize (total / (int)sizeof (Crossing));
+  }
+  MPI_Gatherv (local_crossings.data (), local_n * (int)sizeof (Crossing), MPI_BYTE,
+               rank == 0 ? all_crossings.data () : nullptr,
+               byte_counts.data (), byte_displs.data (), MPI_BYTE, 0, mpicomm);
+
+  // Steps 3-5: rank 0 parses the OFF file, matches vertices to crossings, writes PLY.
+  if (rank == 0) {
+    struct SurfVert { double x, y, z, nx, ny, nz; int atom_idx; };
+    struct SurfFace { int v0, v1, v2; };
+    std::vector<SurfVert> verts;
+    std::vector<SurfFace> faces;
+
+    {
+      std::ifstream fin (off_file);
+      if (!fin.is_open ()) {
+        std::cerr << "write_ns_vert_potential: cannot open " << off_file << "\n";
+      } else {
+        std::string fmt_line;
+        std::getline (fin, fmt_line);
+        const bool has_normals = (fmt_line.find ("+N") != std::string::npos);
+        const bool has_atom    = (fmt_line.find ("+A") != std::string::npos);
+
+        std::string line;
+        while (std::getline (fin, line))
+          if (!line.empty () && line[0] != '#') break;
+
+        int nv_f = 0, nf_f = 0, dummy = 0;
+        std::istringstream (line) >> nv_f >> nf_f >> dummy;
+
+        verts.reserve (nv_f);
+        for (int i = 0; i < nv_f; ++i) {
+          SurfVert v = {};
+          fin >> v.x >> v.y >> v.z;
+          if (has_normals) fin >> v.nx >> v.ny >> v.nz;
+          if (has_atom)    fin >> v.atom_idx;
+          verts.push_back (v);
+        }
+        faces.reserve (nf_f);
+        for (int i = 0; i < nf_f; ++i) {
+          int cnt; SurfFace f;
+          fin >> cnt >> f.v0 >> f.v1 >> f.v2;
+          faces.push_back (f);
+        }
+      }
+    }
+
+    const int nv = (int)verts.size ();
+    const int nf = (int)faces.size ();
+
+    if (nv == 0) {
+      std::cerr << "write_ns_vert_potential: no vertices in " << off_file << "\n";
+      return;
+    }
+
+    // Build spatial hash of p4est crossings.
+    // Snap size = 5% of NS grid spacing, well within the minimum crossing separation.
+    const double h_ns  = ray_cache.aligned_surface.grid.h;
+    const double snap  = h_ns * 0.05;
+
+    struct Key3 {
+      long long x, y, z;
+      bool operator== (const Key3& o) const { return x==o.x && y==o.y && z==o.z; }
+    };
+    struct Hash3 {
+      size_t operator() (const Key3& k) const {
+        size_t h = std::hash<long long> () (k.x);
+        h ^= std::hash<long long> () (k.y) + 0x9e3779b97f4a7c15ULL + (h<<6) + (h>>2);
+        h ^= std::hash<long long> () (k.z) + 0x9e3779b97f4a7c15ULL + (h<<6) + (h>>2);
+        return h;
+      }
+    };
+
+    auto make_key = [&](double x, double y, double z) -> Key3 {
+      return { std::llround (x / snap), std::llround (y / snap), std::llround (z / snap) };
+    };
+
+    std::unordered_map<Key3, double, Hash3> cmap;
+    cmap.reserve (all_crossings.size ());
+    for (const auto& c : all_crossings)
+      cmap.emplace (make_key (c.x, c.y, c.z), c.phi);
+
+    // Match NS vertices to p4est crossings.
+    int n_unmatched = 0;
+    std::vector<double> phi_vert (nv, 0.0);
+    for (int i = 0; i < nv; ++i) {
+      auto it = cmap.find (make_key (verts[i].x, verts[i].y, verts[i].z));
+      if (it == cmap.end ()) {
+        ++n_unmatched;
+      } else {
+        phi_vert[i] = it->second;
+      }
+    }
+
+    if (n_unmatched > 0)
+      std::cerr << "write_ns_vert_potential: ERROR: " << n_unmatched << "/" << nv
+                << " NS vertices not matched to any p4est crossing "
+                << "(surface or grid mismatch)\n";
+
+    const int nc = (int)all_crossings.size ();
+    if (nc != nv)
+      std::cerr << "write_ns_vert_potential: WARNING: " << nc
+                << " p4est crossings vs " << nv << " NS vertices (counts differ)\n";
+
+    const std::string base = off_file.substr (0, off_file.rfind ('.'));
+
+    // VTK XML PolyData (.vtp) — ParaView, PyVista
+    if (surf_output_vtp) {
+      const std::string out = base + "_phi.vtp";
+      std::ofstream ofs (out);
+      ofs << "<?xml version=\"1.0\"?>\n"
+          << "<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n"
+          << "  <PolyData>\n"
+          << "    <Piece NumberOfPoints=\"" << nv << "\""
+          << " NumberOfVerts=\"0\" NumberOfLines=\"0\""
+          << " NumberOfStrips=\"0\" NumberOfPolys=\"" << nf << "\">\n"
+          << "      <Points>\n"
+          << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\""
+          << " format=\"ascii\">\n";
+      ofs << std::scientific << std::setprecision (6);
+      for (int i = 0; i < nv; ++i)
+        ofs << "          " << verts[i].x << ' ' << verts[i].y << ' ' << verts[i].z << '\n';
+      ofs << "        </DataArray>\n"
+          << "      </Points>\n"
+          << "      <PointData Normals=\"Normals\">\n"
+          << "        <DataArray type=\"Float32\" Name=\"Normals\""
+          << " NumberOfComponents=\"3\" format=\"ascii\">\n";
+      for (int i = 0; i < nv; ++i)
+        ofs << "          " << verts[i].nx << ' ' << verts[i].ny << ' ' << verts[i].nz << '\n';
+      ofs << "        </DataArray>\n"
+          << "        <DataArray type=\"Float32\" Name=\"phi\" format=\"ascii\">\n";
+      for (int i = 0; i < nv; ++i)
+        ofs << "          " << phi_vert[i] << '\n';
+      ofs << "        </DataArray>\n"
+          << "        <DataArray type=\"Int32\" Name=\"atom_idx\" format=\"ascii\">\n";
+      for (int i = 0; i < nv; ++i)
+        ofs << "          " << verts[i].atom_idx << '\n';
+      ofs << "        </DataArray>\n"
+          << "      </PointData>\n"
+          << "      <Polys>\n"
+          << "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+      for (const auto& f : faces)
+        ofs << "          " << f.v0 << ' ' << f.v1 << ' ' << f.v2 << '\n';
+      ofs << "        </DataArray>\n"
+          << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+      for (int i = 0; i < nf; ++i)
+        ofs << "          " << 3 * (i + 1) << '\n';
+      ofs << "        </DataArray>\n"
+          << "      </Polys>\n"
+          << "    </Piece>\n"
+          << "  </PolyData>\n"
+          << "</VTKFile>\n";
+      ofs.close ();
+      std::cout << "Surface potential written to " << out << "\n";
+    }
+
+    // PLY with "quality" property — MeshLab
+    if (surf_output_ply_meshlab) {
+      const std::string out = base + "_phi_meshlab.ply";
+      std::ofstream ofs (out);
+      ofs << "ply\nformat ascii 1.0\n"
+          << "element vertex " << nv << "\n"
+          << "property float x\nproperty float y\nproperty float z\n"
+          << "property float nx\nproperty float ny\nproperty float nz\n"
+          << "property float quality\n"
+          << "element face " << nf << "\n"
+          << "property list uchar int vertex_indices\nend_header\n";
+      ofs << std::scientific << std::setprecision (6);
+      for (int i = 0; i < nv; ++i)
+        ofs << verts[i].x  << ' ' << verts[i].y  << ' ' << verts[i].z  << ' '
+            << verts[i].nx << ' ' << verts[i].ny << ' ' << verts[i].nz << ' '
+            << phi_vert[i] << '\n';
+      for (const auto& f : faces)
+        ofs << "3 " << f.v0 << ' ' << f.v1 << ' ' << f.v2 << '\n';
+      ofs.close ();
+      std::cout << "Surface potential written to " << out << "\n";
+    }
+
+    // PLY with RGB vertex colors (blue-white-red centred at phi=0) — PyMOL, VMD, Jmol
+    if (surf_output_ply_rgb) {
+      double phi_abs_max = 0.0;
+      for (int i = 0; i < nv; ++i)
+        phi_abs_max = std::max (phi_abs_max, std::abs (phi_vert[i]));
+      const double r = (phi_abs_max > 0.0) ? phi_abs_max : 1.0;
+
+      const std::string out = base + "_phi_rgb.ply";
+      std::ofstream ofs (out);
+      ofs << "ply\nformat ascii 1.0\n"
+          << "element vertex " << nv << "\n"
+          << "property float x\nproperty float y\nproperty float z\n"
+          << "property float nx\nproperty float ny\nproperty float nz\n"
+          << "property uchar red\nproperty uchar green\nproperty uchar blue\n"
+          << "element face " << nf << "\n"
+          << "property list uchar int vertex_indices\nend_header\n";
+      ofs << std::scientific << std::setprecision (6);
+      for (int i = 0; i < nv; ++i) {
+        const double t = std::clamp ((phi_vert[i] + r) / (2.0 * r), 0.0, 1.0);
+        int R, G, B;
+        if (t <= 0.5) {                        // blue → white
+          const int v = (int)std::round (255.0 * 2.0 * t);
+          R = v; G = v; B = 255;
+        } else {                               // white → red
+          const int v = (int)std::round (255.0 * 2.0 * (1.0 - t));
+          R = 255; G = v; B = v;
+        }
+        ofs << verts[i].x  << ' ' << verts[i].y  << ' ' << verts[i].z  << ' '
+            << verts[i].nx << ' ' << verts[i].ny << ' ' << verts[i].nz << ' '
+            << R << ' ' << G << ' ' << B << '\n';
+      }
+      for (const auto& f : faces)
+        ofs << "3 " << f.v0 << ' ' << f.v1 << ' ' << f.v2 << '\n';
+      ofs.close ();
+      std::cout << "Surface potential written to " << out
+                << " (phi range +-" << r << " kT)\n";
+    }
+  }
 }
 
 

@@ -140,6 +140,11 @@ struct
   int stern_layer_surf;
   double stern_layer;
   unsigned num_threads;
+  // NanoShaper internal-cavity detection/filling. When cavity_filling=1, enclosed
+  // voids with volume <= cavity_vol_thresh [A^3] are treated as solute interior
+  // (eps_in, no mobile ions) via the cavity-filled vertex_colors. Default off.
+  int cavity_filling = 0;
+  double cavity_vol_thresh = 11.4;
 
   //algorithm:
   std::string linear_solver_name;
@@ -159,6 +164,11 @@ struct
   //post_processing
   int atoms_write;
   int surf_write;
+  int surf_potential = 0;
+  std::string ns_surf_file = "triangulatedSurf.off";
+  int surf_output_vtp         = 1;
+  int surf_output_ply_meshlab = 0;
+  int surf_output_ply_rgb     = 0;
   std::string map_type;
   int potential_map;
   int eps_map;
@@ -764,6 +774,9 @@ struct
 
   void
   write_potential_on_surface (ray_cache_t & ray_cache);
+
+  void
+  write_ns_vert_potential (const std::string& off_file, ray_cache_t & ray_cache);
 
   double
   coulomb_boundary_conditions (double x, double y, double z);
