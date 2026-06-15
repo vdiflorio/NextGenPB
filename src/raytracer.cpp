@@ -822,18 +822,28 @@ ray_cache_t::vertex_color (double x, double y, double z) const
   const double coords[3] = {x, y, z};
   int idx[3] = {0, 0, 0};
 
+  // Pass 1: locate the nearest NS node on every axis. A node outside the NS
+  // lattice in ANY axis is definitely outside the molecule (return 0) and must
+  // never reach the alignment check below — far-field octree nodes routinely
+  // have one in-range coordinate while the others are far out of range, and the
+  // alignment abort must not fire on those.
   for (int d = 0; d < 3; ++d) {
     const double scaled = (coords[d] - aligned_surface.grid.ns_origin[d]) / aligned_surface.grid.h;
     idx[d] = static_cast<int> (std::llround (scaled));
 
-    // Node is outside the NanoShaper domain → definitely outside molecule
     if (idx[d] < 0 || idx[d] >= aligned_surface.grid.ns_n[d])
       return 0;
+  }
 
+  // Pass 2: only nodes fully inside the NS box must coincide with the lattice.
+  for (int d = 0; d < 3; ++d) {
     const double snapped = aligned_surface.grid.ns_origin[d] + idx[d] * aligned_surface.grid.h;
-    if (std::fabs (coords[d] - snapped) > aligned_tol * aligned_surface.grid.h) {
+    const double mismatch = std::fabs (coords[d] - snapped);
+    if (mismatch > aligned_tol * aligned_surface.grid.h) {
       std::cerr << "PB node is not aligned with NanoShaper lattice: "
-                << x << " " << y << " " << z << std::endl;
+                << "(" << x << ", " << y << ", " << z << ") axis " << d
+                << " mismatch " << mismatch << " > tol " << (aligned_tol * aligned_surface.grid.h)
+                << " (h " << aligned_surface.grid.h << ")" << std::endl;
       MPI_Abort (MPI_COMM_WORLD, 1);
       return -1;
     }
@@ -869,18 +879,28 @@ ray_cache_t::aligned_edge_crossings (unsigned dir, double x1, double x2,
   else
     fixed_axes = {0, 1};
 
+  // Pass 1: locate both fixed axes. If either is outside the NS lattice the edge
+  // cannot cross the surface (return) and must not trip the alignment abort for
+  // the other axis.
   for (int q = 0; q < 2; ++q) {
     const int axis = fixed_axes[q];
     const double scaled = (ray[q] - aligned_surface.grid.ns_origin[axis]) / aligned_surface.grid.h;
     fixed[q] = static_cast<int> (std::llround (scaled));
-    const double snapped = aligned_surface.grid.ns_origin[axis] + fixed[q] * aligned_surface.grid.h;
 
-    // Edge fixed coordinate is outside NS domain → no crossings possible
     if (fixed[q] < 0 || fixed[q] >= aligned_surface.grid.ns_n[axis])
       return;
+  }
 
-    if (std::fabs (ray[q] - snapped) > aligned_tol * aligned_surface.grid.h) {
-      std::cerr << "PB edge is not aligned with NanoShaper lattice" << std::endl;
+  // Pass 2: require the edge's fixed coordinates to sit on the NS lattice.
+  for (int q = 0; q < 2; ++q) {
+    const int axis = fixed_axes[q];
+    const double snapped = aligned_surface.grid.ns_origin[axis] + fixed[q] * aligned_surface.grid.h;
+    const double mismatch = std::fabs (ray[q] - snapped);
+    if (mismatch > aligned_tol * aligned_surface.grid.h) {
+      std::cerr << "PB edge is not aligned with NanoShaper lattice: axis " << axis
+                << " coord " << ray[q] << " mismatch " << mismatch
+                << " > tol " << (aligned_tol * aligned_surface.grid.h)
+                << " (h " << aligned_surface.grid.h << ")" << std::endl;
       MPI_Abort (MPI_COMM_WORLD, 1);
       return;
     }
