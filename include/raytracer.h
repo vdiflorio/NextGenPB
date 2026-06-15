@@ -43,7 +43,15 @@ struct
   rays_t rays; //map that contains all the rays in the 3 direction
   bool aligned_mode = false;
   NS::PBAlignedSurfaceData aligned_surface;
-  double aligned_tol = 1.e-6;
+  // Fraction of a cell (h) tolerated when snapping a PB/FEM node onto the
+  // NanoShaper lattice in vertex_color()/aligned_edge_crossings(). NanoShaper
+  // re-derives its grid in buildGrid() (cube fit, odd igrid, midpoint recenter),
+  // so its exported lattice can sit a tiny sub-cell offset (~1e-3 cells) off the
+  // p4est grid even when the two are otherwise identical. 1e-2*h absorbs that
+  // benign phase while still aborting on a genuinely wrong grid (different h,
+  // swapped axes, ~h/2 ambiguity). round() already maps to the correct nearest
+  // node for any offset below this, so the color/crossing read stays correct.
+  double aligned_tol = 1.e-2;
 
   // Sparse local storage populated by scatter_aligned_surface().
   // When use_local_maps is true, vertex_color() and aligned_edge_crossings()
