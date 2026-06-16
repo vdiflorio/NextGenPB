@@ -24,6 +24,7 @@
 #include <random>
 #include <cmath>
 #include <numeric>
+#include <limits>
 
 void
 poisson_boltzmann::create_mesh ()
@@ -1066,6 +1067,26 @@ poisson_boltzmann::build_pbc_node_map ()
 
   double tol = 1e-10 * std::max ({r_cr[0] - l_cr[0], r_cr[1] - l_cr[1], r_cr[2] - l_cr[2]});
 
+  // The true Dirichlet z-faces are the mesh z-extent (the Outer box ll/rr for the
+  // membrane slab mesh, l_cr/r_cr otherwise), NOT the refined sub-box l_cr/r_cr:
+  // for membrane runs these planes differ, so filtering on l_cr[2]/r_cr[2] would
+  // leave the Dirichlet z± edge nodes inside the PBC maps and corrupt the strong
+  // elimination (their huge-penalty rows get merged). Derive the bounds from the
+  // mesh itself so both mesh shapes are handled correctly.
+  double z_dir_min =  std::numeric_limits<double>::max ();
+  double z_dir_max = -std::numeric_limits<double>::max ();
+  for (auto q = tmsh.begin_quadrant_sweep (); q != tmsh.end_quadrant_sweep (); ++q)
+    for (int ii = 0; ii < 8; ++ii) {
+      if (q->is_hanging (ii)) continue;
+      double z = q->p (2, ii);
+      if (z < z_dir_min) z_dir_min = z;
+      if (z > z_dir_max) z_dir_max = z;
+    }
+  if (size > 1) {
+    MPI_Allreduce (MPI_IN_PLACE, &z_dir_min, 1, MPI_DOUBLE, MPI_MIN, mpicomm);
+    MPI_Allreduce (MPI_IN_PLACE, &z_dir_max, 1, MPI_DOUBLE, MPI_MAX, mpicomm);
+  }
+
   // Collect (t0, t1, global_node_id) for all non-Dirichlet nodes on a given face.
   // Packed as 3 doubles per entry. Rank-local deduplication via a seen-set.
   auto collect_face_nodes = [&] (int face_idx, int d0, int d1) {
@@ -1076,7 +1097,7 @@ poisson_boltzmann::build_pbc_node_map ()
       if (fn.empty ()) continue;
       for (int fi : fn) {
         double z = q->p (2, fi);
-        if (std::abs (z - l_cr[2]) < tol || std::abs (z - r_cr[2]) < tol)
+        if (std::abs (z - z_dir_min) < tol || std::abs (z - z_dir_max) < tol)
           continue;
         auto gid = static_cast<size_t> (q->gt (fi));
         if (!seen.insert (gid).second)
