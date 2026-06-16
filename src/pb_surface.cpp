@@ -511,6 +511,19 @@ poisson_boltzmann::create_markers (ray_cache_t &ray_cache)
   reaction_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
   reaction_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out *k2);
 
+  // Membrane applied potential: build the regional bulk reference φ̄.
+  // φ̄ = 0 in the lower bath (z < z_mid), φ̄ = applied_potential in the upper
+  // bath (z > z_mid), with z_mid the lipid-slab midplane. In the membrane/solute
+  // c = 0, so φ̄ there is irrelevant. Consumed on the RHS in assemple_system_matrix
+  // as the source +c·φ̄. Null (and skipped) when applied_potential = 0.
+  const bool use_phi_bar =
+    membrane_enabled && std::fabs (applied_potential) > 1.e-12;
+  const double z_mid = 0.5 * (l_mem[2] + r_mem[2]);
+  if (use_phi_bar) {
+    phi_bar = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+    phi_bar->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0);
+  }
+
   int num_cycles = 2;
 
   if (size == 1) {
@@ -543,6 +556,9 @@ poisson_boltzmann::create_markers (ray_cache_t &ray_cache)
         z = quadrant->p (2, ii);
 
         if (! quadrant->is_hanging (ii)) {
+          if (use_phi_bar)
+            (*phi_bar)[local_num] = (z > z_mid) ? applied_potential : 0.0;
+
           if (this->is_in_ns_surf (ray_cache, x, y, z, 2) > 0.5) { //inside the molecule
             ++num_int_nodes;
             ++num_int_nodes_stern;
@@ -630,6 +646,9 @@ poisson_boltzmann::create_markers (ray_cache_t &ray_cache)
 
     if (stern_layer_surf == 0)
       bim3a_solution_with_ghosts (tmsh, (*reaction_nodes), replace_op);
+
+    if (use_phi_bar)
+      bim3a_solution_with_ghosts (tmsh, *phi_bar, replace_op);
   }
 }
 

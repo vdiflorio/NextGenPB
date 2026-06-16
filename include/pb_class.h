@@ -234,6 +234,7 @@ struct
   std::unique_ptr<distributed_vector> markn; ///< Node-level marker
   std::unique_ptr<distributed_vector> epsilon_nodes; ///< Node-level dielectric
   std::unique_ptr<distributed_vector> reaction_nodes; ///< Node-level κ² field
+  std::unique_ptr<distributed_vector> phi_bar; ///< Regional bulk reference φ̄ [kT/e]; built in create_markers, consumed as RHS source +c·φ̄. Null unless applied_potential≠0
   double net_charge; ///< Total charge of the solute [e]
   std::unique_ptr<distributed_vector> phi; ///< Electric potential solution [kT/e]
   std::unique_ptr<distributed_vector> rho_fixed; ///< Fixed charge density RHS

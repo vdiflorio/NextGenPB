@@ -223,6 +223,29 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
     bim3a_reaction_frac (tmsh, (*reaction_nodes), *ones, *A, func_frac);
   }
 
+  // --- Membrane applied potential: RHS source +c·φ̄ ---
+  // The membrane LPBE reaction term is c(φ − φ̄): the operator c·φ is already in
+  // A (above), while the known source c·φ̄ belongs on the RHS. The box-method
+  // reaction is lumped (diagonal M_c), so the source equals M_c·φ̄ exactly when
+  // assembled with the SAME operator and fractional weights as the matrix term.
+  // Accumulated into a zeroed temporary, then added to *rhs before the single
+  // rhs->assemble() below. Skipped entirely when phi_bar is null (V̄ = 0).
+  if (phi_bar) {
+    distributed_vector rhs_src (tmsh.num_owned_nodes (), mpicomm);
+    rhs_src.get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0);
+    if (stern_layer_surf == 1)
+      bim3a_rhs (tmsh, reaction, *phi_bar, rhs_src);
+    else
+      bim3a_rhs_frac (tmsh, *reaction_nodes, *phi_bar, rhs_src, func_frac);
+
+    auto &rd = rhs->get_owned_data ();
+    auto &sd = rhs_src.get_owned_data ();
+    for (size_t i = 0; i < rd.size (); ++i)
+      rd[i] += sd[i];
+
+    phi_bar.reset ();
+  }
+
   // Reaction-related vectors are no longer required
   reaction_nodes.reset();
   ones.reset();
