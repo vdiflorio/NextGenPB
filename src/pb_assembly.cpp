@@ -358,16 +358,27 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t &ray_cache)
   // Build Dirichlet boundary list
   dirichlet_bcs3 bcs;
 
-  if (bc == 1) { // Homogeneous Dirichlet BC
+  if (bc == 1) { // (Possibly inhomogeneous) Dirichlet BC
     if (std::fabs (pot_bc) > 1.e-5 && rank == 0)
       std::cerr << "[WARNING] Boundary conditions may be inaccurate!!\n";
+
+    // Membrane voltage: the lower electrode (z-, face 4) stays grounded while the
+    // upper electrode (z+, face 5) is held at applied_potential. Without membrane
+    // voltage every Dirichlet face is homogeneous (legacy behaviour).
+    const bool membrane_voltage =
+      membrane_enabled && std::fabs (applied_potential) > 1.e-12;
+    if (membrane_voltage && rank == 0)
+      std::cout << "  Membrane voltage: z- = 0, z+ = " << applied_potential
+                << " kT/e\n";
 
     for (auto const& ibc : bcells) {
       if (periodic_x && (ibc.second == 0 || ibc.second == 1)) continue;
       if (periodic_y && (ibc.second == 2 || ibc.second == 3)) continue;
+      const double bc_val =
+        (membrane_voltage && ibc.second == 5) ? applied_potential : 0.0;
       bcs.emplace_back (ibc.first, ibc.second,
-      [] (double, double, double) {
-        return 0.0;
+      [bc_val] (double, double, double) {
+        return bc_val;
       });
     }
 
