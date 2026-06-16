@@ -19,9 +19,11 @@
 #include "readpdb.h"
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <numeric>
 #include <set>
 #include <utility>
 #include <mpi.h>
@@ -240,6 +242,49 @@ zero_boundary_residue_charges (poisson_boltzmann &pb)
 
     std::cout << "  Total atoms zeroed: " << n_zeroed << '\n';
     std::cout << "=================================================\n\n";
+  }
+}
+
+// ─── Merge lipid charges into the solute charge set ──────────────────────────
+
+void
+merge_lipid_charges_into_solute (poisson_boltzmann &pb)
+{
+  // Inject the lipid charges into the main solute arrays (pos_atoms /
+  // charge_atoms) so that they act as field sources both for the potential
+  // (density map / RHS) and for the energy / flux postprocessing.
+  //
+  // Must be called AFTER trim_lipid_atoms() and zero_boundary_residue_charges():
+  // out-of-domain lipids are already removed and boundary residues already
+  // zeroed, so only the surviving charged lipid atoms are appended.  Safe on
+  // all MPI ranks: the lipid arrays are identical across ranks (broadcast +
+  // deterministic trim/zeroing), and pos_atoms/charge_atoms are already present
+  // on every rank at this point.
+  if (pb.lipid_atoms.empty ()) return;
+
+  std::size_t n_added = 0;
+
+  for (std::size_t i = 0; i < pb.charge_lipid_atoms.size (); ++i) {
+    if (std::fabs (pb.charge_lipid_atoms[i]) > 1.e-5) {
+      pb.pos_atoms.push_back (pb.pos_lipid_atoms[i]);
+      pb.charge_atoms.push_back (pb.charge_lipid_atoms[i]);
+      ++n_added;
+    }
+  }
+
+  // net_charge was computed in create_mesh() from the protein only; refresh it
+  // so postprocessing compares the Gauss flux against the full source charge.
+  pb.net_charge = std::accumulate (pb.charge_atoms.begin (),
+                                   pb.charge_atoms.end (), 0.0);
+
+  int rank;
+  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+
+  if (rank == 0) {
+    std::cout << "\n=== [ Lipid charge merge ] ===\n";
+    std::cout << "  Charged lipid atoms added to source : " << n_added << '\n';
+    std::cout << "  Net charge (protein + lipids) [e]   : " << pb.net_charge << '\n';
+    std::cout << "==============================\n\n";
   }
 }
 

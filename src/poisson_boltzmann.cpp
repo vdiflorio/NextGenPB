@@ -187,6 +187,7 @@ main (int argc, char **argv)
   if (pb.membrane_enabled) {
     trim_lipid_atoms (pb);
     zero_boundary_residue_charges(pb);
+    merge_lipid_charges_into_solute (pb);
   }
 
   MPI_Barrier (mpicomm);

@@ -102,6 +102,23 @@ void trim_lipid_atoms (poisson_boltzmann &pb);
  */
 void zero_boundary_residue_charges (poisson_boltzmann &pb);
 
+/**
+ * @brief Append lipid charges to the solute charge set so they source the field.
+ *
+ * Appends the surviving charged lipid atoms (`pb.pos_lipid_atoms` /
+ * `pb.charge_lipid_atoms`) to `pb.pos_atoms` / `pb.charge_atoms`, so that they
+ * contribute to the density map (RHS of the potential) and to the energy /
+ * flux postprocessing.  Atoms whose charge has been zeroed by
+ * zero_boundary_residue_charges() (boundary residues) are skipped.
+ * Recomputes `pb.net_charge` to include the merged lipid charges.
+ *
+ * Call after trim_lipid_atoms() and zero_boundary_residue_charges(), and before
+ * create_density_map().  Safe on all MPI ranks.
+ *
+ * @param pb Solver instance with trimmed, boundary-zeroed lipid atoms.
+ */
+void merge_lipid_charges_into_solute (poisson_boltzmann &pb);
+
 // ─── Mortar assembly ─────────────────────────────────────────────────────────
 
 /**
