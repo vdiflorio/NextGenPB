@@ -207,6 +207,9 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     e_mem = g2 ( (mem_options + "membrane_dielectric").c_str (), 2.0);
     stern_membrane = g2 ( (mem_options + "stern_membrane").c_str (), 0);
     stern_membrane_d = g2 ( (mem_options + "stern_membrane_d").c_str (), 0.0);
+    // Membrane potential V̄ applied across z (z- electrode grounded, z+ at V̄).
+    // Units: kT/e (same as pot_bc). Default 0 -> legacy homogeneous Dirichlet.
+    applied_potential = g2 ( (mem_options + "applied_potential").c_str (), 0.0);
 
     // Membrane mode always uses MESH_SHAPE_MEM (slab mesh). The user cannot
     // override this: the slab geometry and level structure are determined by

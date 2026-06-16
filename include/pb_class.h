@@ -276,6 +276,7 @@ struct
   double e_mem = 2.0; ///< Membrane dielectric constant (default = protein dielectric)
   bool stern_membrane = false; ///< Enable Stern layer on membrane surface
   double stern_membrane_d = 0.0; ///< Stern layer thickness on membrane [Å]
+  double applied_potential = 0.0; ///< Membrane potential V̄ applied across z [kT/e]; 0 = legacy homogeneous Dirichlet
   /// @}
 
   /// @}
