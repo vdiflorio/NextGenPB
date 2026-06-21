@@ -117,7 +117,7 @@ RUN wget https://github.com/carlodefalco/bimpp/archive/refs/tags/${BIMPP_VERSION
     patch -p1 < /usr/local/nextgenPB/no_octave_patches/bimpp.patch && \
     ./autogen.sh && mkdir build && cd build && \
     MULTIARCH="$(dpkg-architecture -qDEB_HOST_MULTIARCH)" && \
-    ../configure --prefix=/opt/bimpp/ \
+    ../configure --prefix=/opt/bimpp/ --disable-3d-interpolation \
         CPPFLAGS="-I/usr/include -DOMPI_SKIP_MPICXX -DOFIO_NO_OCTAVE -DBIM_TIMING" \
         LDFLAGS="-L/usr/lib/${MULTIARCH} -L/lib -L/lib64" \
         --with-blas-lapack="-lopenblas" \
