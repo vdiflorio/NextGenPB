@@ -110,6 +110,10 @@ RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/v${OCT
 # === bimpp (bim++) — build no-Octave ===
 # Patch additiva a configure.ac (AC_SUBST vuoti nel ramo "Octave assente") -> niente
 # token @OCTAVE_*@ nei Makefile e niente stub mkoctfile. Sorgenti bimpp invariati.
+# Si builda/installa SOLO src/ (le librerie): examples e test usano API Octave piu'
+# ricche (es. Matrix::transpose) fuori dallo scope dello shim. NGPB linka solo le lib.
+# Gli header generati bim_config*.h non sono installati da 'make -C src install' ma
+# servono agli header pubblici -> copia esplicita in /opt/bimpp/include.
 WORKDIR /opt
 RUN wget https://github.com/carlodefalco/bimpp/archive/refs/tags/${BIMPP_VERSION}.tar.gz && \
     tar -xzf ${BIMPP_VERSION}.tar.gz && \
@@ -129,7 +133,8 @@ RUN wget https://github.com/carlodefalco/bimpp/archive/refs/tags/${BIMPP_VERSION
         F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc \
         --with-mumps-extra-libs="-L/usr/lib -L/usr/lib/${MULTIARCH} -lscotch -lmpi \
             -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lmpi -lopenblas -lgfortran" && \
-    make -j"${JOBS}" && make install
+    make -C src -j"${JOBS}" && make -C src install && \
+    cp src/bim_config*.h /opt/bimpp/include/
 
 # === NextGenPB (build dal clone gia' presente in /usr/local/nextgenPB) ===
 # Usa il template no-Octave; il token 'x86_64-linux-gnu' nel -L viene riscritto col
@@ -179,7 +184,10 @@ LABEL org.opencontainers.image.description="NextGenPB (linearized Poisson-Boltzm
 
 # Solo le librerie runtime necessarie (scoperte nel builder via ldd+dpkg) + mpirun.
 # Senza Octave, la scoperta automatica non includera' piu' liboctave/liboctinterp.
-ARG RUNTIME_EXTRA_PKGS="libp4est-2.3 libtbb12 libtbbmalloc2 libboost-thread1.83.0"
+# IMPORTANTE: con Octave presente, MUMPS/scotch arrivavano TRANSITIVAMENTE come sue
+# dipendenze runtime; tolto Octave vanno resi espliciti (libmumps-5.6t64, libscotch-7.0),
+# altrimenti ngpb non trova libdmumps-5.6.so / libscotch a runtime.
+ARG RUNTIME_EXTRA_PKGS="libp4est-2.3 libtbb12 libtbbmalloc2 libboost-thread1.83.0 libmumps-5.6t64 libscotch-7.0"
 COPY --from=builder /tmp/runtime-pkgs.txt /tmp/runtime-pkgs.txt
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
