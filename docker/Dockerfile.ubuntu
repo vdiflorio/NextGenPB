@@ -1,0 +1,193 @@
+# syntax=docker/dockerfile:1
+#
+# NextGenPB + NanoShaper — immagine Docker (Ubuntu 24.04), MULTI-STAGE leggera.
+# Fase 1 del piano di distribuzione (vedi ../../DISTRIBUTION_PLAN.md).
+#
+# Stage 1 (builder) : compila tutto (toolchain, sorgenti, -dev). Viene SCARTATO.
+# Stage 2 (runtime) : contiene SOLO il necessario per eseguire — ngpb, le 4 librerie
+#                     in /opt e le .so di sistema linkate. Niente compilatori/header/sorgenti.
+#
+# Provenienza PROVVISORIA ("qualcosa che funziona"):
+#   - NextGenPB : branch pb-aligned-coupling (stato corrente, niente tag)
+#   - NanoShaper: master @ 6fbbc68 (NS 1.5) + git apply del patch versionato in NextGenPB
+# Migrazione al DEFINITIVO = cambiare gli ARG NGPB_REF / NS_REF / NS_APPLY_PATCH.
+#
+# Build (generico, portabile):
+#   docker build -f docker/Dockerfile.ubuntu -t ngpb:ubuntu .
+# Build nativo (NON portabile) e/o piu' veloce se hai RAM:
+#   docker build -f docker/Dockerfile.ubuntu \
+#       --build-arg CFLAGS="-Ofast -mtune=native -march=native" \
+#       --build-arg JOBS=8 -t ngpb:native .
+#
+# NOTA OOM : la compilazione di NanoShaper (template CGAL) e' molto avida di RAM. Il
+#            default JOBS=2 evita che l'OOM-killer uccida cc1plus su Docker Desktop.
+#            Se vuoi piu' velocita': alza la RAM di Docker Desktop e passa --build-arg JOBS=N.
+# NOTA root: 'docker build' richiede Docker installato/accessibile. Le operazioni "root"
+#            qui dentro sono INTERNE al container, non toccano la root dell'host.
+# NOTA arch: il triplo di architettura e' derivato a runtime (dpkg-architecture) → amd64/arm64.
+#            La versione di Octave (8.4.0) e' fissata perche' legata a ubuntu:24.04.
+
+ARG BASE_IMAGE=ubuntu:24.04
+
+# =====================================================================================
+# Stage 1 — builder
+# =====================================================================================
+FROM ${BASE_IMAGE} AS builder
+
+# --- Flag di ottimizzazione (default: portabile) ---
+ARG CFLAGS="-O2 -mtune=generic"
+ENV CFLAGS=${CFLAGS}
+ENV CXXFLAGS=${CFLAGS}
+ENV FCFLAGS=${CFLAGS}
+
+# --- Parallelismo (default basso per non saturare la RAM su CGAL) ---
+ARG JOBS=2
+
+# --- Coordinate di provenienza (cambiare QUI per il passaggio al definitivo) ---
+ARG NGPB_REPO=https://github.com/vdiflorio/NextGenPB.git
+ARG NGPB_REF=pb-aligned-coupling
+ARG NS_REPO=https://gitlab.iit.it/SDecherchi/nanoshaper.git
+ARG NS_REF=6fbbc68
+ARG NS_APPLY_PATCH=1
+
+# --- Versioni delle dipendenze buildate da sorgente ---
+ARG LIS_VERSION=2.1.6
+ARG OCTAVE_FILE_IO_VERSION=1.0.91
+ARG BIMPP_VERSION=NextGenPB-v0.0.01
+
+# === Dipendenze di build (lo stage viene scartato: la dimensione qui non conta) ===
+RUN apt-get update && apt-get upgrade -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        build-essential gfortran cmake make python3 \
+        wget diffutils git unzip bzip2 \
+        patch xz-utils perl libboost-all-dev zlib1g-dev libjson-c-dev \
+        openmpi-bin libopenmpi-dev \
+        libjansson-dev libgmp-dev libmpfr-dev libssl-dev \
+        libopenblas-dev autoconf automake libtool libqhull-dev \
+        octave octave-dev libscotch-dev libbz2-dev libtbb-dev libmumps-dev libcgal-dev \
+        libp4est-2.3 libp4est-dev
+
+# === NextGenPB: clonato per PRIMO (il suo repo contiene il patch per NanoShaper) ===
+WORKDIR /usr/local
+RUN git clone --branch ${NGPB_REF} ${NGPB_REPO} nextgenPB
+
+# === NanoShaper: master @ NS_REF (NS 1.5) + patch pb-aligned ===
+WORKDIR /opt
+RUN git clone ${NS_REPO} nanoshaper && \
+    cd nanoshaper && \
+    git checkout ${NS_REF} && \
+    if [ "${NS_APPLY_PATCH}" = "1" ]; then \
+        git apply /usr/local/nextgenPB/nanoshaper_pb_aligned.patch ; \
+    fi && \
+    cp CMakeLists_so.txt CMakeLists.txt && \
+    mkdir -p build_lib && cd build_lib && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release \
+             -DCMAKE_CXX_FLAGS_RELEASE="${CXXFLAGS} -DNDEBUG" && \
+    make -j"${JOBS}"
+
+# === LIS (solver iterativo) ===
+WORKDIR /opt
+RUN wget https://www.ssisc.org/lis/dl/lis-${LIS_VERSION}.zip && \
+    unzip lis-${LIS_VERSION}.zip && cd lis-${LIS_VERSION} && \
+    chmod 755 configure config/install-sh && \
+    ./configure --prefix=/opt/lis --enable-mpi --enable-shared --disable-static && \
+    make -j"${JOBS}" && make install
+
+# === octave_file_io ===
+WORKDIR /opt
+RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/v${OCTAVE_FILE_IO_VERSION}.tar.gz && \
+    tar -xf v${OCTAVE_FILE_IO_VERSION}.tar.gz && \
+    cd octave_file_io-${OCTAVE_FILE_IO_VERSION} && \
+    ./autogen.sh && mkdir build && cd build && \
+    MULTIARCH="$(dpkg-architecture -qDEB_HOST_MULTIARCH)" && \
+    ../configure --prefix=/opt/octave_file_io \
+                 LDFLAGS="-L/usr/lib/${MULTIARCH}/octave/8.4.0/ -Wl,-rpath,/usr/lib/${MULTIARCH}/octave/8.4.0/" \
+                 --with-octave-home=/usr/bin \
+                 CC=mpicc CXX=mpicxx && \
+    make -j"${JOBS}" && make install
+
+# === bimpp (bim++) ===
+WORKDIR /opt
+RUN wget https://github.com/carlodefalco/bimpp/archive/refs/tags/${BIMPP_VERSION}.tar.gz && \
+    tar -xzf ${BIMPP_VERSION}.tar.gz && \
+    cd bimpp-${BIMPP_VERSION} && ./autogen.sh && mkdir build && cd build && \
+    MULTIARCH="$(dpkg-architecture -qDEB_HOST_MULTIARCH)" && \
+    ../configure --prefix=/opt/bimpp/ \
+        CPPFLAGS="-I/usr/include -I/usr/include/octave-8.4.0/octave/8.4.0 -DOMPI_SKIP_MPICXX -DHAVE_OCTAVE_44 -DBIM_TIMING" \
+        LDFLAGS="-L/usr/lib/${MULTIARCH} -L/lib -L/lib64 -L/usr/lib/${MULTIARCH}/octave/8.4.0/ -Wl,-rpath,/usr/lib/${MULTIARCH}/octave/8.4.0/" \
+        --with-blas-lapack="-lopenblas" \
+        --with-octave_file_io-home=/opt/octave_file_io \
+        --with-octave-home=/usr/bin \
+        --with-p4est-home=/usr/lib/${MULTIARCH} \
+        --with-lis-home=/opt/lis \
+        --with-mumps-home=/usr/lib/${MULTIARCH} \
+        F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc \
+        --with-mumps-extra-libs="-L/usr/lib -L/usr/lib/${MULTIARCH} -lscotch -lmpi \
+            -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lmpi -lopenblas -lgfortran" && \
+    make -j"${JOBS}" && make install
+
+# === NextGenPB (build dal clone gia' presente in /usr/local/nextgenPB) ===
+# Il template local_settings_ubuntu.mk ha la path delle librerie Octave hardcoded come
+# 'x86_64-linux-gnu' → su arm64 va sostituita col triplo reale, altrimenti il link di ngpb
+# non trova -loctave/-loctinterp.
+WORKDIR /usr/local/nextgenPB
+RUN MULTIARCH="$(dpkg-architecture -qDEB_HOST_MULTIARCH)" && \
+    cp local_setting/local_settings_ubuntu.mk src/local_settings.mk && \
+    cd src && \
+    sed -i "s|x86_64-linux-gnu|${MULTIARCH}|g" local_settings.mk && \
+    sed -i "s|^CXXFLAGS=.*|CXXFLAGS= ${CXXFLAGS}|" local_settings.mk && \
+    make -j"${JOBS}" all
+
+# === Snellimento: strip dei binari, e calcolo dei pacchetti runtime via ldd+dpkg ===
+# Lo strip riduce le dimensioni; la scoperta automatica evita di indovinare i nomi
+# (robusto rispetto alla transizione 't64' di Ubuntu 24.04).
+RUN strip --strip-unneeded \
+        /opt/nanoshaper/build_lib/libNanoShaper.so \
+        /usr/local/nextgenPB/src/ngpb \
+        /opt/lis/lib/*.so* /opt/octave_file_io/lib/*.so* /opt/bimpp/lib/*.so* 2>/dev/null || true && \
+    { ldd /usr/local/nextgenPB/src/ngpb; \
+      find /opt/nanoshaper/build_lib /opt/bimpp/lib /opt/octave_file_io/lib /opt/lis/lib \
+           -name '*.so*' -exec ldd {} \; ; } 2>/dev/null \
+      | awk '/=>/ {print $3}' | grep -E '^/' | sort -u \
+      | xargs -r dpkg -S 2>/dev/null \
+      | grep -v diversion \
+      | awk -F: '{print $1}' | tr ',' '\n' | tr -d ' ' | sort -u \
+      > /tmp/runtime-pkgs.txt && \
+    echo "openmpi-bin" >> /tmp/runtime-pkgs.txt && \
+    sort -u /tmp/runtime-pkgs.txt -o /tmp/runtime-pkgs.txt && \
+    echo "=== Pacchetti runtime rilevati ===" && cat /tmp/runtime-pkgs.txt
+
+# =====================================================================================
+# Stage 2 — runtime (leggero: solo l'essenziale)
+# =====================================================================================
+FROM ${BASE_IMAGE} AS runtime
+
+LABEL maintainer="vincenzo.diflorio@iit.it"
+LABEL org.opencontainers.image.source="https://github.com/vdiflorio/NextGenPB"
+LABEL org.opencontainers.image.description="NextGenPB (linearized Poisson-Boltzmann solver) + NanoShaper"
+
+# Solo le librerie runtime necessarie (scoperte nel builder via ldd+dpkg) + mpirun.
+# Safety-net: alcune .so (p4est/sc, TBB, Boost.thread) hanno soname che la scoperta
+# automatica puo' non attribuire al pacchetto runtime corretto → le aggiungiamo esplicite.
+# (Verificato su Ubuntu 24.04: libp4est-2.3 fornisce sia libp4est-2.3.so sia libsc-2.3.so.)
+ARG RUNTIME_EXTRA_PKGS="libp4est-2.3 libtbb12 libtbbmalloc2 libboost-thread1.83.0"
+COPY --from=builder /tmp/runtime-pkgs.txt /tmp/runtime-pkgs.txt
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        $(tr '\n' ' ' < /tmp/runtime-pkgs.txt) ${RUNTIME_EXTRA_PKGS} && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/runtime-pkgs.txt
+
+# Artefatti: ngpb + le 4 librerie in /opt (gli rpath sono incisi su queste path).
+COPY --from=builder /opt/nanoshaper/build_lib/libNanoShaper.so /opt/nanoshaper/build_lib/libNanoShaper.so
+COPY --from=builder /opt/lis/lib                                /opt/lis/lib
+COPY --from=builder /opt/octave_file_io/lib                     /opt/octave_file_io/lib
+COPY --from=builder /opt/bimpp/lib                              /opt/bimpp/lib
+COPY --from=builder /usr/local/nextgenPB/src/ngpb              /usr/local/nextgenPB/src/ngpb
+
+# OpenMPI rifiuta di girare come root se non esplicitamente autorizzato (qui siamo root nel container)
+ENV OMPI_ALLOW_RUN_AS_ROOT=1
+ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+ENV PATH="/usr/local/nextgenPB/src:${PATH}"
+
+VOLUME ["/App"]
+WORKDIR /App

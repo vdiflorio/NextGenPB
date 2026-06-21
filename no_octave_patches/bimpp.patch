@@ -1,0 +1,18 @@
+diff --git a/configure.ac b/configure.ac
+index 1bb908c..f61d9fb 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -207,6 +207,13 @@ $(env -i PATH=$PATH LD_LIBRARY_PATH=$LD_LIBRARY_PATH DYLD_LIBRARY_PATH=$DYLD_LIB
+ ")
+ else
+    AC_MSG_WARN([You do not seem to have a complete install of Octave on your computer.])
++   # No mkoctfile: build without Octave. Still substitute these so the
++   # generated Makefiles do not contain literal @OCTAVE_*@ tokens. Combine
++   # with -DOFIO_NO_OCTAVE (octave_file_io shim) to build the whole stack
++   # without Octave. The Octave-present branch above is left untouched.
++   AC_SUBST(OCTAVE_COMPILE_FLAGS, "")
++   AC_SUBST(OCTAVE_LINK_FLAGS, "")
++   AC_SUBST(OCTAVE_LINK_ADD, "")
+ fi
+ 
+ AC_ARG_WITH([octave_file_io],
