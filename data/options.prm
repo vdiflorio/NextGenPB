@@ -115,6 +115,28 @@ T                             = 298.15 # Temperature in Kelvin
 calc_energy = 2
 calc_coulombic = 1    # 0 = No calculation of Coulombic energy
 
+# Per-atom potential and field decomposition (written to 'pot_field.dat').
+# The potential/field at each atom center is split into three independent,
+# summable contributions:
+#   phi_c = direct Coulombic term (atom-atom interaction in the solute dielectric)
+#   phi_p = polarization term (charge induced at the molecular/dielectric boundary)
+#   phi_i = ionic term (Debye screening of the ionic atmosphere)
+#
+# calc_potential_terms: which potential terms to evaluate at atom centers
+#   0 = none (skip the per-atom potential/field calculation)
+#   1 = Coulombic + polarization        -> columns phi_c, phi_p ; gives polarization energy
+#   2 = Coulombic + polarization + ionic -> columns phi_c, phi_p, phi_i ; also gives direct ionic energy
+#       (automatically degrades to 1 when there is no salt, i.e. ionic_strength ~ 0)
+#
+# calc_field_terms: same 0/1/2 selection, but for the electric field vector
+#   (Ex, Ey, Ez) of each term.
+#
+# Note: the Coulombic field E_c is always computed and written whenever either
+# option is > 0 (it is produced together with phi_c), even if calc_field_terms = 0.
+# Only E_p (polarization) and E_i (ionic) actually depend on calc_field_terms.
+calc_potential_terms = 0
+calc_field_terms     = 0
+
 # Output options:
 atoms_write   = 0     # 1 = write potential at atom centers, 0 = don't
 map_type      = vtu   # Output format: 'vtu' (for ParaView, vtk binary), 'oct' (Octbin internal format)
