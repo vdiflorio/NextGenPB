@@ -3597,55 +3597,55 @@ poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
   MPI_Comm_rank (mpicomm, &rank);
   MPI_Comm_size (mpicomm, &size);
 
-  // Step 1: compute phi0 at every border edge crossing (same logic as
-  // write_potential_on_surface) — each rank processes its local border_quad.
-  struct Crossing { double x, y, z, phi; };
+  // Step 1: compute phi0 and the polarization charge q_pol at every border edge
+  // crossing (same logic as write_potential_on_surface) — each rank processes
+  // its local border_quad.
+  struct Crossing { double x, y, z, phi, qpol; long long g1, g2; };
   std::vector<Crossing> local_crossings;
-
-  const double eps_out_adim = 4.0 * pi * e_0 * e_out * kb * T * Angs / (e * e);
 
   if (!border_quad.empty ()) {
     auto quadrant = this->tmsh.begin_quadrant_sweep ();
+    std::array<double,8> tmp_phi, tmp_eps;
+    std::vector<int> edg, fl_dir;
 
     for (const int ii : border_quad) {
       quadrant[ii];
-      int cubeindex = classifyCube (quadrant, eps_out_adim);
-      if (cubeindex == -1) continue;
+      // Same edge classification and flux as classifyCube_flux_fast /
+      // pot_field_fast: raw nodal eps/phi (no hanging averaging), edges selected
+      // by dielectric jump. This is what makes q_pol and phi0 reproduce the
+      // solver (energy_fast / pot_field_fast) exactly, hanging nodes included.
+      std::tie (tmp_phi, tmp_eps, edg, fl_dir) =
+        classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
 
-      const int edge_bits = edgeTable[cubeindex];
       const std::array<double,3> hh = {
         quadrant->p (0,7) - quadrant->p (0,0),
         quadrant->p (1,7) - quadrant->p (1,0),
         quadrant->p (2,7) - quadrant->p (2,0)
       };
+      const std::array<double,3> area_h = {
+        hh[1]*hh[2]/hh[0]*0.25, hh[0]*hh[2]/hh[1]*0.25, hh[0]*hh[1]/hh[2]*0.25};
 
-      auto get_eps_node = [&](int node) {
-        if (!quadrant->is_hanging (node)) return (*epsilon_nodes)[quadrant->gt (node)];
-        double v = 0; int np = quadrant->num_parents (node);
-        for (int k = 0; k < np; ++k) v += (*epsilon_nodes)[quadrant->gparent (k, node)] / np;
-        return v;
-      };
-      auto get_phi_node = [&](int node) {
-        if (!quadrant->is_hanging (node)) return (*phi)[quadrant->gt (node)];
-        double v = 0; int np = quadrant->num_parents (node);
-        for (int k = 0; k < np; ++k) v += (*phi)[quadrant->gparent (k, node)] / np;
-        return v;
-      };
+      for (int ip = 0; ip < (int)edg.size (); ++ip) {
+        const int e    = edg[ip];
+        const int axis = edge_axis[e];
+        const int i1   = edge2nodes[2*e], i2 = edge2nodes[2*e+1];
 
-      for (int e = 0; e < 12; ++e) {
-        if (!((edge_bits >> e) & 1)) continue;
-        const int i1 = edge2nodes[2*e], i2 = edge2nodes[2*e+1];
-        const int dir = edge_axis[e];
-
-        std::array<double,3> V = {quadrant->p (0,i1), quadrant->p (1,i1), quadrant->p (2,i1)};
         std::array<double,3> N;
         double frac;
         normal_intersection (quadrant, ray_cache, e, N, frac);
-        V[dir] += frac * hh[dir];
+        std::array<double,3> V = {quadrant->p (0,i1), quadrant->p (1,i1), quadrant->p (2,i1)};
+        V[axis] += frac * hh[axis];
+
+        // Per-cube polarization charge (flux of D). Each shared edge is visited
+        // from up to 4 cubes (each weighted 0.25 in area_h); the full per-node
+        // q_pol is recovered by summing over cubes downstream (cmap_q below).
+        const double qpol = -(tmp_phi[i2] - tmp_phi[i1])
+                            * wha (tmp_eps[i1], tmp_eps[i2], frac)
+                            * fl_dir[ip] * area_h[axis];
 
         local_crossings.push_back ({V[0], V[1], V[2],
-          phi0 (get_eps_node (i1), get_eps_node (i2),
-                get_phi_node (i1), get_phi_node (i2), frac)});
+          phi0 (tmp_eps[i1], tmp_eps[i2], tmp_phi[i1], tmp_phi[i2], frac), qpol,
+          (long long) quadrant->gt (i1), (long long) quadrant->gt (i2)});
       }
     }
   }
@@ -3741,20 +3741,68 @@ poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
       return { std::llround (x / snap), std::llround (y / snap), std::llround (z / snap) };
     };
 
-    std::unordered_map<Key3, double, Hash3> cmap;
-    cmap.reserve (all_crossings.size ());
-    for (const auto& c : all_crossings)
-      cmap.emplace (make_key (c.x, c.y, c.z), c.phi);
+    // De-duplicate the per-cube crossings into DISTINCT surface crossings, keyed
+    // by the p4est global edge (gt(i1),gt(i2)) -- NOT by spatial position. The
+    // same border edge is visited from up to 4 cubes: q_pol must be SUMMED over
+    // them (multiplicity), while phi0/position are identical. Keying on position
+    // with a coarse snap would merge near-degenerate but DISTINCT crossings
+    // (which can be ~1e-5 A apart on a folded surface) and double-count q_pol.
+    struct EKey { long long a, b;
+      bool operator== (const EKey& o) const { return a == o.a && b == o.b; } };
+    struct EHash { size_t operator() (const EKey& k) const {
+      size_t h = std::hash<long long> () (k.a);
+      h ^= std::hash<long long> () (k.b) + 0x9e3779b97f4a7c15ULL + (h<<6) + (h>>2);
+      return h; } };
+    struct UCross { double x, y, z, phi, qpol; };
 
-    // Match NS vertices to p4est crossings.
+    std::unordered_map<EKey, int, EHash> emap;
+    std::vector<UCross> ucross;
+    emap.reserve (all_crossings.size ());
+    ucross.reserve (all_crossings.size ());
+    for (const auto& c : all_crossings) {
+      const EKey k { std::min (c.g1, c.g2), std::max (c.g1, c.g2) };
+      auto it = emap.find (k);
+      if (it == emap.end ()) {
+        emap.emplace (k, (int) ucross.size ());
+        ucross.push_back ({ c.x, c.y, c.z, c.phi, c.qpol });
+      } else {
+        ucross[it->second].qpol += c.qpol;   // multiplicity sum
+      }
+    }
+
+    // Spatial bucket over the distinct crossings for NS-vertex matching (NS
+    // surface vertices differ from p4est crossings by up to ~snap). Each NS
+    // vertex takes the nearest distinct crossing in the 3x3x3 cell neighbourhood.
+    std::unordered_map<Key3, std::vector<int>, Hash3> bucket;
+    bucket.reserve (ucross.size ());
+    for (int u = 0; u < (int) ucross.size (); ++u)
+      bucket[make_key (ucross[u].x, ucross[u].y, ucross[u].z)].push_back (u);
+
     int n_unmatched = 0;
     std::vector<double> phi_vert (nv, 0.0);
+    std::vector<double> qpol_vert (nv, 0.0);
     for (int i = 0; i < nv; ++i) {
-      auto it = cmap.find (make_key (verts[i].x, verts[i].y, verts[i].z));
-      if (it == cmap.end ()) {
+      const Key3 b0 = make_key (verts[i].x, verts[i].y, verts[i].z);
+      int best = -1;
+      double best_d2 = std::numeric_limits<double>::max ();
+      for (int dx = -1; dx <= 1; ++dx)
+        for (int dy = -1; dy <= 1; ++dy)
+          for (int dz = -1; dz <= 1; ++dz) {
+            auto it = bucket.find ({ b0.x + dx, b0.y + dy, b0.z + dz });
+            if (it == bucket.end ()) continue;
+            for (int u : it->second) {
+              const double ex = ucross[u].x - verts[i].x;
+              const double ey = ucross[u].y - verts[i].y;
+              const double ez = ucross[u].z - verts[i].z;
+              const double d2 = ex*ex + ey*ey + ez*ez;
+              if (d2 < best_d2) { best_d2 = d2; best = u; }
+            }
+          }
+      if (best < 0) {
         ++n_unmatched;
       } else {
-        phi_vert[i] = it->second;
+        phi_vert[i]  = ucross[best].phi;
+        qpol_vert[i] = ucross[best].qpol;
       }
     }
 
@@ -3798,6 +3846,12 @@ poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
       for (int i = 0; i < nv; ++i)
         ofs << "          " << phi_vert[i] << '\n';
       ofs << "        </DataArray>\n"
+          << "        <DataArray type=\"Float64\" Name=\"q_pol\" format=\"ascii\">\n";
+      ofs << std::setprecision (15);
+      for (int i = 0; i < nv; ++i)
+        ofs << "          " << qpol_vert[i] << '\n';
+      ofs << std::setprecision (6);
+      ofs << "        </DataArray>\n"
           << "        <DataArray type=\"Int32\" Name=\"atom_idx\" format=\"ascii\">\n";
       for (int i = 0; i < nv; ++i)
         ofs << "          " << verts[i].atom_idx << '\n';
@@ -3829,13 +3883,14 @@ poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
           << "property float x\nproperty float y\nproperty float z\n"
           << "property float nx\nproperty float ny\nproperty float nz\n"
           << "property float quality\n"
+          << "property float q_pol\n"
           << "element face " << nf << "\n"
           << "property list uchar int vertex_indices\nend_header\n";
       ofs << std::scientific << std::setprecision (6);
       for (int i = 0; i < nv; ++i)
         ofs << verts[i].x  << ' ' << verts[i].y  << ' ' << verts[i].z  << ' '
             << verts[i].nx << ' ' << verts[i].ny << ' ' << verts[i].nz << ' '
-            << phi_vert[i] << '\n';
+            << phi_vert[i] << ' ' << qpol_vert[i] << '\n';
       for (const auto& f : faces)
         ofs << "3 " << f.v0 << ' ' << f.v1 << ' ' << f.v2 << '\n';
       ofs.close ();
@@ -3856,6 +3911,7 @@ poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
           << "property float x\nproperty float y\nproperty float z\n"
           << "property float nx\nproperty float ny\nproperty float nz\n"
           << "property uchar red\nproperty uchar green\nproperty uchar blue\n"
+          << "property float q_pol\n"
           << "element face " << nf << "\n"
           << "property list uchar int vertex_indices\nend_header\n";
       ofs << std::scientific << std::setprecision (6);
@@ -3871,7 +3927,7 @@ poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
         }
         ofs << verts[i].x  << ' ' << verts[i].y  << ' ' << verts[i].z  << ' '
             << verts[i].nx << ' ' << verts[i].ny << ' ' << verts[i].nz << ' '
-            << R << ' ' << G << ' ' << B << '\n';
+            << R << ' ' << G << ' ' << B << ' ' << qpol_vert[i] << '\n';
       }
       for (const auto& f : faces)
         ofs << "3 " << f.v0 << ' ' << f.v1 << ' ' << f.v2 << '\n';
