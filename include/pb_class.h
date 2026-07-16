@@ -188,6 +188,39 @@ struct
   std::unique_ptr<distributed_vector> rhs;
   std::unique_ptr<distributed_sparse_matrix> A;
 
+  // ============================================================================
+  //  [pb_membrane module] — membrane / lipid support
+  //  Fields added by the membrane feature (NOT present on main). Implemented in
+  //  pb_membrane.cpp / pb_membrane.h. Kept grouped so the module's data surface
+  //  is explicit and separable. NB: PBC (periodic_*) and membrane-voltage
+  //  (applied_potential, phi_bar) fields are separate concerns, added later.
+  // ============================================================================
+  bool membrane_enabled = false; ///< Enable membrane mode
+
+  // Membrane slab / two-box mesh refinement (MESH_SHAPE_MEM)
+  static constexpr int MESH_SHAPE_MEM = 6; ///< Mesh-shape id for the membrane slab mesh
+  double l_prot[3]; ///< Protein bounding box: min corner [Å]
+  double r_prot[3]; ///< Protein bounding box: max corner [Å]
+  double l_mem[3];  ///< Membrane (lipid) refinement box: min corner [Å]
+  double r_mem[3];  ///< Membrane (lipid) refinement box: max corner [Å]
+  int nlev_mem  = 2; ///< Levels above scale_level for surface refinement
+  int nlev_sol  = 4; ///< Levels below scale_level for far solvent
+  int nlev_prot = 1; ///< Extra levels above scale_level for protein box (0 < nlev_prot < nlev_mem)
+
+  // Lipid atom data (read from a separate PQR/PDB file)
+  std::string lipid_file;     ///< Path to lipid PQR/PDB file
+  std::string lipid_filetype; ///< "pqr" or "pdb"
+  std::vector<NS::Atom> lipid_atoms;                 ///< Lipid atom list
+  std::vector<std::array<double, 3>> pos_lipid_atoms; ///< Lipid positions [Å]
+  std::vector<double> charge_lipid_atoms;            ///< Lipid partial charges [e]
+  std::vector<double> r_lipid_atoms;                 ///< Lipid van der Waals radii [Å]
+
+  // Membrane dielectric / Stern profile
+  double e_mem = 2.0;            ///< Membrane dielectric constant (default = protein dielectric)
+  bool   stern_membrane = false; ///< Enable Stern layer on membrane surface
+  double stern_membrane_d = 0.0; ///< Stern layer thickness on membrane [Å]
+  // ======================== end [pb_membrane module] ==========================
+
   static constexpr
   std::array<int, 12> edge_axis = {0,1,0,1,0,1,0,1,2,2,2,2};
 
