@@ -225,6 +225,14 @@ struct
 
   // Membrane dielectric / Stern profile
   double e_mem = 2.0;            ///< Membrane dielectric constant; defaults to e_in when unset
+
+  // Dielectric slab for the implicit modes: the membrane spans the whole xy face,
+  // so only the z bounds are needed. These are the van der Waals envelope of the
+  // lipid atoms (centres +- radius), i.e. what the NanoShaper surface approximates
+  // in ns mode -- deliberately NOT l_mem/r_mem, which carry 2*prb_radius of extra
+  // padding per side because they are refinement boxes.
+  double z_mem_bot = 0.0; ///< Membrane dielectric slab: lower z bound [Å]
+  double z_mem_top = 0.0; ///< Membrane dielectric slab: upper z bound [Å]
   bool   stern_membrane = false; ///< Enable Stern layer on membrane surface
   double stern_membrane_d = 0.0; ///< Stern layer thickness on membrane [Å]
   // ======================== end [pb_membrane module] ==========================

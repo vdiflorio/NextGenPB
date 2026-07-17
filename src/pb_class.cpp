@@ -1023,6 +1023,25 @@ poisson_boltzmann::parse_options (int argc, char **argv)
                 << e_in << ").\n          Use mode = implicit or implicit_charged "
                 << "to control it.\n";
 
+    // energy() locates the dielectric interface through the NanoShaper surface:
+    // border_quad comes from is_in_ns_surf, classifyCube assumes a two-valued
+    // epsilon field, and normal_intersection queries the ray cache. In the
+    // implicit modes the membrane/solvent interface is a box, so it is in none of
+    // those: the flux across it would be missed and the transmembrane border
+    // quadrants mis-classified. The potential itself is unaffected (the assembly
+    // only reads epsilon_nodes). Refuse rather than print a plausible wrong
+    // number -- see piano_cleanup.md, phase 2.5/M5.
+    if (membrane_mode != MEM_MODE_NS && calc_energy != 0) {
+      if (rank == 0)
+        std::cerr << "[ERROR] calc_energy = " << calc_energy << " is not supported with "
+                  << "membrane mode = " << mode_str << ".\n"
+                  << "        energy() assumes the dielectric interface is the NanoShaper "
+                  << "surface, which is not true\n        for an implicit membrane box. "
+                  << "Set calc_energy = 0.\n";
+
+      return 1;
+    }
+
     stern_membrane = g2 ( (mem_options + "stern_membrane").c_str (), 0);
     stern_membrane_d = g2 ( (mem_options + "stern_membrane_d").c_str (), 0.0);
 
@@ -1861,6 +1880,13 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
 
   double eps_in = 4.0*pi*e_0*e_in*kb*T*Angs/ (e*e); //adim e_in
   double eps_out = 4.0*pi*e_0*e_out*kb*T*Angs/ (e*e); //adim e_out
+  double eps_mem = 4.0*pi*e_0*e_mem*kb*T*Angs/ (e*e); //adim e_mem
+
+  // Implicit membrane: the slab is a box, not a molecular surface. It spans the
+  // whole xy face, so only the z bounds filter. Nodes outside the molecular
+  // surface but inside the slab get the membrane dielectric and no ionic
+  // screening (no ions in the hydrophobic core).
+  const bool implicit_membrane = membrane_enabled && membrane_mode != MEM_MODE_NS;
 
   /////////////////////////////////////////////////////////
   //reactions
@@ -1923,6 +1949,10 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
             // std::array<double, 2> ray {x,y};
 
             ray_cache.rays_list[2].insert ({x,y});
+          } else if (implicit_membrane && z >= z_mem_bot && z <= z_mem_top) {
+            //outside the molecule, inside the membrane slab
+            (*epsilon_nodes)[local_num] = eps_mem;
+            (*reaction_nodes)[local_num] = 0.0;
           }
 
           if (this->is_in_ns_surf (ray_cache, x, y, z, 0) < -0.5) {
