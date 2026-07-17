@@ -197,6 +197,14 @@ struct
   // ============================================================================
   bool membrane_enabled = false; ///< Enable membrane mode
 
+  /// How the membrane is represented.
+  enum membrane_mode_t {
+    MEM_MODE_NS = 0,        ///< Explicit lipids: NanoShaper surface, dielectric = e_in
+    MEM_MODE_IMPLICIT,      ///< Uncharged dielectric box, no lipid file
+    MEM_MODE_IMPLICIT_CHARGED ///< Dielectric box + point charges from the lipid PQR
+  };
+  membrane_mode_t membrane_mode = MEM_MODE_NS; ///< Membrane representation
+
   // Membrane slab / two-box mesh refinement (MESH_SHAPE_MEM)
   static constexpr int MESH_SHAPE_MEM = 6; ///< Mesh-shape id for the membrane slab mesh
   double l_prot[3]; ///< Protein bounding box: min corner [Å]
@@ -216,7 +224,7 @@ struct
   std::vector<double> r_lipid_atoms;                 ///< Lipid van der Waals radii [Å]
 
   // Membrane dielectric / Stern profile
-  double e_mem = 2.0;            ///< Membrane dielectric constant (default = protein dielectric)
+  double e_mem = 2.0;            ///< Membrane dielectric constant; defaults to e_in when unset
   bool   stern_membrane = false; ///< Enable Stern layer on membrane surface
   double stern_membrane_d = 0.0; ///< Stern layer thickness on membrane [Å]
   // ======================== end [pb_membrane module] ==========================
