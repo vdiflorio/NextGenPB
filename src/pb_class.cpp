@@ -1005,8 +1005,46 @@ poisson_boltzmann::parse_options (int argc, char **argv)
       return 1;
     }
 
-    lipid_file = g2 ( (mem_options + "lipid_file").c_str (), std::string ("lipids.pqr"));
-    lipid_filetype = g2 ( (mem_options + "lipid_filetype").c_str (), std::string ("pqr"));
+    if (membrane_uses_lipids ()) {
+      lipid_file = g2 ( (mem_options + "lipid_file").c_str (), std::string ("lipids.pqr"));
+      lipid_filetype = g2 ( (mem_options + "lipid_filetype").c_str (), std::string ("pqr"));
+    } else {
+      // MEM_MODE_IMPLICIT reads no lipid file, so the slab has to be given.
+      // Probe presence with two different defaults rather than treating 0 as
+      // "unset": 0 is a legitimate membrane_center_z.
+      auto is_set = [&g2] (const std::string &key) {
+        return g2 (key.c_str (), 1.0) == g2 (key.c_str (), 2.0);
+      };
+
+      const std::string required[] = {mem_options + "cell_length_x",
+                                      mem_options + "cell_length_y",
+                                      mem_options + "membrane_thickness",
+                                      mem_options + "membrane_center_z"
+                                     };
+
+      for (const std::string &key : required)
+        if (! is_set (key)) {
+          if (rank == 0)
+            std::cerr << "[ERROR] membrane mode = implicit requires '" << key
+                      << "': there are no lipids to derive the slab from.\n";
+
+          return 1;
+        }
+
+      cell_length_x = g2 ( (mem_options + "cell_length_x").c_str (), 0.0);
+      cell_length_y = g2 ( (mem_options + "cell_length_y").c_str (), 0.0);
+      membrane_thickness = g2 ( (mem_options + "membrane_thickness").c_str (), 0.0);
+      membrane_center_z = g2 ( (mem_options + "membrane_center_z").c_str (), 0.0);
+
+      if (cell_length_x <= 0.0 || cell_length_y <= 0.0 || membrane_thickness <= 0.0) {
+        if (rank == 0)
+          std::cerr << "[ERROR] cell_length_x, cell_length_y and membrane_thickness "
+                    << "must be > 0 (got " << cell_length_x << ", " << cell_length_y
+                    << ", " << membrane_thickness << ").\n";
+
+        return 1;
+      }
+    }
     // The membrane dielectric defaults to the solute one: with e_mem == e_in the
     // implicit modes reproduce the ns model (same low-dielectric region, only a
     // smoother boundary), which makes them comparable.

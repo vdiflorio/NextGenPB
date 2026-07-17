@@ -205,6 +205,20 @@ struct
   };
   membrane_mode_t membrane_mode = MEM_MODE_NS; ///< Membrane representation
 
+  /// True when the membrane geometry comes from a lipid file (ns, implicit_charged).
+  /// MEM_MODE_IMPLICIT builds the slab from parameters and reads no lipids at all.
+  bool membrane_uses_lipids () const
+  {
+    return membrane_enabled && membrane_mode != MEM_MODE_IMPLICIT;
+  }
+
+  // Slab geometry for MEM_MODE_IMPLICIT, which has no lipids to derive it from.
+  // Required (and only read) in that mode; the membrane spans the whole xy face.
+  double cell_length_x = 0.0;      ///< Unit cell length in x [Å]
+  double cell_length_y = 0.0;      ///< Unit cell length in y [Å]
+  double membrane_thickness = 0.0; ///< Dielectric slab thickness in z [Å]
+  double membrane_center_z = 0.0;  ///< Dielectric slab centre in z [Å]
+
   // Membrane slab / two-box mesh refinement (MESH_SHAPE_MEM)
   static constexpr int MESH_SHAPE_MEM = 6; ///< Mesh-shape id for the membrane slab mesh
   double l_prot[3]; ///< Protein bounding box: min corner [Å]
