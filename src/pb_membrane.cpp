@@ -268,6 +268,13 @@ merge_lipid_charges_into_solute (poisson_boltzmann &pb)
     if (std::fabs (pb.charge_lipid_atoms[i]) > 1.e-5) {
       pb.pos_atoms.push_back (pb.pos_lipid_atoms[i]);
       pb.charge_atoms.push_back (pb.charge_lipid_atoms[i]);
+
+      // index_atoms is only populated when atoms_write == 1, and is indexed by
+      // pos_atoms position when writing phi on atoms: it has to grow with
+      // pos_atoms or the lipid entries read past its end.
+      if (pb.atoms_write == 1)
+        pb.index_atoms.push_back (static_cast<int> (pb.index_atoms.size ()) + 1);
+
       ++n_added;
     }
   }
