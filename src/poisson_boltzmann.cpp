@@ -191,6 +191,8 @@ main (int argc, char **argv)
     pb.init_tmesh_with_refine_scale();
   } else if (pb.mesh_shape == 3) {
     pb.init_tmesh_with_refine_box_scale();
+  } else if (pb.mesh_shape == poisson_boltzmann::MESH_SHAPE_MEM) {
+    init_tmesh_mem_two_box (pb);
   } else {
     pb.init_tmesh();
   }
