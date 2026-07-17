@@ -330,32 +330,52 @@ build_membrane_slab_mesh (poisson_boltzmann &pb)
   auto minmax_z = std::minmax_element (pb.pos_atoms.begin (), pb.pos_atoms.end (), comp_pos_z);
   double maxradius = *std::max_element (pb.r_atoms.begin (), pb.r_atoms.end ());
 
-  // --- lipid atom extents in all three directions ---
-  auto minmax_lip_x = std::minmax_element (pb.pos_lipid_atoms.begin (), pb.pos_lipid_atoms.end (), comp_pos_x);
-  auto minmax_lip_y = std::minmax_element (pb.pos_lipid_atoms.begin (), pb.pos_lipid_atoms.end (), comp_pos_y);
-  auto minmax_lip_z = std::minmax_element (pb.pos_lipid_atoms.begin (), pb.pos_lipid_atoms.end (), comp_pos_z);
+  // --- membrane extents (atom centres) and lipid radius ---
+  // Everything below is written in terms of these, so the implicit mode only has
+  // to synthesise them from the parameters: with maxrad_lip = 0 the parameters
+  // are taken to be the envelope itself, and the formulas carry through unchanged.
+  double x_lip_min, x_lip_max, y_lip_min, y_lip_max, z_lip_min, z_lip_max, maxrad_lip;
 
-  double maxrad_lip = pb.r_lipid_atoms.empty () ? 0.0
-                      : *std::max_element (pb.r_lipid_atoms.begin (), pb.r_lipid_atoms.end ());
+  if (pb.membrane_uses_lipids ()) {
+    auto minmax_lip_x = std::minmax_element (pb.pos_lipid_atoms.begin (), pb.pos_lipid_atoms.end (), comp_pos_x);
+    auto minmax_lip_y = std::minmax_element (pb.pos_lipid_atoms.begin (), pb.pos_lipid_atoms.end (), comp_pos_y);
+    auto minmax_lip_z = std::minmax_element (pb.pos_lipid_atoms.begin (), pb.pos_lipid_atoms.end (), comp_pos_z);
+
+    x_lip_min = (*minmax_lip_x.first)[0];
+    x_lip_max = (*minmax_lip_x.second)[0];
+    y_lip_min = (*minmax_lip_y.first)[1];
+    y_lip_max = (*minmax_lip_y.second)[1];
+    z_lip_min = (*minmax_lip_z.first)[2];
+    z_lip_max = (*minmax_lip_z.second)[2];
+
+    maxrad_lip = pb.r_lipid_atoms.empty () ? 0.0
+                 : *std::max_element (pb.r_lipid_atoms.begin (), pb.r_lipid_atoms.end ());
+  } else {
+    // No lipid file: the slab is given, and centred on the protein in xy.
+    const double cx = 0.5 * ((*minmax_x.first)[0] + (*minmax_x.second)[0]);
+    const double cy = 0.5 * ((*minmax_y.first)[1] + (*minmax_y.second)[1]);
+
+    x_lip_min = cx - 0.5 * pb.cell_length_x;
+    x_lip_max = cx + 0.5 * pb.cell_length_x;
+    y_lip_min = cy - 0.5 * pb.cell_length_y;
+    y_lip_max = cy + 0.5 * pb.cell_length_y;
+    z_lip_min = pb.membrane_center_z - 0.5 * pb.membrane_thickness;
+    z_lip_max = pb.membrane_center_z + 0.5 * pb.membrane_thickness;
+    maxrad_lip = 0.0;
+  }
+
   double maxrad = std::max (maxradius, maxrad_lip);
 
   // --- z-slab bounds: covers both membrane and protein (protein may be taller) ---
   double z_prot_min = (*minmax_z.first)[2];
   double z_prot_max = (*minmax_z.second)[2];
-  double z_lip_min = (*minmax_lip_z.first)[2];
-  double z_lip_max = (*minmax_lip_z.second)[2];
 
   double z_slab_bot = std::min (z_prot_min, z_lip_min) - maxrad - 2.0 * pb.prb_radius;
   double z_slab_top = std::max (z_prot_max, z_lip_max) + maxrad + 2.0 * pb.prb_radius;
   double z_slab_cc = 0.5 * (z_slab_top + z_slab_bot);
 
-  // --- xy extent of the membrane from lipid atoms + vdw radii ---
+  // --- xy extent of the membrane: centres + vdw radii ---
   // box_side is the minimum enclosing square: (max_pos + r_vdw) - (min_pos - r_vdw)
-  double x_lip_min = (*minmax_lip_x.first)[0];
-  double x_lip_max = (*minmax_lip_x.second)[0];
-  double y_lip_min = (*minmax_lip_y.first)[1];
-  double y_lip_max = (*minmax_lip_y.second)[1];
-
   double lip_lx = (x_lip_max + maxrad_lip) - (x_lip_min - maxrad_lip);
   double lip_ly = (y_lip_max + maxrad_lip) - (y_lip_min - maxrad_lip);
 
@@ -439,6 +459,12 @@ build_membrane_slab_mesh (poisson_boltzmann &pb)
     std::cout << "    y: [" << pb.l_mem[1] << ", " << pb.r_mem[1] << "] Å\n";
     std::cout << "    z: [" << pb.l_mem[2] << ", " << pb.r_mem[2] << "] Å\n";
     std::cout << "  Lipid patch size: lx = " << lip_lx << " Å   ly = " << lip_ly << " Å\n";
+
+    if (pb.membrane_mode != poisson_boltzmann::MEM_MODE_NS)
+      std::cout << "  Dielectric slab z           : [" << pb.z_mem_bot << ", " << pb.z_mem_top
+                << "] Å  (thickness " << pb.z_mem_top - pb.z_mem_bot
+                << ", e_mem = " << pb.e_mem << ")\n";
+
     std::cout << "  Box side (min lx,ly)        : " << box_side << " Å\n";
     std::cout << "  Center (cx, cy, cz)         : "
               << pb.cc[0] << "  " << pb.cc[1] << "  " << pb.cc[2] << " Å\n";

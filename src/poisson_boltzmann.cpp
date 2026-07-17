@@ -97,7 +97,7 @@ main (int argc, char **argv)
     inputfile.close ();
     pb.read_atoms_from_class ();
 
-    if (pb.membrane_enabled)
+    if (pb.membrane_uses_lipids ())
       read_lipids (pb);
   }
 
@@ -106,7 +106,7 @@ main (int argc, char **argv)
   if (size > 1) {
     pb.broadcast_vectors ();
 
-    if (pb.membrane_enabled)
+    if (pb.membrane_uses_lipids ())
       broadcast_lipid_vectors (pb);
   }
 
@@ -175,7 +175,7 @@ main (int argc, char **argv)
 
   // After NanoShaper: trim out-of-domain lipid atoms and zero boundary residues.
   // Both operations are deterministic from pb.l_cr/r_cr, so all ranks execute them.
-  if (pb.membrane_enabled) {
+  if (pb.membrane_uses_lipids ()) {
     trim_lipid_atoms (pb);
     zero_boundary_residue_charges (pb);
     merge_lipid_charges_into_solute (pb);
