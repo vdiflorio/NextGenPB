@@ -121,6 +121,42 @@ void zero_boundary_residue_charges (poisson_boltzmann &pb);
  */
 void merge_lipid_charges_into_solute (poisson_boltzmann &pb);
 
+// ─── Membrane slab mesh (MESH_SHAPE_MEM) ─────────────────────────────────────
+
+/**
+ * @brief Build the membrane slab geometry, level structure and connectivity.
+ *
+ * Called from poisson_boltzmann::create_mesh() when `mesh_shape ==
+ * MESH_SHAPE_MEM`.  Sets up a cubic outer box whose side is derived from the
+ * lipid patch extent, a z-slab covering both the membrane and the protein, and
+ * the three-tier level structure (far solvent / slab / molecular surface).
+ *
+ * Populates `l_prot`/`r_prot`, `l_mem`/`r_mem` (refinement boxes read back by
+ * init_tmesh_mem_two_box()), `l_c`/`r_c`, `l_cr`/`r_cr`, `cc`, `ll`/`rr`, the
+ * level fields (`maxlevel`, `unilevel`, `outlevel`, `minlevel`, `scale_level`,
+ * `scale_level_min_box`), `scale`, and the `simple_conn_*` connectivity arrays.
+ * The caller then reads the connectivity into `tmsh`.
+ *
+ * Recomputes the protein/lipid extents from `pb.pos_atoms` / `pb.pos_lipid_atoms`
+ * rather than reusing create_mesh()'s preamble locals.
+ *
+ * @param pb Solver instance with protein and lipid atoms populated.
+ */
+void build_membrane_slab_mesh (poisson_boltzmann &pb);
+
+/**
+ * @brief Refine the membrane mesh using the protein and membrane boxes.
+ *
+ * Two-box refinement: cells inside the protein box are refined up to `maxlevel`;
+ * cells inside the membrane box up to `scale_level`.  Everything else stays at
+ * `outlevel` (far solvent).  Call after create_mesh() has read the connectivity —
+ * this is the MESH_SHAPE_MEM case of the driver's "Building Grid" dispatch,
+ * alongside poisson_boltzmann::init_tmesh() and friends.
+ *
+ * @param pb Solver instance whose mesh geometry was set by build_membrane_slab_mesh().
+ */
+void init_tmesh_mem_two_box (poisson_boltzmann &pb);
+
 // NB: PBC mortar assembly (MortarFacePair / assemble_mortar_block) is a separate
 // concern (PBC formulation) and is intentionally NOT part of this membrane module
 // on the clean branch — it will be reintroduced with the PBC work. See piano_cleanup.md.

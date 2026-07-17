@@ -18,6 +18,7 @@
  */
 
 #include "pb_class.h"
+#include "pb_membrane.h"
 #include "GetPot"
 
 #include <bim_distributed_vector.h>
@@ -96,7 +97,9 @@ poisson_boltzmann::create_mesh ()
     std::cout << "============================================\n\n";
   }
 
-  if (mesh_shape !=2) {
+  // MESH_SHAPE_MEM sets its own box (build_membrane_slab_mesh): the membrane
+  // box is centred on the lipid patch, not on the protein.
+  if (mesh_shape != 2 && mesh_shape != MESH_SHAPE_MEM) {
     l_c[0] = (*minmax_x.first)[0] - maxradius - 2*prb_radius;
     l_c[1] = (*minmax_y.first)[1] - maxradius - 2*prb_radius;
     l_c[2] = (*minmax_z.first)[2] - maxradius - 2*prb_radius;
@@ -710,6 +713,8 @@ poisson_boltzmann::create_mesh ()
       simple_conn_p[3*i + j++] += l_cr[1];
       simple_conn_p[3*i + j] += l_cr[2];
     }
+  } else if (mesh_shape == MESH_SHAPE_MEM) {
+    build_membrane_slab_mesh (*this);
   } else {
     if (rank == 0) {
       std::cout << "x: " << ll[0] << ", " << rr[0] << std::endl;
