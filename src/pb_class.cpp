@@ -989,9 +989,40 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   membrane_enabled = g2 ( (mem_options + "enabled").c_str (), 0);
 
   if (membrane_enabled) {
+    const std::string mode_str = g2 ( (mem_options + "mode").c_str (), std::string ("ns"));
+
+    if (mode_str == "ns")
+      membrane_mode = MEM_MODE_NS;
+    else if (mode_str == "implicit")
+      membrane_mode = MEM_MODE_IMPLICIT;
+    else if (mode_str == "implicit_charged")
+      membrane_mode = MEM_MODE_IMPLICIT_CHARGED;
+    else {
+      if (rank == 0)
+        std::cerr << "[ERROR] Unknown membrane mode '" << mode_str
+                  << "'. Valid values: ns, implicit, implicit_charged.\n";
+
+      return 1;
+    }
+
     lipid_file = g2 ( (mem_options + "lipid_file").c_str (), std::string ("lipids.pqr"));
     lipid_filetype = g2 ( (mem_options + "lipid_filetype").c_str (), std::string ("pqr"));
-    e_mem = g2 ( (mem_options + "membrane_dielectric").c_str (), 2.0);
+    // The membrane dielectric defaults to the solute one: with e_mem == e_in the
+    // implicit modes reproduce the ns model (same low-dielectric region, only a
+    // smoother boundary), which makes them comparable.
+    e_mem = g2 ( (mem_options + "membrane_dielectric").c_str (), e_in);
+
+    // In ns mode the lipids are merged into the solute and NanoShaper wraps
+    // protein and lipids in a single surface, so create_markers cannot tell them
+    // apart and assigns e_in to both. Honouring e_mem here needs a second,
+    // lipid-only NS surface (see piano_cleanup.md, phase 2.5/M4). Warn rather
+    // than silently ignoring the value.
+    if (membrane_mode == MEM_MODE_NS && std::fabs (e_mem - e_in) > 1.e-12 && rank == 0)
+      std::cerr << "[WARNING] membrane_dielectric = " << e_mem << " is ignored when "
+                << "membrane mode = ns: the membrane dielectric is the solute one ("
+                << e_in << ").\n          Use mode = implicit or implicit_charged "
+                << "to control it.\n";
+
     stern_membrane = g2 ( (mem_options + "stern_membrane").c_str (), 0);
     stern_membrane_d = g2 ( (mem_options + "stern_membrane_d").c_str (), 0.0);
 
