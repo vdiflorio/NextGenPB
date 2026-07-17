@@ -378,6 +378,13 @@ build_membrane_slab_mesh (poisson_boltzmann &pb)
   pb.r_mem[1] = y_lip_max + maxrad + 2 * pb.prb_radius;
   pb.r_mem[2] = z_lip_max + maxrad + 2 * pb.prb_radius;
 
+  // Dielectric slab for the implicit modes: van der Waals envelope of the lipids,
+  // which is what the NanoShaper surface approximates in ns mode. l_mem/r_mem are
+  // not usable here: they add maxrad + 2*prb_radius per side because they steer
+  // mesh refinement, and would give a slab ~4*prb_radius thicker than the ns one.
+  pb.z_mem_bot = z_lip_min - maxrad_lip;
+  pb.z_mem_top = z_lip_max + maxrad_lip;
+
   // Center of the membrane patch in xy (create_mesh()'s protein-only box block
   // is skipped for MESH_SHAPE_MEM, so cc is set here for the first time)
   pb.cc[0] = 0.5 * (x_lip_max + x_lip_min);

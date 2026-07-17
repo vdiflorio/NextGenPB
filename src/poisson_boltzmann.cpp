@@ -130,7 +130,10 @@ main (int argc, char **argv)
   if (rank == 0) {
     std::cout << "\n=== [ Building Surface with NanoShaper ] ===\n";
 
-    if (pb.membrane_enabled) {
+    // Only the ns mode puts the lipids through NanoShaper. The implicit modes
+    // represent the membrane as a dielectric box in create_markers, so the
+    // surface is built from the protein alone and needs no xy margin.
+    if (pb.membrane_enabled && pb.membrane_mode == poisson_boltzmann::MEM_MODE_NS) {
       // Extend the NanoShaper box in xy so that the membrane surface can close
       // outside the computational domain. The margin is snapped to the nearest
       // grid-cell boundary so that pb.l_cr/r_cr remain aligned with NanoShaper's
