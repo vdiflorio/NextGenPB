@@ -20,6 +20,7 @@
 #include <mpi.h>
 
 #include "pb_class.h"
+#include "pb_membrane.h"
 #include "readpdb.h"
 #include "vtk_class.h"
 
@@ -95,12 +96,18 @@ main (int argc, char **argv)
 
     inputfile.close ();
     pb.read_atoms_from_class ();
+
+    if (pb.membrane_enabled)
+      read_lipids (pb);
   }
 
   MPI_Barrier (mpicomm);
 
   if (size > 1) {
     pb.broadcast_vectors ();
+
+    if (pb.membrane_enabled)
+      broadcast_lipid_vectors (pb);
   }
 
   // if (rank == 0) {
@@ -122,12 +129,54 @@ main (int argc, char **argv)
 
   if (rank == 0) {
     std::cout << "\n=== [ Building Surface with NanoShaper ] ===\n";
-    ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+
+    if (pb.membrane_enabled) {
+      // Extend the NanoShaper box in xy so that the membrane surface can close
+      // outside the computational domain. The margin is snapped to the nearest
+      // grid-cell boundary so that pb.l_cr/r_cr remain aligned with NanoShaper's
+      // internal grid (both share pb.scale). z bounds are left unchanged.
+      const int margin_cells = static_cast<int> (std::ceil (3.0 * pb.surf_param * pb.scale));
+      const double ns_margin = margin_cells / pb.scale;
+      double l_cr_ns[3] = { pb.l_cr[0] - ns_margin, pb.l_cr[1] - ns_margin, pb.l_cr[2] };
+      double r_cr_ns[3] = { pb.r_cr[0] + ns_margin, pb.r_cr[1] + ns_margin, pb.r_cr[2] };
+
+      std::cout << "\n=== [ Membrane NS / FEM domain debug ] ===\n";
+      std::cout << "  scale = " << pb.scale << " cells/Å"
+                << "   NS xy margin = " << ns_margin << " Å (" << margin_cells << " cells)\n";
+      std::cout << "  FEM domain  x : [" << pb.l_cr[0] << ", " << pb.r_cr[0] << "] Å"
+                << "  size = " << pb.r_cr[0] - pb.l_cr[0] << " Å\n";
+      std::cout << "  FEM domain  y : [" << pb.l_cr[1] << ", " << pb.r_cr[1] << "] Å"
+                << "  size = " << pb.r_cr[1] - pb.l_cr[1] << " Å\n";
+      std::cout << "  FEM domain  z : [" << pb.l_cr[2] << ", " << pb.r_cr[2] << "] Å"
+                << "  size = " << pb.r_cr[2] - pb.l_cr[2] << " Å\n";
+      std::cout << "  NS box (xy+)  x : [" << l_cr_ns[0] << ", " << r_cr_ns[0] << "] Å"
+                << "  size = " << r_cr_ns[0] - l_cr_ns[0] << " Å\n";
+      std::cout << "  NS box (xy+)  y : [" << l_cr_ns[1] << ", " << r_cr_ns[1] << "] Å"
+                << "  size = " << r_cr_ns[1] - l_cr_ns[1] << " Å\n";
+      std::cout << "  NS box        z : [" << l_cr_ns[2] << ", " << r_cr_ns[2] << "] Å"
+                << "  (unchanged)\n";
+      std::cout << "==========================================\n\n";
+
+      auto ns_atoms = build_ns_supercell (pb);
+      std::cout << "  Total atoms passed to NanoShaper: " << ns_atoms.size () << '\n';
+      ray_cache.init_analytical_surf_ns (ns_atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, l_cr_ns, r_cr_ns, pb.scale);
+    } else {
+      ray_cache.init_analytical_surf_ns (pb.atoms, pb.surf_type, pb.surf_param, pb.stern_layer, pb.num_threads, pb.l_cr, pb.r_cr, pb.scale);
+    }
+
     std::vector<NS::Atom> ().swap (pb.atoms);
     std::cout << "\n============================================\n";
   }
 
   TOC ("Building Surface with NanoShaper");
+
+  // After NanoShaper: trim out-of-domain lipid atoms and zero boundary residues.
+  // Both operations are deterministic from pb.l_cr/r_cr, so all ranks execute them.
+  if (pb.membrane_enabled) {
+    trim_lipid_atoms (pb);
+    zero_boundary_residue_charges (pb);
+    merge_lipid_charges_into_solute (pb);
+  }
 
   MPI_Barrier (mpicomm);
 

@@ -979,6 +979,27 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   markerfilename = g2 ( (out_options + "markerfilename").c_str (), "poisson_boltzmann_marker_0");
   surffilename = g2 ( (out_options + "surffilename").c_str (), "poisson_boltzmann_surface_0");
 
+  // --- membrane ---
+  const std::string mem_options = "membrane/";
+  membrane_enabled = g2 ( (mem_options + "enabled").c_str (), 0);
+
+  if (membrane_enabled) {
+    lipid_file = g2 ( (mem_options + "lipid_file").c_str (), std::string ("lipids.pqr"));
+    lipid_filetype = g2 ( (mem_options + "lipid_filetype").c_str (), std::string ("pqr"));
+    e_mem = g2 ( (mem_options + "membrane_dielectric").c_str (), 2.0);
+    stern_membrane = g2 ( (mem_options + "stern_membrane").c_str (), 0);
+    stern_membrane_d = g2 ( (mem_options + "stern_membrane_d").c_str (), 0.0);
+
+    // Membrane mode always uses MESH_SHAPE_MEM (slab mesh). The user cannot
+    // override this: the slab geometry and level structure are determined by
+    // the lipid/protein atom extents at mesh-build time.
+    mesh_shape = MESH_SHAPE_MEM;
+    scale_max = g2 ( (mesh_options + "scale_max").c_str (), 2.0);
+    nlev_mem = g2 ( (mesh_options + "nlev_mem").c_str (), 2);
+    nlev_sol = g2 ( (mesh_options + "nlev_sol").c_str (), 4);
+    nlev_prot = g2 ( (mesh_options + "nlev_prot").c_str (), 1);
+  }
+
   return 0;
 }
 
