@@ -36,6 +36,8 @@
 #include <filesystem>
 #include <iomanip>
 #include <sstream>
+#include <regex>
+#include <cctype>
 #include <unordered_map>
 
 
@@ -1100,14 +1102,132 @@ void align_atoms_to_Z (std::vector<NS::Atom> &atoms)
   }
 }
 
+// Parse a single PQR atomic line ("ATOM"/"HETATM") robustly, tolerating the
+// quirks of fixed-width PQR that break a naive ">>"-based reader:
+//   - record name merged with the serial when serial >= 10000 (e.g. "HETATM10936");
+//   - coordinates/charges merged together when a negative value overflows its
+//     field (e.g. "-0.412-100.217");
+//   - chain merged with the residue sequence number (e.g. "E1589").
+// Returns true if the line was a well-formed atomic record and 'a' was filled.
+static bool
+parse_pqr_atom_line (const std::string &line, NS::Atom &a)
+{
+  // Identify and strip the record name; the serial may be glued to it.
+  std::string rest;
+
+  if (line.compare (0, 6, "HETATM") == 0)
+    rest = line.substr (6);
+  else if (line.compare (0, 4, "ATOM") == 0)
+    rest = line.substr (4);
+  else
+    return false;   // not an atomic record (TER, END, REMARK, MODEL, #, ...)
+
+  // The five trailing floats (x, y, z, charge, radius) are the only tokens with
+  // a decimal point. A regex that also matches a leading sign splits values that
+  // got glued together on their sign (e.g. "-0.412-100.217").
+  static const std::regex float_re ("[-+]?[0-9]+\\.[0-9]+");
+
+  std::vector<std::smatch> matches;
+  for (std::sregex_iterator it (rest.begin (), rest.end (), float_re), end;
+       it != end; ++it)
+    matches.push_back (*it);
+
+  if (matches.size () < 5)
+    return false;   // malformed: not enough numeric fields
+
+  // Keep the last five floats; everything before the first of them is the head.
+  const std::smatch &first_float = matches[matches.size () - 5];
+  std::string head = rest.substr (0, first_float.position ());
+
+  a.pos[0]   = std::stod (matches[matches.size () - 5].str ());
+  a.pos[1]   = std::stod (matches[matches.size () - 4].str ());
+  a.pos[2]   = std::stod (matches[matches.size () - 3].str ());
+  a.charge   = std::stod (matches[matches.size () - 2].str ());
+  a.radius   = std::stod (matches[matches.size () - 1].str ());
+
+  if (a.radius < 1.e-5)
+    a.radius = 1.0;
+
+  // Head layout: serial name resName [chain] resNum   (chain optional / glued).
+  std::istringstream hs (head);
+  std::string serial;
+  std::vector<std::string> tok;
+  std::string t;
+
+  while (hs >> t)
+    tok.push_back (t);
+
+  if (tok.size () < 4)
+    return false;   // need at least serial, name, resName, resNum
+
+  // serial = tok[0] (discarded, ngpb renumbers atoms itself)
+  a.ai.name    = tok[1];
+  a.ai.resName = tok[2];
+
+  if (tok.size () >= 5) {
+    // chain and resNum given as separate tokens (e.g. "B 4")
+    a.ai.chain  = tok[3];
+    a.ai.resNum = std::atoi (tok[4].c_str ());
+  } else {
+    // single trailing token: either a bare resNum ("22194") or chain glued to
+    // resNum ("E1589").
+    const std::string &last = tok[3];
+    bool is_number = !last.empty () &&
+                     (std::isdigit (static_cast<unsigned char> (last[0])) ||
+                      last[0] == '-' || last[0] == '+');
+
+    if (is_number) {
+      a.ai.chain.clear ();
+      a.ai.resNum = std::atoi (last.c_str ());
+    } else {
+      // split leading non-digits (chain) from trailing digits (resNum)
+      std::size_t p = 0;
+      while (p < last.size () &&
+             !std::isdigit (static_cast<unsigned char> (last[p])))
+        ++p;
+
+      a.ai.chain  = last.substr (0, p);
+      a.ai.resNum = (p < last.size ()) ? std::atoi (last.c_str () + p) : -1;
+    }
+  }
+
+  return true;
+}
+
 void
 poisson_boltzmann::read_atoms_from_pqr (std::basic_istream<char> &inputfile)
 {
-  static NS::Atom a;
+  NS::Atom a;
   atoms.clear ();
 
-  while (inputfile >> a)
-    atoms.push_back (a);
+  // Line-based, fault-tolerant parsing: a malformed line is skipped (with a
+  // warning) instead of silently aborting the whole read, as the previous
+  // ">>"-based loop did on the first unexpected token.
+  std::string line;
+  std::size_t n_read = 0, n_skipped = 0;
+
+  while (std::getline (inputfile, line)) {
+    // strip a trailing CR (Windows line endings)
+    if (!line.empty () && line.back () == '\r')
+      line.pop_back ();
+
+    // only ATOM/HETATM records carry atoms; skip everything else silently
+    if (line.compare (0, 6, "HETATM") != 0 &&
+        line.compare (0, 4, "ATOM") != 0)
+      continue;
+
+    if (parse_pqr_atom_line (line, a)) {
+      atoms.push_back (a);
+      ++n_read;
+    } else {
+      ++n_skipped;
+      std::cerr << "  [WARNING] skipping malformed PQR atom line: "
+                << line << '\n';
+    }
+  }
+
+  std::cout << "  PQR reader: " << n_read << " atomic records read, "
+            << n_skipped << " skipped\n";
 
   if (aligned == 1) {
     align_atoms_to_Z (atoms);
