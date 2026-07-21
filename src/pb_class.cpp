@@ -854,22 +854,28 @@ poisson_boltzmann::build_pbc_node_map ()
     for (size_t i = 0; i + 3 <= left_all.size (); i += 3)
       left_map[{left_all[i], left_all[i + 1]}] = static_cast<size_t> (left_all[i + 2]);
 
-    int matched = 0, unmatched = 0;
+    // right_all/left_all can contain the same physical node more than once:
+    // a node shared between two face quadrants owned by different ranks gets
+    // reported by each of them (the per-rank "seen" dedup above only catches
+    // repeats within a single rank's own sweep). That inflates the raw
+    // iteration count below, but is harmless here: every repeat of the same
+    // right-face node resolves to the same left partner, so the overwrite in
+    // map_out is idempotent. What actually matters is p.map_out->size (),
+    // the number of distinct right-face nodes mapped.
+    int unmatched = 0;
     p.map_out->clear ();
     for (size_t i = 0; i + 3 <= right_all.size (); i += 3) {
       auto key = std::make_pair (right_all[i], right_all[i + 1]);
       auto it  = left_map.find (key);
-      if (it != left_map.end ()) {
+      if (it != left_map.end ())
         (*p.map_out)[static_cast<size_t> (right_all[i + 2])] = it->second;
-        ++matched;
-      } else {
+      else
         ++unmatched;
-      }
     }
 
     if (rank == 0) {
       std::cout << "  [PBC map] " << p.label << ": "
-                << matched << " matched";
+                << p.map_out->size () << " matched";
       if (unmatched > 0)
         std::cout << ", " << unmatched << " UNMATCHED (mesh not conforming?)";
       std::cout << '\n';
@@ -2971,21 +2977,9 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   const bool pbc = (periodic_x || periodic_y);
 
-  if (pbc && size > 1) {
-    // Multi-rank strong PBC with LIS lands in the next micro-step
-    // (gather-to-rank-0 reuse of the single-rank path below). Refuse rather
-    // than silently solving with the periodic faces left free (Neumann) --
-    // see piano_cleanup.md, Fase 3.
-    if (rank == 0)
-      std::cerr << "[ERROR] PBC (periodic_x/periodic_y) with linear_solver = lis "
-                << "and more than 1 MPI rank is not yet implemented.\n"
-                << "        Use 1 rank, or linear_solver = mumps, for now.\n";
-    MPI_Abort (mpicomm, 1);
-  }
-
   LIS_INT is, ie;
 
-  if (pbc) {
+  if (pbc && size == 1) {
     // Single-rank strong PBC: (*A).csr() below already returns the FULL
     // system (owned range == [0, N_phys) when size == 1). Expand CSR -> COO,
     // remap with the shared PBC helper, rebuild CSR (row merges create
@@ -3074,6 +3068,155 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
             fmax = std::max (fmax, v);
           }
         std::cout << "    face " << fname[face] << "  phi=[" << fmin << ", " << fmax << "]\n";
+      }
+    }
+
+  } else if (pbc && size > 1) {
+    // Multi-rank strong PBC: gather the full system onto rank 0 and reuse
+    // exactly the single-rank reduction (same helpers), solve entirely on
+    // rank 0 (a valid LIS partition: local size 0 on every other rank), then
+    // scatter phi back. Not a distributed solve -- that is Fase 3/C3 -- but
+    // the result no longer depends on the rank count, which is the bug this
+    // fixes: the old mortar-based multi-rank path never actually imposed any
+    // periodicity (assemble_mortar_block was never called).
+    std::vector<double> vals;
+    std::vector<int> irow, jcol; // CSR: irow is a row-pointer array over OWNED rows
+    (*A).csr (vals, jcol, irow, 0, false);
+    const int row_start = (*A).range_start ();
+    A.reset ();
+
+    const int local_n = static_cast<int> (tmsh.num_owned_nodes ());
+
+    // Expand this rank's owned CSR into global COO (columns are already
+    // global; only the row side needs the row_start offset).
+    std::vector<int> irow_coo (vals.size ());
+    for (int r = 0; r < local_n; ++r)
+      for (int k = irow[r]; k < irow[r + 1]; ++k)
+        irow_coo[k] = row_start + r;
+
+    // Gather the COO triplets onto rank 0.
+    int local_nnz = static_cast<int> (vals.size ());
+    std::vector<int> nnz_counts (size, 0), nnz_displs (size, 0);
+    MPI_Gather (&local_nnz, 1, MPI_INT, nnz_counts.data (), 1, MPI_INT, 0, mpicomm);
+    int total_nnz = 0;
+    if (rank == 0) {
+      for (int r = 1; r < size; ++r)
+        nnz_displs[r] = nnz_displs[r - 1] + nnz_counts[r - 1];
+      total_nnz = nnz_displs[size - 1] + nnz_counts[size - 1];
+    }
+
+    std::vector<int>    g_irow (static_cast<size_t> (total_nnz));
+    std::vector<int>    g_jcol (static_cast<size_t> (total_nnz));
+    std::vector<double> g_vals (static_cast<size_t> (total_nnz));
+    MPI_Gatherv (irow_coo.data (), local_nnz, MPI_INT,
+                g_irow.data (), nnz_counts.data (), nnz_displs.data (), MPI_INT, 0, mpicomm);
+    MPI_Gatherv (jcol.data (), local_nnz, MPI_INT,
+                g_jcol.data (), nnz_counts.data (), nnz_displs.data (), MPI_INT, 0, mpicomm);
+    MPI_Gatherv (vals.data (), local_nnz, MPI_DOUBLE,
+                g_vals.data (), nnz_counts.data (), nnz_displs.data (), MPI_DOUBLE, 0, mpicomm);
+
+    // Gather the full rhs onto rank 0.
+    std::vector<int> n_counts (size, 0), n_displs (size, 0);
+    MPI_Gather (&local_n, 1, MPI_INT, n_counts.data (), 1, MPI_INT, 0, mpicomm);
+    if (rank == 0)
+      for (int r = 1; r < size; ++r)
+        n_displs[r] = n_displs[r - 1] + n_counts[r - 1];
+
+    std::vector<double> rhs_full;
+    if (rank == 0)
+      rhs_full.assign (static_cast<size_t> (tmsh.num_global_nodes ()), 0.0);
+    MPI_Gatherv (rhs->get_owned_data ().data (), local_n, MPI_DOUBLE,
+                rhs_full.data (), n_counts.data (), n_displs.data (), MPI_DOUBLE, 0, mpicomm);
+    rhs.reset ();
+
+    // canonical/old_to_new/N_new are deterministic and identical on every
+    // rank (built from pbc_x/y_right_to_left, already Allgatherv'd); only
+    // rank 0 needs them to actually reduce the gathered COO/rhs.
+    std::vector<int> canonical, old_to_new;
+    int N_new;
+    pbc_build_reduction (canonical, old_to_new, N_new);
+
+    std::vector<int>    new_ptr (1, 0), new_col;
+    std::vector<double> new_val;
+    std::vector<double> rhs_new;
+
+    if (rank == 0) {
+      pbc_remap_coo (g_irow, g_jcol, canonical, old_to_new, 0);
+      coo_to_csr_dedup (N_new, g_irow, g_jcol, g_vals, new_ptr, new_col, new_val);
+      pbc_reduce_rhs (rhs_full, canonical, old_to_new, N_new, rhs_new);
+    }
+
+    const LIS_INT ln = static_cast<LIS_INT> (rank == 0 ? N_new : 0);
+
+    LIS_VECTOR rhs_lis;
+    lis_vector_create (mpicomm, &rhs_lis);
+    lis_vector_set_size (rhs_lis, ln, 0);
+    lis_vector_get_range (rhs_lis, &is, &ie);
+    for (LIS_INT k = is; k < ie; ++k)
+      lis_vector_set_value (LIS_INS_VALUE, k, rhs_new[static_cast<size_t> (k)], rhs_lis);
+
+    LIS_VECTOR phi_lis;
+    lis_vector_create (mpicomm, &phi_lis);
+    lis_vector_set_size (phi_lis, ln, 0);
+    lis_vector_get_range (phi_lis, &is, &ie);
+
+    LIS_MATRIX A_lis;
+    lis_matrix_create (mpicomm, &A_lis);
+    lis_matrix_set_size (A_lis, ln, 0);
+    lis_matrix_set_csr (static_cast<LIS_INT> (new_val.size ()),
+                        new_ptr.data (), new_col.data (), new_val.data (), A_lis);
+    lis_matrix_assemble (A_lis);
+
+    LIS_SOLVER solver;
+    lis_solver_create (&solver);
+    std::string opts = linear_solver_options;
+    lis_solver_set_option (&opts[0], solver);
+    lis_solve (A_lis, rhs_lis, phi_lis, solver);
+    lis_solver_destroy (solver);
+    lis_vector_destroy (rhs_lis);
+
+    std::vector<double> sol_new (static_cast<size_t> (rank == 0 ? N_new : 0));
+    lis_vector_get_values (phi_lis, is, ln, sol_new.data ());
+    lis_vector_destroy (phi_lis);
+
+    std::vector<double> phi_full;
+    if (rank == 0)
+      pbc_expand_solution (sol_new, canonical, old_to_new, phi_full);
+    else
+      phi_full.assign (static_cast<size_t> (tmsh.num_global_nodes ()), 0.0);
+
+    phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+    MPI_Scatterv (phi_full.data (), n_counts.data (), n_displs.data (), MPI_DOUBLE,
+                 phi->get_owned_data ().data (), local_n, MPI_DOUBLE, 0, mpicomm);
+
+    // Sanity check (all ranks contribute their owned face nodes via
+    // MPI_Reduce): periodic pairs must carry the exact same solution. This is
+    // the direct check for the rank-independence bug this step fixes.
+    {
+      static const char* fname[6] = {"x-", "x+", "y-", "y+", "z-", "z+"};
+      const int phi_is = static_cast<int> (phi->get_range_start ());
+      const int phi_ie = phi_is + static_cast<int> (phi->get_owned_data ().size ());
+      if (rank == 0)
+        std::cout << "  [PBC strong] face phi ranges:\n";
+      for (int face : {0, 1, 2, 3}) {
+        if (face < 2 && !periodic_x) continue;
+        if (face >= 2 && !periodic_y) continue;
+        double lmin =  std::numeric_limits<double>::max ();
+        double lmax = -std::numeric_limits<double>::max ();
+        for (auto q = tmsh.begin_quadrant_sweep (); q != tmsh.end_quadrant_sweep (); ++q)
+          for (auto local_idx : q->ef (face)) {
+            int g = q->gt (local_idx);
+            if (g >= phi_is && g < phi_ie) {
+              double v = phi->get_owned_data ()[static_cast<size_t> (g - phi_is)];
+              lmin = std::min (lmin, v);
+              lmax = std::max (lmax, v);
+            }
+          }
+        double gmin, gmax;
+        MPI_Reduce (&lmin, &gmin, 1, MPI_DOUBLE, MPI_MIN, 0, mpicomm);
+        MPI_Reduce (&lmax, &gmax, 1, MPI_DOUBLE, MPI_MAX, 0, mpicomm);
+        if (rank == 0)
+          std::cout << "    face " << fname[face] << "  phi=[" << gmin << ", " << gmax << "]\n";
       }
     }
 
