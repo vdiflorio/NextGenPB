@@ -85,8 +85,41 @@ broadcast_lipid_vectors (poisson_boltzmann &pb)
   MPI_Bcast (pb.charge_lipid_atoms.data (), n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast (pb.r_lipid_atoms.data (), n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
+  // Broadcast the residue identifier (chain + resNum) that
+  // zero_boundary_residue_charges() uses to group atoms into residues.
+  // Without this, lipid_atoms rebuilt below on non-zero ranks would all
+  // share AtomInfo's default {chain="X", resNum=-1}, collapsing every
+  // residue into one and making that function zero (or spare) all lipid
+  // charges indiscriminately instead of just the boundary residues.
+  int rank;
+  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+
+  std::vector<int> resnum (n);
+  std::vector<int> chain_len (n);
+  std::string chain_blob;
+
+  if (rank == 0) {
+    for (int i = 0; i < n; ++i) {
+      resnum[i] = pb.lipid_atoms[i].ai.resNum;
+      chain_len[i] = static_cast<int> (pb.lipid_atoms[i].ai.chain.size ());
+      chain_blob += pb.lipid_atoms[i].ai.chain;
+    }
+  }
+
+  MPI_Bcast (resnum.data (), n, MPI_INT, 0, MPI_COMM_WORLD);
+  MPI_Bcast (chain_len.data (), n, MPI_INT, 0, MPI_COMM_WORLD);
+
+  int blob_size = static_cast<int> (chain_blob.size ());
+  MPI_Bcast (&blob_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+  chain_blob.resize (blob_size);
+
+  if (blob_size > 0)
+    MPI_Bcast (&chain_blob[0], blob_size, MPI_CHAR, 0, MPI_COMM_WORLD);
+
   // Rebuild lipid_atoms on non-zero ranks from the broadcast flat arrays
   pb.lipid_atoms.resize (n);
+
+  int offset = 0;
 
   for (int i = 0; i < n; ++i) {
     pb.lipid_atoms[i].pos[0] = pb.pos_lipid_atoms[i][0];
@@ -94,6 +127,9 @@ broadcast_lipid_vectors (poisson_boltzmann &pb)
     pb.lipid_atoms[i].pos[2] = pb.pos_lipid_atoms[i][2];
     pb.lipid_atoms[i].charge = pb.charge_lipid_atoms[i];
     pb.lipid_atoms[i].radius = pb.r_lipid_atoms[i];
+    pb.lipid_atoms[i].ai.resNum = resnum[i];
+    pb.lipid_atoms[i].ai.chain = chain_blob.substr (offset, chain_len[i]);
+    offset += chain_len[i];
   }
 }
 
