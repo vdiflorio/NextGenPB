@@ -123,6 +123,13 @@ main (int argc, char **argv)
   pb.create_mesh ();
   // TOC ("create_mesh");
 
+  if (rank == 0 && (pb.periodic_x || pb.periodic_y)) {
+    std::cout << "\n=== [ Periodic Boundary Conditions ] ===\n";
+    std::cout << "  periodic_x : " << pb.periodic_x << '\n';
+    std::cout << "  periodic_y : " << pb.periodic_y << '\n';
+    std::cout << "========================================\n";
+  }
+
   std::vector<double> ().swap (pb.r_atoms);
 
   TIC ();
@@ -231,8 +238,15 @@ main (int argc, char **argv)
 
   TOC ("Building Grid");
 
-
-
+  if (pb.periodic_x || pb.periodic_y) {
+    TIC ();
+    if (rank == 0)
+      std::cout << "\n======== [ PBC Face Balancing ] ============\n";
+    pb.ensure_pbc_face_conformity ();
+    if (rank == 0)
+      std::cout << "============================================\n";
+    TOC ("PBC face balancing");
+  }
 
   if (pb.loc_refinement == 1 || pb.mesh_shape == 4) {
     TIC ();

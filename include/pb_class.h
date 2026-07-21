@@ -251,6 +251,18 @@ struct
   double stern_membrane_d = 0.0; ///< Stern layer thickness on membrane [Å]
   // ======================== end [pb_membrane module] ==========================
 
+  // ============================================================================
+  //  [PBC] — periodic boundary conditions on the x±/y± faces (strong enforcement)
+  //  Orthogonal to the membrane feature: enabled independently via [mesh]
+  //  periodic_x/periodic_y, or forced on when membrane_enabled (see parse_options).
+  //  No mortar scaffold here (mortar_C/ndofm/pbc_mode are a later, separate step).
+  // ============================================================================
+  bool periodic_x = false; ///< Periodic boundary condition in x
+  bool periodic_y = false; ///< Periodic boundary condition in y
+  std::map<size_t, size_t> pbc_x_right_to_left; ///< x-pair: face-1 global node -> face-0 global node
+  std::map<size_t, size_t> pbc_y_right_to_left; ///< y-pair: face-3 global node -> face-2 global node
+  // ============================================================================
+
   static constexpr
   std::array<int, 12> edge_axis = {0,1,0,1,0,1,0,1,2,2,2,2};
 
@@ -675,6 +687,24 @@ struct
 
   void
   create_mesh ();
+
+  /// @brief Build the periodic node map (right -> left) for strong PBC enforcement.
+  /// For each active pair populates pbc_x_right_to_left and/or pbc_y_right_to_left
+  /// (rank-independent: matches nodes by tangential coordinates via MPI_Allgatherv).
+  /// No-op if neither periodic_x nor periodic_y.
+  void
+  build_pbc_node_map ();
+
+  /// @brief Compares the quadrant structure of each active periodic pair's two
+  /// faces and reports mismatches (diagnostic only, does not modify the mesh).
+  void
+  check_pbc_face_conformity ();
+
+  /// @brief If the two faces of a periodic pair have different refinement
+  /// structures, refines the coarser side until both match. No-op if neither
+  /// periodic_x nor periodic_y.
+  void
+  ensure_pbc_face_conformity ();
 
   void
   create_mesh_ns ();
