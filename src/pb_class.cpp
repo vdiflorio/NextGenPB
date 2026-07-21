@@ -1104,6 +1104,166 @@ poisson_boltzmann::ensure_pbc_face_conformity ()
   }
 }
 
+// ----------------------------------------------------------------------------
+// [PBC] Strong enforcement helpers.
+//
+// Unlike branch `membrane` (which wrote this logic three times, once per
+// solver/rank-count combination), these are pure, MPI-free functions: they
+// only depend on pbc_x/y_right_to_left, which build_pbc_node_map already made
+// identical on every rank via MPI_Allgatherv. That means pbc_build_reduction
+// and pbc_remap_coo need no communication at all and can run independently on
+// each rank's own data (e.g. its owned matrix rows); only the RHS reduction
+// and solution expansion need a *complete* vector (all N_phys entries), which
+// the caller is responsible for gathering (MUMPS: rank 0 only, matching how
+// set_rhs/set_rhs_distributed already centralize the RHS; LIS single-rank:
+// trivially complete already).
+// ----------------------------------------------------------------------------
+
+void
+poisson_boltzmann::pbc_build_reduction (std::vector<int> &canonical, std::vector<int> &old_to_new,
+                                        int &N_new)
+{
+  const size_t N_phys = static_cast<size_t> (tmsh.num_global_nodes ());
+
+  canonical.resize (N_phys);
+  for (size_t i = 0; i < N_phys; ++i)
+    canonical[i] = static_cast<int> (i);
+
+  // y-pairs first, x-pairs second: a vertical-edge node (on both a periodic
+  // x-face and a periodic y-face, e.g. x=Lx ∧ y=Ly) is a key in both maps.
+  // The y-pass alone would leave it pointing at another right-face node
+  // (x=Lx ∧ y=0); the x-pass then resolves *that* node's own canonical
+  // target (already fixed by the y-pass), completing the chain down to the
+  // single x=0 ∧ y=0 corner.
+  for (auto const &kv : pbc_y_right_to_left)
+    canonical[kv.first] = static_cast<int> (kv.second);
+  for (auto const &kv : pbc_x_right_to_left)
+    canonical[kv.first] = canonical[kv.second];
+
+  std::vector<bool> is_right (N_phys, false);
+  for (auto const &kv : pbc_y_right_to_left) is_right[kv.first] = true;
+  for (auto const &kv : pbc_x_right_to_left) is_right[kv.first] = true;
+
+  old_to_new.assign (N_phys, -1);
+  int new_idx = 0;
+  for (size_t i = 0; i < N_phys; ++i)
+    if (!is_right[i])
+      old_to_new[i] = new_idx++;
+  N_new = new_idx;
+
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
+  if (rank == 0 && (periodic_x || periodic_y))
+    std::cout << "  [PBC strong] N_new = " << N_new
+              << "  (eliminated " << (N_phys - static_cast<size_t> (N_new))
+              << " right-face nodes)\n";
+}
+
+void
+poisson_boltzmann::pbc_remap_coo (std::vector<int> &irow, std::vector<int> &jcol,
+                                  const std::vector<int> &canonical, const std::vector<int> &old_to_new,
+                                  int base) const
+{
+  for (size_t k = 0; k < irow.size (); ++k) {
+    irow[k] = old_to_new[canonical[irow[k] - base]] + base;
+    jcol[k] = old_to_new[canonical[jcol[k] - base]] + base;
+  }
+}
+
+void
+poisson_boltzmann::pbc_reduce_rhs (const std::vector<double> &rhs_full, const std::vector<int> &canonical,
+                                   const std::vector<int> &old_to_new, int N_new,
+                                   std::vector<double> &rhs_new) const
+{
+  const size_t N_phys = canonical.size ();
+  std::vector<double> merged (rhs_full);
+  for (size_t i = 0; i < N_phys; ++i)
+    if (canonical[i] != static_cast<int> (i)) {
+      merged[static_cast<size_t> (canonical[i])] += rhs_full[i];
+      merged[i] = 0.0;
+    }
+
+  rhs_new.assign (static_cast<size_t> (N_new), 0.0);
+  for (size_t i = 0; i < N_phys; ++i)
+    if (old_to_new[i] >= 0)
+      rhs_new[static_cast<size_t> (old_to_new[i])] = merged[i];
+}
+
+void
+poisson_boltzmann::pbc_expand_solution (const std::vector<double> &sol_new, const std::vector<int> &canonical,
+                                        const std::vector<int> &old_to_new, std::vector<double> &phi_full) const
+{
+  const size_t N_phys = canonical.size ();
+  phi_full.assign (N_phys, 0.0);
+
+  for (size_t i = 0; i < N_phys; ++i)
+    if (old_to_new[i] >= 0)
+      phi_full[i] = sol_new[static_cast<size_t> (old_to_new[i])];
+
+  for (size_t i = 0; i < N_phys; ++i)
+    if (old_to_new[i] < 0)
+      phi_full[i] = phi_full[static_cast<size_t> (canonical[i])];
+}
+
+void
+poisson_boltzmann::coo_to_csr_dedup (int N, const std::vector<int> &irow_coo, const std::vector<int> &jcol_coo,
+                                     const std::vector<double> &vals_coo, std::vector<int> &csr_ptr,
+                                     std::vector<int> &csr_col, std::vector<double> &csr_val) const
+{
+  // Two-pass CSR build (count then fill) from unsorted COO.
+  std::vector<int> raw_ptr (static_cast<size_t> (N) + 1, 0);
+  for (int r : irow_coo) raw_ptr[static_cast<size_t> (r) + 1]++;
+  for (int r = 0; r < N; ++r) raw_ptr[r + 1] += raw_ptr[r];
+
+  std::vector<int> pos (raw_ptr.begin (), raw_ptr.end () - 1);
+  std::vector<int> raw_col (static_cast<size_t> (raw_ptr[N]));
+  std::vector<double> raw_val (static_cast<size_t> (raw_ptr[N]));
+  for (size_t k = 0; k < irow_coo.size (); ++k) {
+    int r = irow_coo[k];
+    raw_col[static_cast<size_t> (pos[r])] = jcol_coo[k];
+    raw_val[static_cast<size_t> (pos[r])] = vals_coo[k];
+    pos[r]++;
+  }
+
+  // Sort each row's columns (needed so duplicate columns become adjacent).
+  for (int r = 0; r < N; ++r) {
+    int rb = raw_ptr[r], re = raw_ptr[r + 1], n = re - rb;
+    if (n <= 1) continue;
+    std::vector<int> perm (static_cast<size_t> (n));
+    for (int i = 0; i < n; ++i) perm[static_cast<size_t> (i)] = i;
+    std::sort (perm.begin (), perm.end (),
+              [&] (int a, int b) { return raw_col[rb + a] < raw_col[rb + b]; });
+    std::vector<int>    sc (static_cast<size_t> (n));
+    std::vector<double> sv (static_cast<size_t> (n));
+    for (int i = 0; i < n; ++i) {
+      sc[static_cast<size_t> (i)] = raw_col[rb + perm[i]];
+      sv[static_cast<size_t> (i)] = raw_val[rb + perm[i]];
+    }
+    std::copy (sc.begin (), sc.end (), raw_col.begin () + rb);
+    std::copy (sv.begin (), sv.end (), raw_val.begin () + rb);
+  }
+
+  // Dedup: sum adjacent equal-column entries per row (row merging produces
+  // duplicate (row,col) entries that must be summed, not overwritten).
+  csr_ptr.assign (static_cast<size_t> (N) + 1, 0);
+  csr_col.clear ();
+  csr_val.clear ();
+  csr_col.reserve (raw_col.size ());
+  csr_val.reserve (raw_val.size ());
+  for (int r = 0; r < N; ++r) {
+    csr_ptr[r] = static_cast<int> (csr_col.size ());
+    for (int k = raw_ptr[r]; k < raw_ptr[r + 1]; ++k) {
+      if (static_cast<int> (csr_col.size ()) > csr_ptr[r] && csr_col.back () == raw_col[k])
+        csr_val.back () += raw_val[k];
+      else {
+        csr_col.push_back (raw_col[k]);
+        csr_val.push_back (raw_val[k]);
+      }
+    }
+  }
+  csr_ptr[N] = static_cast<int> (csr_col.size ());
+}
+
 
 double
 poisson_boltzmann::levelsetfun (double x, double y, double z)
@@ -2705,20 +2865,67 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
   MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
 
+  const bool pbc = (periodic_x || periodic_y);
 
   mumps mumps_solver;
 
   std::vector<double> vals;
   std::vector<int> irow, jcol;
 
+  // Owned rows only (flag=false, the default): the physical matrix stays
+  // distributed across ranks exactly as without PBC.
   (*A).aij (vals, irow, jcol, mumps_solver.get_index_base ());
 
+  std::vector<int> canonical, old_to_new;
+  int n_system = static_cast<int> (tmsh.num_global_nodes ());
+
+  if (pbc) {
+    // canonical/old_to_new are identical on every rank (built from
+    // pbc_x/y_right_to_left, themselves Allgatherv'd) -- no communication
+    // needed to remap this rank's own owned rows.
+    pbc_build_reduction (canonical, old_to_new, n_system);
+    pbc_remap_coo (irow, jcol, canonical, old_to_new, mumps_solver.get_index_base ());
+  }
+
   mumps_solver.set_lhs_distributed ();
-  mumps_solver.set_distributed_lhs_structure (tmsh.num_global_nodes (), irow, jcol);
+  mumps_solver.set_distributed_lhs_structure (n_system, irow, jcol);
   mumps_solver.set_distributed_lhs_data (vals);
-  mumps_solver.set_rhs_distributed (*rhs);
-  rhs.reset ();
-  A.reset ();
+
+  // Only used in the pbc branch, but must outlive analyze/factorize/solve:
+  // mumps::set_rhs() stores a raw pointer into this vector and MUMPS
+  // overwrites it in place with the solution.
+  std::vector<double> rhs_new;
+
+  int local_n = static_cast<int> (tmsh.num_owned_nodes ());
+  std::vector<int> counts (size, 0), displs (size, 0);
+
+  if (pbc) {
+    // Gather the full rhs on rank 0, reduce it there, hand MUMPS a
+    // centralized rhs -- the same pattern set_rhs_distributed() already uses
+    // internally, just with the PBC row merge applied first.
+    MPI_Gather (&local_n, 1, MPI_INT, counts.data (), 1, MPI_INT, 0, mpicomm);
+    if (rank == 0)
+      for (int r = 1; r < size; ++r)
+        displs[r] = displs[r - 1] + counts[r - 1];
+
+    std::vector<double> rhs_full;
+    if (rank == 0)
+      rhs_full.assign (static_cast<size_t> (tmsh.num_global_nodes ()), 0.0);
+    MPI_Gatherv (rhs->get_owned_data ().data (), local_n, MPI_DOUBLE,
+                rhs_full.data (), counts.data (), displs.data (), MPI_DOUBLE, 0, mpicomm);
+    rhs.reset ();
+    A.reset ();
+
+    if (rank == 0) {
+      pbc_reduce_rhs (rhs_full, canonical, old_to_new, n_system, rhs_new);
+      mumps_solver.set_rhs (rhs_new);
+    }
+  } else {
+    mumps_solver.set_rhs_distributed (*rhs);
+    rhs.reset ();
+    A.reset ();
+  }
+
   std::cout << "mumps_solver.analyze () = "
             << mumps_solver.analyze ()
             << std::endl;
@@ -2730,12 +2937,25 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
             << std::endl;
 
   phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
-  (*phi) = mumps_solver.get_distributed_solution ();
+
+  if (pbc) {
+    // rhs_new now holds the solution on rank 0 (MUMPS overwrote the
+    // centralized rhs buffer in place). Expand it back to N_phys and scatter
+    // by owned range.
+    std::vector<double> phi_full;
+    if (rank == 0)
+      pbc_expand_solution (rhs_new, canonical, old_to_new, phi_full);
+    else
+      phi_full.assign (static_cast<size_t> (tmsh.num_global_nodes ()), 0.0);
+
+    MPI_Scatterv (phi_full.data (), counts.data (), displs.data (), MPI_DOUBLE,
+                 phi->get_owned_data ().data (), local_n, MPI_DOUBLE, 0, mpicomm);
+  } else {
+    (*phi) = mumps_solver.get_distributed_solution ();
+  }
 
   if (size > 1)
     bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
-
-  ///////
 
   mumps_solver.cleanup ();
 }
@@ -2749,85 +2969,163 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
 
-  //CSR
-  std::vector<double> vals;
-  std::vector<int> irow, jcol;
+  const bool pbc = (periodic_x || periodic_y);
 
+  if (pbc && size > 1) {
+    // Multi-rank strong PBC with LIS lands in the next micro-step
+    // (gather-to-rank-0 reuse of the single-rank path below). Refuse rather
+    // than silently solving with the periodic faces left free (Neumann) --
+    // see piano_cleanup.md, Fase 3.
+    if (rank == 0)
+      std::cerr << "[ERROR] PBC (periodic_x/periodic_y) with linear_solver = lis "
+                << "and more than 1 MPI rank is not yet implemented.\n"
+                << "        Use 1 rank, or linear_solver = mumps, for now.\n";
+    MPI_Abort (mpicomm, 1);
+  }
 
-  (*A).csr (vals, jcol, irow);
+  LIS_INT is, ie;
 
-  // lis RHS
-  LIS_INT i, is, ie, n_rhs, ln;
-  LIS_VECTOR rhs_lis;
-  //n_rhs = tmsh.num_global_nodes();
-  ln = rhs->get_owned_data ().size ();
+  if (pbc) {
+    // Single-rank strong PBC: (*A).csr() below already returns the FULL
+    // system (owned range == [0, N_phys) when size == 1). Expand CSR -> COO,
+    // remap with the shared PBC helper, rebuild CSR (row merges create
+    // duplicate (row,col) entries that coo_to_csr_dedup sums).
+    std::vector<double> vals;
+    std::vector<int> irow, jcol; // CSR: irow is the row-pointer array
+    (*A).csr (vals, jcol, irow);
+    A.reset ();
 
-  lis_vector_create (mpicomm, &rhs_lis);
-  lis_vector_set_size (rhs_lis, ln, 0);
-  lis_vector_get_range (rhs_lis, &is, &ie);
+    const int N_phys = static_cast<int> (tmsh.num_global_nodes ());
 
-  for (i=is; i<ie; i++)
-    lis_vector_set_value (LIS_INS_VALUE, i, rhs->get_owned_data ()[i-is], rhs_lis);
+    std::vector<int> canonical, old_to_new;
+    int N_new;
+    pbc_build_reduction (canonical, old_to_new, N_new);
 
-  //cleaning of rhs
-  rhs.reset ();
+    std::vector<int> irow_coo (vals.size ());
+    for (int r = 0; r < N_phys; ++r)
+      for (int k = irow[r]; k < irow[r + 1]; ++k)
+        irow_coo[k] = r;
 
-  //lis_vector_print(rhs_lis);
-  // lis PHI
-  LIS_VECTOR phi_lis;
+    pbc_remap_coo (irow_coo, jcol, canonical, old_to_new, 0);
 
-  lis_vector_create (mpicomm, &phi_lis);
-  lis_vector_set_size (phi_lis, ln, 0);
-  //lis_vector_set_size(phi_lis, 0, n_rhs);
-  lis_vector_get_range (phi_lis, &is, &ie);
+    std::vector<int>    new_ptr, new_col;
+    std::vector<double> new_val;
+    coo_to_csr_dedup (N_new, irow_coo, jcol, vals, new_ptr, new_col, new_val);
 
-  // lis MATRIX
-  LIS_INT n, nnz; //n: matrix dim ; nnz: numb of non zero elems
-  LIS_INT *index; //array of integer containing the col index of non zero elems
-  LIS_INT *ptr; //array of integer with starting points of rows
-  LIS_SCALAR *value; //array of double stores non-zero elements of matrix A along the row
-  LIS_MATRIX A_lis; //array of integer containing the col index of non zero elems
+    std::vector<double> rhs_full (rhs->get_owned_data ().begin (), rhs->get_owned_data ().end ());
+    rhs.reset ();
+    std::vector<double> rhs_new;
+    pbc_reduce_rhs (rhs_full, canonical, old_to_new, N_new, rhs_new);
 
-  nnz = (*A).owned_nnz ();
-  n = tmsh.num_owned_nodes ();
+    LIS_INT lis_n   = static_cast<LIS_INT> (N_new);
+    LIS_INT lis_nnz = static_cast<LIS_INT> (new_val.size ());
 
-  A.reset ();
+    LIS_VECTOR rhs_lis;
+    lis_vector_create (mpicomm, &rhs_lis);
+    lis_vector_set_size (rhs_lis, lis_n, 0);
+    lis_vector_get_range (rhs_lis, &is, &ie);
+    for (LIS_INT k = is; k < ie; ++k)
+      lis_vector_set_value (LIS_INS_VALUE, k, rhs_new[static_cast<size_t> (k)], rhs_lis);
 
-  lis_matrix_create (mpicomm, &A_lis);
+    LIS_VECTOR phi_lis;
+    lis_vector_create (mpicomm, &phi_lis);
+    lis_vector_set_size (phi_lis, lis_n, 0);
+    lis_vector_get_range (phi_lis, &is, &ie);
 
-  lis_matrix_set_size (A_lis, n, 0);
-  ptr = &irow[0];
-  index = &jcol[0];
-  value = &vals[0];
+    LIS_MATRIX A_lis;
+    lis_matrix_create (mpicomm, &A_lis);
+    lis_matrix_set_size (A_lis, lis_n, 0);
+    lis_matrix_set_csr (lis_nnz, new_ptr.data (), new_col.data (), new_val.data (), A_lis);
+    lis_matrix_assemble (A_lis);
 
-  lis_matrix_set_csr (nnz, ptr, index, value, A_lis);
+    LIS_SOLVER solver;
+    lis_solver_create (&solver);
+    std::string opts = linear_solver_options;
+    lis_solver_set_option (&opts[0], solver);
+    lis_solve (A_lis, rhs_lis, phi_lis, solver);
+    lis_solver_destroy (solver);
+    lis_vector_destroy (rhs_lis);
 
+    std::vector<double> sol_new (static_cast<size_t> (N_new));
+    lis_vector_get_values (phi_lis, is, lis_n, sol_new.data ());
+    lis_vector_destroy (phi_lis);
 
-  lis_matrix_assemble (A_lis);
+    std::vector<double> phi_full;
+    pbc_expand_solution (sol_new, canonical, old_to_new, phi_full);
 
-  //Solve linear system
-  LIS_SOLVER solver;
+    phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+    std::copy (phi_full.begin (), phi_full.end (), phi->get_owned_data ().begin ());
 
-  lis_solver_create (&solver);
+    // Sanity check: on a periodic pair, left and right faces must carry the
+    // exact same solution (that's the definition of strong enforcement).
+    // size == 1 here (guarded above), so a direct local sweep is enough.
+    if (rank == 0) {
+      static const char* fname[6] = {"x-", "x+", "y-", "y+", "z-", "z+"};
+      std::cout << "  [PBC strong] face phi ranges:\n";
+      for (int face : {0, 1, 2, 3}) {
+        if (face < 2 && !periodic_x) continue;
+        if (face >= 2 && !periodic_y) continue;
+        double fmin =  std::numeric_limits<double>::max ();
+        double fmax = -std::numeric_limits<double>::max ();
+        for (auto q = tmsh.begin_quadrant_sweep (); q != tmsh.end_quadrant_sweep (); ++q)
+          for (auto local_idx : q->ef (face)) {
+            double v = phi_full[static_cast<size_t> (q->gt (local_idx))];
+            fmin = std::min (fmin, v);
+            fmax = std::max (fmax, v);
+          }
+        std::cout << "    face " << fname[face] << "  phi=[" << fmin << ", " << fmax << "]\n";
+      }
+    }
 
-  std::string opts = linear_solver_options;
+  } else {
+    // Non-PBC path, unchanged.
+    std::vector<double> vals;
+    std::vector<int> irow, jcol;
 
-  lis_solver_set_option (&opts[0], solver);
+    (*A).csr (vals, jcol, irow);
 
-  lis_solve (A_lis, rhs_lis, phi_lis, solver);
+    LIS_INT ln = static_cast<LIS_INT> (rhs->get_owned_data ().size ());
+    LIS_VECTOR rhs_lis;
+    lis_vector_create (mpicomm, &rhs_lis);
+    lis_vector_set_size (rhs_lis, ln, 0);
+    lis_vector_get_range (rhs_lis, &is, &ie);
 
-  lis_solver_destroy (solver);
-  lis_vector_destroy (rhs_lis);
+    for (LIS_INT k = is; k < ie; ++k)
+      lis_vector_set_value (LIS_INS_VALUE, k, rhs->get_owned_data ()[k - is], rhs_lis);
 
-  phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+    rhs.reset ();
 
-  lis_vector_get_values (phi_lis, is, ln, phi->get_owned_data ().data ());
+    LIS_VECTOR phi_lis;
+    lis_vector_create (mpicomm, &phi_lis);
+    lis_vector_set_size (phi_lis, ln, 0);
+    lis_vector_get_range (phi_lis, &is, &ie);
 
-  lis_vector_destroy (phi_lis);
+    LIS_INT nnz = (*A).owned_nnz ();
+    LIS_INT n   = static_cast<LIS_INT> (tmsh.num_owned_nodes ());
+
+    A.reset ();
+
+    LIS_MATRIX A_lis;
+    lis_matrix_create (mpicomm, &A_lis);
+    lis_matrix_set_size (A_lis, n, 0);
+    lis_matrix_set_csr (nnz, &irow[0], &jcol[0], &vals[0], A_lis);
+    lis_matrix_assemble (A_lis);
+
+    LIS_SOLVER solver;
+    lis_solver_create (&solver);
+    std::string opts = linear_solver_options;
+    lis_solver_set_option (&opts[0], solver);
+    lis_solve (A_lis, rhs_lis, phi_lis, solver);
+    lis_solver_destroy (solver);
+    lis_vector_destroy (rhs_lis);
+
+    phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+    lis_vector_get_values (phi_lis, is, ln, phi->get_owned_data ().data ());
+    lis_vector_destroy (phi_lis);
+  }
 
   if (size > 1)
     bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
-
 }
 
 

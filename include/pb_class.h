@@ -706,6 +706,53 @@ struct
   void
   ensure_pbc_face_conformity ();
 
+  /// @name PBC strong enforcement
+  /// Deterministic, MPI-free: computed once from pbc_x/y_right_to_left (which
+  /// are already identical on every rank), then reused to remap any COO/CSR
+  /// fragment (owned rows or full) and to reduce/expand the RHS/solution.
+  /// If neither periodic_x nor periodic_y, canonical/old_to_new are identity
+  /// and N_new == N_phys.
+  ///@{
+
+  /// canonical[i] = the periodic-left node that i ultimately collapses to (i
+  /// itself if i is not on a periodic right face). old_to_new[i] = index of i
+  /// in the reduced system, or -1 if i is eliminated (i.e. canonical[i] != i).
+  /// N_new = number of surviving DOFs.
+  void
+  pbc_build_reduction (std::vector<int> &canonical, std::vector<int> &old_to_new,
+                       int &N_new);
+
+  /// Remaps a COO fragment (irow/jcol, global 0-based node indices offset by
+  /// base) in place into the reduced index space. Safe on any subset of rows
+  /// (e.g. a single rank's owned rows): purely local, no MPI.
+  void
+  pbc_remap_coo (std::vector<int> &irow, std::vector<int> &jcol,
+                const std::vector<int> &canonical, const std::vector<int> &old_to_new,
+                int base) const;
+
+  /// Reduces a FULL rhs vector (size N_phys, e.g. gathered on rank 0) into
+  /// rhs_new (size N_new), merging each right-face node's contribution into
+  /// its canonical left-face node.
+  void
+  pbc_reduce_rhs (const std::vector<double> &rhs_full, const std::vector<int> &canonical,
+                  const std::vector<int> &old_to_new, int N_new,
+                  std::vector<double> &rhs_new) const;
+
+  /// Expands a reduced solution (size N_new) into phi_full (size N_phys),
+  /// copying the canonical value onto eliminated (right-face) nodes.
+  void
+  pbc_expand_solution (const std::vector<double> &sol_new, const std::vector<int> &canonical,
+                       const std::vector<int> &old_to_new, std::vector<double> &phi_full) const;
+  ///@}
+
+  /// Converts an arbitrary COO fragment (0-based rows in [0,N), duplicate
+  /// (row,col) pairs allowed and summed) into sorted CSR. Used to rebuild the
+  /// LIS matrix after PBC remapping merges rows together.
+  void
+  coo_to_csr_dedup (int N, const std::vector<int> &irow_coo, const std::vector<int> &jcol_coo,
+                    const std::vector<double> &vals_coo, std::vector<int> &csr_ptr,
+                    std::vector<int> &csr_col, std::vector<double> &csr_val) const;
+
   void
   create_mesh_ns ();
 
