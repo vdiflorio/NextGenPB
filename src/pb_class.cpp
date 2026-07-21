@@ -2682,6 +2682,11 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
     return cube_fraction_intersection (quadrant, ray_cache);
   };
 
+  // PBC: diagnostic conformity check + right->left node map, before assembling
+  // the matrix. No-op if neither periodic_x nor periodic_y.
+  check_pbc_face_conformity ();
+  build_pbc_node_map ();
+
   // Allocate sparse matrix A and RHS vector
   A = std::make_unique<distributed_sparse_matrix> (mpicomm);
   A->set_ranges (tmsh.num_owned_nodes());
@@ -2728,6 +2733,8 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
       std::cerr << "[WARNING] Boundary conditions may be inaccurate!!\n";
 
     for (auto const& ibc : bcells) {
+      if (periodic_x && (ibc.second == 0 || ibc.second == 1)) continue;
+      if (periodic_y && (ibc.second == 2 || ibc.second == 3)) continue;
       bcs.emplace_back (ibc.first, ibc.second,
       [] (double, double, double) {
         return 0.0;
@@ -2739,6 +2746,8 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
 
   if (bc == 2) { // Coulombic Dirichlet BC
     for (auto const& ibc : bcells) {
+      if (periodic_x && (ibc.second == 0 || ibc.second == 1)) continue;
+      if (periodic_y && (ibc.second == 2 || ibc.second == 3)) continue;
       bcs.emplace_back (ibc.first, ibc.second,
       [&] (double x, double y, double z) {
         return coulomb_boundary_conditions (x, y, z);
@@ -2750,6 +2759,8 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
 
   if (bc == 3) { // Analytic Dirichlet BC (sphere test case)
     for (auto const& ibc : bcells) {
+      if (periodic_x && (ibc.second == 0 || ibc.second == 1)) continue;
+      if (periodic_y && (ibc.second == 2 || ibc.second == 3)) continue;
       bcs.emplace_back (ibc.first, ibc.second,
       [&] (double x, double y, double z) {
         return analytic_solution (x, y, z);
