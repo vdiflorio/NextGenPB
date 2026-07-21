@@ -3407,6 +3407,7 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       }
 
       auto it0 = ray_cache.rays[dir].find (ray);
+      if (it0 == ray_cache.rays[dir].end ()) continue;
       auto inters = it0->second.inters;
 
       for (int ii =0; ii<inters.size (); ii++) {
@@ -3434,6 +3435,7 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       }
 
       auto it0 = ray_cache.rays[dir].find (ray);
+      if (it0 == ray_cache.rays[dir].end ()) continue;
       auto inters = it0->second.inters;
 
       for (int ii =0; ii<inters.size (); ii++) {
@@ -3461,6 +3463,7 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       }
 
       auto it0 = ray_cache.rays[dir].find (ray);
+      if (it0 == ray_cache.rays[dir].end ()) continue;
       auto inters = it0->second.inters;
 
       for (int ii =0; ii<inters.size (); ii++) {
