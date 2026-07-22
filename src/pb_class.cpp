@@ -1271,6 +1271,98 @@ poisson_boltzmann::coo_to_csr_dedup (int N, const std::vector<int> &irow_coo, co
 }
 
 
+void
+poisson_boltzmann::pbc_apply_periodic_copy ()
+{
+  if (!pbc_use_ordering || !phi)
+    return;
+
+  int size, rank;
+  MPI_Comm_size (mpicomm, &size);
+  MPI_Comm_rank (mpicomm, &rank);
+
+  auto &data = phi->get_owned_data ();
+  const int phi_is = phi->get_range_start ();
+  const int phi_ie = phi_is + static_cast<int> (data.size ());
+
+  // Reading a canonical node while writing a folded one is safe in any order:
+  // canonical[l] == l for every target l, so no target is ever a destination.
+  if (size == 1) {
+    for (int r = phi_is; r < phi_ie; ++r)
+      if (pbc_canonical[r] != r)
+        data[static_cast<size_t> (r - phi_is)] =
+          data[static_cast<size_t> (pbc_canonical[r] - phi_is)];
+    return;
+  }
+
+  // The periodic partner sits on the opposite face of the box, so it is not a
+  // ghost of r and bim3a_solution_with_ghosts cannot supply it. Only the
+  // canonical left nodes are needed -- a few thousand values -- so one
+  // Allreduce over that set is enough. pbc_canonical is identical on every
+  // rank, hence so is the target list, and every global node is owned by
+  // exactly one rank, so summing reconstructs the values exactly.
+  std::vector<int> targets;
+  for (size_t i = 0; i < pbc_canonical.size (); ++i)
+    if (pbc_canonical[i] != static_cast<int> (i))
+      targets.push_back (pbc_canonical[i]);
+  std::sort (targets.begin (), targets.end ());
+  targets.erase (std::unique (targets.begin (), targets.end ()), targets.end ());
+
+  std::vector<double> buf (targets.size (), 0.0);
+  for (size_t k = 0; k < targets.size (); ++k)
+    if (targets[k] >= phi_is && targets[k] < phi_ie)
+      buf[k] = data[static_cast<size_t> (targets[k] - phi_is)];
+  MPI_Allreduce (MPI_IN_PLACE, buf.data (), static_cast<int> (buf.size ()),
+                 MPI_DOUBLE, MPI_SUM, mpicomm);
+
+  for (int r = phi_is; r < phi_ie; ++r) {
+    if (pbc_canonical[r] == r)
+      continue;
+    auto it = std::lower_bound (targets.begin (), targets.end (), pbc_canonical[r]);
+    data[static_cast<size_t> (r - phi_is)] =
+      buf[static_cast<size_t> (it - targets.begin ())];
+  }
+}
+
+
+// TEMPORARY (Fase 3 / C3 acceptance criterion 1) -- to be removed once the
+// ordering path is validated. Dumps a CSR matrix + rhs, both already expressed
+// in the reduced index space, so that the two ways of imposing the periodic
+// identification can be compared entry by entry without going through a solver.
+// Written only when NGPB_DUMP_MATRIX names an output file.
+static void
+pbc_debug_dump_system (const char *suffix,
+                       int N,
+                       const std::vector<int> &ptr,
+                       const std::vector<int> &col,
+                       const std::vector<double> &val,
+                       const std::vector<double> &rhs)
+{
+  const char *base = std::getenv ("NGPB_DUMP_MATRIX");
+  if (base == nullptr)
+    return;
+
+  std::string fname = std::string (base) + "." + suffix;
+  std::FILE *f = std::fopen (fname.c_str (), "wb");
+  if (f == nullptr) {
+    std::cerr << "[WARNING] cannot open " << fname << " for the matrix dump\n";
+    return;
+  }
+
+  const int64_t nnz = static_cast<int64_t> (val.size ());
+  std::fwrite (&N, sizeof (int), 1, f);
+  std::fwrite (&nnz, sizeof (int64_t), 1, f);
+  std::fwrite (ptr.data (), sizeof (int), static_cast<size_t> (N) + 1, f);
+  std::fwrite (col.data (), sizeof (int), static_cast<size_t> (nnz), f);
+  std::fwrite (val.data (), sizeof (double), static_cast<size_t> (nnz), f);
+  std::fwrite (rhs.data (), sizeof (double), static_cast<size_t> (N), f);
+  std::fclose (f);
+
+  std::cout << "  [PBC dump] " << fname << ": N = " << N
+            << ", nnz = " << nnz << "\n";
+}
+
+
 double
 poisson_boltzmann::levelsetfun (double x, double y, double z)
 {
@@ -2733,6 +2825,30 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
   check_pbc_face_conformity ();
   build_pbc_node_map ();
 
+  // PROTOTYPE (Fase 3 / C3): with a periodic pair active and NGPB_PBC_ORDERING
+  // set, the identification is done by the ordering below instead of by the
+  // post-assembly elimination. Without a periodic pair this stays false and
+  // every bimpp call below gets default_ord, i.e. the exact call of `main`.
+  pbc_use_ordering = (periodic_x || periodic_y)
+                     && (std::getenv ("NGPB_PBC_ORDERING") != nullptr);
+
+  if (pbc_use_ordering) {
+    std::vector<int> old_to_new;
+    int N_new = 0;
+    pbc_build_reduction (pbc_canonical, old_to_new, N_new);
+    if (rank == 0)
+      std::cout << "  [PBC ordering] periodic identification during assembly\n";
+  }
+
+  // Maps every periodic right-face node onto its left partner; identity on
+  // every other node, the Dirichlet z± nodes included (build_pbc_node_map
+  // deliberately keeps those out of the maps, see bc.md § "Spigoli
+  // orizzontali"). Never called unless pbc_use_ordering.
+  ordering periodic_ord = [this] (p4est_gloidx_t g) -> size_t {
+    return static_cast<size_t> (pbc_canonical[g]);
+  };
+  const ordering &ord = pbc_use_ordering ? periodic_ord : default_ord;
+
   // Allocate sparse matrix A and RHS vector
   A = std::make_unique<distributed_sparse_matrix> (mpicomm);
   A->set_ranges (tmsh.num_owned_nodes());
@@ -2744,22 +2860,22 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
   // ------------------------------------------------------------
 
   // Assemble RHS using previously computed fixed charge density
-  bim3a_rhs (tmsh, const_ones, *rho_fixed, *rhs);
+  bim3a_rhs (tmsh, const_ones, *rho_fixed, *rhs, ord);
 
   // rho_fixed and const_ones are no longer needed after building RHS
   rho_fixed.reset();
   std::vector<double>().swap (const_ones);
 
   // Assemble Laplace operator (with fractional cell treatment)
-  bim3a_laplacian_frac (tmsh, *epsilon_nodes, *A, func_frac);
+  bim3a_laplacian_frac (tmsh, *epsilon_nodes, *A, func_frac, ord, ord);
 
   // Add reaction term (Stern layer present or fractional formulation)
   if (stern_layer_surf == 1) {
     // Standard Stern-layer reaction
-    bim3a_reaction (tmsh, reaction, *ones, *A);
+    bim3a_reaction (tmsh, reaction, *ones, *A, ord, ord);
   } else {
     // Fractional reaction for intersected cells
-    bim3a_reaction_frac (tmsh, (*reaction_nodes), *ones, *A, func_frac);
+    bim3a_reaction_frac (tmsh, (*reaction_nodes), *ones, *A, func_frac, ord, ord);
   }
 
   // Reaction-related vectors are no longer required
@@ -2787,7 +2903,7 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
       });
     }
 
-    bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs);
+    bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs, ord);
   }
 
   if (bc == 2) { // Coulombic Dirichlet BC
@@ -2800,7 +2916,7 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
       });
     }
 
-    bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs);
+    bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs, ord);
   }
 
   if (bc == 3) { // Analytic Dirichlet BC (sphere test case)
@@ -2813,7 +2929,35 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
       });
     }
 
-    bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs);
+    bim3a_dirichlet_bc (tmsh, bcs, *A, *rhs, ord);
+  }
+
+  // ------------------------------------------------------------
+  // 3b) CLOSE THE ROWS OF THE FOLDED NODES
+  // ------------------------------------------------------------
+  // The periodic ordering folded every right-face node r onto its left partner
+  // canonical[r], on rows *and* columns: row r and column r are both untouched,
+  // so phi_r would be undetermined and A singular. Close those rows with a
+  // plain identity, phi_r = 0, and recover the real value with
+  // pbc_apply_periodic_copy() after the solve.
+  //
+  // NOT with the constraint row phi_r - phi_l = 0 (a -1 in column l): that
+  // extra off-diagonal entry has no symmetric counterpart, since column r
+  // stays empty. It turns A into a block-triangular, non-symmetric matrix and
+  // CG -- which is what LIS runs by default, legitimately, because the system
+  // is otherwise symmetric (measured: ||A - A^T||_max = 4.4e-16) -- then has no
+  // convergence guarantee and silently returns garbage on phi_r. MUMPS
+  // factorizes and does not care, which is why the two solvers disagreed.
+  // Keeping the identity leaves A symmetric and the solve unaffected.
+  if (pbc_use_ordering) {
+    const int row_start = A->range_start ();
+    const int row_end   = A->range_end ();
+    for (int r = row_start; r < row_end; ++r) {
+      if (pbc_canonical[r] == r)
+        continue;
+      (*A)[r][r] = 1.0;
+      (*rhs)[r]  = 0.0;
+    }
   }
 
   // ------------------------------------------------------------
@@ -2871,7 +3015,10 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
   MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
 
-  const bool pbc = (periodic_x || periodic_y);
+  // pbc_use_ordering: the identification already happened during assembly, so
+  // the system handed to the solver is an ordinary N_phys system -- exactly the
+  // non-periodic path below, no reduction and no expansion.
+  const bool pbc = (periodic_x || periodic_y) && !pbc_use_ordering;
 
   mumps mumps_solver;
 
@@ -2960,6 +3107,9 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
     (*phi) = mumps_solver.get_distributed_solution ();
   }
 
+  // The folded rows were solved as phi_r = 0; fill in their real value.
+  pbc_apply_periodic_copy ();
+
   if (size > 1)
     bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
 
@@ -2975,7 +3125,10 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
 
-  const bool pbc = (periodic_x || periodic_y);
+  // pbc_use_ordering: see mumps_compute_electric_potential -- the identification
+  // is already in the assembled matrix, so this falls through to the plain
+  // distributed solve at the bottom of this function.
+  const bool pbc = (periodic_x || periodic_y) && !pbc_use_ordering;
 
   LIS_INT is, ie;
 
@@ -3010,6 +3163,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
     rhs.reset ();
     std::vector<double> rhs_new;
     pbc_reduce_rhs (rhs_full, canonical, old_to_new, N_new, rhs_new);
+
+    pbc_debug_dump_system ("ref", N_new, new_ptr, new_col, new_val, rhs_new);
 
     LIS_INT lis_n   = static_cast<LIS_INT> (N_new);
     LIS_INT lis_nnz = static_cast<LIS_INT> (new_val.size ());
@@ -3227,6 +3382,44 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
     (*A).csr (vals, jcol, irow);
 
+    // TEMPORARY (C3 criterion 1): project the assembled system onto the same
+    // reduced index space the reference path uses, so the two dumps line up.
+    // Constraint rows and eliminated columns are dropped: what is left must be
+    // the reference matrix. Single rank only -- irow is a row pointer over
+    // OWNED rows, which is the whole matrix only when size == 1.
+    if (pbc_use_ordering && size == 1 && std::getenv ("NGPB_DUMP_MATRIX")) {
+      std::vector<int> canonical, old_to_new;
+      int N_new = 0;
+      pbc_build_reduction (canonical, old_to_new, N_new);
+
+      const int N_phys = static_cast<int> (tmsh.num_global_nodes ());
+      std::vector<int>    d_ptr (1, 0), d_col;
+      std::vector<double> d_val, d_rhs;
+      d_ptr.reserve (static_cast<size_t> (N_new) + 1);
+      d_col.reserve (vals.size ());
+      d_val.reserve (vals.size ());
+      d_rhs.reserve (static_cast<size_t> (N_new));
+
+      for (int r = 0; r < N_phys; ++r) {
+        if (canonical[r] != r)      // constraint row, no counterpart in the reference
+          continue;
+        for (int k = irow[r]; k < irow[r + 1]; ++k) {
+          // Every surviving column is canonical: ordc already folded the others.
+          if (old_to_new[jcol[k]] < 0) {
+            std::cerr << "[ERROR] ordering path left a non-canonical column "
+                      << jcol[k] << " in row " << r << "\n";
+            continue;
+          }
+          d_col.push_back (old_to_new[jcol[k]]);
+          d_val.push_back (vals[k]);
+        }
+        d_ptr.push_back (static_cast<int> (d_col.size ()));
+        d_rhs.push_back (rhs->get_owned_data ()[static_cast<size_t> (r)]);
+      }
+
+      pbc_debug_dump_system ("ord", N_new, d_ptr, d_col, d_val, d_rhs);
+    }
+
     LIS_INT ln = static_cast<LIS_INT> (rhs->get_owned_data ().size ());
     LIS_VECTOR rhs_lis;
     lis_vector_create (mpicomm, &rhs_lis);
@@ -3265,6 +3458,39 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
     phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
     lis_vector_get_values (phi_lis, is, ln, phi->get_owned_data ().data ());
     lis_vector_destroy (phi_lis);
+  }
+
+  // The folded rows were solved as phi_r = 0; fill in their real value.
+  pbc_apply_periodic_copy ();
+
+  // Same sanity check as the two branches above, for the ordering path: the two
+  // faces of a periodic pair must carry the exact same solution.
+  if (pbc_use_ordering) {
+    static const char* fname[6] = {"x-", "x+", "y-", "y+", "z-", "z+"};
+    const int phi_is = static_cast<int> (phi->get_range_start ());
+    const int phi_ie = phi_is + static_cast<int> (phi->get_owned_data ().size ());
+    if (rank == 0)
+      std::cout << "  [PBC ordering] face phi ranges:\n";
+    for (int face : {0, 1, 2, 3}) {
+      if (face < 2 && !periodic_x) continue;
+      if (face >= 2 && !periodic_y) continue;
+      double lmin =  std::numeric_limits<double>::max ();
+      double lmax = -std::numeric_limits<double>::max ();
+      for (auto q = tmsh.begin_quadrant_sweep (); q != tmsh.end_quadrant_sweep (); ++q)
+        for (auto local_idx : q->ef (face)) {
+          int g = q->gt (local_idx);
+          if (g >= phi_is && g < phi_ie) {
+            double v = phi->get_owned_data ()[static_cast<size_t> (g - phi_is)];
+            lmin = std::min (lmin, v);
+            lmax = std::max (lmax, v);
+          }
+        }
+      double gmin, gmax;
+      MPI_Reduce (&lmin, &gmin, 1, MPI_DOUBLE, MPI_MIN, 0, mpicomm);
+      MPI_Reduce (&lmax, &gmax, 1, MPI_DOUBLE, MPI_MAX, 0, mpicomm);
+      if (rank == 0)
+        std::cout << "    face " << fname[face] << "  phi=[" << gmin << ", " << gmax << "]\n";
+    }
   }
 
   if (size > 1)
