@@ -261,6 +261,18 @@ struct
   bool periodic_y = false; ///< Periodic boundary condition in y
   std::map<size_t, size_t> pbc_x_right_to_left; ///< x-pair: face-1 global node -> face-0 global node
   std::map<size_t, size_t> pbc_y_right_to_left; ///< y-pair: face-3 global node -> face-2 global node
+
+  /// PROTOTYPE (Fase 3 / C3): enforce the periodic identification *during*
+  /// assembly, through a periodic node ordering handed to the bimpp operators,
+  /// instead of the post-assembly elimination. Selected by the environment
+  /// variable NGPB_PBC_ORDERING; always false when no periodic pair is active,
+  /// so a non-periodic run follows the exact same code path as before.
+  bool pbc_use_ordering = false;
+
+  /// Periodic ordering used when pbc_use_ordering: canonical[i] is the
+  /// periodic-left node that i collapses to (i itself otherwise). Sized N_phys,
+  /// left empty unless pbc_use_ordering.
+  std::vector<int> pbc_canonical;
   // ============================================================================
 
   static constexpr
@@ -694,6 +706,13 @@ struct
   /// No-op if neither periodic_x nor periodic_y.
   void
   build_pbc_node_map ();
+
+  /// @brief Copies phi from each periodic-left node onto the right-face nodes
+  /// folded onto it. Needed because the ordering path leaves those rows as a
+  /// plain identity (see the comment at the constraint block): the value comes
+  /// from this copy, not from the solver. No-op unless pbc_use_ordering.
+  void
+  pbc_apply_periodic_copy ();
 
   /// @brief Compares the quadrant structure of each active periodic pair's two
   /// faces and reports mismatches (diagnostic only, does not modify the mesh).
