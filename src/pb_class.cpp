@@ -1707,6 +1707,11 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     stern_membrane = g2 ( (mem_options + "stern_membrane").c_str (), 0);
     stern_membrane_d = g2 ( (mem_options + "stern_membrane_d").c_str (), 0.0);
 
+    // Transmembrane applied potential, in kT/e (the internal unit of pot_bc,
+    // no conversion). Default 0 = no applied potential: the whole DeltaV path
+    // (phi_bar source and the z+ boundary value) is then skipped.
+    applied_potential = g2 ( (mem_options + "applied_potential").c_str (), 0.0);
+
     // Membrane mode always uses MESH_SHAPE_MEM (slab mesh). The user cannot
     // override this: the slab geometry and level structure are determined by
     // the lipid/protein atom extents at mesh-build time.
@@ -2574,6 +2579,30 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
   reaction_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
   reaction_nodes->get_owned_data ().assign (tmsh.num_owned_nodes (), eps_out*k2);
 
+  // Applied potential: regional bulk reference phi_bar, 0 in the lower bath and
+  // applied_potential in the upper one, split at the lipid-slab midplane. Inside
+  // the membrane and the solute c = 0, so the value phi_bar takes there never
+  // reaches the system. z_mem_bot/z_mem_top are the physical (van der Waals)
+  // slab, not the l_mem/r_mem refinement boxes; the midplane is the same either
+  // way since their padding is symmetric. Consumed as the RHS source +c*phi_bar
+  // in assemple_system_matrix. Left null when there is no applied potential, and
+  // every downstream use tests for that, so V = 0 is a strict no-op.
+  const bool use_phi_bar =
+    membrane_enabled && std::fabs (applied_potential) > 1.e-12;
+  const double z_mid = 0.5 * (z_mem_bot + z_mem_top);
+
+  if (use_phi_bar) {
+    phi_bar = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+    phi_bar->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0);
+
+    // Worth printing: the slab bounds are echoed only in the implicit modes, so
+    // in ns mode this is the one place the midplane splitting the two baths --
+    // which is where the whole applied-potential setup hinges -- is visible.
+    if (rank == 0)
+      std::cout << "  Applied potential: phi_bar = 0 below z = " << z_mid
+                << " Å, " << applied_potential << " kT/e above\n";
+  }
+
   int num_cycles = 2;
 
   if (size == 1) {
@@ -2606,6 +2635,9 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
         z = quadrant->p (2, ii);
 
         if (! quadrant->is_hanging (ii)) {
+          if (use_phi_bar)
+            (*phi_bar)[local_num] = (z > z_mid) ? applied_potential : 0.0;
+
           if (this->is_in_ns_surf (ray_cache, x, y, z, 2) > 0.5) { //inside the molecule
             ++num_int_nodes;
             ++num_int_nodes_stern;
@@ -2697,6 +2729,9 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
 
     if (stern_layer_surf == 0)
       bim3a_solution_with_ghosts (tmsh, (*reaction_nodes), replace_op);
+
+    if (use_phi_bar)
+      bim3a_solution_with_ghosts (tmsh, *phi_bar, replace_op);
   }
 }
 
@@ -2884,6 +2919,32 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
     bim3a_reaction_frac (tmsh, (*reaction_nodes), *ones, *A, func_frac, ord, ord);
   }
 
+  // Applied potential: RHS source +c*phi_bar. The membrane reaction term is
+  // c (phi - phi_bar); c*phi is the matrix block assembled just above, while
+  // c*phi_bar is a known source and belongs on the RHS. Built with the same
+  // operator, the same fractional weights and the same ordering as that block,
+  // so it is exactly M_c*phi_bar (the box-method reaction matrix is lumped).
+  // Using ord is not cosmetic: with strong PBC it folds the right-face rows
+  // onto their left partners, and default_ord here would drop the term on rows
+  // the rest of the system no longer uses.
+  //
+  // Accumulated straight into *rhs rather than into a temporary: bim3a_rhs*
+  // adds (+=) at *global* indices, so a rank also writes into nodes owned by
+  // its neighbours, and those land in the vector's non-local map. Only
+  // assemble() ships them to the owner, and get_owned_data() does not see them
+  // -- summing a temporary's owned data into *rhs would silently drop every
+  // cross-rank contribution (invisible on one rank, where nothing is
+  // non-local). Writing into *rhs lets the single rhs->assemble() below reduce
+  // this term together with the rho_fixed one assembled the same way.
+  if (phi_bar) {
+    if (stern_layer_surf == 1)
+      bim3a_rhs (tmsh, reaction, *phi_bar, *rhs, ord);
+    else
+      bim3a_rhs_frac (tmsh, *reaction_nodes, *phi_bar, *rhs, func_frac, ord);
+
+    phi_bar.reset ();
+  }
+
   // Reaction-related vectors are no longer required
   reaction_nodes.reset();
   ones.reset();
@@ -2905,16 +2966,32 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
   // Build Dirichlet boundary list
   dirichlet_bcs3 bcs;
 
-  if (bc == 1) { // Homogeneous Dirichlet BC
+  if (bc == 1) { // Dirichlet BC, homogeneous unless an applied potential is set
     if (std::fabs (pot_bc) > 1.e-5 && rank == 0)
       std::cerr << "[WARNING] Boundary conditions may be inaccurate!!\n";
+
+    // Applied potential: the two z faces become the electrodes, z- (face 4)
+    // grounded and z+ (face 5) held at applied_potential. This is orthogonal to
+    // pbc_mode: the z faces are Dirichlet under strong and mortar alike, only
+    // x/y are periodic, so the face filter below is untouched. Without an
+    // applied potential every face keeps the homogeneous value.
+    const bool membrane_voltage =
+      membrane_enabled && std::fabs (applied_potential) > 1.e-12;
+
+    if (membrane_voltage && rank == 0)
+      std::cout << "  Membrane voltage: z- = 0, z+ = " << applied_potential
+                << " kT/e\n";
 
     for (auto const& ibc : bcells) {
       if (periodic_x && (ibc.second == 0 || ibc.second == 1)) continue;
       if (periodic_y && (ibc.second == 2 || ibc.second == 3)) continue;
+
+      const double bc_val =
+        (membrane_voltage && ibc.second == 5) ? applied_potential : 0.0;
+
       bcs.emplace_back (ibc.first, ibc.second,
-      [] (double, double, double) {
-        return 0.0;
+      [bc_val] (double, double, double) {
+        return bc_val;
       });
     }
 
