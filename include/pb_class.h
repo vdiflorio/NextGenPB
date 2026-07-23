@@ -180,6 +180,14 @@ struct
   std::unique_ptr<distributed_vector> markn;
   std::unique_ptr<distributed_vector> epsilon_nodes;
   std::unique_ptr<distributed_vector> reaction_nodes;
+
+  // Regional bulk reference of the membrane LPBE, -div(eps grad phi) +
+  // c (phi - phi_bar) = rho_f: 0 in the lower bath, applied_potential in the
+  // upper one. Built in create_markers alongside reaction_nodes (same node
+  // sweep), consumed in assemple_system_matrix as the RHS source +c*phi_bar
+  // and released there. Null unless the membrane is on with a non-zero
+  // applied_potential, and every use is guarded on that.
+  std::unique_ptr<distributed_vector> phi_bar;
   double net_charge;
 
   std::unique_ptr<distributed_vector> phi;
@@ -249,6 +257,14 @@ struct
   double z_mem_top = 0.0; ///< Membrane dielectric slab: upper z bound [Å]
   bool   stern_membrane = false; ///< Enable Stern layer on membrane surface
   double stern_membrane_d = 0.0; ///< Stern layer thickness on membrane [Å]
+
+  // Transmembrane applied potential DeltaV. The lower electrode (z-, face 4) is
+  // grounded and the upper one (z+, face 5) is held at this value, which also
+  // sets the regional bulk reference phi_bar entering the LPBE as
+  // -div(eps grad phi) + c (phi - phi_bar) = rho_f. Same internal units as
+  // pot_bc, i.e. kT/e. Zero means no applied potential and the whole DeltaV
+  // path is skipped, reproducing the legacy behaviour bit for bit.
+  double applied_potential = 0.0; ///< Transmembrane applied potential [kT/e]
   // ======================== end [pb_membrane module] ==========================
 
   // ============================================================================
