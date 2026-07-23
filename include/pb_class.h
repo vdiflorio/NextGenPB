@@ -922,6 +922,9 @@ struct
   energy_fast (ray_cache_t & ray_cache);
 
   void
+  energy_membrane (ray_cache_t & ray_cache);
+
+  void
   write_potential_on_surface (ray_cache_t & ray_cache);
 
   double

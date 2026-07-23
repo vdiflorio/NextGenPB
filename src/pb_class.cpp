@@ -3834,6 +3834,180 @@ poisson_boltzmann::getTriangles (int cubeindex,
   return ntriang;
 }
 
+// On-shell free energy of the membrane problem:
+//
+//   dG* = 1/2 sum_i q_i phi*(r_i) + 1/2 Vbar int_{S_int^up} D*_n,solv dS
+//
+// This is a *different* formula from the one energy()/energy_fast() evaluate,
+// not an extra term added on top of it: it is the on-shell value of the LPB
+// functional written with the regional bulk reference phi_bar, so the two are
+// not comparable and the pre-membrane path is deliberately left untouched.
+//
+// S_int^up is the internal boundary of the upper bath, i.e. everything bounding
+// the region where phi_bar = Vbar except the z+ electrode and the lateral
+// periodic faces -- not just the flat top of the lipid slab.  In this geometry
+// the protein sticks well above the membrane, so its surface is a large part of
+// it.  Discretely the region is exactly {z > z_mid}, the same split that sets
+// phi_bar in create_markers, which makes the flux term consistent by
+// construction with the RHS source that produced phi.
+//
+// Only called when a transmembrane potential is applied, so at Vbar = 0 nothing
+// here runs and the existing energies stay bit-identical.
+void
+poisson_boltzmann::energy_membrane (ray_cache_t & ray_cache)
+{
+  int rank;
+  MPI_Comm_rank (mpicomm, &rank);
+
+  if (rank == 0)
+    std::cout << "\n============ [ Membrane On-Shell Energy ] =================\n";
+
+  // ---------------------------------------------------------------------
+  // Term 1:  1/2 sum_i q_i phi*(r_i)
+  // ---------------------------------------------------------------------
+  // Trilinear interpolation of phi at the charge positions, with the same
+  // weights as write_potential_on_atoms_fast (complementary corner volumes over
+  // the cell volume) and the same averaging of hanging nodes over their parents.
+  // lookup_table is filled in create_rhs via search_points and assigns every
+  // atom to exactly one rank (controlla_coordinate rejects the upper faces), so
+  // summing the local contributions and reducing is not double counting.
+  double energy_charge = 0.0;
+
+  for (auto it = lookup_table.begin (); it != lookup_table.end (); ++it) {
+    const double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
+                          (it->second.p (1, 7) - it->second.p (1, 0)) *
+                          (it->second.p (2, 7) - it->second.p (2, 0));
+
+    double phi_on_atom = 0.0;
+
+    for (int ii = 0; ii < 8; ++ii) {
+      const double weight = std::abs ((pos_atoms[it->first][0] - it->second.p (0, 7 - ii)) *
+                                      (pos_atoms[it->first][1] - it->second.p (1, 7 - ii)) *
+                                      (pos_atoms[it->first][2] - it->second.p (2, 7 - ii))) / volume;
+
+      if (! it->second.is_hanging (ii)) {
+        phi_on_atom += (*phi)[it->second.gt (ii)] * weight;
+      } else {
+        double phi_hang_nodes = 0.0;
+
+        for (int jj = 0; jj < it->second.num_parents (ii); ++jj)
+          phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)] / it->second.num_parents (ii);
+
+        phi_on_atom += phi_hang_nodes * weight;
+      }
+    }
+
+    energy_charge += charge_atoms[it->first] * phi_on_atom;
+  }
+
+  energy_charge *= 0.5;
+
+  // ---------------------------------------------------------------------
+  // Term 2:  1/2 Vbar int_{S_int^up} D*_n,solv dS
+  // ---------------------------------------------------------------------
+  // Same flux loop as energy(), minus the inner sweep over the atoms (which is
+  // what makes energy() expensive): classifyCube_flux already returns exactly
+  // the quantity needed.  Its fl_dir is +1 when epsilon grows along the edge
+  // axis, so the normal it uses points from low to high epsilon, i.e. from the
+  // membrane/solute into the solvent -- the n_hat of the notes -- and
+  //
+  //   tmp_flux = -(phi_2 - phi_1) * eps_harmonic * fl_dir * area_h[axis]
+  //            = (D . n_hat) * (face area / 4)
+  //
+  // is D_n,solv on the dual-cell face element.  The epsilon field carries a
+  // factor 4*pi (see eps_in/eps_out above), hence the same 1/(4*pi) that turns
+  // charge_pol into "Flux charge [e]".
+  //
+  // The upper bath is the region where phi_bar = Vbar, i.e. z > z_mid with the
+  // very same midplane used in create_markers, so the crossing points are
+  // filtered on their z coordinate.  The whole-interface flux is accumulated
+  // too, as a diagnostic to compare against the Flux charge of energy().
+  const double z_mid = 0.5 * (z_mem_bot + z_mem_top);
+
+  double flux_up = 0.0, flux_all = 0.0;
+
+  std::array<double,3> h {0}, area_h {0};
+  std::array<double,3> V, N;
+  std::array<double,8> tmp_eps, tmp_phi;
+  std::vector<int> edg, fl_dir;
+
+  auto quadrant = this->tmsh.begin_quadrant_sweep ();
+
+  for (const int ii : border_quad) {
+    quadrant[ii];
+
+    for (int d = 0; d < 3; ++d)
+      h[d] = quadrant->p (d, 7) - quadrant->p (d, 0);
+
+    area_h = {h[1]*h[2]/h[0]*0.25, h[0]*h[2]/h[1]*0.25, h[0]*h[1]/h[2]*0.25};
+
+    std::tie (tmp_phi, tmp_eps, edg, fl_dir) = classifyCube_flux (quadrant, tmp_phi, tmp_eps);
+
+    for (int ip = 0; ip < edg.size (); ++ip) {
+      const int edge = edg[ip];
+      const int axis = edge_axis[edge];
+      const int i1 = edge2nodes[2 * edge];
+      const int i2 = edge2nodes[2 * edge + 1];
+
+      double fract = 0.0;
+      normal_intersection (quadrant, ray_cache, edge, N, fract);
+
+      V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
+      V[axis] += fract * h[axis];
+
+      const double tmp_flux =
+        - (tmp_phi[i2] - tmp_phi[i1]) * wha (tmp_eps[i1], tmp_eps[i2], fract)
+        * fl_dir[ip] * area_h[axis];
+
+      flux_all += tmp_flux;
+
+      if (V[2] > z_mid)
+        flux_up += tmp_flux;
+    }
+  }
+
+  flux_up /= (4.0 * pi);
+  flux_all /= (4.0 * pi);
+
+  auto reduce_double = [&] (double &x) {
+    MPI_Reduce (rank == 0 ? MPI_IN_PLACE : &x, &x, 1, MPI_DOUBLE, MPI_SUM, 0, mpicomm);
+  };
+
+  reduce_double (energy_charge);
+  reduce_double (flux_up);
+  reduce_double (flux_all);
+
+  const double energy_flux = 0.5 * applied_potential * flux_up;
+
+  if (rank == 0) {
+    constexpr int label_width = 50;
+    constexpr int precision = 16;
+
+    std::cout << std::left << std::setw (label_width) << "  Applied potential [kT/e]:"
+              << std::setprecision (precision) << applied_potential << "\n";
+
+    std::cout << std::left << std::setw (label_width) << "  Upper-bath midplane z_mid [A]:"
+              << std::setprecision (precision) << z_mid << "\n";
+
+    std::cout << std::left << std::setw (label_width) << "  Flux through S_int^up [e]:"
+              << std::setprecision (precision) << flux_up << "\n";
+
+    std::cout << std::left << std::setw (label_width) << "  Flux through the whole interface [e]:"
+              << std::setprecision (precision) << flux_all << "\n";
+
+    std::cout << std::left << std::setw (label_width) << "  Term 1, 1/2 sum q_i phi(r_i) [kT]:"
+              << std::setprecision (precision) << energy_charge << "\n";
+
+    std::cout << std::left << std::setw (label_width) << "  Term 2, 1/2 Vbar int D_n dS [kT]:"
+              << std::setprecision (precision) << energy_flux << "\n";
+
+    std::cout << std::left << std::setw (label_width) << "  Membrane on-shell energy dG* [kT]:"
+              << std::setprecision (precision) << (energy_charge + energy_flux) << "\n";
+
+    std::cout << "===========================================================\n";
+  }
+}
+
 void
 poisson_boltzmann::energy (ray_cache_t & ray_cache)
 {
