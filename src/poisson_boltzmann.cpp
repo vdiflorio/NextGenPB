@@ -311,12 +311,27 @@ main (int argc, char **argv)
 
   TIC ();
 
-  if (pb.linear_solver_name == "mumps") {
+  // The mortar (weak PBC) system is an indefinite saddle point and is solved
+  // with MUMPS only, regardless of the requested linear_solver. Strong PBC and
+  // the non-periodic case honour linear_solver as usual.
+  const bool mortar_active =
+    (pb.pbc_mode == "mortar") && (pb.periodic_x || pb.periodic_y);
+
+  std::string effective_solver = pb.linear_solver_name;
+  if (mortar_active && effective_solver != "mumps") {
+    if (rank == 0)
+      std::cout << "\n== [ pbc_mode=mortar: forcing MUMPS (requested '"
+                << pb.linear_solver_name << "' is not valid for the "
+                << "indefinite mortar system) ] ==\n";
+    effective_solver = "mumps";
+  }
+
+  if (effective_solver == "mumps") {
     if (rank == 0)
       std::cout << "\n== [ Starting numerical solution using MUMPS ] ==\n";
 
     pb.mumps_compute_electric_potential (ray_cache);
-  } else if (pb.linear_solver_name == "lis") {
+  } else if (effective_solver == "lis") {
     if (rank == 0)
       std::cout << "\n== [ Starting numerical solution using LIS ] ==\n";
 

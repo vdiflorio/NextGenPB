@@ -883,6 +883,168 @@ poisson_boltzmann::build_pbc_node_map ()
   }
 }
 
+// ============================================================================
+// [PBC mortar] Weak periodic enforcement via Lagrange multipliers (K_static).
+// Ported from branch `membrane` (src/pb_membrane.cpp assemble_mortar_block),
+// stripped of the LIS-only scaffold (mortar rows written into A, diagonal
+// regularization): the augmented saddle-point system is solved with MUMPS only,
+// so the C^T block lives entirely in the dense mortar_C accumulator that
+// mumps_compute_electric_potential converts to COO. Formulation: bc.md
+// § "Derivazione del sistema aumentato (K_static)" onward.
+// ============================================================================
+void
+poisson_boltzmann::assemble_mortar_system ()
+{
+  int size, rank;
+  MPI_Comm_size (mpicomm, &size);
+  MPI_Comm_rank (mpicomm, &rank);
+
+  const int    nm       = (1 << minlevel);
+  ndofm                 = (nm + 1) * (nm + 1);
+  const int    n_pairs  = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
+  const size_t N_global = static_cast<size_t> (tmsh.num_global_nodes ());
+
+  const double Lx = r_cr[0] - l_cr[0];
+  const double Ly = r_cr[1] - l_cr[1];
+  const double Lz = r_cr[2] - l_cr[2];
+
+  // Each pair carries its tangential directions (d0, d1), physical extents, and
+  // the offsets of its DOFs: a global column base in A (N_global + cumulative)
+  // and a row base in the dense C^T accumulator (cumulative).
+  struct MortarFacePair {
+    int    face_left, face_right, d0, d1;
+    double d0_min, L0, d1_min, L1;
+    size_t mortar_col_offset;    // global col in A: N_global + cumulative
+    size_t mortar_dense_offset;  // row in mortar_C: cumulative
+  };
+
+  std::vector<MortarFacePair> pairs;
+  size_t cumulative = 0;
+  if (periodic_x) {
+    pairs.push_back ({0, 1, 1, 2, l_cr[1], Ly, l_cr[2], Lz,
+                      N_global + cumulative, cumulative});
+    cumulative += static_cast<size_t> (ndofm);
+  }
+  if (periodic_y) {
+    pairs.push_back ({2, 3, 0, 2, l_cr[0], Lx, l_cr[2], Lz,
+                      N_global + cumulative, cumulative});
+    cumulative += static_cast<size_t> (ndofm);
+  }
+
+  mortar_C.assign (static_cast<size_t> (n_pairs) * ndofm * N_global, 0.0);
+
+  // Accumulate the C / C^T contributions of one boundary quadrant on one face.
+  // sign = +1 on the left face, -1 on the right face. The integral of a FEM hat
+  // against a mortar hat factorizes as a tensor product of two 1D mixed masses.
+  auto assemble_block = [&] (tmesh_3d::quadrant_iterator q, int face_idx,
+                             const MortarFacePair &pair, double sign) {
+    const auto &fnodes = q->ef (face_idx);
+    if (fnodes.empty ()) return;
+
+    const int d0 = pair.d0, d1 = pair.d1;
+
+    // Step 1 — tangential coords of the 4 face nodes.
+    //   fnodes: [0]=(d0min,d1min) [1]=(d0max,d1min) [2]=(d0min,d1max) [3]=(d0max,d1max)
+    double c0[2], c1[2];
+    c0[0] = q->p (d0, fnodes[0]);
+    c0[1] = q->p (d0, fnodes[1]);
+    c1[0] = q->p (d1, fnodes[0]);
+    c1[1] = q->p (d1, fnodes[2]);
+
+    // Step 2 — Dirichlet filter: drop nodes on the z± planes (d1 == 2).
+    const double z_lo = pair.d1_min;
+    const double z_hi = pair.d1_min + pair.L1;
+    const double tol  = pair.L1 * 1e-10;
+    bool keep[4];
+    for (int fi = 0; fi < 4; ++fi) {
+      double zi = q->p (2, fnodes[fi]);
+      keep[fi] = (zi > z_lo + tol) && (zi < z_hi - tol);
+    }
+
+    // Step 3 — mortar cell containing this quadrant (clamped to the last cell).
+    const double hm0 = pair.L0 / nm;
+    const double hm1 = pair.L1 / nm;
+    const int j0 = std::min (static_cast<int> ((c0[0] - pair.d0_min) / hm0), nm - 1);
+    const int j1 = std::min (static_cast<int> ((c1[0] - pair.d1_min) / hm1), nm - 1);
+
+    // Step 4 — 1D mixed hat-function masses (2x2 each), exact.
+    const double orig0 = pair.d0_min + j0 * hm0;
+    const double orig1 = pair.d1_min + j1 * hm1;
+
+    double psi_0[2][2], psi_1[2][2];
+    psi_0[0][0] = (hm0 - (c0[0] - orig0)) / hm0;
+    psi_0[0][1] = (hm0 - (c0[1] - orig0)) / hm0;
+    psi_0[1][0] =        (c0[0] - orig0)  / hm0;
+    psi_0[1][1] =        (c0[1] - orig0)  / hm0;
+    psi_1[0][0] = (hm1 - (c1[0] - orig1)) / hm1;
+    psi_1[0][1] = (hm1 - (c1[1] - orig1)) / hm1;
+    psi_1[1][0] =        (c1[0] - orig1)  / hm1;
+    psi_1[1][1] =        (c1[1] - orig1)  / hm1;
+
+    const double h0 = c0[1] - c0[0], h1 = c1[1] - c1[0];
+    double M_0[2][2], M_1[2][2];
+    // int_a^b f*g dt = (b-a)/6 * (2 f_a g_a + f_a g_b + f_b g_a + 2 f_b g_b)
+    for (int jl = 0; jl < 2; ++jl) {
+      M_0[0][jl] = h0 / 6.0 * (2.0 * psi_0[jl][0] +       psi_0[jl][1]);
+      M_0[1][jl] = h0 / 6.0 * (      psi_0[jl][0] + 2.0 * psi_0[jl][1]);
+      M_1[0][jl] = h1 / 6.0 * (2.0 * psi_1[jl][0] +       psi_1[jl][1]);
+      M_1[1][jl] = h1 / 6.0 * (      psi_1[jl][0] + 2.0 * psi_1[jl][1]);
+    }
+
+    // Step 5 — accumulate C (into A) and C^T (into mortar_C) by tensor product.
+    static const int ii0[4] = {0, 1, 0, 1};
+    static const int ii1[4] = {0, 0, 1, 1};
+    for (int fi = 0; fi < 4; ++fi) {
+      if (!keep[fi]) continue;
+      const size_t phys = static_cast<size_t> (q->gt (fnodes[fi]));
+      for (int dj0 = 0; dj0 < 2; ++dj0)
+        for (int dj1 = 0; dj1 < 2; ++dj1) {
+          const size_t k    = static_cast<size_t> ((j1 + dj1) * (nm + 1) + (j0 + dj0));
+          const size_t gcol = pair.mortar_col_offset  + k;
+          const size_t drow = pair.mortar_dense_offset + k;
+          const double val  = sign * M_0[ii0[fi]][dj0] * M_1[ii1[fi]][dj1];
+          (*A)[phys][gcol]                  += val;  // C block  (physical row, mortar col)
+          mortar_C[drow * N_global + phys]  += val;  // C^T block (dense, for MUMPS rows)
+        }
+    }
+  };
+
+  for (auto &pair : pairs) {
+    for (auto q = tmsh.begin_quadrant_sweep (); q != tmsh.end_quadrant_sweep (); ++q) {
+      if (!q->ef (pair.face_left).empty ())
+        assemble_block (q, pair.face_left,  pair, +1.0);
+      if (!q->ef (pair.face_right).empty ())
+        assemble_block (q, pair.face_right, pair, -1.0);
+    }
+  }
+
+  // Sum the dense C^T contributions from every rank onto rank 0, which owns the
+  // mortar rows of the augmented COO built at solve time.
+  if (size > 1)
+    MPI_Reduce (rank == 0 ? MPI_IN_PLACE : mortar_C.data (), mortar_C.data (),
+                static_cast<int> (mortar_C.size ()), MPI_DOUBLE, MPI_SUM, 0, mpicomm);
+
+  // Mortar DOFs on the z± edges of the mortar grid (j1 == 0 or nm) sit on the
+  // Dirichlet boundary: no periodic constraint there. Zero their C^T rows now;
+  // the identity that pins F = 0 for them is added with the COO rows at solve
+  // time (see mumps_compute_electric_potential).
+  int n_bd = 0;
+  if (rank == 0)
+    for (auto &pair : pairs)
+      for (int j0 = 0; j0 <= nm; ++j0)
+        for (int j1_bd : {0, nm}) {
+          const size_t k    = static_cast<size_t> (j1_bd) * (nm + 1) + j0;
+          const size_t drow = pair.mortar_dense_offset + k;
+          for (size_t c = 0; c < N_global; ++c)
+            mortar_C[drow * N_global + c] = 0.0;
+          ++n_bd;
+        }
+
+  if (rank == 0)
+    std::cout << "  [Mortar] pairs=" << n_pairs << "  ndofm=" << ndofm
+              << " (nm=" << nm << ")  z-boundary DOFs zeroed=" << n_bd << '\n';
+}
+
 void
 poisson_boltzmann::check_pbc_face_conformity ()
 {
@@ -1439,6 +1601,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   const std::string alg_options = "algorithm/";
   linear_solver_name = g2 ( (alg_options + "linear_solver").c_str (), "lis");
   linear_solver_options = g2 ( (alg_options + "solver_options").c_str (), "-p ssor -ssor_omega 0.51 -i cgs -tol 1.e-6 -print 2 -conv_cond 2 -tol_w 0");
+  pbc_mode = g2 ( (alg_options + "pbc_mode").c_str (), "strong");
 
   const std::string out_options = "output/";
   p4estfilename = g2 ( (out_options + "p4estfilename").c_str (), "poisson_boltzmann_p4est");
@@ -2675,7 +2838,10 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
 
   // Without a periodic pair this stays false and every bimpp call below gets
   // default_ord, i.e. the exact call of the non-periodic code path.
-  pbc_use_ordering = (periodic_x || periodic_y);
+  // Mortar mode also uses default_ord: the periodic identification there is
+  // weak (Lagrange multipliers assembled by assemble_mortar_system), not the
+  // strong node folding driven by the ordering.
+  pbc_use_ordering = (periodic_x || periodic_y) && (pbc_mode != "mortar");
 
   if (pbc_use_ordering)
     pbc_build_canonical (pbc_canonical);
@@ -2723,6 +2889,15 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
   ones.reset();
   std::vector<double>().swap (reaction);
   std::vector<double>().swap (marker);
+
+  // ------------------------------------------------------------
+  // 2b) MORTAR ASSEMBLY (weak PBC, before Dirichlet)
+  // ------------------------------------------------------------
+  // bc.md § "Il lavoro da fare in NGPB": the mortar blocks are written into the
+  // free (pre-Dirichlet) system, so the Dirichlet pass below zeroes the C-block
+  // rows of any z± node just like it does for A_free.
+  if (pbc_mode == "mortar" && (periodic_x || periodic_y))
+    assemble_mortar_system ();
 
   // ------------------------------------------------------------
   // 3) APPLY BOUNDARY CONDITIONS
@@ -2864,6 +3039,95 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
   // across ranks, with or without PBC -- the periodic identification is
   // already baked into it by the assembly ordering.
   (*A).aij (vals, irow, jcol, mumps_solver.get_index_base ());
+
+  // ------------------------------------------------------------------------
+  // Mortar (weak PBC): solve the augmented saddle-point system.
+  //
+  // The physical rows already carry the C block (mortar columns >= N_global)
+  // from assemble_mortar_system. Here rank 0 appends the C^T rows from the
+  // dense mortar_C accumulator plus an identity for the z-boundary multipliers,
+  // gathers the RHS and pads it with zeros for the mortar DOFs, and MUMPS
+  // solves the whole N_phys + n_pairs*ndofm system with a centralized RHS
+  // (solution written back in place on rank 0, then scattered to phi).
+  // MUMPS only: the augmented system is indefinite.
+  // ------------------------------------------------------------------------
+  if (pbc_mode == "mortar" && (periodic_x || periodic_y)) {
+    const int    base     = mumps_solver.get_index_base ();
+    const int    nm       = (1 << minlevel);
+    const int    n_pairs  = (periodic_x ? 1 : 0) + (periodic_y ? 1 : 0);
+    const size_t N_global = static_cast<size_t> (tmsh.num_global_nodes ());
+    const int    n_system = static_cast<int> (N_global)
+                          + n_pairs * ndofm;
+
+    // Zone D -- rank 0 appends the mortar rows (C^T) and z-boundary identity.
+    if (rank == 0) {
+      const size_t n_mortar_rows = static_cast<size_t> (n_pairs) * ndofm;
+      for (size_t drow = 0; drow < n_mortar_rows; ++drow) {
+        const int global_row = static_cast<int> (N_global + drow) + base;
+        for (size_t c = 0; c < N_global; ++c) {
+          const double v = mortar_C[drow * N_global + c];
+          if (v != 0.0) {
+            irow.push_back (global_row);
+            jcol.push_back (static_cast<int> (c) + base);
+            vals.push_back (v);
+          }
+        }
+        // z-boundary multipliers (j1 == 0 or nm) were zeroed in assembly: pin
+        // them with an identity so the augmented matrix is non-singular.
+        const int j1 = static_cast<int> (drow % static_cast<size_t> (ndofm)) / (nm + 1);
+        if (j1 == 0 || j1 == nm) {
+          irow.push_back (global_row);
+          jcol.push_back (global_row);
+          vals.push_back (1.0);
+        }
+      }
+    }
+    std::vector<double>().swap (mortar_C);
+
+    // Gather the physical RHS onto rank 0, padded to n_system with zeros for
+    // the mortar DOFs. rhs_counts/displs are reused for the solution scatter.
+    std::vector<double> rhs_aug;
+    std::vector<int>    rhs_counts (size, 0), rhs_displs (size, 0);
+    const int local_n = static_cast<int> (tmsh.num_owned_nodes ());
+    MPI_Gather (&local_n, 1, MPI_INT, rhs_counts.data (), 1, MPI_INT, 0, mpicomm);
+    if (rank == 0) {
+      for (int r = 1; r < size; ++r)
+        rhs_displs[r] = rhs_displs[r - 1] + rhs_counts[r - 1];
+      rhs_aug.assign (static_cast<size_t> (n_system), 0.0);
+    }
+    MPI_Gatherv (rhs->get_owned_data ().data (), local_n, MPI_DOUBLE,
+                 rhs_aug.data (), rhs_counts.data (), rhs_displs.data (),
+                 MPI_DOUBLE, 0, mpicomm);
+
+    mumps_solver.set_lhs_distributed ();
+    mumps_solver.set_distributed_lhs_structure (n_system, irow, jcol);
+    mumps_solver.set_distributed_lhs_data (vals);
+    if (rank == 0)
+      mumps_solver.set_rhs (rhs_aug);   // centralized rhs, solution in place
+
+    rhs.reset ();
+    A.reset ();
+
+    if (rank == 0)
+      std::cout << "  [Mortar] augmented system size for MUMPS: " << n_system
+                << "  (N_phys=" << N_global << " + " << n_pairs << "x" << ndofm << ")\n";
+
+    std::cout << "mumps_solver.analyze () = "   << mumps_solver.analyze ()   << std::endl;
+    std::cout << "mumps_solver.factorize () = " << mumps_solver.factorize () << std::endl;
+    std::cout << "mumps_solver.solve () = "     << mumps_solver.solve ()     << std::endl;
+
+    // Solution: rhs_aug[0 .. N_phys) on rank 0 is the potential u; scatter it
+    // back to the owned ranges (mortar multipliers rhs_aug[N_phys ..) dropped).
+    phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
+    MPI_Scatterv (rhs_aug.data (), rhs_counts.data (), rhs_displs.data (), MPI_DOUBLE,
+                  phi->get_owned_data ().data (), local_n, MPI_DOUBLE, 0, mpicomm);
+
+    if (size > 1)
+      bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
+
+    mumps_solver.cleanup ();
+    return;
+  }
 
   const int n_system = static_cast<int> (tmsh.num_global_nodes ());
 

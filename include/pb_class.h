@@ -271,6 +271,21 @@ struct
   /// canonical[i] = the periodic-left node that i collapses to (i itself
   /// otherwise). Sized N_phys; left empty unless pbc_use_ordering.
   std::vector<int> pbc_canonical;
+
+  /// How the periodic identification is enforced: "strong" (default; exact
+  /// elimination of right-face nodes, symmetric elliptic system, LIS or MUMPS)
+  /// or "mortar" (weak, Lagrange multipliers, augmented saddle-point system).
+  /// The mortar system is indefinite (mixed-sign eigenvalues) so it is solved
+  /// with MUMPS only — see mumps_compute_electric_potential and .claude/rules/pbc.md.
+  std::string pbc_mode = "strong";
+
+  /// Mortar DOFs per periodic pair, (2^minlevel + 1)^2. Zero unless mortar.
+  int ndofm = 0;
+
+  /// Dense C^T accumulator for the mortar block, laid out row-major as
+  /// [n_pairs*ndofm][N_global]. Filled during mortar assembly, MPI_Reduce'd to
+  /// rank 0, then converted to COO rows appended to the augmented MUMPS system.
+  std::vector<double> mortar_C;
   // ============================================================================
 
   static constexpr
@@ -730,6 +745,16 @@ struct
   /// derived from pbc_x/y_right_to_left, already identical on every rank.
   void
   pbc_build_canonical (std::vector<int> &canonical);
+
+  /// @brief Assemble the mortar (weak PBC) blocks into the augmented system.
+  /// Writes the C block (physical rows, mortar columns) directly into A, and
+  /// accumulates the C^T block into the dense mortar_C, which is MPI_Reduce'd to
+  /// rank 0 and later converted to COO rows by mumps_compute_electric_potential.
+  /// Sets ndofm. Called only when pbc_mode == "mortar" and a periodic pair is
+  /// active; assumes pbc_use_ordering is false (no strong elimination). The
+  /// indefinite augmented system is solved with MUMPS only.
+  void
+  assemble_mortar_system ();
 
   void
   create_mesh_ns ();
