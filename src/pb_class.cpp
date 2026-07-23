@@ -3598,11 +3598,18 @@ poisson_boltzmann::normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
     ray[i] = quadrant->p (direzioni[i], i1);
   }
 
+  frac = 0.5;
+
   auto it0 = ray_cache.rays[dir].find (ray);
+
+  // In ns mode the caller only visits border_quad, where the ray always exists.
+  // The membrane full sweep (implicit modes) may reach an edge with no cached
+  // ray; keep the default frac = 0.5 rather than dereferencing end().
+  if (it0 == ray_cache.rays[dir].end ())
+    return;
+
   auto normali = it0->second.normals;
   auto inters = it0->second.inters;
-
-  frac = 0.5;
 
   for (int ii =0; ii<inters.size (); ii++) {
     if (inters[ii]>= x1 && inters[ii] <=x2) {
@@ -3933,9 +3940,16 @@ poisson_boltzmann::energy_membrane (ray_cache_t & ray_cache)
 
   auto quadrant = this->tmsh.begin_quadrant_sweep ();
 
-  for (const int ii : border_quad) {
-    quadrant[ii];
-
+  // One quadrant's contribution to the two flux sums.  In ns mode every crossing
+  // is on the NanoShaper surface, so the fraction always comes from the ray
+  // cache.  In the implicit modes the dielectric interface is partly a box: the
+  // slab top/bottom planes.  A dielectric jump can only sit on such a plane along
+  // a z edge whose endpoints straddle it, and there the fraction is analytic
+  // (linear in z, the plane is flat); every other jump is still the protein
+  // NanoShaper surface and uses the ray cache as before.  Inside the protein
+  // footprint both sides of z_mem_top/bot are e_in, so no jump is selected there
+  // and the analytic branch only ever fires on genuine slab/solvent interfaces.
+  auto accumulate_quadrant = [&] (bool implicit_box) {
     for (int d = 0; d < 3; ++d)
       h[d] = quadrant->p (d, 7) - quadrant->p (d, 0);
 
@@ -3950,7 +3964,21 @@ poisson_boltzmann::energy_membrane (ray_cache_t & ray_cache)
       const int i2 = edge2nodes[2 * edge + 1];
 
       double fract = 0.0;
-      normal_intersection (quadrant, ray_cache, edge, N, fract);
+      bool on_box_plane = false;
+
+      // edge2nodes lists the lower corner first, so p(axis,i2) - p(axis,i1) = h.
+      if (implicit_box && axis == 2) {
+        const double z1 = quadrant->p (2, i1);
+
+        for (const double zp : {z_mem_bot, z_mem_top})
+          if (z1 < zp && zp < z1 + h[2]) {
+            fract = (zp - z1) / h[2];
+            on_box_plane = true;
+          }
+      }
+
+      if (! on_box_plane)
+        normal_intersection (quadrant, ray_cache, edge, N, fract);
 
       V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
       V[axis] += fract * h[axis];
@@ -3964,6 +3992,22 @@ poisson_boltzmann::energy_membrane (ray_cache_t & ray_cache)
       if (V[2] > z_mid)
         flux_up += tmp_flux;
     }
+  };
+
+  if (membrane_mode == MEM_MODE_NS) {
+    // ns: the interface is the NanoShaper surface, tracked by border_quad.
+    for (const int ii : border_quad) {
+      quadrant[ii];
+      accumulate_quadrant (false);
+    }
+  } else {
+    // implicit / implicit_charged: the slab planes are not in border_quad (which
+    // is built from the protein surface), so sweep the whole mesh and let
+    // classifyCube_flux pick up every dielectric jump.
+    for (quadrant = this->tmsh.begin_quadrant_sweep ();
+         quadrant != this->tmsh.end_quadrant_sweep ();
+         ++quadrant)
+      accumulate_quadrant (true);
   }
 
   flux_up /= (4.0 * pi);
