@@ -2944,7 +2944,49 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   lis_solver_create (&solver);
   std::string opts = linear_solver_options;
   lis_solver_set_option (&opts[0], solver);
-  lis_solve (A_lis, rhs_lis, phi_lis, solver);
+
+  LIS_INT solve_err = lis_solve (A_lis, rhs_lis, phi_lis, solver);
+
+  // Report what the solver actually did: the return code alone is not enough,
+  // since a run that stops on maxiter still returns a plausible-looking phi.
+  {
+    LIS_INT  status = -1, iter = -1, nsol = -1, precon = -1;
+    LIS_REAL resnorm = -1.0, rhs_nrm1 = -1.0;
+    char     solvername[128] = "?", preconname[128] = "?";
+
+    lis_solver_get_status (solver, &status);
+    lis_solver_get_iter (solver, &iter);
+    lis_solver_get_residualnorm (solver, &resnorm);
+
+    // ||b||_1: with -conv_cond 2 (LIS_CONV_COND_NRM1_B) the stopping test is
+    // ||r||_1 <= tol * ||b||_1, so the residual norm above is only meaningful
+    // against this scale.
+    lis_vector_nrm1 (rhs_lis, &rhs_nrm1);
+
+    if (lis_solver_get_solver (solver, &nsol) == LIS_SUCCESS)
+      lis_solver_get_solvername (nsol, solvername);
+
+    if (lis_solver_get_precon (solver, &precon) == LIS_SUCCESS)
+      lis_solver_get_preconname (precon, preconname);
+
+    if (rank == 0) {
+      std::cout << "\n========== [ LIS Solver Report ] ==========\n";
+      std::cout << "  Options string     : \"" << linear_solver_options << "\"\n";
+      std::cout << "  Method             : " << solvername << '\n';
+      std::cout << "  Preconditioner     : " << preconname << '\n';
+      std::cout << "  Iterations         : " << iter << '\n';
+      std::cout << "  Residual norm      : " << std::scientific << resnorm << '\n';
+      std::cout << "  ||b||_1            : " << std::scientific << rhs_nrm1 << '\n';
+      std::cout << "  Status             : " << status << '\n';
+      std::cout << "===========================================\n\n";
+
+      if (solve_err != LIS_SUCCESS || status != LIS_SUCCESS)
+        std::cerr << "WARNING: LIS did not converge (return code " << solve_err
+                  << ", status " << status << ", " << iter << " iterations, residual "
+                  << resnorm << "). The potential below is NOT trustworthy.\n";
+    }
+  }
+
   lis_solver_destroy (solver);
   lis_vector_destroy (rhs_lis);
 
