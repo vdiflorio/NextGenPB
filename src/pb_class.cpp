@@ -3830,6 +3830,19 @@ poisson_boltzmann::getTriangles (int cubeindex,
   int i;
   triangles.fill ({}); //set matrix to zero
 
+  // classifyCube returns -1 for a cube that no isosurface crosses (all eight
+  // corners on the same side): there is no triangle to build, and indexing
+  // triTable with it walks off both tables and overflows the caller's array.
+  // In ns mode this never happens on a border quadrant -- being outside the
+  // molecular surface and being solvent are the same thing there, so a border
+  // cube always has corners on both sides.  With an implicit membrane they are
+  // not: a cube straddling the protein surface *inside* the slab has every
+  // corner below eps_out (protein or membrane) and is entirely non-solvent.
+  // Zero triangles is the right answer for it -- the solvent boundary really is
+  // absent there -- and the flux loop over the epsilon jumps is unaffected.
+  if (cubeindex < 0)
+    return 0;
+
   for (i=0; triTable[cubeindex][i]!=-1; i+=3) {
     // save all the assigned indexes
     triangles[ntriang][0] = triTable[cubeindex][i ];
