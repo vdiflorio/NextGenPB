@@ -943,10 +943,20 @@ struct
   cube_fraction_intersection (tmesh_3d::quadrant_iterator& quadrant,
                               const ray_cache_t & ray_cache);
 
-  void
+  /// Where the NanoShaper surface cuts an edge. Returns false, leaving frac at
+  /// the midpoint and norm untouched, when the ray cache has no crossing there.
+  bool
   normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
                        const ray_cache_t & ray_cache,
                        int edge, std::array<double,3> &norm,double &frac);
+
+  /// Where the dielectric interface cuts an edge, NanoShaper surface or
+  /// membrane slab plane. Only the latter needs implicit_box.
+  void
+  interface_intersection (tmesh_3d::quadrant_iterator& quadrant,
+                          const ray_cache_t & ray_cache,
+                          int edge, bool implicit_box,
+                          std::array<double,3> &norm, double &frac);
 
   int
   getTriangles (int cubeindex,

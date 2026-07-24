@@ -1685,21 +1685,26 @@ poisson_boltzmann::parse_options (int argc, char **argv)
                 << e_in << ").\n          Use mode = implicit or implicit_charged "
                 << "to control it.\n";
 
-    // energy() locates the dielectric interface through the NanoShaper surface:
-    // border_quad comes from is_in_ns_surf, classifyCube assumes a two-valued
-    // epsilon field, and normal_intersection queries the ray cache. In the
-    // implicit modes the membrane/solvent interface is a box, so it is in none of
-    // those: the flux across it would be missed and the transmembrane border
-    // quadrants mis-classified. The potential itself is unaffected (the assembly
-    // only reads epsilon_nodes). Refuse rather than print a plausible wrong
-    // number -- see piano_cleanup.md, phase 2.5/M5.
-    if (membrane_mode != MEM_MODE_NS && calc_energy != 0) {
+    // energy() now finds the implicit membrane box as well as the NanoShaper
+    // surface: it sweeps the whole mesh in those modes and cuts the slab planes
+    // analytically.  What it still assumes is a *two-valued* epsilon field --
+    // constant_pol and constant_react are built once out of e_in and e_out, so a
+    // third dielectric inside the membrane would be weighed with a coefficient
+    // that is not its own, and the epsilon jumps on the protein/membrane
+    // interface would enter the polarization sum as if they bounded the solvent.
+    // That is a change of formula, not of geometry, and it is not done.  With
+    // e_mem == e_in the field is two-valued and the geometry is handled, so the
+    // implicit modes are supported; otherwise refuse rather than print a
+    // plausible wrong number -- see piano_cleanup.md, phase 2.5/M5.
+    if (membrane_mode != MEM_MODE_NS && calc_energy != 0 &&
+        std::fabs (e_mem - e_in) > 1.e-12) {
       if (rank == 0)
-        std::cerr << "[ERROR] calc_energy = " << calc_energy << " is not supported with "
-                  << "membrane mode = " << mode_str << ".\n"
-                  << "        energy() assumes the dielectric interface is the NanoShaper "
-                  << "surface, which is not true\n        for an implicit membrane box. "
-                  << "Set calc_energy = 0.\n";
+        std::cerr << "[ERROR] calc_energy = " << calc_energy << " with membrane mode = "
+                  << mode_str << " requires membrane_dielectric == "
+                  << "molecular_dielectric_constant\n        (got " << e_mem << " and "
+                  << e_in << "). The energy formula assumes a two-valued dielectric; "
+                  << "a distinct\n        membrane dielectric is not supported yet. "
+                  << "Set them equal or use calc_energy = 0.\n";
 
       return 1;
     }
@@ -3578,12 +3583,14 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
   return fraction;
 }
 
-void
+bool
 poisson_boltzmann::normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
                                         const ray_cache_t & ray_cache,
                                         int edge, std::array<double,3> &norm,
                                         double &frac)
 {
+  bool found = false;
+
   int dir = edge_axis[edge];
   int i1 = edge2nodes[2*edge ];
   int i2 = edge2nodes[2*edge + 1];
@@ -3606,7 +3613,7 @@ poisson_boltzmann::normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
   // The membrane full sweep (implicit modes) may reach an edge with no cached
   // ray; keep the default frac = 0.5 rather than dereferencing end().
   if (it0 == ray_cache.rays[dir].end ())
-    return;
+    return found;
 
   auto normali = it0->second.normals;
   auto inters = it0->second.inters;
@@ -3617,7 +3624,55 @@ poisson_boltzmann::normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
       norm[1] = normali[1 + 3*ii];
       norm[2] = normali[2 + 3*ii];
       frac = (inters[ii] - x1)/ (x2 - x1);
+      found = true;
     }
+  }
+
+  return found;
+}
+
+// The dielectric interface an edge crosses, for both the ns and the implicit
+// membrane modes.
+//
+// The NanoShaper surface wins whenever the ray cache has a crossing inside the
+// edge: it is the outer boundary of the solute, and in ns mode it is the only
+// interface there is, so this branch reproduces the previous behaviour exactly.
+// Only when there is no such crossing can the interface be a slab plane, and
+// then it is a z edge straddling z_mem_bot or z_mem_top, where the fraction is
+// analytic because the plane is flat.
+//
+// The normal matters as much as the fraction here: the ionic term of energy()
+// weighs each triangle vertex with (r_vertex - r_atom) . n_hat, and
+// normal_intersection leaves norm untouched when it finds nothing, which would
+// silently reuse the normal of some earlier edge.  On a slab plane the normal
+// is exactly +/- z_hat, oriented like every other normal in these sums: from
+// low to high epsilon, i.e. out of the membrane and into the solvent.
+void
+poisson_boltzmann::interface_intersection (tmesh_3d::quadrant_iterator& quadrant,
+                                           const ray_cache_t & ray_cache,
+                                           int edge, bool implicit_box,
+                                           std::array<double,3> &norm, double &frac)
+{
+  if (normal_intersection (quadrant, ray_cache, edge, norm, frac))
+    return;
+
+  if (! implicit_box || edge_axis[edge] != 2)
+    return;
+
+  // edge2nodes lists the lower corner first, so p(2,i2) - p(2,i1) = h > 0.
+  const int i1 = edge2nodes[2 * edge];
+  const int i2 = edge2nodes[2 * edge + 1];
+  const double z1 = quadrant->p (2, i1);
+  const double h = quadrant->p (2, i2) - z1;
+
+  if (z1 < z_mem_bot && z_mem_bot < z1 + h) {
+    frac = (z_mem_bot - z1) / h;
+    norm = {0.0, 0.0, -1.0};
+  }
+
+  if (z1 < z_mem_top && z_mem_top < z1 + h) {
+    frac = (z_mem_top - z1) / h;
+    norm = {0.0, 0.0, 1.0};
   }
 }
 
@@ -4147,11 +4202,20 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
   auto quadrant = this->tmsh.begin_quadrant_sweep ();
 
+  // With an implicit membrane part of the dielectric interface is the slab box,
+  // which create_markers writes into epsilon_nodes by coordinate and which
+  // border_quad -- built from the NanoShaper surface alone -- knows nothing
+  // about.  On the test case that is 10448 quadrants carrying an epsilon jump
+  // outside border_quad against the 13038 inside it, spanning the whole slab:
+  // ignoring them is not a small error.  So the implicit modes sweep the whole
+  // mesh and let classifyCube/classifyCube_flux find every crossing, while the
+  // ns path keeps iterating border_quad and is unchanged, bit for bit.
+  const bool implicit_membrane_box =
+    membrane_enabled && membrane_mode != MEM_MODE_NS;
+
   // polarization energy
   if (calc_energy==1 || (calc_energy==2 && k < 1.e-5)) {
-    for (const int ii : border_quad) {
-      quadrant[ii];
-
+    auto accumulate_quadrant = [&] (bool implicit_box) {
       for (int d = 0; d < 3; ++d)
         h[d] = quadrant->p (d, 7) - quadrant->p (d, 0);
 
@@ -4166,7 +4230,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
         const int i2 = edge2nodes[2 * edge + 1];
 
         double fract = 0.0;
-        normal_intersection (quadrant, ray_cache, edge, N, fract);
+        interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
 
         V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
         V[axis] += fract * h[axis];
@@ -4189,6 +4253,18 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
           first_int += charge_atoms_tmp[ia] * qflux;
         }
       }
+    };
+
+    if (! implicit_membrane_box) {
+      for (const int ii : border_quad) {
+        quadrant[ii];
+        accumulate_quadrant (false);
+      }
+    } else {
+      for (quadrant = this->tmsh.begin_quadrant_sweep ();
+           quadrant != this->tmsh.end_quadrant_sweep ();
+           ++quadrant)
+        accumulate_quadrant (true);
     }
 
     energy_pol = 0.5*constant_pol*first_int;
@@ -4202,8 +4278,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
     std::array<double,3> dist_vert, phi_sup;
     int ntriang = 0;
 
-    for (const int ii : border_quad) {
-      quadrant[ii];
+    auto accumulate_quadrant = [&] (bool implicit_box) {
       cubeindex = classifyCube (quadrant, eps_out);
 
       for (int d = 0; d < 3; ++d)
@@ -4222,7 +4297,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
         const int i2 = edge2nodes[2 * edge + 1];
 
         double fract = 0.0;
-        normal_intersection (quadrant, ray_cache, edge, N, fract);
+        interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
 
         V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
         V[axis] += fract * h[axis];
@@ -4254,7 +4329,7 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
           const int i2 = edge2nodes[2 * edge + 1];
 
           double fract = 0.0;
-          normal_intersection (quadrant, ray_cache, edge, N, fract);
+          interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
 
           V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
           V[axis] += fract * h[axis];
@@ -4287,12 +4362,23 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
           }
         }
       }
+    };
+
+    if (! implicit_membrane_box) {
+      for (const int ii : border_quad) {
+        quadrant[ii];
+        accumulate_quadrant (false);
+      }
+    } else {
+      for (quadrant = this->tmsh.begin_quadrant_sweep ();
+           quadrant != this->tmsh.end_quadrant_sweep ();
+           ++quadrant)
+        accumulate_quadrant (true);
     }
 
     energy_pol = 0.5 * constant_pol * first_int;
     energy_react = 0.5 * (second_int - first_int * constant_react);
   }
-
 
 
   auto reduce_double = [&] (double &x) {
