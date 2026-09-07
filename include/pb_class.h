@@ -233,9 +233,8 @@ struct
   double r_prot[3]; ///< Protein bounding box: max corner [Å]
   double l_mem[3];  ///< Membrane (lipid) refinement box: min corner [Å]
   double r_mem[3];  ///< Membrane (lipid) refinement box: max corner [Å]
-  int nlev_mem  = 2; ///< Levels above scale_level for surface refinement
-  int nlev_sol  = 4; ///< Levels below scale_level for far solvent
-  int nlev_prot = 1; ///< Extra levels above scale_level for protein box (0 < nlev_prot < nlev_mem)
+  int nlev_mem  = 2; ///< Membrane box cells bottom out at maxlevel - nlev_mem + 1 (see init_tmesh_mem_two_box)
+  int nlev_sol  = 4; ///< Far-solvent cells stay at maxlevel - nlev_sol (uniform pre-refinement)
 
   // Lipid atom data (read from a separate PQR/PDB file)
   std::string lipid_file;     ///< Path to lipid PQR/PDB file

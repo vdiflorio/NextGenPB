@@ -1726,7 +1726,6 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     scale_max = g2 ( (mesh_options + "scale_max").c_str (), 2.0);
     nlev_mem = g2 ( (mesh_options + "nlev_mem").c_str (), 2);
     nlev_sol = g2 ( (mesh_options + "nlev_sol").c_str (), 4);
-    nlev_prot = g2 ( (mesh_options + "nlev_prot").c_str (), 1);
 
     // A membrane slab spans the whole xy face by construction, so the natural
     // default is periodic in x and y (same key as above: if the user set it

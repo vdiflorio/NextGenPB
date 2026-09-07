@@ -344,10 +344,17 @@ build_membrane_slab_mesh (poisson_boltzmann &pb)
   // The membrane fills the xy face; the slab in z covers both the membrane
   // and the protein (which may extend above/below the membrane).
   //
-  // Level structure:
-  // outlevel  = maxlevel - nlev_sol   (far solvent)
-  // scale_level = maxlevel - nlev_mem  (membrane slab)
-  // maxlevel                           (near molecular surface, loc_refinement)
+  // Level structure. init_tmesh_mem_two_box refines two boxes and nothing else:
+  // there is no surface-driven refinement in this path, so the protein box is
+  // the finest region and its level is what `scale` refers to.
+  //
+  // outlevel = maxlevel - nlev_sol    far solvent (uniform pre-refinement)
+  // scale_level + 1                   membrane box: the callback refines while
+  //                                   currentlevel <= scale_level, so the cells
+  //                                   it leaves are one level FINER than
+  //                                   scale_level, i.e. only 2^(nlev_mem-1)
+  //                                   coarser than maxlevel, not 2^nlev_mem
+  // maxlevel                          protein box (l_prot/r_prot), uncapped
 
   auto comp_pos_x = [] (const std::array<double, 3>& a1, const std::array<double, 3>& a2) -> bool {
     return a1[0] < a2[0];
