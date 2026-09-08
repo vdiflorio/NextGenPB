@@ -358,17 +358,6 @@ main (int argc, char **argv)
     TOC ("Write dataset")
   }
 
-  // Membrane on-shell energy (eq. 8 of the membrane-potential notes).  Must run
-  // before energy()/energy_fast(), which free charge_atoms/pos_atoms and would
-  // leave nothing to evaluate the point-charge term on.  Gated on an actually
-  // applied potential: the formula only makes sense against a regional bulk
-  // reference, and skipping it at Vbar = 0 keeps that regression bit-identical.
-  if (pb.membrane_enabled && std::fabs (pb.applied_potential) > 1.e-12) {
-    TIC ();
-    pb.energy_membrane (ray_cache);
-    TOC ("Compute membrane energy")
-  }
-
   if (pb.calc_potential_term > 0 || pb.calc_field_term > 0 || pb.calc_energy > 0) {
     TIC ();
     const bool refined = (pb.loc_refinement == 1 || pb.mesh_shape > 2 || (pb.mesh_shape == 2 && pb.refine_box == 1));
@@ -396,6 +385,22 @@ main (int argc, char **argv)
 
 
     TOC ("Compute energy")
+  }
+
+  // Membrane on-shell energy (eq. 8 of the membrane-potential notes).  Runs
+  // AFTER energy()/energy_fast(): its Term 1, 1/2 sum q_i phi(r_i), is their
+  // result -- polarization + ionic + Coulombic -- and recomputing it from the
+  // interpolated total phi resampled the point charges' self-energy, which grows
+  // with the mesh instead of converging.  So it only adds the boundary-work term
+  // and reads Term 1 off the members energy() reduced onto rank 0.  It no longer
+  // needs charge_atoms/pos_atoms, which energy() frees, so the old ordering
+  // constraint is gone.  Gated on an actually applied potential: the formula
+  // only makes sense against a regional bulk reference, and skipping it at
+  // Vbar = 0 keeps that regression bit-identical.
+  if (pb.membrane_enabled && std::fabs (pb.applied_potential) > 1.e-12) {
+    TIC ();
+    pb.energy_membrane (ray_cache);
+    TOC ("Compute membrane energy")
   }
 
   if (pb.surf_write == 1) {

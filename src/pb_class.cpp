@@ -4110,45 +4110,17 @@ poisson_boltzmann::energy_membrane (ray_cache_t & ray_cache)
   if (rank == 0)
     std::cout << "\n============ [ Membrane On-Shell Energy ] =================\n";
 
-  // ---------------------------------------------------------------------
-  // Term 1:  1/2 sum_i q_i phi*(r_i)
-  // ---------------------------------------------------------------------
-  // Trilinear interpolation of phi at the charge positions, with the same
-  // weights as write_potential_on_atoms_fast (complementary corner volumes over
-  // the cell volume) and the same averaging of hanging nodes over their parents.
-  // lookup_table is filled in create_rhs via search_points and assigns every
-  // atom to exactly one rank (controlla_coordinate rejects the upper faces), so
-  // summing the local contributions and reducing is not double counting.
-  double energy_charge = 0.0;
-
-  for (auto it = lookup_table.begin (); it != lookup_table.end (); ++it) {
-    const double volume = (it->second.p (0, 7) - it->second.p (0, 0)) *
-                          (it->second.p (1, 7) - it->second.p (1, 0)) *
-                          (it->second.p (2, 7) - it->second.p (2, 0));
-
-    double phi_on_atom = 0.0;
-
-    for (int ii = 0; ii < 8; ++ii) {
-      const double weight = std::abs ((pos_atoms[it->first][0] - it->second.p (0, 7 - ii)) *
-                                      (pos_atoms[it->first][1] - it->second.p (1, 7 - ii)) *
-                                      (pos_atoms[it->first][2] - it->second.p (2, 7 - ii))) / volume;
-
-      if (! it->second.is_hanging (ii)) {
-        phi_on_atom += (*phi)[it->second.gt (ii)] * weight;
-      } else {
-        double phi_hang_nodes = 0.0;
-
-        for (int jj = 0; jj < it->second.num_parents (ii); ++jj)
-          phi_hang_nodes += (*phi)[it->second.gparent (jj, ii)] / it->second.num_parents (ii);
-
-        phi_on_atom += phi_hang_nodes * weight;
-      }
-    }
-
-    energy_charge += charge_atoms[it->first] * phi_on_atom;
-  }
-
-  energy_charge *= 0.5;
+  // Term 1 of the on-shell energy, 1/2 sum_i q_i phi*(r_i), is NOT recomputed
+  // here: it is exactly what energy() already reports, split into its Coulombic,
+  // polarization and ionic components.  In that form it is free of the point
+  // charges' self-energy -- the Coulombic sum runs over j > i, and the other two
+  // come from the induced interface charge, whose surface never touches an atom
+  // centre.  Interpolating the total phi at the charge positions instead, as
+  // this function used to do, resamples that self-energy: it measured 2075.9 kT
+  // at h = 1.0 and 7900.4 kT at h = 0.5 on the same system, i.e. it diverges as
+  // the mesh is refined instead of converging.  So this function adds the one
+  // term energy() does not have, and reads the rest off energy()'s result --
+  // which is why the driver now calls it after energy(), not before.
 
   // ---------------------------------------------------------------------
   // Term 2:  1/2 Vbar int_{S_int^up} D*_n,solv dS
@@ -4258,7 +4230,6 @@ poisson_boltzmann::energy_membrane (ray_cache_t & ray_cache)
     MPI_Reduce (rank == 0 ? MPI_IN_PLACE : &x, &x, 1, MPI_DOUBLE, MPI_SUM, 0, mpicomm);
   };
 
-  reduce_double (energy_charge);
   reduce_double (flux_up);
   reduce_double (flux_all);
 
@@ -4280,14 +4251,30 @@ poisson_boltzmann::energy_membrane (ray_cache_t & ray_cache)
     std::cout << std::left << std::setw (label_width) << "  Flux through the whole interface [e]:"
               << std::setprecision (precision) << flux_all << "\n";
 
-    std::cout << std::left << std::setw (label_width) << "  Term 1, 1/2 sum q_i phi(r_i) [kT]:"
-              << std::setprecision (precision) << energy_charge << "\n";
-
     std::cout << std::left << std::setw (label_width) << "  Term 2, 1/2 Vbar int D_n dS [kT]:"
               << std::setprecision (precision) << energy_flux << "\n";
 
-    std::cout << std::left << std::setw (label_width) << "  Membrane on-shell energy dG* [kT]:"
-              << std::setprecision (precision) << (energy_charge + energy_flux) << "\n";
+    // energy_pol/energy_react/coul_energy are reduced onto rank 0 by energy(),
+    // so this is the global 1/2 sum q_i phi(r_i) -- but only once energy() has
+    // actually run.  With calc_energy = 0 (the capacitor tests, which want the
+    // flux alone) they are still zero and dG* would be Term 2 by itself, so say
+    // what is missing rather than print a number that is not the energy.
+    if (calc_energy != 0) {
+      const double energy_charge = energy_pol + energy_react + coul_energy;
+
+      std::cout << std::left << std::setw (label_width) << "  Term 1, 1/2 sum q_i phi(r_i) [kT]:"
+                << std::setprecision (precision) << energy_charge
+                << "   (from energy())\n";
+
+      std::cout << std::left << std::setw (label_width) << "  Membrane on-shell energy dG* [kT]:"
+                << std::setprecision (precision) << (energy_charge + energy_flux) << "\n";
+
+      if (calc_coulombic != 1)
+        std::cout << "  [warning] calc_coulombic = 0: Term 1 is missing its Coulombic\n"
+                  << "            component, so dG* above is the solvation part only.\n";
+    } else {
+      std::cout << "  [note] calc_energy = 0: Term 1 not computed, dG* not formed.\n";
+    }
 
     std::cout << "===========================================================\n";
   }
