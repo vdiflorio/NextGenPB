@@ -3608,6 +3608,14 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
 {
   std::array<double,12> fraction = {0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5};
 
+  // Which edges the ray cache actually resolved.  The slab-plane fallback below
+  // must only touch the ones it left at the default, exactly as
+  // interface_intersection lets normal_intersection win before looking at the
+  // membrane: the NanoShaper surface is the outer boundary of the solute, so
+  // where it crosses an edge it is the interface, plane or no plane.
+  std::array<bool,12> from_ray = {false, false, false, false, false, false,
+                                  false, false, false, false, false, false};
+
   int dir;
   int i1, i2;
   double x1, x2;
@@ -3638,6 +3646,7 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       for (int ii =0; ii<inters.size (); ii++) {
         if (inters[ii]>= x1 && inters[ii] <=x2) {
           fraction[j] = (inters[ii] - x1)/ (x2 - x1);
+          from_ray[j] = true;
         }
       }
     }
@@ -3666,6 +3675,7 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       for (int ii =0; ii<inters.size (); ii++) {
         if (inters[ii]>= x1 && inters[ii] <=x2) {
           fraction[j] = (inters[ii] - x1)/ (x2 - x1);
+          from_ray[j] = true;
         }
       }
     }
@@ -3694,8 +3704,46 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       for (int ii =0; ii<inters.size (); ii++) {
         if (inters[ii]>= x1 && inters[ii] <=x2) {
           fraction[j] = (inters[ii] - x1)/ (x2 - x1);
+          from_ray[j] = true;
         }
       }
+    }
+  }
+
+  // With an implicit membrane the slab is a dielectric box, not a molecular
+  // surface: its quadrants hold no node inside the solute, so marker is 1.0 and
+  // the ray-cache loops above never run on them.  Every z edge straddling a
+  // slab plane would then keep the default 0.5 and bim3a_laplacian_frac would
+  // assemble wha (eps_mem, eps_w, 0.5), i.e. place the membrane at the midpoint
+  // of whatever edge it happens to cross -- an O(h) displacement of the
+  // interface, and one energy() does not share, since interface_intersection
+  // resolves those planes analytically.  Matrix and flux integral then describe
+  // two different surfaces and the Gauss telescoping stops closing.  Resolving
+  // the planes here too is what makes them the same surface again.
+  //
+  // Only the z bounds filter: the slab spans the whole xy face, like the
+  // epsilon_nodes test in create_markers that puts eps_mem there in the first
+  // place.  In ns mode the lipids go through NanoShaper, the ray cache covers
+  // them like any other solute, and this branch is correctly dead.
+  if (membrane_enabled && membrane_mode != MEM_MODE_NS) {
+    for (int j: {
+           8,9,10,11
+         })
+      //z-axis edge, the only orientation a horizontal plane can cut
+    {
+      if (from_ray[j]) continue;
+
+      // edge2nodes lists the lower corner first, so x2 - x1 = h > 0.
+      i1 = edge2nodes[2 * j];
+      i2 = edge2nodes[2 * j + 1];
+      x1 = quadrant->p (2, i1);
+      x2 = quadrant->p (2, i2);
+
+      if (x1 < z_mem_bot && z_mem_bot < x2)
+        fraction[j] = (z_mem_bot - x1) / (x2 - x1);
+
+      if (x1 < z_mem_top && z_mem_top < x2)
+        fraction[j] = (z_mem_top - x1) / (x2 - x1);
     }
   }
 
