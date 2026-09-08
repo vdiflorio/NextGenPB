@@ -3766,17 +3766,17 @@ poisson_boltzmann::normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
 // silently reuse the normal of some earlier edge.  On a slab plane the normal
 // is exactly +/- z_hat, oriented like every other normal in these sums: from
 // low to high epsilon, i.e. out of the membrane and into the solvent.
-void
+bool
 poisson_boltzmann::interface_intersection (tmesh_3d::quadrant_iterator& quadrant,
                                            const ray_cache_t & ray_cache,
                                            int edge, bool implicit_box,
                                            std::array<double,3> &norm, double &frac)
 {
   if (normal_intersection (quadrant, ray_cache, edge, norm, frac))
-    return;
+    return true;
 
   if (! implicit_box || edge_axis[edge] != 2)
-    return;
+    return false;
 
   // edge2nodes lists the lower corner first, so p(2,i2) - p(2,i1) = h > 0.
   const int i1 = edge2nodes[2 * edge];
@@ -3784,15 +3784,21 @@ poisson_boltzmann::interface_intersection (tmesh_3d::quadrant_iterator& quadrant
   const double z1 = quadrant->p (2, i1);
   const double h = quadrant->p (2, i2) - z1;
 
+  bool on_plane = false;
+
   if (z1 < z_mem_bot && z_mem_bot < z1 + h) {
     frac = (z_mem_bot - z1) / h;
     norm = {0.0, 0.0, -1.0};
+    on_plane = true;
   }
 
   if (z1 < z_mem_top && z_mem_top < z1 + h) {
     frac = (z_mem_top - z1) / h;
     norm = {0.0, 0.0, 1.0};
+    on_plane = true;
   }
+
+  return on_plane;
 }
 
 int
@@ -4273,6 +4279,19 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   // double coul_energy = 0.0;
   double charge_pol = 0.0;
 
+  // Conformity diagnostic for the flux surface.  tmp_flux below is exactly the
+  // edge conductance bimpp assembles (wha(...) * 0.25 * transverse area / h,
+  // quad_operators_3d.cpp:bim3a_laplacian_loc_frac), so summing it over the
+  // four quadrants that share an edge reproduces the matrix edge current and
+  // Gauss closes algebraically -- but only if those four quadrants have the
+  // same size.  On a non-conforming face they do not, and bimpp's assemble()
+  // redistributes the hanging rows onto the parents while this sweep does not:
+  // the telescoping breaks and the "closed" surface is no longer closed.
+  // Counting the interface edges that touch a hanging node measures how much of
+  // the flux is unreliable instead of leaving it to be guessed.
+  long n_edge_iface = 0, n_edge_hang = 0, n_edge_noray = 0;
+  double flux_hang = 0.0, flux_noray = 0.0;
+
   // --- Filtra gli atomi caricati ---
   std::vector<double> charge_atoms_tmp;
   std::vector<std::array<double, 3>> pos_atoms_tmp;
@@ -4349,7 +4368,8 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
         const int i2 = edge2nodes[2 * edge + 1];
 
         double fract = 0.0;
-        interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
+        const bool cut_found =
+          interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
 
         V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
         V[axis] += fract * h[axis];
@@ -4359,6 +4379,27 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
           * fl_dir[ip] * area_h[axis];
 
         charge_pol += tmp_flux;
+
+        ++n_edge_iface;
+
+        if (quadrant->is_hanging (i1) || quadrant->is_hanging (i2)) {
+          ++n_edge_hang;
+          flux_hang += tmp_flux;
+        }
+
+        // Neither the ray cache nor a slab plane could place the crossing on
+        // this edge, so wha() was fed normal_intersection's frac = 0.5 guess
+        // instead of a measured position: the conductance is invented.  This
+        // happens in ns mode too, not just in the implicit ones: a border_quad
+        // has a cached ray, but not every edge of it is actually cut, while
+        // classifyCube_flux averages epsilon over the parents of a hanging node
+        // and so reports a jump on edges the surface never crosses.  Those
+        // edges are the ones counted here, which is why the count stays a
+        // subset of the hanging one above.
+        if (! cut_found) {
+          ++n_edge_noray;
+          flux_noray += tmp_flux;
+        }
 
         for (size_t ia = 0; ia < num_atoms; ++ia) {
           const std::array<double,3> &ra = pos_atoms_tmp[ia];
@@ -4416,7 +4457,8 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
         const int i2 = edge2nodes[2 * edge + 1];
 
         double fract = 0.0;
-        interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
+        const bool cut_found =
+          interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
 
         V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
         V[axis] += fract * h[axis];
@@ -4426,6 +4468,27 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
           * fl_dir[ip] * area_h[axis];
 
         charge_pol += tmp_flux;
+
+        ++n_edge_iface;
+
+        if (quadrant->is_hanging (i1) || quadrant->is_hanging (i2)) {
+          ++n_edge_hang;
+          flux_hang += tmp_flux;
+        }
+
+        // Neither the ray cache nor a slab plane could place the crossing on
+        // this edge, so wha() was fed normal_intersection's frac = 0.5 guess
+        // instead of a measured position: the conductance is invented.  This
+        // happens in ns mode too, not just in the implicit ones: a border_quad
+        // has a cached ray, but not every edge of it is actually cut, while
+        // classifyCube_flux averages epsilon over the parents of a hanging node
+        // and so reports a jump on edges the surface never crosses.  Those
+        // edges are the ones counted here, which is why the count stays a
+        // subset of the hanging one above.
+        if (! cut_found) {
+          ++n_edge_noray;
+          flux_noray += tmp_flux;
+        }
 
         for (size_t ia = 0; ia < num_atoms; ++ia) {
           const std::array<double,3> &ra = pos_atoms_tmp[ia];
@@ -4513,6 +4576,16 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
   reduce_double (charge_pol);
   reduce_double (energy_pol);
   reduce_double (energy_react);
+  reduce_double (flux_hang);
+
+  auto reduce_long = [&] (long &x) {
+    MPI_Reduce (rank == 0 ? MPI_IN_PLACE : &x, &x, 1, MPI_LONG, MPI_SUM, 0, mpicomm);
+  };
+
+  reduce_double (flux_noray);
+  reduce_long (n_edge_iface);
+  reduce_long (n_edge_hang);
+  reduce_long (n_edge_noray);
 
   if (rank == 0) {
     constexpr int label_width = 50;
@@ -4523,6 +4596,30 @@ poisson_boltzmann::energy (ray_cache_t & ray_cache)
 
     std::cout << std::left << std::setw (label_width) << "  Flux charge [e]:"
               << std::setprecision (precision) << charge_pol / (4.0 * pi) << "\n";
+
+    // A non-zero count means part of the interface sits on a non-conforming
+    // face, where the quarter-edge sum does not reproduce the matrix edge
+    // current: the flux surface is not closed there and Flux charge cannot be
+    // trusted.  Zero means the closure argument holds exactly.
+    std::cout << std::left << std::setw (label_width) << "  Interface edges on hanging nodes:"
+              << n_edge_hang << " / " << n_edge_iface;
+
+    if (n_edge_iface > 0)
+      std::cout << "  (" << std::setprecision (3)
+                << 100.0 * (double) n_edge_hang / (double) n_edge_iface
+                << "%, flux " << std::setprecision (6) << flux_hang / (4.0 * pi) << " e)";
+
+    std::cout << '\n';
+
+    std::cout << std::left << std::setw (label_width) << "  Interface edges with no cut found:"
+              << n_edge_noray << " / " << n_edge_iface;
+
+    if (n_edge_iface > 0)
+      std::cout << "  (" << std::setprecision (3)
+                << 100.0 * (double) n_edge_noray / (double) n_edge_iface
+                << "%, flux " << std::setprecision (6) << flux_noray / (4.0 * pi) << " e)";
+
+    std::cout << '\n';
 
     std::cout << std::left << std::setw (label_width) << "  Polarization energy [kT]:"
               << std::setprecision (precision) << energy_pol << "\n";

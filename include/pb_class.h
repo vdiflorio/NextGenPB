@@ -951,7 +951,9 @@ struct
 
   /// Where the dielectric interface cuts an edge, NanoShaper surface or
   /// membrane slab plane. Only the latter needs implicit_box.
-  void
+  /// Returns false when neither source could place the crossing: frac is then
+  /// normal_intersection's 0.5 guess, not a measured position.
+  bool
   interface_intersection (tmesh_3d::quadrant_iterator& quadrant,
                           const ray_cache_t & ray_cache,
                           int edge, bool implicit_box,
