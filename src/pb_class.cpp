@@ -6100,6 +6100,17 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
 
   auto quadrant = this->tmsh.begin_quadrant_sweep ();
 
+  // Same split energy() needs (M5, d10eb2d): with an implicit membrane part of
+  // the dielectric interface is the slab box, which create_markers writes into
+  // epsilon_nodes by coordinate and which border_quad -- built from the
+  // NanoShaper surface alone -- knows nothing about.  Sweeping only border_quad
+  // there leaves the membrane out of phi_p and phi_i entirely: on the reference
+  // helix that was 9.67 kT of polarization, 4.4 %.  So the implicit modes sweep
+  // the whole mesh and let classifyCube/classifyCube_flux find every crossing,
+  // while the ns path keeps iterating border_quad and is unchanged, bit for bit.
+  const bool implicit_membrane_box =
+    membrane_enabled && membrane_mode != MEM_MODE_NS;
+
   // flux and polarization energy calculation
   if ((calc_field_term==1 || (calc_field_term == 2 && k < 1.e-5)) && calc_potential_term < 2) {
     phi_p.assign (num_atoms, 0.0);
@@ -6107,9 +6118,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
     field_py.assign (num_atoms, 0.0);
     field_pz.assign (num_atoms, 0.0);
 
-    for (const int ii : border_quad) {
-      quadrant[ii];
-
+    auto accumulate_quadrant = [&] (bool implicit_box) {
       for (int d = 0; d < 3; ++d)
         h[d] = quadrant->p (d, 7) - quadrant->p (d, 0);
 
@@ -6122,7 +6131,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
         const int i1 = edge2nodes[2 * edge];
         const int i2 = edge2nodes[2 * edge + 1];
         double fract = 0.0;
-        normal_intersection (quadrant, ray_cache, edge, N, fract);
+        interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
         V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
         V[axis] += fract * h[axis];
         const double tmp_flux =
@@ -6147,15 +6156,26 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
           field_pz[ia] += dz * inv_r3 * tmp_flux * constant_pol;
         }
       }
+        };
+
+    if (! implicit_membrane_box) {
+      for (const int ii : border_quad) {
+        quadrant[ii];
+        accumulate_quadrant (false);
+      }
+    } else {
+      for (quadrant = this->tmsh.begin_quadrant_sweep ();
+           quadrant != this->tmsh.end_quadrant_sweep ();
+           ++quadrant)
+        accumulate_quadrant (true);
     }
+
 
     this->energy_pol = 0.5*constant_pol*first_int;
   } else if ((calc_potential_term == 1 || (calc_potential_term == 2 && k < 1.e-5)) && calc_field_term == 0) {
     phi_p.assign (num_atoms, 0.0);
 
-    for (const int ii : border_quad) {
-      quadrant[ii];
-
+    auto accumulate_quadrant = [&] (bool implicit_box) {
       for (int d = 0; d < 3; ++d)
         h[d] = quadrant->p (d, 7) - quadrant->p (d, 0);
 
@@ -6168,7 +6188,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
         const int i1 = edge2nodes[2 * edge];
         const int i2 = edge2nodes[2 * edge + 1];
         double fract = 0.0;
-        normal_intersection (quadrant, ray_cache, edge, N, fract);
+        interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
         V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
         V[axis] += fract * h[axis];
         const double tmp_flux =
@@ -6191,7 +6211,20 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
 
         }
       }
+        };
+
+    if (! implicit_membrane_box) {
+      for (const int ii : border_quad) {
+        quadrant[ii];
+        accumulate_quadrant (false);
+      }
+    } else {
+      for (quadrant = this->tmsh.begin_quadrant_sweep ();
+           quadrant != this->tmsh.end_quadrant_sweep ();
+           ++quadrant)
+        accumulate_quadrant (true);
     }
+
 
     this->energy_pol = 0.5*constant_pol*first_int;
   }
@@ -6215,9 +6248,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
     std::array<double,3> dist_vert, phi_sup;
     int ntriang = 0;
 
-    for (const int ii : border_quad) {
-      quadrant[ii];
-
+    auto accumulate_quadrant = [&] (bool implicit_box) {
       for (int d = 0; d < 3; ++d)
         h[d] = quadrant->p (d, 7) - quadrant->p (d, 0);
 
@@ -6234,7 +6265,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
         const int i2 = edge2nodes[2 * edge + 1];
 
         double fract = 0.0;
-        normal_intersection (quadrant, ray_cache, edge, N, fract);
+        interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
 
         V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
         V[axis] += fract * h[axis];
@@ -6269,7 +6300,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
           const int i2 = edge2nodes[2 * edge + 1];
 
           double fract = 0.0;
-          normal_intersection (quadrant, ray_cache, edge, N, fract);
+          interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
 
           V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
           V[axis] += fract * h[axis];
@@ -6307,7 +6338,20 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
           }
         }
       }
+        };
+
+    if (! implicit_membrane_box) {
+      for (const int ii : border_quad) {
+        quadrant[ii];
+        accumulate_quadrant (false);
+      }
+    } else {
+      for (quadrant = this->tmsh.begin_quadrant_sweep ();
+           quadrant != this->tmsh.end_quadrant_sweep ();
+           ++quadrant)
+        accumulate_quadrant (true);
     }
+
 
     this->energy_pol = 0.5 * constant_pol * first_int;
     this->energy_react = 0.5 * (second_int - first_int * constant_react);
@@ -6322,9 +6366,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
     std::array<double,3> dist_vert, phi_sup;
     int ntriang = 0;
 
-    for (const int ii : border_quad) {
-      quadrant[ii];
-
+    auto accumulate_quadrant = [&] (bool implicit_box) {
       for (int d = 0; d < 3; ++d)
         h[d] = quadrant->p (d, 7) - quadrant->p (d, 0);
 
@@ -6341,7 +6383,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
         const int i2 = edge2nodes[2 * edge + 1];
 
         double fract = 0.0;
-        normal_intersection (quadrant, ray_cache, edge, N, fract);
+        interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
 
         V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
         V[axis] += fract * h[axis];
@@ -6375,7 +6417,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
           const int i2 = edge2nodes[2 * edge + 1];
 
           double fract = 0.0;
-          normal_intersection (quadrant, ray_cache, edge, N, fract);
+          interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
 
           V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
           V[axis] += fract * h[axis];
@@ -6408,7 +6450,20 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
           }
         }
       }
+        };
+
+    if (! implicit_membrane_box) {
+      for (const int ii : border_quad) {
+        quadrant[ii];
+        accumulate_quadrant (false);
+      }
+    } else {
+      for (quadrant = this->tmsh.begin_quadrant_sweep ();
+           quadrant != this->tmsh.end_quadrant_sweep ();
+           ++quadrant)
+        accumulate_quadrant (true);
     }
+
 
     this->energy_pol = 0.5 * constant_pol * first_int;
     this->energy_react = 0.5 * (second_int - first_int * constant_react);
@@ -6420,9 +6475,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
     std::array<double,3> dist_vert, phi_sup;
     int ntriang = 0;
 
-    for (const int ii : border_quad) {
-      quadrant[ii];
-
+    auto accumulate_quadrant = [&] (bool implicit_box) {
       for (int d = 0; d < 3; ++d)
         h[d] = quadrant->p (d, 7) - quadrant->p (d, 0);
 
@@ -6439,7 +6492,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
         const int i2 = edge2nodes[2 * edge + 1];
 
         double fract = 0.0;
-        normal_intersection (quadrant, ray_cache, edge, N, fract);
+        interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
 
         V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
         V[axis] += fract * h[axis];
@@ -6470,7 +6523,7 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
           const int i2 = edge2nodes[2 * edge + 1];
 
           double fract = 0.0;
-          normal_intersection (quadrant, ray_cache, edge, N, fract);
+          interface_intersection (quadrant, ray_cache, edge, implicit_box, N, fract);
 
           V = {quadrant->p (0, i1), quadrant->p (1, i1), quadrant->p (2, i1)};
           V[axis] += fract * h[axis];
@@ -6503,7 +6556,20 @@ poisson_boltzmann::pot_field (ray_cache_t & ray_cache)
           }
         }
       }
+        };
+
+    if (! implicit_membrane_box) {
+      for (const int ii : border_quad) {
+        quadrant[ii];
+        accumulate_quadrant (false);
+      }
+    } else {
+      for (quadrant = this->tmsh.begin_quadrant_sweep ();
+           quadrant != this->tmsh.end_quadrant_sweep ();
+           ++quadrant)
+        accumulate_quadrant (true);
     }
+
 
     this->energy_pol = 0.5 * constant_pol * first_int;
     this->energy_react = 0.5 * (second_int - first_int * constant_react);
