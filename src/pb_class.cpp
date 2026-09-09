@@ -1566,8 +1566,16 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.8);
   }
 
-  periodic_x = g2 ( (mesh_options + "periodic_x").c_str (), 0);
-  periodic_y = g2 ( (mesh_options + "periodic_y").c_str (), 0);
+  // Lateral PBC, off by default. These are the [mesh] keys and they are the only
+  // place periodic_x/periodic_y is read from. PBC is independent of the membrane:
+  // it can be switched on here without one. A membrane, on the other hand, always
+  // implies it, and the membrane branch below forces the two flags to 1.
+  // Read with a -1 sentinel so that "absent" and "explicitly 0" stay
+  // distinguishable: the membrane branch below warns only about the latter.
+  const int periodic_x_req = g2 ( (mesh_options + "periodic_x").c_str (), -1);
+  const int periodic_y_req = g2 ( (mesh_options + "periodic_y").c_str (), -1);
+  periodic_x = (periodic_x_req > 0);
+  periodic_y = (periodic_y_req > 0);
 
   const std::string model_options = "model/";
   linearized = g2 ( (model_options + "linearized").c_str (), 1);
@@ -1727,11 +1735,28 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     nlev_mem = g2 ( (mesh_options + "nlev_mem").c_str (), 2);
     nlev_sol = g2 ( (mesh_options + "nlev_sol").c_str (), 4);
 
-    // A membrane slab spans the whole xy face by construction, so the natural
-    // default is periodic in x and y (same key as above: if the user set it
-    // explicitly in [mesh], that value wins -- this only changes the default).
-    periodic_x = g2 ( (mesh_options + "periodic_x").c_str (), 1);
-    periodic_y = g2 ( (mesh_options + "periodic_y").c_str (), 1);
+    // periodic_x/periodic_y are read from [mesh] (see above), never from
+    // [membrane].  Older .prm files put them here, where GetPot ignores them
+    // without a word: say so rather than let the run proceed under a setting the
+    // user believes is active.
+    if (rank == 0 &&
+        (g2 ( (mem_options + "periodic_x").c_str (), -1) >= 0 ||
+         g2 ( (mem_options + "periodic_y").c_str (), -1) >= 0))
+      std::cerr << "[WARNING] periodic_x/periodic_y found in [membrane]: these keys "
+                << "are read from\n          [mesh] and are ignored here.\n";
+
+    // A membrane slab spans the whole xy face by construction, so the lateral
+    // faces are periodic by geometry and not by choice: force it instead of only
+    // defaulting it, so that a stale periodic_x = 0 cannot quietly turn the slab
+    // into a finite patch. Without a membrane the [mesh] keys still select PBC
+    // freely -- PBC does not require a membrane, a membrane requires PBC.
+    if (rank == 0 && (periodic_x_req == 0 || periodic_y_req == 0))
+      std::cerr << "[WARNING] membrane mode: periodic_x/periodic_y forced to 1 (a "
+                << "membrane slab spans\n          the whole xy face); the explicit "
+                << "[mesh] value of 0 is overridden.\n";
+
+    periodic_x = true;
+    periodic_y = true;
   }
 
   return 0;
