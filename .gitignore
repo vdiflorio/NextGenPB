@@ -1,6 +1,9 @@
-docker_build.log
-ngpb_tutorial/
-docker_build.log
+# Build directories
+build/
+build-*/
+
+# CMake local machine settings (gitignored — copy from cmake/LocalSettings.cmake.example)
+cmake/LocalSettings.cmake
 
 # Build artifacts
 src/ngpb
@@ -9,5 +12,19 @@ src/*.o
 # Local build configuration (machine-specific)
 src/local_settings.mk
 
+# Docker
+docker_build.log
+
 # Test run outputs
 test_runs/
+ngpb_tutorial/
+
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
+
+# Editor backups
+*~
+*.swp
