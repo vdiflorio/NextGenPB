@@ -28,6 +28,7 @@ RUN dnf upgrade -y && \
         libtool scotch scotch-devel \
         MUMPS MUMPS-devel qhull-devel octave octave-devel cmake tbb \
         tbb-devel CGAL-devel && \
+    dnf install -y --disablerepo=nvidia-container-toolkit MUMPS-openmpi-devel && \
     dnf clean all
 
 

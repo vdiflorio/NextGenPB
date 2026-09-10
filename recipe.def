@@ -29,6 +29,7 @@ From: rockylinux:9
         libtool scotch scotch-devel redhat-rpm-config \
         MUMPS MUMPS-devel qhull-devel octave octave-devel cmake tbb \
         tbb-devel CGAL-devel && \
+    dnf install -y --disablerepo=nvidia-container-toolkit MUMPS-openmpi-devel && \
     dnf clean all
 	
     
