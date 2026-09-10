@@ -1,0 +1,13 @@
+docker_build.log
+ngpb_tutorial/
+docker_build.log
+
+# Build artifacts
+src/ngpb
+src/*.o
+
+# Local build configuration (machine-specific)
+src/local_settings.mk
+
+# Test run outputs
+test_runs/

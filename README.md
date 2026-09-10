@@ -24,6 +24,46 @@ $$
 
 on a rectangular domain.
 
+# Nonlinear Poisson--Boltzmann Extension
+---
+
+This repository also contains a course project extension that adds a
+Newton-based solver for the nonlinear Poisson--Boltzmann equation.
+
+The implementation is available in the `nonlinear-solver` branch.
+
+The nonlinear formulation replaces the linear ionic contribution with a
+hyperbolic sine term. At every Newton iteration, the Jacobian contains
+the corresponding hyperbolic cosine contribution.
+
+The solver mode is selected in the parameter file:
+
+```text
+linearized = 1   # original linearized solver
+linearized = 0   # nonlinear Newton solver
+```
+
+The main modifications are located in:
+
+```text
+include/pb_class.h
+src/pb_class.cpp
+src/poisson_boltzmann.cpp
+```
+
+The nonlinear extension adds the following functions:
+
+```text
+assemble_newton_system
+newton_solve
+```
+
+
+See `REPRODUCE.md` for step-by-step instructions to reproduce our
+course project results (real-molecule test, clamping demonstration,
+and weak/strong scalability tests).
+
+
 # Documentation & Tutorials
 ---
 

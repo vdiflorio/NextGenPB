@@ -732,6 +732,12 @@ struct
   void
   assemple_system_matrix (ray_cache_t & ray_cache);
 
+  void 
+  newton_solve (ray_cache_t & ray_cache);
+
+  void 
+  assemble_newton_system (ray_cache_t & ray_cache, distributed_vector & phi_cur);
+
   void
   create_density_map (ray_cache_t & ray_cache);
 

@@ -48,7 +48,7 @@ RUN wget  https://download.open-mpi.org/release/open-mpi/v4.1/openmpi-4.1.8.tar.
                  --without-libltdl --disable-dlopen \
                  --enable-pretty-print-stacktrace \
                  --enable-openib-rdmacm --disable-sphinx && \
-    make -j$(nproc) && \
+    make -j2 && \
     make install && \
     cd /opt && rm -rf openmpi-4.1.8
 
@@ -73,7 +73,7 @@ RUN git clone --branch master_backup https://gitlab.iit.it/SDecherchi/nanoshaper
     cp CMakeLists_so.txt CMakeLists.txt && \
     mkdir -p build_lib && cd build_lib && \
     cmake .. -DCMAKE_BUILD_TYPE="Release" && \
-    make -j$(nproc)
+    make -j2
 
 ### === LIS (Linear solver) === ###
 WORKDIR /opt
@@ -82,7 +82,7 @@ RUN wget https://www.ssisc.org/lis/dl/lis-${LIS_VERSION}.zip && \
     unzip lis-${LIS_VERSION}.zip && cd lis-${LIS_VERSION} && \
     chmod 755 configure config/install-sh && \
     ./configure --prefix="/opt/lis" --enable-mpi --enable-shared --disable-static && \
-    make -j$(nproc) && make install && \
+    make -j2 && make install && \
     cd /opt && rm -rf lis-${LIS_VERSION} lis-${LIS_VERSION}.zip
 
 
@@ -101,7 +101,7 @@ RUN wget https://p4est.github.io/release/p4est-${P4EST_VERSION}.tar.gz && \
                 --disable-vtk-binary \
                 --without-blas \
                 CPPFLAGS="-I/opt/openmpi/include -DSC_LOG_PRIORITY=SC_LP_ESSENTIAL" && \
-    make -j$(nproc) && \
+    make -j2 && \
     make install && \
     cd /opt && rm -rf p4est-${P4EST_VERSION}
 
@@ -118,7 +118,7 @@ RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/v${OCT
     ../configure --prefix="/opt/octave_file_io" \
                  --with-octave-home=/usr/bin \
                  CC=mpicc CXX=mpicxx && \
-    make -j$(nproc) && make install && \
+    make -j2 && make install && \
     cd /opt && rm -rf octave_file_io-${OCTAVE_FILE_IO_VERSION}
 
 
@@ -143,7 +143,7 @@ RUN ../configure --prefix=/opt/bimpp/ \
 F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc \
 --with-mumps-extra-libs="-L/usr/lib64 -L/opt/openmpi/lib -L/usr/lib64/lib -lscotch -lmpi \
  -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lmpi -lopenblas  -lgfortran"
-RUN make -j$(nproc)
+RUN make -j2
 RUN make install
 WORKDIR /opt
 RUN rm -rf bimpp-NextGenPB-v0.0.01

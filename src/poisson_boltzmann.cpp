@@ -72,8 +72,6 @@ main (int argc, char **argv)
   poisson_boltzmann pb;
   ray_cache_t ray_cache;
 
-  // pb_global = (void *) (&pb);
-
   if (pb.parse_options (argc, argv))
     return 1;
 
@@ -103,18 +101,9 @@ main (int argc, char **argv)
     pb.broadcast_vectors ();
   }
 
-  // if (rank == 0) {
-  // std::cout << "Atom : " << std::endl;
-  // pb.write_atoms_to_pqr (std::cout);
-  // pb.print_options ();
-  // }
-
   MPI_Barrier (mpicomm);
 
-  // TIC ();
-  // pb.create_mesh_ns ();
   pb.create_mesh ();
-  // TOC ("create_mesh");
 
   std::vector<double> ().swap (pb.r_atoms);
 
@@ -177,16 +166,11 @@ main (int argc, char **argv)
 
   TOC ("Building Grid");
 
-
-
-
   if (pb.loc_refinement == 1 || pb.mesh_shape == 4) {
     TIC ();
     pb.refine_surface (ray_cache);
     TOC ("refine the box");
   }
-
-
 
   TIC ();
 
@@ -200,8 +184,6 @@ main (int argc, char **argv)
     std::cout << "============================================\n";
 
   TOC ("create element markers");
-
-
 
   if ( rank == 0) ray_cache.ns->clean();
 
@@ -224,15 +206,21 @@ main (int argc, char **argv)
     std::cout << "\n========== [ Assemble Matricies ] ==========\n";
     std::cout << "Selected BCs          : ";
 
-    if (pb.bc ==1)
-      std::cout << "Null\n";
-    else if (pb.bc ==2)
+    if (pb.bc == 1)
+      std::cout << "Null (homogeneous Dirichlet)\n";
+    else if (pb.bc == 2)
       std::cout << "Coulombic\n";
+    else if (pb.bc == 3)
+      std::cout << "Analytic (sphere test)\n";
     else
       std::cout << "Neumann\n";
   }
 
-  pb.assemple_system_matrix (ray_cache);
+  // NOTE: the nonlinear path deliberately SKIPS this. assemple_system_matrix
+  // frees reaction_nodes / ones / rho_fixed, which the Newton loop reuses
+  // every iteration. A ~0ms timing here is expected when linearized = 0.
+  if (pb.linearized == 1)
+    pb.assemple_system_matrix (ray_cache);
 
   if (rank == 0)
     std::cout << "============================================\n";
@@ -243,7 +231,12 @@ main (int argc, char **argv)
 
   TIC ();
 
-  if (pb.linear_solver_name == "mumps") {
+  if (pb.linearized == 0) {
+    if (rank == 0)
+      std::cout << "\n== [ Starting NONLINEAR solution: Newton on sinh ] ==\n";
+
+    pb.newton_solve (ray_cache);
+  } else if (pb.linear_solver_name == "mumps") {
     if (rank == 0)
       std::cout << "\n== [ Starting numerical solution using MUMPS ] ==\n";
 
@@ -275,7 +268,20 @@ main (int argc, char **argv)
     TOC ("Write dataset")
   }
 
-  if (pb.calc_potential_term > 0 || pb.calc_field_term > 0 || pb.calc_energy > 0) {
+  // ------------------------------------------------------------------
+  // Energy / potential / field post-processing.
+  // These routines (energy, energy_fast, pot_field, pot_field_fast) evaluate
+  // a LINEAR-RESPONSE functional; applied to a nonlinear phi the result has
+  // no defined meaning. Not implemented for the nonlinear model -> skipped.
+  // ------------------------------------------------------------------
+  if (pb.linearized == 0 &&
+      (pb.calc_energy > 0 || pb.calc_potential_term > 0 || pb.calc_field_term > 0)) {
+    if (rank == 0)
+      std::cout << "\n[WARNING] Energy and potential/field post-processing use a "
+                   "linear-response\n          functional and are NOT implemented for "
+                   "the nonlinear model.\n          Skipping (set linearized=1 to "
+                   "compute them for the linear PBE).\n";
+  } else if (pb.calc_potential_term > 0 || pb.calc_field_term > 0 || pb.calc_energy > 0) {
     TIC ();
     const bool refined = (pb.loc_refinement == 1 || pb.mesh_shape > 2 || (pb.mesh_shape == 2 && pb.refine_box == 1));
     const bool pot_field_bool = (pb.calc_potential_term > 0 || pb.calc_field_term > 0);
@@ -296,10 +302,8 @@ main (int argc, char **argv)
       if (refined)
         pb.energy (ray_cache);
       else
-        // pb.pot_field_fast (ray_cache);
         pb.energy_fast (ray_cache);
     }
-
 
     TOC ("Compute energy")
   }
@@ -357,42 +361,9 @@ main (int argc, char **argv)
   } else
     std::cout << "\n Wrong type of map output! "<<std::endl;
 
-
-
   if (rank == 0) {
     std::cout<<std::endl;
     print_timing_report ();
-
-    // if (pb.surf_type != 2)
-    // {
-    // //Save ray_cache:
-    // for (int i = 0; i < 3; ++i)
-    // {
-    // // std::cout << "Direzione: "<< i <<std::endl;
-    // // std::cout << std::endl;
-
-    // nlohmann::json j;
-    // save_ray_cache (j, ray_cache.rays[i]);
-
-    // // std::cout << "Count cached rays: " << ray_cache.count_cache_dir[i] << std::endl;
-    // // std::cout << "Count new rays: " << ray_cache.count_new_dir[i] << std::endl;
-    // // std::cout << std::endl;
-    // std::ofstream ray_cached_file;
-    // std::string filename = "ray_cache_";
-    // std::string extension = ".json";
-    // filename += std::to_string(i);
-    // filename += extension;
-    // ray_cached_file.open (filename.c_str ());
-
-    // if (ray_cached_file.is_open ())
-    // ray_cached_file << j;
-
-    // ray_cached_file.close ();
-
-    // //Alternative way to save results:
-    // print_map (ray_cache.rays);
-    // }
-    // }
   }
 
   MPI_Barrier (mpicomm);
@@ -402,7 +373,6 @@ main (int argc, char **argv)
   return 0;
 
 }
-
 
 void
 print_point (const std::array<std::vector<std::array<double, 2>>,3>& r)

@@ -36,7 +36,7 @@ RUN git clone --branch master_backup https://gitlab.iit.it/SDecherchi/nanoshaper
     cp CMakeLists_so.txt CMakeLists.txt && \
     mkdir -p build_lib && cd build_lib && \
     cmake .. -DCMAKE_BUILD_TYPE="Release" && \
-    make -j$(nproc)
+    make -j2
 
 ### === LIS (Linear solver) === ###
 WORKDIR /opt
@@ -45,7 +45,7 @@ RUN wget https://www.ssisc.org/lis/dl/lis-${LIS_VERSION}.zip && \
     unzip lis-${LIS_VERSION}.zip && cd lis-${LIS_VERSION} && \
     chmod 755 configure config/install-sh && \
     ./configure --prefix="/opt/lis" --enable-mpi --enable-shared --disable-static && \
-    make -j$(nproc) && make install && \
+    make -j2 && make install && \
     cd /opt && rm -rf lis-${LIS_VERSION} lis-${LIS_VERSION}.zip
 
 ### === Octave File IO === ###
@@ -61,7 +61,7 @@ RUN wget https://github.com/carlodefalco/octave_file_io/archive/refs/tags/v${OCT
                  -Wl,-rpath,/usr/lib/x86_64-linux-gnu/octave/8.4.0/" \
                  --with-octave-home=/usr/bin \
                  CC=mpicc CXX=mpicxx && \
-    make -j$(nproc) && make install && \
+    make -j2 && make install && \
     cd /opt && rm -rf octave_file_io-${OCTAVE_FILE_IO_VERSION}
 
 ### === BIMPP === ###
@@ -86,7 +86,7 @@ RUN  ../configure --prefix=/opt/bimpp/ \
                  F77=mpif90 CXX=mpicxx MPICC=mpicc CC=mpicc \
                  --with-mumps-extra-libs="-L/usr/lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib64/lib -lscotch -lmpi \
                  -lmpi_usempif08 -lmpi_usempi_ignore_tkr -lmpi_mpifh -lmpi -lopenblas  -lgfortran" && \
-    make -j$(nproc) && make install && \
+    make -j2 && make install && \
     cd /opt && rm -rf bimpp-NextGenPB-v0.0.01
 
 ### === NextGenPB (Main Solver) === ###
