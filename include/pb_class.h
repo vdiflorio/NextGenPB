@@ -145,6 +145,7 @@ struct
   //algorithm:
   std::string linear_solver_name;
   std::string linear_solver_options;
+  int newton_compress;   // 1: after Newton it 0 (== linear solve) map solvent phi -> 2 asinh(phi/2)
 
   MPI_Comm mpicomm;
   tmesh_3d tmsh;

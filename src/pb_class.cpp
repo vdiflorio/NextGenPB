@@ -975,6 +975,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   const std::string alg_options = "algorithm/";
   linear_solver_name = g2 ( (alg_options + "linear_solver").c_str (), "lis");
   linear_solver_options = g2 ( (alg_options + "solver_options").c_str (), "-p ssor -ssor_omega 0.51 -i cgs -tol 1.e-6 -print 2 -conv_cond 2 -tol_w 0");
+  newton_compress = g2 ( (alg_options + "newton_compress").c_str (), 0);
 
   const std::string out_options = "output/";
   p4estfilename = g2 ( (out_options + "p4estfilename").c_str (), "poisson_boltzmann_p4est");
@@ -2421,6 +2422,15 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
 //
 //  Globalization: |du|_inf is clamped to maxdu from iteration 1 onward.
 //  Iteration 0 is unclamped so the jump to the linear solution is taken whole.
+//
+//  Optional (newton_compress = 1): right after iteration 0, i.e. on the linear
+//  solution, solvent nodes are mapped phi -> 2 asinh(phi/2). This is the
+//  Grahame relation for a 1:1 electrolyte (sigma ~ phi in DH vs
+//  sigma ~ 2 sinh(phi/2) nonlinear): same surface charge, nonlinear surface
+//  potential. It is ~identity where |phi| << 1 and only tames the thin layer
+//  |phi| >~ 1 at the surface, which otherwise costs one Newton iteration per
+//  unit of |phi| (the step on sinh is -+1 for large |phi|). Applied ONCE, at
+//  iteration 0 only; it is just a better initial guess for iteration 1.
 // ============================================================
 void
 poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
@@ -2599,6 +2609,29 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
 
     for (std::size_t i = 0; i < n; ++i)
       phi_new[i] = phi_old[i] + scale * du[i];
+
+    // --- asinh compression of the linear solution (iteration 0 ONLY) ---
+    // phi_new here is exactly the linear PB solution (scale == 1 at it 0).
+    // Solvent nodes only (C != 0); the molecule is linear and re-adjusts
+    // exactly at iteration 1.
+    if (it == 0 && newton_compress == 1) {
+      double loc_before = 0.0, loc_after = 0.0;   // diagnostics only
+      for (std::size_t i = 0; i < n; ++i)
+        if (Cd[i] != 0.0) {
+          loc_before = std::max (loc_before, std::fabs (phi_new[i]));
+          phi_new[i] = 2.0 * std::asinh (0.5 * phi_new[i]);
+          loc_after  = std::max (loc_after,  std::fabs (phi_new[i]));
+        }
+      double g_before = loc_before, g_after = loc_after;
+      if (size > 1) {
+        MPI_Allreduce (&loc_before, &g_before, 1, MPI_DOUBLE, MPI_MAX, mpicomm);
+        MPI_Allreduce (&loc_after,  &g_after,  1, MPI_DOUBLE, MPI_MAX, mpicomm);
+      }
+      if (rank == 0)
+        std::cout << "  [Newton] COMPRESS (it 0, solvent): max|phi|_solv "
+                  << std::setprecision (17) << g_before << " -> " << g_after
+                  << std::setprecision (6) << std::endl;
+    }
 
     if (size > 1)
       bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
