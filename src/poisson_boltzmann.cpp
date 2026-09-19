@@ -270,18 +270,15 @@ main (int argc, char **argv)
 
   // ------------------------------------------------------------------
   // Energy / potential / field post-processing.
-  // These routines (energy, energy_fast, pot_field, pot_field_fast) evaluate
-  // a LINEAR-RESPONSE functional; applied to a nonlinear phi the result has
-  // no defined meaning. Not implemented for the nonlinear model -> skipped.
+  // energy, energy_fast, pot_field, pot_field_fast are boundary-integral
+  // representations built from phi and its normal flux on the molecular
+  // surface: they only rely on -div(eps grad phi) = rho_ion in the solvent,
+  // whatever rho_ion(phi) is, so they hold for the nonlinear model too and
+  // give G_coul + G_pol + G_ion_dir = 1/2 sum_i q_i phi(r_i).
+  // For linearized = 0 the free energy has one extra term, the excess
+  // ionic (volume) integral, added below by energy_excess_nonlinear.
   // ------------------------------------------------------------------
-  if (pb.linearized == 0 &&
-      (pb.calc_energy > 0 || pb.calc_potential_term > 0 || pb.calc_field_term > 0)) {
-    if (rank == 0)
-      std::cout << "\n[WARNING] Energy and potential/field post-processing use a "
-                   "linear-response\n          functional and are NOT implemented for "
-                   "the nonlinear model.\n          Skipping (set linearized=1 to "
-                   "compute them for the linear PBE).\n";
-  } else if (pb.calc_potential_term > 0 || pb.calc_field_term > 0 || pb.calc_energy > 0) {
+  if (pb.calc_potential_term > 0 || pb.calc_field_term > 0 || pb.calc_energy > 0) {
     TIC ();
     const bool refined = (pb.loc_refinement == 1 || pb.mesh_shape > 2 || (pb.mesh_shape == 2 && pb.refine_box == 1));
     const bool pot_field_bool = (pb.calc_potential_term > 0 || pb.calc_field_term > 0);
@@ -306,6 +303,12 @@ main (int argc, char **argv)
     }
 
     TOC ("Compute energy")
+  }
+
+  if (pb.linearized == 0 && pb.calc_energy == 2) {
+    TIC ();
+    pb.energy_excess_nonlinear (ray_cache);
+    TOC ("Compute nonlinear excess energy")
   }
 
   if (pb.surf_write == 1) {

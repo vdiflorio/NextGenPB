@@ -3788,6 +3788,121 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
   }
 }
 
+// ============================================================
+//  Nonlinear excess ionic free energy (sinh model, 1:1 salt)
+//
+//  For the nonlinear PBE the surface-integral partition computed by
+//  energy()/energy_fast()/pot_field*() still yields
+//      G_coul + G_pol + G_ion_dir = 1/2 sum_i q_i phi(r_i)
+//  (the Green identity behind it only needs -div(eps grad phi) = rho_s in
+//  the solvent, whatever rho_s(phi) is). What is missing is the excess term
+//      G_exc = 2 kT n_b int_{solvent} [ psi/2 sinh(psi) - cosh(psi) + 1 ] dV,
+//  which vanishes identically in the linear limit (O(psi^4)) and is >= 0.
+//
+//  In code units (psi dimensionless, lengths in Angstrom, charges in e) the
+//  nodal reaction coefficient is C = reaction_nodes = 8 pi n_b A^3 (0 inside
+//  the molecule), hence  G_exc/kT = (1/4pi) int C(r) f(psi) dV.
+//  The volume integral uses bim3a_rhs_frac with the SAME cut-cell quadrature
+//  as the Newton reaction term, so energy and residual are consistent.
+//  Requires reaction_nodes / ones / phi still allocated (true after
+//  newton_solve; assemple_system_matrix would free them).
+// ============================================================
+void
+poisson_boltzmann::energy_excess_nonlinear (ray_cache_t & ray_cache)
+{
+  int size, rank;
+  MPI_Comm_size (mpicomm, &size);
+  MPI_Comm_rank (mpicomm, &rank);
+
+  if (!reaction_nodes || !ones || !phi) {
+    if (rank == 0)
+      std::cerr << "  [energy_exc] ERROR: reaction_nodes/ones/phi not allocated. "
+                   "energy_excess_nonlinear() must run after newton_solve().\n";
+    return;
+  }
+
+  const double inv_4pi = 1.0 / (4.0 * pi);
+  const std::size_t n = tmsh.num_owned_nodes ();
+
+  auto func_frac = [&] (tmesh_3d::quadrant_iterator& quadrant) {
+    return cube_fraction_intersection (quadrant, ray_cache);
+  };
+
+  // Excess-energy integrand for the 1:1 sinh model:
+  //   f(psi) = psi/2 sinh(psi) - cosh(psi) + 1  (>= 0, O(psi^4)).
+  // Kept as a separate function so the steric (Bikerman/Borukhov) model can
+  // swap it for  -[ psi/2 rho_s(psi)/C + (1/a) log D(psi) ]  later.
+  auto f_exc = [] (double u) {
+    return 0.5 * u * std::sinh (u) - std::cosh (u) + 1.0;
+  };
+
+  // Nodal quadrature weights w_i = solvent-fraction patch volume of node i.
+  // bim3a_rhs_frac is linear in its nodal argument (hanging nodes spread
+  // their volume evenly over the parents), so int_{solvent} g dV = sum_i w_i g_i
+  // with g evaluated at owned nodes only. Computing w once avoids one
+  // cut-cell sweep per integrand.
+  distributed_vector w (n, mpicomm);
+  w.get_owned_data ().assign (n, 0.0);
+  bim3a_rhs_frac (tmsh, *ones, *ones, w, func_frac);
+  if (size > 1)
+    w.assemble ();
+
+  // Integrands are all multiplied by C and set to zero where C == 0, to
+  // avoid 0*inf near the point charges (exactly as in assemble_newton_system):
+  //   C f(psi)          -> G_exc
+  //   C psi/2 sinh(psi) -> -1/2 int rho_s phi
+  //   C (cosh(psi) - 1) -> int (P - P0)
+  //   C sinh(psi)       -> -4pi * mobile ion charge
+  double loc[4] = {0.0, 0.0, 0.0, 0.0};
+  {
+    auto & Cd = reaction_nodes->get_owned_data ();
+    auto & ud = phi->get_owned_data ();
+    auto & wd = w.get_owned_data ();
+
+    for (std::size_t i = 0; i < n; ++i) {
+      const double Ci = Cd[i];
+      if (Ci == 0.0)
+        continue;
+      const double ui = ud[i];
+      const double sh = std::sinh (ui);
+      const double ch = std::cosh (ui);
+      const double cw = Ci * wd[i];
+      loc[0] += cw * f_exc (ui);
+      loc[1] += cw * 0.5 * ui * sh;
+      loc[2] += cw * (ch - 1.0);
+      loc[3] += cw * sh;
+    }
+  }
+
+  double glob[4] = {loc[0], loc[1], loc[2], loc[3]};
+  if (size > 1)
+    MPI_Allreduce (loc, glob, 4, MPI_DOUBLE, MPI_SUM, mpicomm);
+
+  energy_exc = inv_4pi * glob[0];
+  const double energy_half = inv_4pi * glob[1];
+  const double energy_osm  = inv_4pi * glob[2];
+  const double charge_ion  = -inv_4pi * glob[3];
+
+  if (rank == 0) {
+    constexpr int label_width = 50;
+    constexpr int precision = 16;
+
+    std::cout << "\n============ [ Nonlinear excess ionic energy ] ============\n";
+    std::cout << std::left << std::setw (label_width) << "  -1/2 int rho_s phi [kT]:"
+              << std::setprecision (precision) << energy_half << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Osmotic term int (P-P0) [kT]:"
+              << std::setprecision (precision) << energy_osm << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Excess ionic energy [kT]:"
+              << std::setprecision (precision) << energy_exc << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Mobile ion charge [e]:"
+              << std::setprecision (precision) << charge_ion << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Total nonlinear free energy [kT]:"
+              << std::setprecision (precision)
+              << (energy_pol + energy_react + coul_energy + energy_exc) << "\n";
+    std::cout << "===========================================================\n";
+  }
+}
+
 void
 poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
 {

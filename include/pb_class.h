@@ -125,6 +125,7 @@ struct
   double energy_pol = 0.0;
   double energy_react = 0.0;
   double coul_energy = 0.0;
+  double energy_exc = 0.0;
 
   int calc_coulombic;
   int calc_potential_term;
@@ -767,6 +768,9 @@ struct
 
   void
   energy_fast (ray_cache_t & ray_cache);
+
+  void
+  energy_excess_nonlinear (ray_cache_t & ray_cache);
 
   void
   write_potential_on_surface (ray_cache_t & ray_cache);
