@@ -95,6 +95,13 @@ poisson_boltzmann::create_mesh ()
     std::cout << "  Solvent epsilon    : " << e_out << '\n';
     std::cout << "  Temperature        : " << T << " [K] \n";
     std::cout << "  Ionic strength     : " << ionic_strength << " [mol/L] \n";
+    if (linearized == 0) {
+      std::cout << "  Ion model          : " << ion_model.name () << '\n';
+      if (ion_model.nu > 0.0) {
+        std::cout << "  Ion size           : " << ion_size << " [Å] \n";
+        std::cout << "  Packing fraction   : " << ion_model.nu << " (nu = 2 a^3 n_b)\n";
+      }
+    }
     std::cout << "============================================\n\n";
   }
 
@@ -945,6 +952,23 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   linearized = g2 ( (model_options + "linearized").c_str (), 1);
   bc = g2 ( (model_options + "bc_type").c_str (), 1);
   ionic_strength = g2 ( (model_options + "ionic_strength").c_str (), 0.145);
+  ion_size = g2 ( (model_options + "ion_size").c_str (), 0.0);
+
+  // Bulk packing fraction nu = 2 a^3 n_b (1:1 salt, n_b in 1/Angs^3).
+  // nu >= 1 leaves no solvent in the bulk (theta_FS = 1 - nu <= 0) and makes
+  // g'(u) change sign at large |u|: the lattice-gas model is undefined there.
+  {
+    const double n_b = 1.0e3 * N_av * ionic_strength * Angs * Angs * Angs;
+    ion_model.nu = 2.0 * ion_size * ion_size * ion_size * n_b;
+    if (ion_model.nu >= 1.0) {
+      if (rank == 0)
+        std::cerr << "ERROR: ion_size = " << ion_size << " A at ionic_strength = "
+                  << ionic_strength << " M gives packing fraction nu = 2 a^3 n_b = "
+                  << ion_model.nu << " >= 1: no bulk solvent left, reduce ion_size.\n";
+      return 1;
+    }
+  }
+
   e_in = g2 ( (model_options + "molecular_dielectric_constant").c_str (), 2.);
   e_out = g2 ( (model_options + "solvent_dielectric_constant").c_str (), 80.);
   T = g2 ( (model_options + "T").c_str (), 298.15);
@@ -2286,11 +2310,13 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
 
 // ============================================================
 //  Newton assembly: build J(phi) and RHS for ONE Newton step
-//  Nonlinear PBE:  -div(eps grad phi) + C * sinh(phi) = rho_fixed
-//    where C = reaction_nodes (== 0 inside the molecule).
+//  Nonlinear PBE:  -div(eps grad phi) + C * g(phi) = rho_fixed
+//    where C = reaction_nodes (== 0 inside the molecule) and g is the
+//    ion model (ion_model_t): g = sinh for ideal ions, g = sinh/D for the
+//    steric model.
 //  "Full" Newton form (BCs identical to the linear case):
-//    [ A_stiff + M[C*cosh(phi)] ] phi_new
-//        = rho_load + M[ C*(phi*cosh(phi) - sinh(phi)) ]
+//    [ A_stiff + M[C*g'(phi)] ] phi_new
+//        = rho_load + M[ C*(phi*g'(phi) - g(phi)) ]
 //  NOTE: does NOT free rho_fixed / reaction_nodes / ones / const_ones,
 //        because the Newton loop reuses them every iteration.
 //  NOTE: non-Stern path only (stern_layer_surf == 0).
@@ -2324,8 +2350,8 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
   // C = reaction_nodes (nodal reaction coefficient, 0 inside molecule)
   const std::size_t n = tmsh.num_owned_nodes();
 
-  distributed_vector cosh_coeff (tmsh.num_owned_nodes(), mpicomm); // C*cosh(phi)
-  distributed_vector rhs_extra  (tmsh.num_owned_nodes(), mpicomm); // C*(phi*cosh(phi)-sinh(phi))
+  distributed_vector cosh_coeff (tmsh.num_owned_nodes(), mpicomm); // C*g'(phi)
+  distributed_vector rhs_extra  (tmsh.num_owned_nodes(), mpicomm); // C*(phi*g'(phi)-g(phi))
 
   auto & C_data     = reaction_nodes->get_owned_data ();
   auto & phi_data   = phi_cur.get_owned_data ();
@@ -2344,11 +2370,11 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
       extra_data[i] = 0.0;
       continue;
     }
-    
-    const double ch = std::cosh (ui);
-    const double sh = std::sinh (ui);
-    cosh_data[i]  = Ci * ch;
-    extra_data[i] = Ci * (ui * ch - sh); 
+
+    const double dg = ion_model.dg (ui);
+    const double g  = ion_model.g (ui);
+    cosh_data[i]  = Ci * dg;
+    extra_data[i] = Ci * (ui * dg - g);
   }
 
   if (size > 1) {
@@ -2356,7 +2382,7 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
     bim3a_solution_with_ghosts (tmsh, rhs_extra,  replace_op);
   }
 
-   // Add extra RHS term  M_frac * [ C (phi cosh phi - sinh phi) ].
+   // Add extra RHS term  M_frac * [ C (phi g'(phi) - g(phi)) ].
   // Must use the SAME fractional cut-cell quadrature as the LHS reaction
   // term (bim3a_reaction_frac); the full-cell bim3a_rhs makes the two
   // disagree at cut cells and scales the Newton step by m_full/m_frac.
@@ -2368,7 +2394,7 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
   // --- stiffness  -div(eps grad .), identical to the linear case ---
   bim3a_laplacian_frac (tmsh, *epsilon_nodes, *A, func_frac);
 
-  // --- Jacobian reaction term with coefficient C*cosh(phi) ---
+  // --- Jacobian reaction term with coefficient C*g'(phi) ---
   bim3a_reaction_frac (tmsh, cosh_coeff, *ones, *A, func_frac);
 
   // --- Dirichlet BCs: identical to assemple_system_matrix ---
@@ -2403,22 +2429,24 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
 // ============================================================
 //  Newton driver for the nonlinear PBE
 //
-//    -div(eps grad phi) + C sinh(phi) = rho_fixed ,   C = reaction_nodes
+//    -div(eps grad phi) + C g(phi) = rho_fixed ,   C = reaction_nodes
 //
-//  C == 0 inside the molecule, so the equation is LINEAR there: the entire
-//  nonlinearity lives in the solvent (C != 0). Convergence of this iteration
-//  is therefore governed by the solvent nodes alone.
+//  g is the ion model (ion_model_t): sinh for ideal ions, sinh/D for the
+//  steric model (ion_size > 0). C == 0 inside the molecule, so the
+//  equation is LINEAR there: the entire nonlinearity lives in the solvent
+//  (C != 0). Convergence of this iteration is therefore governed by the
+//  solvent nodes alone.
 //
 //  Each iteration solves the "full Newton form"
-//    [ A_stiff + M[C cosh(phi_k)] ] phi_{k+1}
-//        = rho_load + M[ C (phi_k cosh(phi_k) - sinh(phi_k)) ]
+//    [ A_stiff + M[C g'(phi_k)] ] phi_{k+1}
+//        = rho_load + M[ C (phi_k g'(phi_k) - g(phi_k)) ]
 //  which is algebraically identical to solving for the correction
 //  du = phi_{k+1} - phi_k; du is recovered explicitly below so it can be
 //  clamped (globalization).
 //
-//  phi^0 = 0 => cosh(0)=1 and the extra RHS term vanishes, so iteration 0
-//  reproduces the linear solve exactly. This is deliberate: it is a free
-//  regression check against the linear solver.
+//  phi^0 = 0 => g'(0)=1 and the extra RHS term vanishes, so iteration 0
+//  reproduces the linear solve exactly (for both ion models). This is
+//  deliberate: it is a free regression check against the linear solver.
 //
 //  Globalization: |du|_inf is clamped to maxdu from iteration 1 onward.
 //  Iteration 0 is unclamped so the jump to the linear solution is taken whole.
@@ -2555,8 +2583,8 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
       double extramax = 0.0;
       for (std::size_t i = 0; i < n; ++i)
         if (Cd[i] != 0.0) {
-          const double e = std::fabs (Cd[i] * (phi_old[i] * std::cosh (phi_old[i])
-                                               - std::sinh (phi_old[i])));
+          const double e = std::fabs (Cd[i] * (phi_old[i] * ion_model.dg (phi_old[i])
+                                               - ion_model.g (phi_old[i])));
           if (e > extramax) extramax = e;
         }
       std::cout << "  [Newton]   max|rhs_extra| from phi_old = "
@@ -3863,7 +3891,7 @@ poisson_boltzmann::energy_excess_nonlinear (ray_cache_t & ray_cache)
 
   // Excess-energy integrand for the 1:1 sinh model:
   //   f(psi) = psi/2 sinh(psi) - cosh(psi) + 1  (>= 0, O(psi^4)).
-  // Kept as a separate function so the steric (Bikerman/Borukhov) model can
+  // Kept as a separate function so the steric model can
   // swap it for  -[ psi/2 rho_s(psi)/C + (1/a) log D(psi) ]  later.
   auto f_exc = [] (double u) {
     return 0.5 * u * std::sinh (u) - std::cosh (u) + 1.0;

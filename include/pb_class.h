@@ -54,6 +54,41 @@ constexpr double Angs = 1e-10; //Angstrom [m]
 constexpr double pi = 3.14159265358979323846;
 
 
+// Mobile-ion model for the nonlinear PBE (1:1 salt, potential u in kT/e).
+// The ionic charge density in the solvent is  rho_ion = -eps_out k^2 g(u),
+// i.e. the Newton residual/Jacobian use C*g(u) and C*g'(u), C = reaction_nodes.
+//
+//   nu == 0 : ideal Boltzmann ions        g = sinh u
+//   nu  > 0 : Size modified lattice gas (finite ion size a):
+//               D(u) = 1 + nu (cosh u - 1),   nu = 2 a^3 n_b  (bulk packing fraction)
+//               g = sinh u / D,   g' = ((1 - nu) cosh u + nu) / D^2
+//             for nu < 1, g is bounded (|g| -> 1/nu) and 0 < g' <= cosh u with
+//             g' -> 0 at large |u|: counterions saturate at the close-packing
+//             density 1/a^3 instead of growing as exp(|u|).
+struct ion_model_t {
+  double nu = 0.0;
+
+  double
+  D (double u) const
+  { return 1.0 + nu * (std::cosh (u) - 1.0); }
+
+  double
+  g (double u) const
+  { return std::sinh (u) / D (u); }
+
+  double
+  dg (double u) const
+  {
+    const double d = D (u);
+    return ((1.0 - nu) * std::cosh (u) + nu) / (d * d);
+  }
+
+  const char *
+  name () const
+  { return nu > 0.0 ? "steric" : "sinh"; }
+};
+
+
 struct
   poisson_boltzmann {
 
@@ -120,6 +155,8 @@ struct
   int linearized;
   int bc;
   double e_in, e_out, ionic_strength; //[M]
+  double ion_size;        // [Angstrom] finite ion size a; 0 -> ideal (sinh) ions
+  ion_model_t ion_model;  // nu = 2 a^3 n_b, set right after reading the options
   double T;
   int calc_energy;
   double energy_pol = 0.0;

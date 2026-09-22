@@ -75,6 +75,10 @@ main (int argc, char **argv)
   if (pb.parse_options (argc, argv))
     return 1;
 
+  if (rank == 0 && pb.linearized == 1 && pb.ion_size > 0.0)
+    std::cout << "Warning: ion_size = " << pb.ion_size
+              << " is ignored by the linearized solver (set linearized = 0 for the steric model).\n";
+
   if (rank == 0) {
     std::ifstream inputfile (pb.pqrfilename);
 
@@ -233,7 +237,8 @@ main (int argc, char **argv)
 
   if (pb.linearized == 0) {
     if (rank == 0)
-      std::cout << "\n== [ Starting NONLINEAR solution: Newton on sinh ] ==\n";
+      std::cout << "\n== [ Starting NONLINEAR solution: Newton on "
+                << pb.ion_model.name () << " ] ==\n";
 
     pb.newton_solve (ray_cache);
   } else if (pb.linear_solver_name == "mumps") {

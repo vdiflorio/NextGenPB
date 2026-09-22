@@ -108,6 +108,13 @@ solvent_dielectric_constant   = 80     # Dielectric constant of the solvent (e.g
 ionic_strength                = 0.145  # Ionic strength (mol/L)
 T                             = 298.15 # Temperature in Kelvin
 
+# Finite ion size (steric / Bikerman model), nonlinear solver only (linearized = 0):
+#   0   = ideal point ions, rho_ion ~ sinh(phi)              (default)
+#   a>0 = ion size a in Angstrom; rho_ion ~ sinh(phi) / [1 + nu (cosh(phi) - 1)]
+#         with bulk packing fraction nu = 2 a^3 n_b (printed at startup; must be < 1).
+#         Counterions saturate at 1/a^3 instead of growing as exp(phi).
+ion_size = 0
+
 # Energy calculation options:
 # 0 = no energy
 # 1 = polarization energy 
