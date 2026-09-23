@@ -109,6 +109,15 @@ struct
                           const std::array<double, 2>& ray,
                           std::vector<NS::PBEdgeCrossing>& crossings) const;
 
+  // Surface crossing of the PB edge [x1,x2]; frac = (p - x1)/(x2 - x1) in [0,1].
+  // Accepts crossings up to aligned_tol*|x2-x1| outside the edge: where the
+  // surface passes through a node, NanoShaper can place the vertex of this edge
+  // ~1e-4 A beyond it. Returns false if the edge has no crossing.
+  bool
+  aligned_edge_crossing (unsigned dir, double x1, double x2,
+                         const std::array<double, 2>& ray,
+                         NS::PBEdgeCrossing& crossing, double& frac) const;
+
   void
   compute_ns_inters (crossings_t & ct);
 

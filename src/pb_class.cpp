@@ -2579,7 +2579,7 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
   int i1, i2;
   double x1, x2;
   std::array<double,2> ray;
-  std::vector<NS::PBEdgeCrossing> aligned_crossings;
+  NS::PBEdgeCrossing aligned_crossing;
 
   if (marker[quadrant->get_forest_quad_idx ()] == 0.5) {
     for (int j: {
@@ -2600,11 +2600,9 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       }
 
       if (ray_cache.aligned_mode) {
-        ray_cache.aligned_edge_crossings (dir, x1, x2, ray, aligned_crossings);
-
-        for (const auto& crossing : aligned_crossings)
-          if (crossing.point[dir] >= x1 && crossing.point[dir] <= x2)
-            fraction[j] = (crossing.point[dir] - x1) / (x2 - x1);
+        double f;
+        if (ray_cache.aligned_edge_crossing (dir, x1, x2, ray, aligned_crossing, f))
+          fraction[j] = f;
 
         continue;
       }
@@ -2637,11 +2635,9 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       }
 
       if (ray_cache.aligned_mode) {
-        ray_cache.aligned_edge_crossings (dir, x1, x2, ray, aligned_crossings);
-
-        for (const auto& crossing : aligned_crossings)
-          if (crossing.point[dir] >= x1 && crossing.point[dir] <= x2)
-            fraction[j] = (crossing.point[dir] - x1) / (x2 - x1);
+        double f;
+        if (ray_cache.aligned_edge_crossing (dir, x1, x2, ray, aligned_crossing, f))
+          fraction[j] = f;
 
         continue;
       }
@@ -2674,11 +2670,9 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
       }
 
       if (ray_cache.aligned_mode) {
-        ray_cache.aligned_edge_crossings (dir, x1, x2, ray, aligned_crossings);
-
-        for (const auto& crossing : aligned_crossings)
-          if (crossing.point[dir] >= x1 && crossing.point[dir] <= x2)
-            fraction[j] = (crossing.point[dir] - x1) / (x2 - x1);
+        double f;
+        if (ray_cache.aligned_edge_crossing (dir, x1, x2, ray, aligned_crossing, f))
+          fraction[j] = f;
 
         continue;
       }
@@ -2718,17 +2712,12 @@ poisson_boltzmann::normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
   }
 
   if (ray_cache.aligned_mode) {
-    std::vector<NS::PBEdgeCrossing> aligned_crossings;
-    ray_cache.aligned_edge_crossings (dir, x1, x2, ray, aligned_crossings);
-
+    NS::PBEdgeCrossing crossing;
     frac = 0.5;
-    for (const auto& crossing : aligned_crossings) {
-      if (crossing.point[dir] >= x1 && crossing.point[dir] <= x2) {
-        norm[0] = crossing.normal[0];
-        norm[1] = crossing.normal[1];
-        norm[2] = crossing.normal[2];
-        frac = (crossing.point[dir] - x1) / (x2 - x1);
-      }
+    if (ray_cache.aligned_edge_crossing (dir, x1, x2, ray, crossing, frac)) {
+      norm[0] = crossing.normal[0];
+      norm[1] = crossing.normal[1];
+      norm[2] = crossing.normal[2];
     }
     return;
   }
@@ -3772,11 +3761,10 @@ poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
           std::array<double,2> ray;
           for (int d = 0, r = 0; d < 3; ++d)
             if (d != axis) ray[r++] = quadrant->p (d, i1);
-          std::vector<NS::PBEdgeCrossing> xs;
-          ray_cache.aligned_edge_crossings (axis, x1, x2, ray, xs);
-          for (const auto& xc : xs)
-            if (xc.point[axis] >= x1 && xc.point[axis] <= x2)
-              vidx = xc.vertex_index;
+          NS::PBEdgeCrossing xc;
+          double f;
+          if (ray_cache.aligned_edge_crossing (axis, x1, x2, ray, xc, f))
+            vidx = xc.vertex_index;
         }
 
         local_crossings.push_back ({V[0], V[1], V[2], N[0], N[1], N[2],

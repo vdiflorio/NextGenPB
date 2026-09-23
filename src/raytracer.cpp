@@ -949,6 +949,28 @@ ray_cache_t::aligned_edge_crossings (unsigned dir, double x1, double x2,
   }
 }
 
+bool
+ray_cache_t::aligned_edge_crossing (unsigned dir, double x1, double x2,
+                                    const std::array<double, 2>& ray,
+                                    NS::PBEdgeCrossing& crossing, double& frac) const
+{
+  std::vector<NS::PBEdgeCrossing> xs;
+  aligned_edge_crossings (dir, x1, x2, ray, xs);
+
+  const double lo = std::min (x1, x2), hi = std::max (x1, x2);
+  const double tol = aligned_tol * (hi - lo);
+  bool found = false;
+  for (const auto& xc : xs)
+    if (xc.point[dir] >= lo - tol && xc.point[dir] <= hi + tol) {
+      crossing = xc;
+      found = true;
+    }
+
+  if (found)
+    frac = std::clamp ((crossing.point[dir] - x1) / (x2 - x1), 0.0, 1.0);
+  return found;
+}
+
 
 void
 ray_cache_t::compute_ns_inters (crossings_t & ct)
