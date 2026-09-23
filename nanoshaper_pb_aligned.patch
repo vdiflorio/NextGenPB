@@ -1,5 +1,5 @@
 diff --git a/src/Surface.cpp b/src/Surface.cpp
-index 6ca00fa..6082dda 100644
+index 6ca00fa..52daf1c 100644
 --- a/src/Surface.cpp
 +++ b/src/Surface.cpp
 @@ -6,6 +6,7 @@
@@ -10,7 +10,7 @@ index 6ca00fa..6082dda 100644
  
  VERTEX_TYPE *Surface::allocStableTriple(VERTEX_TYPE a, VERTEX_TYPE b, VERTEX_TYPE c)
  {
-@@ -14550,6 +14551,111 @@ inline int Surface::getTriangles(double *vertexValues, double isolevel, int **tr
+@@ -14550,6 +14551,112 @@ inline int Surface::getTriangles(double *vertexValues, double isolevel, int **tr
  }
  
  
@@ -102,6 +102,7 @@ index 6ca00fa..6082dda 100644
 +						crossing.normal[2] = n[2];
 +					}
 +					crossing.flags = 0;
++					crossing.vertex_index = vidx;
 +
 +					out.edge_crossings[dir][positions[static_cast<size_t>(eid)]++] = crossing;
 +				}
@@ -300,7 +301,7 @@ index cbec461..0f17c46 100644
          cfl->add<double>("ymin",-1.0);
          cfl->add<double>("zmin",-1.0);
 diff --git a/src/nanoshaper.h b/src/nanoshaper.h
-index 7d6bb85..2c17252 100644
+index 7d6bb85..d947488 100644
 --- a/src/nanoshaper.h
 +++ b/src/nanoshaper.h
 @@ -6,6 +6,9 @@
@@ -313,7 +314,7 @@ index 7d6bb85..2c17252 100644
  #include "raytracer_datatype.h"
  
  
-@@ -27,7 +30,71 @@ enum surface_type
+@@ -27,7 +30,74 @@ enum surface_type
  	blobby = 2
  };
  
@@ -335,6 +336,9 @@ index 7d6bb85..2c17252 100644
 +    double point[3] = {0.0, 0.0, 0.0};
 +    double normal[3] = {0.0, 0.0, 0.0};
 +    uint8_t flags = 0;
++    // 0-based index of this crossing in vertList, i.e. its vertex in the OFF
++    // written by triangulate() (Smooth_Mesh off). -1 if unknown.
++    int32_t vertex_index = -1;
 +};
 +
 +struct PBAlignedSurfaceData
@@ -386,7 +390,7 @@ index 7d6bb85..2c17252 100644
  /**@brief A point in R^3*/
  class Point
  {
-@@ -54,7 +121,18 @@ public:
+@@ -54,7 +124,18 @@ public:
  		pos[1] = p.pos[1];
  		pos[2] = p.pos[2];
  	}
@@ -406,7 +410,7 @@ index 7d6bb85..2c17252 100644
  	double squaredDist(const Point *const x)
  	{
  		double acc = 0;
-@@ -206,6 +284,18 @@ public:
+@@ -206,6 +287,18 @@ public:
  		resName = p.resName;
  		chain = p.chain;
  	}
@@ -425,7 +429,7 @@ index 7d6bb85..2c17252 100644
  };
  
  /**@brief An atom: an atom is a point in R^3 with radius, charge and dielectric value */
-@@ -250,14 +340,29 @@ public:
+@@ -250,14 +343,29 @@ public:
  	Atom(const Atom &p):Point(p)
  	{
  		radius = p.radius;
@@ -456,7 +460,7 @@ index 7d6bb85..2c17252 100644
  	void print()
  	{
  		std::cout << std::endl << std::endl << "Atom Info:" << std::endl;
-@@ -296,8 +401,9 @@ private:
+@@ -296,8 +404,9 @@ private:
      bool optimizeGrids;
      /* tolerance on the NextGenPB grid check*/
      double grid_tol;
@@ -468,7 +472,7 @@ index 7d6bb85..2c17252 100644
  public :
  
      /** This routine accepts the atoms set, the type of surface, 
-@@ -401,6 +507,16 @@ public :
+@@ -401,6 +510,16 @@ public :
          return raysArrayMap;
      }
  

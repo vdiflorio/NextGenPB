@@ -3720,7 +3720,9 @@ poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
   // Step 1: compute phi0 and the polarization charge q_pol at every border edge
   // crossing (same logic as write_potential_on_surface) — each rank processes
   // its local border_quad.
-  struct Crossing { double x, y, z, phi, qpol; long long g1, g2; };
+  // vidx = OFF vertex of this crossing, exported by NanoShaper in aligned mode
+  // (PBEdgeCrossing::vertex_index); -1 if unavailable.
+  struct Crossing { double x, y, z, nx, ny, nz, phi, qpol; long long g1, g2; int vidx; };
   std::vector<Crossing> local_crossings;
 
   if (!border_quad.empty ()) {
@@ -3763,9 +3765,23 @@ poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
                             * wha (tmp_eps[i1], tmp_eps[i2], frac)
                             * fl_dir[ip] * area_h[axis];
 
-        local_crossings.push_back ({V[0], V[1], V[2],
+        // OFF vertex index of the crossing: same selection as normal_intersection.
+        int vidx = -1;
+        if (ray_cache.aligned_mode) {
+          const double x1 = quadrant->p (axis, i1), x2 = quadrant->p (axis, i2);
+          std::array<double,2> ray;
+          for (int d = 0, r = 0; d < 3; ++d)
+            if (d != axis) ray[r++] = quadrant->p (d, i1);
+          std::vector<NS::PBEdgeCrossing> xs;
+          ray_cache.aligned_edge_crossings (axis, x1, x2, ray, xs);
+          for (const auto& xc : xs)
+            if (xc.point[axis] >= x1 && xc.point[axis] <= x2)
+              vidx = xc.vertex_index;
+        }
+
+        local_crossings.push_back ({V[0], V[1], V[2], N[0], N[1], N[2],
           phi0 (tmp_eps[i1], tmp_eps[i2], tmp_phi[i1], tmp_phi[i2], frac), qpol,
-          (long long) quadrant->gt (i1), (long long) quadrant->gt (i2)});
+          (long long) quadrant->gt (i1), (long long) quadrant->gt (i2), vidx});
       }
     }
   }
@@ -3861,80 +3877,136 @@ poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
       return { std::llround (x / snap), std::llround (y / snap), std::llround (z / snap) };
     };
 
-    // De-duplicate the per-cube crossings into DISTINCT surface crossings, keyed
-    // by the p4est global edge (gt(i1),gt(i2)) -- NOT by spatial position. The
-    // same border edge is visited from up to 4 cubes: q_pol must be SUMMED over
-    // them (multiplicity), while phi0/position are identical. Keying on position
-    // with a coarse snap would merge near-degenerate but DISTINCT crossings
-    // (which can be ~1e-5 A apart on a folded surface) and double-count q_pol.
-    struct EKey { long long a, b;
-      bool operator== (const EKey& o) const { return a == o.a && b == o.b; } };
-    struct EHash { size_t operator() (const EKey& k) const {
-      size_t h = std::hash<long long> () (k.a);
-      h ^= std::hash<long long> () (k.b) + 0x9e3779b97f4a7c15ULL + (h<<6) + (h>>2);
-      return h; } };
-    struct UCross { double x, y, z, phi, qpol; };
-
-    std::unordered_map<EKey, int, EHash> emap;
-    std::vector<UCross> ucross;
-    emap.reserve (all_crossings.size ());
-    ucross.reserve (all_crossings.size ());
-    for (const auto& c : all_crossings) {
-      const EKey k { std::min (c.g1, c.g2), std::max (c.g1, c.g2) };
-      auto it = emap.find (k);
-      if (it == emap.end ()) {
-        emap.emplace (k, (int) ucross.size ());
-        ucross.push_back ({ c.x, c.y, c.z, c.phi, c.qpol });
-      } else {
-        ucross[it->second].qpol += c.qpol;   // multiplicity sum
-      }
-    }
-
-    // Spatial bucket over the distinct crossings for NS-vertex matching (NS
-    // surface vertices differ from p4est crossings by up to ~snap). Each NS
-    // vertex takes the nearest distinct crossing in the 3x3x3 cell neighbourhood.
-    std::unordered_map<Key3, std::vector<int>, Hash3> bucket;
-    bucket.reserve (ucross.size ());
-    for (int u = 0; u < (int) ucross.size (); ++u)
-      bucket[make_key (ucross[u].x, ucross[u].y, ucross[u].z)].push_back (u);
-
-    int n_unmatched = 0;
     std::vector<double> phi_vert (nv, 0.0);
     std::vector<double> qpol_vert (nv, 0.0);
-    for (int i = 0; i < nv; ++i) {
-      const Key3 b0 = make_key (verts[i].x, verts[i].y, verts[i].z);
-      int best = -1;
-      double best_d2 = std::numeric_limits<double>::max ();
-      for (int dx = -1; dx <= 1; ++dx)
-        for (int dy = -1; dy <= 1; ++dy)
-          for (int dz = -1; dz <= 1; ++dz) {
-            auto it = bucket.find ({ b0.x + dx, b0.y + dy, b0.z + dz });
-            if (it == bucket.end ()) continue;
-            for (int u : it->second) {
-              const double ex = ucross[u].x - verts[i].x;
-              const double ey = ucross[u].y - verts[i].y;
-              const double ez = ucross[u].z - verts[i].z;
-              const double d2 = ex*ex + ey*ey + ez*ez;
-              if (d2 < best_d2) { best_d2 = d2; best = u; }
-            }
-          }
-      if (best < 0) {
-        ++n_unmatched;
+
+    // Primary path: exact association by index. In aligned mode every p4est
+    // crossing carries the OFF vertex it came from (NanoShaper vertList index),
+    // so each border edge maps to exactly one NS vertex. q_pol is summed over
+    // the (up to 4) cubes sharing the edge; phi0, position and normal are taken
+    // from the crossing at full precision (the OFF stores 3 decimals only).
+    // A nearest-position search cannot do this reliably: where the surface
+    // passes ~1e-3 A from a grid node, distinct crossings of different edges
+    // are closer than the OFF rounding and would be merged.
+    bool by_index = !all_crossings.empty ();
+    {
+      struct EKey2 { long long a, b; };
+      std::vector<EKey2> vedge (nv, EKey2 {-1, -1});
+      std::vector<char> hit (nv, 0);
+      long long n_noidx = 0, n_conflict = 0;
+      double max_dev = 0.0;
+      for (const auto& c : all_crossings) {
+        if (c.vidx < 0 || c.vidx >= nv) { ++n_noidx; continue; }
+        const EKey2 k { std::min (c.g1, c.g2), std::max (c.g1, c.g2) };
+        const int v = c.vidx;
+        if (!hit[v]) {
+          hit[v] = 1;
+          vedge[v] = k;
+          phi_vert[v] = c.phi;
+          const double ex = c.x - verts[v].x, ey = c.y - verts[v].y, ez = c.z - verts[v].z;
+          max_dev = std::max (max_dev, std::sqrt (ex*ex + ey*ey + ez*ez));
+        } else if (vedge[v].a != k.a || vedge[v].b != k.b) {
+          ++n_conflict;
+          continue;
+        }
+        qpol_vert[v] += c.qpol;
+      }
+      int n_missing = 0;
+      for (int i = 0; i < nv; ++i) n_missing += hit[i] ? 0 : 1;
+
+      if (n_noidx > 0 || n_conflict > 0 || n_missing > 0 || max_dev > 1.0e-2) {
+        std::cerr << "write_ns_vert_potential: ERROR: index association failed "
+                  << "(crossings without index " << n_noidx
+                  << ", vertices claimed by two edges " << n_conflict
+                  << ", vertices without crossing " << n_missing << "/" << nv
+                  << ", max |OFF - crossing| " << max_dev << " A); "
+                  << "falling back to nearest-position matching\n";
+        by_index = false;
+        std::fill (phi_vert.begin (), phi_vert.end (), 0.0);
+        std::fill (qpol_vert.begin (), qpol_vert.end (), 0.0);
       } else {
-        phi_vert[i]  = ucross[best].phi;
-        qpol_vert[i] = ucross[best].qpol;
+        // full-precision geometry from the crossings (same points as the OFF)
+        for (const auto& c : all_crossings) {
+          SurfVert& sv = verts[c.vidx];
+          sv.x = c.x; sv.y = c.y; sv.z = c.z;
+          const double nn = std::sqrt (c.nx*c.nx + c.ny*c.ny + c.nz*c.nz);
+          if (nn > 0.0) { sv.nx = c.nx / nn; sv.ny = c.ny / nn; sv.nz = c.nz / nn; }
+        }
+        std::cout << "write_ns_vert_potential: q_pol/phi associated by vertex index ("
+                  << nv << " vertices, max |OFF - crossing| = " << max_dev << " A)\n";
       }
     }
 
-    if (n_unmatched > 0)
-      std::cerr << "write_ns_vert_potential: ERROR: " << n_unmatched << "/" << nv
-                << " NS vertices not matched to any p4est crossing "
-                << "(surface or grid mismatch)\n";
+    // Fallback: nearest distinct crossing (legacy; not one-to-one near grid nodes).
+    if (!by_index) {
+      // De-duplicate the per-cube crossings into DISTINCT surface crossings, keyed
+      // by the p4est global edge (gt(i1),gt(i2)) -- NOT by spatial position. The
+      // same border edge is visited from up to 4 cubes: q_pol must be SUMMED over
+      // them (multiplicity), while phi0/position are identical. Keying on position
+      // with a coarse snap would merge near-degenerate but DISTINCT crossings
+      // (which can be ~1e-5 A apart on a folded surface) and double-count q_pol.
+      struct EKey { long long a, b;
+        bool operator== (const EKey& o) const { return a == o.a && b == o.b; } };
+      struct EHash { size_t operator() (const EKey& k) const {
+        size_t h = std::hash<long long> () (k.a);
+        h ^= std::hash<long long> () (k.b) + 0x9e3779b97f4a7c15ULL + (h<<6) + (h>>2);
+        return h; } };
+      struct UCross { double x, y, z, phi, qpol; };
 
-    const int nc = (int)all_crossings.size ();
-    if (nc != nv)
-      std::cerr << "write_ns_vert_potential: WARNING: " << nc
-                << " p4est crossings vs " << nv << " NS vertices (counts differ)\n";
+      std::unordered_map<EKey, int, EHash> emap;
+      std::vector<UCross> ucross;
+      emap.reserve (all_crossings.size ());
+      ucross.reserve (all_crossings.size ());
+      for (const auto& c : all_crossings) {
+        const EKey k { std::min (c.g1, c.g2), std::max (c.g1, c.g2) };
+        auto it = emap.find (k);
+        if (it == emap.end ()) {
+          emap.emplace (k, (int) ucross.size ());
+          ucross.push_back ({ c.x, c.y, c.z, c.phi, c.qpol });
+        } else {
+          ucross[it->second].qpol += c.qpol;   // multiplicity sum
+        }
+      }
+
+      // Spatial bucket over the distinct crossings for NS-vertex matching (NS
+      // surface vertices differ from p4est crossings by up to ~snap). Each NS
+      // vertex takes the nearest distinct crossing in the 3x3x3 cell neighbourhood.
+      std::unordered_map<Key3, std::vector<int>, Hash3> bucket;
+      bucket.reserve (ucross.size ());
+      for (int u = 0; u < (int) ucross.size (); ++u)
+        bucket[make_key (ucross[u].x, ucross[u].y, ucross[u].z)].push_back (u);
+
+      int n_unmatched = 0;
+      for (int i = 0; i < nv; ++i) {
+        const Key3 b0 = make_key (verts[i].x, verts[i].y, verts[i].z);
+        int best = -1;
+        double best_d2 = std::numeric_limits<double>::max ();
+        for (int dx = -1; dx <= 1; ++dx)
+          for (int dy = -1; dy <= 1; ++dy)
+            for (int dz = -1; dz <= 1; ++dz) {
+              auto it = bucket.find ({ b0.x + dx, b0.y + dy, b0.z + dz });
+              if (it == bucket.end ()) continue;
+              for (int u : it->second) {
+                const double ex = ucross[u].x - verts[i].x;
+                const double ey = ucross[u].y - verts[i].y;
+                const double ez = ucross[u].z - verts[i].z;
+                const double d2 = ex*ex + ey*ey + ez*ez;
+                if (d2 < best_d2) { best_d2 = d2; best = u; }
+              }
+            }
+        if (best < 0) {
+          ++n_unmatched;
+        } else {
+          phi_vert[i]  = ucross[best].phi;
+          qpol_vert[i] = ucross[best].qpol;
+        }
+      }
+
+      if (n_unmatched > 0)
+        std::cerr << "write_ns_vert_potential: ERROR: " << n_unmatched << "/" << nv
+                  << " NS vertices not matched to any p4est crossing "
+                  << "(surface or grid mismatch)\n";
+    }
 
     const std::string base = off_file.substr (0, off_file.rfind ('.'));
 
