@@ -121,6 +121,7 @@ ion_size = 0
 # 2 = polarization + ionic solvation energy
 calc_energy = 2
 calc_coulombic = 1    # 0 = No calculation of Coulombic energy
+                      #     (computed anyway when pot_field.dat is written: phi_c needs it)
 
 # Per-atom potential and field decomposition (written to 'pot_field.dat').
 # The potential/field at each atom center is split into three independent,
@@ -129,18 +130,26 @@ calc_coulombic = 1    # 0 = No calculation of Coulombic energy
 #   phi_p = polarization term (charge induced at the molecular/dielectric boundary)
 #   phi_i = ionic term (Debye screening of the ionic atmosphere)
 #
-# calc_potential_terms: which potential terms to evaluate at atom centers
-#   0 = none (skip the per-atom potential/field calculation)
-#   1 = Coulombic + polarization        -> columns phi_c, phi_p ; gives polarization energy
-#   2 = Coulombic + polarization + ionic -> columns phi_c, phi_p, phi_i ; also gives direct ionic energy
-#       (automatically degrades to 1 when there is no salt, i.e. ionic_strength ~ 0)
+# Levels: 1 = Coulombic + polarization, 2 = Coulombic + polarization + ionic.
+# The ionic term is the expensive one; without salt (ionic_strength ~ 0) it is
+# zero and level 2 falls back to 1.
 #
-# calc_field_terms: same 0/1/2 selection, but for the electric field vector
-#   (Ex, Ey, Ez) of each term.
+# calc_potential_terms (P): level of the potential columns
+# calc_field_terms     (F): level of the field columns (Ex, Ey, Ez of each term)
 #
-# Note: the Coulombic field E_c is always computed and written whenever either
-# option is > 0 (it is produced together with phi_c), even if calc_field_terms = 0.
-# Only E_p (polarization) and E_i (ionic) actually depend on calc_field_terms.
+# The field of a term gives its potential for free (not the other way round),
+# so potentials are written up to level max(P, F) and fields up to level F.
+# E_c is always written together with phi_c. Columns of pot_field.dat:
+#
+#   max(P,F)  F   columns
+#   1         0   phi_c phi_p          E_c
+#   1         1   phi_c phi_p          E_c E_p
+#   2         0   phi_c phi_p phi_i    E_c
+#   2         1   phi_c phi_p phi_i    E_c E_p
+#   2         2   phi_c phi_p phi_i    E_c E_p E_i
+#
+# P = F = 0: no pot_field.dat. The energies of calc_energy are computed in the
+# same pass over the surface.
 calc_potential_terms = 0
 calc_field_terms     = 0
 

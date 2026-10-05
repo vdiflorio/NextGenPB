@@ -844,10 +844,7 @@ struct
                           std::array<double,8>& tmp_phi,
                           std::array<double,8>& tmp_eps);
   void
-  energy (ray_cache_t & ray_cache);
-
-  void
-  energy_fast (ray_cache_t & ray_cache);
+  energy_pot_field (ray_cache_t & ray_cache);
 
   void
   energy_excess_nonlinear (ray_cache_t & ray_cache);
@@ -892,12 +889,6 @@ struct
 
   void
   search_points ();
-
-  void
-  pot_field_fast (ray_cache_t & ray_cache);
-
-  void
-  pot_field (ray_cache_t & ray_cache);
 
   void
   write_dataset (ray_cache_t & ray_cache);
