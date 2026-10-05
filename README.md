@@ -56,7 +56,27 @@ The nonlinear extension adds the following functions:
 ```text
 assemble_newton_system
 newton_solve
+energy_excess_nonlinear
 ```
+
+## Finite ion size (steric model)
+
+With `linearized = 0` the ideal `sinh` ions can be replaced by a
+size-modified lattice-gas model (Bikerman/Borukhov) by setting the ion
+size `a` in Angstrom:
+
+```text
+ion_size = 3.0   # 0 (default) = point ions, sinh model
+```
+
+The ionic charge density becomes
+$\rho_{ion} \propto \sinh\psi \,/\, [1 + \nu(\cosh\psi - 1)]$ with bulk
+packing fraction $\nu = 2a^3 n_b$ (printed at startup, must be $< 1$), so the
+counterion density saturates at $1/a^3$. The free energy adds the volume term
+$G_{exc} = -\int_{\Omega_s}[\tfrac12\rho_{ion}\phi + (P - P_0)]\,dV$ with
+$P - P_0 = (k_BT/a^3)\log[1 + \nu(\cosh\psi - 1)]$; the surface-integral
+partition (`energy`, `pot_field`) is unchanged. All model functions live in
+`ion_model_t` (`include/pb_class.h`).
 
 
 See `REPRODUCE.md` for step-by-step instructions to reproduce our

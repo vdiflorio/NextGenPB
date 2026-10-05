@@ -65,12 +65,35 @@ constexpr double pi = 3.14159265358979323846;
 //             for nu < 1, g is bounded (|g| -> 1/nu) and 0 < g' <= cosh u with
 //             g' -> 0 at large |u|: counterions saturate at the close-packing
 //             density 1/a^3 instead of growing as exp(|u|).
+//
+// Free energy (per 2 n_b kT, i.e. per C/(4 pi) in code units):
+//   osm(u)   = (P - P0) / (2 n_b kT)      osmotic pressure excess
+//            = cosh u - 1                 (ideal)
+//            = log(D(u)) / nu             (steric; -> cosh u - 1 as nu -> 0)
+//   f_exc(u) = -1/2 rho_s phi / (2 n_b kT) - osm(u) = u/2 g(u) - osm(u)
+//            excess ionic free energy density; it cancels to O(u^4) in the
+//            linear limit:
+//              f_exc = (1 - 3 nu) u^4/24 + (1 - 15 nu + 30 nu^2) u^6/360
+//                    + (1 - 63 nu + 420 nu^2 - 630 nu^3) u^8/13440 + O(u^10)
+//            The closed form loses ~12 eps/u^2 in relative precision (it is the
+//            difference of two O(u^2) terms, each accurate to eps once cosh u - 1
+//            is evaluated as 2 sinh^2(u/2)); the series truncates at ~u^10/1e6.
+//            They break even at |u| ~ 0.05, where the series takes over.
+//            f_exc >= 0 only for nu = 0; for nu > 0 it goes like -u/(2 nu) at large |u|.
 struct ion_model_t {
   double nu = 0.0;
 
+  // cosh u - 1 without cancellation (cosh(u) - 1.0 has absolute error ~eps).
+  static double
+  coshm1 (double u)
+  {
+    const double s = std::sinh (0.5 * u);
+    return 2.0 * s * s;
+  }
+
   double
   D (double u) const
-  { return 1.0 + nu * (std::cosh (u) - 1.0); }
+  { return 1.0 + nu * coshm1 (u); }
 
   double
   g (double u) const
@@ -81,6 +104,25 @@ struct ion_model_t {
   {
     const double d = D (u);
     return ((1.0 - nu) * std::cosh (u) + nu) / (d * d);
+  }
+
+  double
+  osm (double u) const
+  {
+    const double c = coshm1 (u);
+    return nu > 0.0 ? std::log1p (nu * c) / nu : c;
+  }
+
+  double
+  f_exc (double u) const
+  {
+    if (std::fabs (u) < 0.05) {
+      const double u2 = u * u, u4 = u2 * u2, nu2 = nu * nu;
+      return u4 * ((1.0 - 3.0 * nu) / 24.0
+                   + u2 * ((1.0 - 15.0 * nu + 30.0 * nu2) / 360.0
+                           + u2 * (1.0 - 63.0 * nu + 420.0 * nu2 - 630.0 * nu2 * nu) / 13440.0));
+    }
+    return 0.5 * u * g (u) - osm (u);
   }
 
   const char *

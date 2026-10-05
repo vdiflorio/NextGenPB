@@ -3850,19 +3850,24 @@ poisson_boltzmann::energy_fast (ray_cache_t & ray_cache)
 }
 
 // ============================================================
-//  Nonlinear excess ionic free energy (sinh model, 1:1 salt)
+//  Nonlinear excess ionic free energy (1:1 salt, sinh or steric model)
 //
 //  For the nonlinear PBE the surface-integral partition computed by
 //  energy()/energy_fast()/pot_field*() still yields
 //      G_coul + G_pol + G_ion_dir = 1/2 sum_i q_i phi(r_i)
 //  (the Green identity behind it only needs -div(eps grad phi) = rho_s in
 //  the solvent, whatever rho_s(phi) is). What is missing is the excess term
-//      G_exc = 2 kT n_b int_{solvent} [ psi/2 sinh(psi) - cosh(psi) + 1 ] dV,
-//  which vanishes identically in the linear limit (O(psi^4)) and is >= 0.
+//      G_exc = -int_{solvent} [ 1/2 rho_s phi + (P - P0) ] dV
+//            = 2 kT n_b int_{solvent} f_exc(psi) dV,
+//  with f_exc = psi/2 g(psi) - osm(psi) from ion_model_t:
+//      sinh  : f_exc = psi/2 sinh(psi) - cosh(psi) + 1              (>= 0)
+//      steric: f_exc = psi/2 sinh(psi)/D(psi) - log(D(psi))/nu,
+//              D = 1 + nu (cosh(psi) - 1)   (P - P0 = kT/a^3 log D)
+//  It vanishes identically in the linear limit (O(psi^4)).
 //
 //  In code units (psi dimensionless, lengths in Angstrom, charges in e) the
 //  nodal reaction coefficient is C = reaction_nodes = 8 pi n_b A^3 (0 inside
-//  the molecule), hence  G_exc/kT = (1/4pi) int C(r) f(psi) dV.
+//  the molecule), hence  G_exc/kT = (1/4pi) int C(r) f_exc(psi) dV.
 //  The volume integral uses bim3a_rhs_frac with the SAME cut-cell quadrature
 //  as the Newton reaction term, so energy and residual are consistent.
 //  Requires reaction_nodes / ones / phi still allocated (true after
@@ -3889,14 +3894,6 @@ poisson_boltzmann::energy_excess_nonlinear (ray_cache_t & ray_cache)
     return cube_fraction_intersection (quadrant, ray_cache);
   };
 
-  // Excess-energy integrand for the 1:1 sinh model:
-  //   f(psi) = psi/2 sinh(psi) - cosh(psi) + 1  (>= 0, O(psi^4)).
-  // Kept as a separate function so the steric model can
-  // swap it for  -[ psi/2 rho_s(psi)/C + (1/a) log D(psi) ]  later.
-  auto f_exc = [] (double u) {
-    return 0.5 * u * std::sinh (u) - std::cosh (u) + 1.0;
-  };
-
   // Nodal quadrature weights w_i = solvent-fraction patch volume of node i.
   // bim3a_rhs_frac is linear in its nodal argument (hanging nodes spread
   // their volume evenly over the parents), so int_{solvent} g dV = sum_i w_i g_i
@@ -3910,11 +3907,17 @@ poisson_boltzmann::energy_excess_nonlinear (ray_cache_t & ray_cache)
 
   // Integrands are all multiplied by C and set to zero where C == 0, to
   // avoid 0*inf near the point charges (exactly as in assemble_newton_system):
-  //   C f(psi)          -> G_exc
-  //   C psi/2 sinh(psi) -> -1/2 int rho_s phi
-  //   C (cosh(psi) - 1) -> int (P - P0)
-  //   C sinh(psi)       -> -4pi * mobile ion charge
-  double loc[4] = {0.0, 0.0, 0.0, 0.0};
+  //   C f_exc(psi)      -> G_exc
+  //   C psi/2 g(psi)    -> -1/2 int rho_s phi
+  //   C osm(psi)        -> int (P - P0)
+  //   C g(psi)          -> -4pi * mobile ion charge
+  //   C (n_+/n_b - 1)   -> 8pi * cation excess in the solvent (n_+ = n_b e^{-psi}/D)
+  //   C (n_-/n_b - 1)   -> 8pi * anion excess in the solvent  (n_- = n_b e^{+psi}/D)
+  //   w [C != 0]        -> ion-accessible volume
+  // G_exc is NOT recomputed as the difference of the two addends: for the
+  // steric model they are both O(psi/nu) at large psi and would cancel.
+  // n_pm/n_b - 1 = (expm1(-+psi) - nu coshm1(psi)) / D, without cancellation.
+  double loc[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
   {
     auto & Cd = reaction_nodes->get_owned_data ();
     auto & ud = phi->get_owned_data ();
@@ -3925,30 +3928,60 @@ poisson_boltzmann::energy_excess_nonlinear (ray_cache_t & ray_cache)
       if (Ci == 0.0)
         continue;
       const double ui = ud[i];
-      const double sh = std::sinh (ui);
-      const double ch = std::cosh (ui);
+      const double g  = ion_model.g (ui);
       const double cw = Ci * wd[i];
-      loc[0] += cw * f_exc (ui);
-      loc[1] += cw * 0.5 * ui * sh;
-      loc[2] += cw * (ch - 1.0);
-      loc[3] += cw * sh;
+      loc[0] += cw * ion_model.f_exc (ui);
+      loc[1] += cw * 0.5 * ui * g;
+      loc[2] += cw * ion_model.osm (ui);
+      loc[3] += cw * g;
+      const double d  = ion_model.D (ui);
+      const double sc = ion_model.nu * ion_model_t::coshm1 (ui);
+      loc[4] += cw * (std::expm1 (-ui) - sc) / d;
+      loc[5] += cw * (std::expm1 (ui) - sc) / d;
+      loc[6] += wd[i];
     }
   }
 
-  double glob[4] = {loc[0], loc[1], loc[2], loc[3]};
-  if (size > 1)
-    MPI_Allreduce (loc, glob, 4, MPI_DOUBLE, MPI_SUM, mpicomm);
+  // Box volume, for the preferential interaction coefficients
+  // Gamma_pm = int_solvent (n_pm - n_b) dV - n_b V_excl,  V_excl = V_box - V_acc,
+  // i.e. the ion excess over the whole box relative to bulk solution (the
+  // definition of ion counting experiments, Bai et al. 2007).
+  double vbox_loc = 0.0;
+  for (auto quadrant = tmsh.begin_quadrant_sweep ();
+       quadrant != tmsh.end_quadrant_sweep ();
+       ++quadrant)
+    vbox_loc += (quadrant->p (0, 7) - quadrant->p (0, 0))
+                * (quadrant->p (1, 7) - quadrant->p (1, 0))
+                * (quadrant->p (2, 7) - quadrant->p (2, 0));
+
+  double glob[7];
+  std::copy (loc, loc + 7, glob);
+  double vbox = vbox_loc;
+  if (size > 1) {
+    MPI_Allreduce (loc, glob, 7, MPI_DOUBLE, MPI_SUM, mpicomm);
+    MPI_Allreduce (&vbox_loc, &vbox, 1, MPI_DOUBLE, MPI_SUM, mpicomm);
+  }
 
   energy_exc = inv_4pi * glob[0];
   const double energy_half = inv_4pi * glob[1];
   const double energy_osm  = inv_4pi * glob[2];
   const double charge_ion  = -inv_4pi * glob[3];
+  const double n_b    = 1.0e3 * N_av * ionic_strength * Angs * Angs * Angs;  // 1/A^3
+  const double v_acc  = glob[6];
+  const double v_excl = vbox - v_acc;
+  const double gamma_p = 0.5 * inv_4pi * glob[4] - n_b * v_excl;
+  const double gamma_m = 0.5 * inv_4pi * glob[5] - n_b * v_excl;
 
   if (rank == 0) {
     constexpr int label_width = 50;
     constexpr int precision = 16;
 
     std::cout << "\n============ [ Nonlinear excess ionic energy ] ============\n";
+    std::cout << std::left << std::setw (label_width) << "  Ion model:"
+              << ion_model.name ();
+    if (ion_model.nu > 0.0)
+      std::cout << "  (a = " << ion_size << " A, nu = " << ion_model.nu << ")";
+    std::cout << "\n";
     std::cout << std::left << std::setw (label_width) << "  -1/2 int rho_s phi [kT]:"
               << std::setprecision (precision) << energy_half << "\n";
     std::cout << std::left << std::setw (label_width) << "  Osmotic term int (P-P0) [kT]:"
@@ -3957,6 +3990,12 @@ poisson_boltzmann::energy_excess_nonlinear (ray_cache_t & ray_cache)
               << std::setprecision (precision) << energy_exc << "\n";
     std::cout << std::left << std::setw (label_width) << "  Mobile ion charge [e]:"
               << std::setprecision (precision) << charge_ion << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Ion-excluded volume [A^3]:"
+              << std::setprecision (precision) << v_excl << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Cation excess Gamma+ [ions]:"
+              << std::setprecision (precision) << gamma_p << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Anion excess Gamma- [ions]:"
+              << std::setprecision (precision) << gamma_m << "\n";
     std::cout << std::left << std::setw (label_width) << "  Total nonlinear free energy [kT]:"
               << std::setprecision (precision)
               << (energy_pol + energy_react + coul_energy + energy_exc) << "\n";
