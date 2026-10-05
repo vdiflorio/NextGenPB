@@ -69,6 +69,7 @@ outlevel  = 1     # Minimum refinement level outside the refine box
 
 # Optional: displace mesh center randomly within half grid size (used in stochastic sampling)
 rand_center = 0   # 1 = enable random center displacement, 0 = disable (only for mesh_shape=0,1)
+rand_seed   = 0   # seed of the displacement: 0 = random (default), n > 0 = fixed, reproducible
 
 # Only for mesh_shape = 2 (manual bounding box):
 # Define the physical domain directly
@@ -218,11 +219,12 @@ solver_options = -p\ ssor\ -ssor_omega\ 0.51\ -i\ cgs\ -tol\ 1.e-6\ -print\ 2\ -
 # solver_options = -i\ cg\ -p\ ilu\ -ilu_fill\ [0]\ -tol\ 1.e-6\ -print\ 2\ -conv_cond\ 2\ -tol_w\ 0
 
 # Nonlinear (Newton) solver only, linearized = 0:
-# 0 = off (default)
+# 0 = off
 # 1 = after Newton iteration 0 (which equals the linear PB solution), map the
 #     potential at solvent nodes as phi -> 2 asinh(phi/2) (Grahame relation)
 #     before iteration 1. Applied once; better initial guess, same converged
 #     solution, fewer Newton iterations when |phi| at the surface is large.
-newton_compress = 0
+#     Default when the option is not given.
+newton_compress = 1
 
 [../]

@@ -222,6 +222,7 @@ struct
   int mesh_shape;
   int refine_box;
   int rand_center;
+  int rand_seed;         // rand_center: 0 = random seed, n > 0 = fixed seed
   int scale_level;
   int scale_level_min_box;
   double scale, scale_min, scale_max;
@@ -259,7 +260,7 @@ struct
   //algorithm:
   std::string linear_solver_name;
   std::string linear_solver_options;
-  int newton_compress;   // 1: after Newton it 0 (== linear solve) map solvent phi -> 2 asinh(phi/2)
+  int newton_compress;   // 1 (default): after Newton it 0 (== linear solve) map solvent phi -> 2 asinh(phi/2)
 
   MPI_Comm mpicomm;
   tmesh_3d tmsh;

@@ -119,21 +119,31 @@ poisson_boltzmann::create_mesh ()
       lmax = l[kk] > lmax ? l[kk] : lmax;
     }
 
-    // For random displacement of the grid
+    // For random displacement of the grid. The shift is drawn on rank 0 and
+    // broadcast: every rank must build the mesh around the same centre.
     if (rand_center == 1) {
-      std::random_device rd; // Will be used to obtain a seed for the random number engine
-      std::mt19937 gen (rd ()); // Standard mersenne_twister_engine seeded with rd()
-      std::uniform_real_distribution<> dis (-1./scale*0.5, 1./scale*0.5);
-      double tmp_cc[3];
+      double shift[3] = {0.0, 0.0, 0.0};
 
-      for (int n = 0; n < 3; ++n) {
-        tmp_cc[n] = cc[n];
-        cc[n] = tmp_cc[n] + dis (gen);
+      if (rank == 0) {
+        // rand_seed > 0: fixed seed, reproducible shift; 0: random seed.
+        std::random_device rd;
+        std::mt19937 gen (rand_seed > 0 ? static_cast<unsigned> (rand_seed) : rd ());
+        std::uniform_real_distribution<> dis (-1./scale*0.5, 1./scale*0.5);
+
+        for (int n = 0; n < 3; ++n)
+          shift[n] = dis (gen);
       }
 
-      std::cout << tmp_cc[0] << "  " << cc[0] << "  " << std::abs (tmp_cc[0] -cc[0]) << std::endl;
-      std::cout << tmp_cc[1] << "  " << cc[1] << "  " << std::abs (tmp_cc[1] -cc[1]) << std::endl;
-      std::cout << tmp_cc[2] << "  " << cc[2] << "  " << std::abs (tmp_cc[2] -cc[2]) << std::endl;
+      MPI_Bcast (shift, 3, MPI_DOUBLE, 0, mpicomm);
+
+      for (int n = 0; n < 3; ++n)
+        cc[n] += shift[n];
+
+      if (rank == 0)
+        std::cout << "  Random centre shift [Å]: [" << shift[0] << ", " << shift[1]
+                  << ", " << shift[2] << "]"
+                  << (rand_seed > 0 ? "  (seed " + std::to_string (rand_seed) + ")" : "")
+                  << "\n";
     }
 
     for (int kk = 0; kk < 3; ++kk) {
@@ -900,6 +910,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   mesh_shape = g2 ( (mesh_options + "mesh_shape").c_str (), 1);
   refine_box = g2 ( (mesh_options + "refine_box").c_str (), 0);
   rand_center = g2 ( (mesh_options + "rand_center").c_str (), 0);
+  rand_seed = g2 ( (mesh_options + "rand_seed").c_str (), 0);
   aligned = g2 ( (mesh_options + "aligned").c_str (), 0);
 
   if (mesh_shape < 2) {
@@ -999,7 +1010,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   const std::string alg_options = "algorithm/";
   linear_solver_name = g2 ( (alg_options + "linear_solver").c_str (), "lis");
   linear_solver_options = g2 ( (alg_options + "solver_options").c_str (), "-p ssor -ssor_omega 0.51 -i cgs -tol 1.e-6 -print 2 -conv_cond 2 -tol_w 0");
-  newton_compress = g2 ( (alg_options + "newton_compress").c_str (), 0);
+  newton_compress = g2 ( (alg_options + "newton_compress").c_str (), 1);
 
   const std::string out_options = "output/";
   p4estfilename = g2 ( (out_options + "p4estfilename").c_str (), "poisson_boltzmann_p4est");
@@ -2536,7 +2547,7 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
 //  Globalization: |du|_inf is clamped to maxdu from iteration 1 onward.
 //  Iteration 0 is unclamped so the jump to the linear solution is taken whole.
 //
-//  Optional (newton_compress = 1): right after iteration 0, i.e. on the linear
+//  newton_compress = 1 (default): right after iteration 0, i.e. on the linear
 //  solution, solvent nodes are mapped phi -> 2 asinh(phi/2). This is the
 //  Grahame relation for a 1:1 electrolyte (sigma ~ phi in DH vs
 //  sigma ~ 2 sinh(phi/2) nonlinear): same surface charge, nonlinear surface
