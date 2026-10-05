@@ -819,6 +819,19 @@ struct
   void
   create_density_map (ray_cache_t & ray_cache);
 
+  /**
+   * @brief New distributed vector on the mesh nodes, ghosts already set up.
+   *
+   * With MPI it is a copy of epsilon_nodes, whose ghost entries were built
+   * once by bim3a_solution_with_ghosts in create_markers: overwrite the owned
+   * values, then v->assemble (op) updates the ghosts with one exchange,
+   * without the sweep over the mesh and the remap. The ghost values of the
+   * copy are those of epsilon_nodes until then. Valid after create_markers
+   * (the mesh does not change afterwards).
+   */
+  std::unique_ptr<distributed_vector>
+  new_node_vector ();
+
   void
   mumps_compute_electric_potential (ray_cache_t & ray_cache);
 

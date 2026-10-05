@@ -2128,14 +2128,16 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
   if (size >1) {
     bim3a_solution_with_ghosts (tmsh, *epsilon_nodes, replace_op);
 
-    // reaction_nodes has the same ghost entries as epsilon_nodes: reuse them
+    // reaction_nodes gets the ghost entries of epsilon_nodes (new_node_vector)
     // instead of a second bim3a_solution_with_ghosts, whose sweep over the
-    // mesh and its neighbours costs seconds on large meshes. replace_op keeps
-    // the owned values and copies them to the ghosts.
-    auto r = std::make_unique<distributed_vector> (*epsilon_nodes);
-    r->get_owned_data () = reaction_nodes->get_owned_data ();
-    r->assemble (replace_op);
-    reaction_nodes = std::move (r);
+    // mesh and its neighbours costs seconds on large meshes. The old vector
+    // is freed first, so the two never coexist.
+    std::vector<double> c;
+    c.swap (reaction_nodes->get_owned_data ());
+    reaction_nodes.reset ();
+    reaction_nodes = new_node_vector ();
+    reaction_nodes->get_owned_data ().swap (c);
+    reaction_nodes->assemble (replace_op);
   }
 
   if (stern_layer_surf == 1 && k2 > 0.0) {
@@ -2153,6 +2155,18 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
       std::cout << "  Stern layer: ion-free spheres R_i + " << stern_layer
                 << " A, " << glob << " solvent nodes without ions\n";
   }
+}
+
+std::unique_ptr<distributed_vector>
+poisson_boltzmann::new_node_vector ()
+{
+  int size;
+  MPI_Comm_size (mpicomm, &size);
+
+  if (size > 1)
+    return std::make_unique<distributed_vector> (*epsilon_nodes);
+
+  return std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
 }
 
 void
@@ -2176,13 +2190,20 @@ poisson_boltzmann::create_density_map (ray_cache_t & ray_cache)
   // ------------------------------------------------------------
   // Allocate and initialize nodal density vector (rho)
   // ------------------------------------------------------------
-  this->rho_fixed = std::make_unique<distributed_vector> (tmsh.num_owned_nodes(), mpicomm);
+  // Ghost entries from new_node_vector; the exchange sets them to zero
+  // before the charges are accumulated below.
+  this->rho_fixed = new_node_vector ();
   this->rho_fixed->get_owned_data().assign (tmsh.num_owned_nodes(), 0.0);
+
+  if (size > 1)
+    this->rho_fixed->assemble (replace_op);
+
+  const int rho_non_local = this->rho_fixed->non_local_size ();
 
   // ------------------------------------------------------------
   // Vector of ones at nodes
   // ------------------------------------------------------------
-  this->ones = std::make_unique<distributed_vector> (tmsh.num_owned_nodes(), mpicomm);
+  this->ones = new_node_vector ();
   this->ones->get_owned_data().assign (tmsh.num_owned_nodes(), 1.0);
 
   // ------------------------------------------------------------
@@ -2200,7 +2221,7 @@ poisson_boltzmann::create_density_map (ray_cache_t & ray_cache)
   // Update ghost values if running in parallel
   // ------------------------------------------------------------
   if (size > 1)
-    bim3a_solution_with_ghosts (tmsh, *ones, replace_op);
+    ones->assemble (replace_op);
 
   // ------------------------------------------------------------
   // Compute patch volumes by integrating the constant field = 1
@@ -2258,10 +2279,17 @@ poisson_boltzmann::create_density_map (ray_cache_t & ray_cache)
   vol_patch.reset();
 
   // ------------------------------------------------------------
-  // Sync ghost nodes of rho_fixed in parallel runs
+  // Sync ghost nodes of rho_fixed in parallel runs: the ghost contributions
+  // are summed into their owners, then sent back to the ghosts. If a charge
+  // touched a node outside the known ghost entries (the map grew), rebuild
+  // them with the full bim3a_solution_with_ghosts so nothing is lost.
   // ------------------------------------------------------------
-  if (size > 1)
-    bim3a_solution_with_ghosts (tmsh, *rho_fixed);
+  if (size > 1) {
+    if (rho_fixed->non_local_size () == rho_non_local)
+      rho_fixed->assemble ();
+    else
+      bim3a_solution_with_ghosts (tmsh, *rho_fixed);
+  }
 }
 
 void
@@ -2387,10 +2415,8 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
   MPI_Comm_size (mpicomm, &size);
   MPI_Comm_rank (mpicomm, &rank);
 
-  // The operators sweep all 8 local nodes (incl. ghosts), so make
-  // sure the current iterate's ghost values are up to date first.
-  if (size > 1)
-    bim3a_solution_with_ghosts (tmsh, phi_cur, replace_op);
+  // The operators read all 8 local nodes (incl. ghosts): phi_cur's ghost
+  // values must be up to date. newton_solve syncs phi after every change.
 
   // Same cut-cell helper as the linear assembly.
   auto func_frac = [&] (tmesh_3d::quadrant_iterator& quadrant) {
@@ -2408,13 +2434,14 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
   // C = reaction_nodes (nodal reaction coefficient, 0 inside molecule)
   const std::size_t n = tmsh.num_owned_nodes();
 
-  distributed_vector cosh_coeff (tmsh.num_owned_nodes(), mpicomm); // C*g'(phi)
-  distributed_vector rhs_extra  (tmsh.num_owned_nodes(), mpicomm); // C*(phi*g'(phi)-g(phi))
+  // Ghost entries from new_node_vector (no sweep over the mesh).
+  auto cosh_coeff = new_node_vector (); // C*g'(phi)
+  auto rhs_extra  = new_node_vector (); // C*(phi*g'(phi)-g(phi))
 
   auto & C_data     = reaction_nodes->get_owned_data ();
   auto & phi_data   = phi_cur.get_owned_data ();
-  auto & cosh_data  = cosh_coeff.get_owned_data ();
-  auto & extra_data = rhs_extra.get_owned_data ();
+  auto & cosh_data  = cosh_coeff->get_owned_data ();
+  auto & extra_data = rhs_extra->get_owned_data ();
 
   for (std::size_t i = 0; i < n; ++i) {
     const double Ci = C_data[i];
@@ -2436,15 +2463,15 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
   }
 
   if (size > 1) {
-    bim3a_solution_with_ghosts (tmsh, cosh_coeff, replace_op);
-    bim3a_solution_with_ghosts (tmsh, rhs_extra,  replace_op);
+    cosh_coeff->assemble (replace_op);
+    rhs_extra->assemble (replace_op);
   }
 
    // Add extra RHS term  M_frac * [ C (phi g'(phi) - g(phi)) ].
   // Must use the SAME fractional cut-cell quadrature as the LHS reaction
   // term (bim3a_reaction_frac); the full-cell bim3a_rhs makes the two
   // disagree at cut cells and scales the Newton step by m_full/m_frac.
-  bim3a_rhs_frac (tmsh, *ones, rhs_extra, *rhs, func_frac);
+  bim3a_rhs_frac (tmsh, *ones, *rhs_extra, *rhs, func_frac);
 
   // Then accumulate the fixed-charge load  b = M * rho_fixed.
   bim3a_rhs (tmsh, const_ones, *rho_fixed, *rhs);
@@ -2453,7 +2480,7 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
   bim3a_laplacian_frac (tmsh, *epsilon_nodes, *A, func_frac);
 
   // --- Jacobian reaction term with coefficient C*g'(phi) ---
-  bim3a_reaction_frac (tmsh, cosh_coeff, *ones, *A, func_frac);
+  bim3a_reaction_frac (tmsh, *cosh_coeff, *ones, *A, func_frac);
 
   // --- Dirichlet BCs: identical to assemple_system_matrix ---
   dirichlet_bcs3 bcs;
@@ -2548,10 +2575,10 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
   const std::size_t n = tmsh.num_owned_nodes ();
 
   // Initial guess phi^0 = 0.
-  phi = std::make_unique<distributed_vector> (n, mpicomm);
+  phi = new_node_vector ();
   phi->get_owned_data ().assign (n, 0.0);
   if (size > 1)
-    bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
+    phi->assemble (replace_op);
 
   std::vector<double> phi_old (n, 0.0);
   std::vector<double> du (n, 0.0);
@@ -2713,8 +2740,9 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
                   << std::setprecision (6) << std::endl;
     }
 
+    // phi comes from new_node_vector (via the solver): only the values move.
     if (size > 1)
-      bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
+      phi->assemble (replace_op);
   }
 
   if (!converged && rank == 0)
@@ -2787,11 +2815,21 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
             << mumps_solver.solve ()
             << std::endl;
 
-  phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes ());
-  (*phi) = mumps_solver.get_distributed_solution ();
+  // MUMPS gathers the solution on rank 0 (it owns every entry; the other
+  // ranks hold their rows as non-local entries): read our rows by global
+  // index, so phi keeps the distribution of the mesh.
+  {
+    const distributed_vector sol = mumps_solver.get_distributed_solution ();
+    phi = new_node_vector ();
+    auto & od = phi->get_owned_data ();
+    const int is = phi->get_range_start ();
+
+    for (std::size_t i = 0; i < od.size (); ++i)
+      od[i] = sol[is + i];
+  }
 
   if (size > 1)
-    bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
+    phi->assemble (replace_op);
 
   ///////
 
@@ -2877,14 +2915,14 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   lis_solver_destroy (solver);
   lis_vector_destroy (rhs_lis);
 
-  phi = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (), mpicomm);
+  phi = new_node_vector ();
 
   lis_vector_get_values (phi_lis, is, ln, phi->get_owned_data ().data ());
 
   lis_vector_destroy (phi_lis);
 
   if (size > 1)
-    bim3a_solution_with_ghosts (tmsh, *phi, replace_op);
+    phi->assemble (replace_op);
 
 }
 
