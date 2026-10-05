@@ -1896,46 +1896,90 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
 
 
-double
-poisson_boltzmann::is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, double y, double z, int dir)
+void
+stern_grid_t::build (const std::vector<std::array<double,3>> &pos,
+                     const std::vector<double> &rad, double s)
 {
-  int rank;
-  MPI_Comm_rank (mpicomm, &rank);
-  double x1 = x;
-  double x2 = y;
-  double x3 = z;
+  const std::size_t na = pos.size ();
+  at.clear ();
+  start.assign (1, 0);
+  n = {0, 0, 0};
 
-  if (dir == 0) {
-    x1 = y;
-    x2 = z;
-    x3 = x;
-  } else if (dir == 1) {
-    x1 = x;
-    x2 = z;
-    x3 = y;
+  if (na == 0)
+    return;
+
+  L = *std::max_element (rad.begin (), rad.end ()) + s;
+
+  for (int d = 0; d < 3; ++d) {
+    lo[d] = hi[d] = pos[0][d];
+
+    for (const auto &p : pos) {
+      lo[d] = std::min (lo[d], p[d]);
+      hi[d] = std::max (hi[d], p[d]);
+    }
+
+    lo[d] -= L;
+    hi[d] += L;
+    n[d] = std::max (1, static_cast<int> (std::ceil ((hi[d] - lo[d]) / L)));
   }
 
-  crossings_t & ct = ray_cache (x1, x2, dir);
+  auto cell_of = [&] (const std::array<double,3> &p) {
+    int c[3];
 
-  if (!ct.init && rank != 0) {
-    std::array<double, 2> ray = {x1, x2};
-    ray_cache.rays[dir].erase (ray);
-    return -1.;
+    for (int d = 0; d < 3; ++d)
+      c[d] = std::min (n[d] - 1, static_cast<int> ((p[d] - lo[d]) / L));
+
+    return (c[0] * n[1] + c[1]) * n[2] + c[2];
+  };
+
+  // Counting sort of the atoms by cell (CSR layout).
+  start.assign (static_cast<std::size_t> (n[0]) * n[1] * n[2] + 1, 0);
+  std::vector<int> cell (na);
+
+  for (std::size_t i = 0; i < na; ++i) {
+    cell[i] = cell_of (pos[i]);
+    ++start[cell[i] + 1];
   }
 
-  int i = 0;
-  int sign = 1;
+  for (std::size_t c = 1; c < start.size (); ++c)
+    start[c] += start[c - 1];
 
-  if (ct.inters.size () == 0 || x3 < (ct.inters[i]- stern_layer))
-    return 0; //if there are no inters or y_the coord is before the first intersection, the point is outside.
+  at.resize (na);
+  std::vector<int> fill (start.begin (), start.end () - 1);
 
-  while (i < ct.inters.size () && x3 > (ct.inters[i] - stern_layer*sign)) {
-    //go on until the inters is passed
-    i++;
-    sign *= -1;
+  for (std::size_t i = 0; i < na; ++i) {
+    const double r = rad[i] + s;
+    at[fill[cell[i]]++] = {pos[i][0], pos[i][1], pos[i][2], r * r};
   }
+}
 
-  return (i % 2);
+bool
+stern_grid_t::inside (double x, double y, double z) const
+{
+  if (at.empty () || x < lo[0] || x > hi[0] || y < lo[1] || y > hi[1]
+      || z < lo[2] || z > hi[2])
+    return false;
+
+  const int c0 = std::min (n[0] - 1, static_cast<int> ((x - lo[0]) / L));
+  const int c1 = std::min (n[1] - 1, static_cast<int> ((y - lo[1]) / L));
+  const int c2 = std::min (n[2] - 1, static_cast<int> ((z - lo[2]) / L));
+
+  for (int i = std::max (0, c0 - 1); i <= std::min (n[0] - 1, c0 + 1); ++i)
+    for (int j = std::max (0, c1 - 1); j <= std::min (n[1] - 1, c1 + 1); ++j)
+      for (int k = std::max (0, c2 - 1); k <= std::min (n[2] - 1, c2 + 1); ++k) {
+        const int c = (i * n[1] + j) * n[2] + k;
+
+        for (int a = start[c]; a < start[c + 1]; ++a) {
+          const double dx = x - at[a][0];
+          const double dy = y - at[a][1];
+          const double dz = z - at[a][2];
+
+          if (dx * dx + dy * dy + dz * dz < at[a][3])
+            return true;
+        }
+      }
+
+  return false;
 }
 
 
@@ -1957,9 +2001,16 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
 
   this->marker.assign (this->tmsh.num_local_quadrants (), 0.0); //marker = 0 -> in
 
+  // Stern layer: reaction_nodes = 0 also on the nodes inside the spheres
+  // R_i + stern_layer (see stern_grid_t). It is nodal like the molecule
+  // interior, so the linear and Newton solvers, the excess energy and
+  // Gamma+- all see it. Only tested in the last cycle, when every node
+  // inside the molecule is already known (and has reaction_nodes = 0).
+  stern_grid_t stern;
+
   if (stern_layer_surf == 1) {
-    this->marker_k.assign (this->tmsh.num_local_quadrants (), 1.0); //marker = 1 -> out stern
-    this->reaction.assign (tmsh.num_local_quadrants (), eps_out*k2);
+    stern.build (pos_atoms, r_atoms, stern_layer);
+    std::vector<double> ().swap (r_atoms);
   }
 
   epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
@@ -1989,9 +2040,12 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
          quadrant != this->tmsh.end_quadrant_sweep ();
          ++quadrant) {
       int num_int_nodes = 0;
-      int num_int_nodes_stern = 0;
       int num_hanging[3] = {0, 0, 0};
       double x,y,z;
+
+      const bool test_stern = stern_layer_surf == 1 && (jj != 0 || num_cycles == 1)
+                              && stern.box_near ({quadrant->p (0, 0), quadrant->p (1, 0), quadrant->p (2, 0)},
+                                                 {quadrant->p (0, 7), quadrant->p (1, 7), quadrant->p (2, 7)});
 
       for (int ii = 0; ii < 8; ++ii) {
         local_num =quadrant->gt (ii);
@@ -2000,9 +2054,10 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
         z = quadrant->p (2, ii);
 
         if (! quadrant->is_hanging (ii)) {
-          if (this->is_in_ns_surf (ray_cache, x, y, z, 2) > 0.5) { //inside the molecule
+          const bool in_mol = this->is_in_ns_surf (ray_cache, x, y, z, 2) > 0.5;
+
+          if (in_mol) { //inside the molecule
             ++num_int_nodes;
-            ++num_int_nodes_stern;
             (*epsilon_nodes)[local_num] = eps_in;
             (*reaction_nodes)[local_num] = 0.0;
           } else if (this->is_in_ns_surf (ray_cache, x, y, z, 2) < -0.5) {
@@ -2029,12 +2084,8 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
             ray_cache.rays_list[1].insert ({x,z});
           }
 
-          if (stern_layer_surf == 1) {
-            if (this->is_in_ns_surf_stern (ray_cache, x, y, z, 2) > 0.5) { //inside the stern layer
-              ++num_int_nodes_stern;
-            }
-          }
-
+          if (test_stern && !in_mol && stern.inside (x, y, z)) //inside the stern layer
+            (*reaction_nodes)[local_num] = 0.0;
 
         } else
           for (int idir = 0; idir < 3; ++idir) {
@@ -2066,14 +2117,6 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
         }
 
         //else: all the nodes are inside: the quadrant is inside and the marker value is 0
-        if (stern_layer_surf == 1) {
-          for (int idir = 0; idir < 3; ++idir)
-            if (num_int_nodes_stern != 0) { //if there is at least on node inside the stern layer along idir-axis
-              this->marker_k[quadrant->get_forest_quad_idx ()] = 0.0; //quadrant is in
-              this->reaction[quadrant->get_forest_quad_idx ()] = 0.0; //quadrant is in
-            }
-        }
-
       }
 
     }
@@ -2085,8 +2128,30 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
   if (size >1) {
     bim3a_solution_with_ghosts (tmsh, *epsilon_nodes, replace_op);
 
-    if (stern_layer_surf == 0)
-      bim3a_solution_with_ghosts (tmsh, (*reaction_nodes), replace_op);
+    // reaction_nodes has the same ghost entries as epsilon_nodes: reuse them
+    // instead of a second bim3a_solution_with_ghosts, whose sweep over the
+    // mesh and its neighbours costs seconds on large meshes. replace_op keeps
+    // the owned values and copies them to the ghosts.
+    auto r = std::make_unique<distributed_vector> (*epsilon_nodes);
+    r->get_owned_data () = reaction_nodes->get_owned_data ();
+    r->assemble (replace_op);
+    reaction_nodes = std::move (r);
+  }
+
+  if (stern_layer_surf == 1 && k2 > 0.0) {
+    // Stern nodes: solvent (eps_out) without ions.
+    long loc = 0, glob = 0;
+    const auto & ed = epsilon_nodes->get_owned_data ();
+    const auto & cd = reaction_nodes->get_owned_data ();
+
+    for (std::size_t i = 0; i < cd.size (); ++i)
+      loc += (cd[i] == 0.0 && ed[i] == eps_out);
+
+    MPI_Reduce (&loc, &glob, 1, MPI_LONG, MPI_SUM, 0, mpicomm);
+
+    if (rank == 0)
+      std::cout << "  Stern layer: ion-free spheres R_i + " << stern_layer
+                << " A, " << glob << " solvent nodes without ions\n";
   }
 }
 
@@ -2241,19 +2306,13 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
   // Assemble Laplace operator (with fractional cell treatment)
   bim3a_laplacian_frac (tmsh, *epsilon_nodes, *A, func_frac);
 
-  // Add reaction term (Stern layer present or fractional formulation)
-  if (stern_layer_surf == 1) {
-    // Standard Stern-layer reaction
-    bim3a_reaction (tmsh, reaction, *ones, *A);
-  } else {
-    // Fractional reaction for intersected cells
-    bim3a_reaction_frac (tmsh, (*reaction_nodes), *ones, *A, func_frac);
-  }
+  // Reaction term, fractional on the cut cells (zero inside the molecule
+  // and in the Stern layer)
+  bim3a_reaction_frac (tmsh, (*reaction_nodes), *ones, *A, func_frac);
 
   // Reaction-related vectors are no longer required
   reaction_nodes.reset();
   ones.reset();
-  std::vector<double>().swap (reaction);
   std::vector<double>().swap (marker);
 
   // ------------------------------------------------------------
@@ -2319,7 +2378,6 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
 //        = rho_load + M[ C*(phi*g'(phi) - g(phi)) ]
 //  NOTE: does NOT free rho_fixed / reaction_nodes / ones / const_ones,
 //        because the Newton loop reuses them every iteration.
-//  NOTE: non-Stern path only (stern_layer_surf == 0).
 // ============================================================
 void
 poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
@@ -2484,12 +2542,6 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     if (rank == 0)
       std::cerr << "  [Newton] ERROR: rho_fixed/ones not allocated. "
                    "create_density_map() must run before newton_solve().\n";
-    return;
-  }
-  if (stern_layer_surf == 1) {
-    if (rank == 0)
-      std::cerr << "  [Newton] ERROR: nonlinear solver implements the non-Stern path "
-                   "only; set stern_layer_surf = 0.\n";
     return;
   }
 
@@ -2694,10 +2746,6 @@ void
 poisson_boltzmann::export_marked_tmesh ()
 {
   tmsh.octbin_export_quadrant (markerfilename.c_str (), marker);
-
-  if (stern_layer_surf == 1) {
-    tmsh.octbin_export_quadrant ("mark_stern_0", marker_k);
-  }
 }
 
 void

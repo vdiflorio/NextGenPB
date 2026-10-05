@@ -109,7 +109,9 @@ main (int argc, char **argv)
 
   pb.create_mesh ();
 
-  std::vector<double> ().swap (pb.r_atoms);
+  // The radii are needed again only by the Stern layer (create_markers).
+  if (pb.stern_layer_surf == 0)
+    std::vector<double> ().swap (pb.r_atoms);
 
   TIC ();
 

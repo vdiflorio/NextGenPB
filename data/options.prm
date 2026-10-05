@@ -179,9 +179,11 @@ surface_type = 0
 # - For skin/blobby, this controls smoothness/blobbyness(-1.5)
 surface_parameter = 1.4
 
-# Stern layer options:
-stern_layer_surf      = 0     # 1 = include Stern layer (fixed ion-free shell), 0 = no Stern layer
-stern_layer_thickness = 2.0   # Thickness of Stern layer (in Å)
+# Stern layer options: ion-free region = molecule interior + union of the spheres
+# of radius R_i + stern_layer_thickness around every atom (APBS ion radius,
+# Amber pbsa iprob). Works with the linear and the nonlinear solvers.
+stern_layer_surf      = 0     # 1 = include Stern layer (ion-free shell), 0 = no Stern layer
+stern_layer_thickness = 2.0   # Added to every atomic radius (in Å)
 
 # Performance:
 number_of_threads = 1         # Number of CPU threads for NanoShaper

@@ -130,6 +130,41 @@ struct ion_model_t {
   { return nu > 0.0 ? "steric" : "sinh"; }
 };
 
+// ------------------------------------------------------------
+//  Stern layer (ion-free shell): union of the spheres |x - r_i| < R_i + s,
+//  the APBS (ion radius) / Amber pbsa (iprob) convention.
+//
+//  Uniform cell list with cell side L = max(R_i) + s: a sphere that contains
+//  x has its centre in the cell of x or in one of the 26 neighbours, so a
+//  query visits a few tens of atoms whatever the size of the molecule, and
+//  returns at the first sphere that contains x.
+// ------------------------------------------------------------
+struct stern_grid_t {
+  double L = 1.0;
+  std::array<double,3> lo {}, hi {};       // atom box enlarged by L
+  std::array<int,3> n {};                  // cells per direction
+  std::vector<int> start;                  // atoms of cell c: [start[c], start[c+1])
+  std::vector<std::array<double,4>> at;    // x, y, z, (R_i + s)^2, sorted by cell
+
+  void
+  build (const std::vector<std::array<double,3>> &pos,
+         const std::vector<double> &rad, double s);
+
+  // Does the box [a, b] overlap the region where inside() can be true?
+  bool
+  box_near (const std::array<double,3> &a, const std::array<double,3> &b) const
+  {
+    for (int d = 0; d < 3; ++d)
+      if (b[d] < lo[d] || a[d] > hi[d])
+        return false;
+
+    return true;
+  }
+
+  bool
+  inside (double x, double y, double z) const;
+};
+
 
 struct
   poisson_boltzmann {
@@ -248,11 +283,9 @@ struct
 
 
   std::vector<double> marker;
-  std::vector<double> marker_k;
   std::vector<double> epsilon;
   std::vector<double> epsilon_in;
   std::vector<double> epsilon_out;
-  std::vector<double> reaction;
 
   std::vector<int> border_quad;
 
@@ -646,44 +679,6 @@ struct
   double
   is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir);
 
-  /**
-   * @brief Determines whether a point is inside the Stern layer along a specified direction.
-   *
-   * This function evaluates whether a point defined by coordinates `(x, y, z)` lies
-   * inside, outside, or on the boundary of the Stern layer for a given direction.
-   * The evaluation uses precomputed ray intersections stored in a ray cache.
-   *
-   * @param ray_cache A reference to the ray tracing cache that stores intersection
-   *                  data and handles ray operations.
-   * @param x The x-coordinate of the point.
-   * @param y The y-coordinate of the point.
-   * @param z The z-coordinate of the point.
-   * @param dir The direction of the evaluation:
-   *            - `0`: Evaluate in the yz-plane.
-   *            - `1`: Evaluate in the xz-plane.
-   *            - `2`: Evaluate in the xy-plane.
-   *
-   * @return A value indicating the position of the point relative to the Stern layer:
-   *         - `0.0`: The point is outside the Stern layer.
-   *         - `1.0`: The point is inside the Stern layer.
-   *         - `-1.0`: The point requires additional ray tracing or data is unavailable.
-   *
-   * ### Algorithm Details
-   * - Coordinates `(x, y, z)` are reordered based on the evaluation direction (`dir`).
-   * - Intersections along the specified direction are retrieved from the ray cache.
-   * - If the point lies outside all intersections, it is marked as outside.
-   * - Iteratively evaluates whether the point alternates between inside and outside
-   *   based on the intersection list, accounting for the Stern layer thickness.
-   *
-   * ### Notes
-   * - Requires the `ray_cache` to be properly initialized and populated with
-   *   intersection data.
-   * - Assumes a uniform thickness for the Stern layer, defined as `stern_layer`.
-   * - The `sign` variable alternates to evaluate the nesting of intersections.
-   */
-  double
-  is_in_ns_surf_stern (ray_cache_t & ray_cache, double x, double y, double z, int dir);
-
   static int
   uniform_refinement (tmesh_3d::quadrant_iterator quadrant)
   {
@@ -775,15 +770,17 @@ struct
    *     - `0.0`: Inside the molecule.
    *     - `0.5`: On the boundary of the molecule.
    *     - `1.0`: Outside the molecule.
-   * - Updates reaction and dielectric properties for nodes inside the molecule or
-   *   Stern layer.
+   * - Updates reaction and dielectric properties for nodes inside the molecule,
+   *   and the reaction for nodes inside the Stern layer.
    * - Handles MPI-based parallelism, including barrier synchronization and data
    *   exchange.
    * - Ensures rays are calculated and cached for points near molecular boundaries.
    *
    * ### Stern Layer Handling
-   * If `stern_layer_surf` is set to `1`, the function also processes Stern layer
-   * interactions, updating markers and reaction values accordingly.
+   * If `stern_layer_surf` is set to `1`, `reaction_nodes` is also set to zero on
+   * the nodes inside the union of the spheres R_i + `stern_layer` (stern_grid_t),
+   * so every solver and post-processing step that uses the nodal reaction
+   * coefficient sees the ion-free shell.
    *
    * ### Constants
    * - Dielectric constants for inside (`eps_in`) and outside (`eps_out`) regions.
