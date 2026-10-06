@@ -2904,8 +2904,13 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   lis_vector_set_size (rhs_lis, ln, 0);
   lis_vector_get_range (rhs_lis, &is, &ie);
 
-  for (i=is; i<ie; i++)
-    lis_vector_set_value (LIS_INS_VALUE, i, rhs->get_owned_data ()[i-is], rhs_lis);
+  double rhs_max = 0.0;   // for the zero-solution check after the solve
+
+  for (i=is; i<ie; i++) {
+    const double v = rhs->get_owned_data ()[i-is];
+    lis_vector_set_value (LIS_INS_VALUE, i, v, rhs_lis);
+    rhs_max = std::max (rhs_max, std::fabs (v));
+  }
 
   //cleaning of rhs
   rhs.reset ();
@@ -2962,6 +2967,27 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   lis_vector_get_values (phi_lis, is, ln, phi->get_owned_data ().data ());
 
   lis_vector_destroy (phi_lis);
+
+  // LIS starts from x = 0 and, with an absolute stopping test (conv_cond 2,
+  // ||b - Ax||_1 <= tol) and tol >= ||b||_1, accepts it without iterating.
+  // A zero solution with a nonzero right-hand side is never correct: stop.
+  {
+    double loc[2] = {rhs_max, 0.0};
+    for (const double v : phi->get_owned_data ())
+      loc[1] = std::max (loc[1], std::fabs (v));
+
+    double glob[2] = {loc[0], loc[1]};
+    if (size > 1)
+      MPI_Allreduce (loc, glob, 2, MPI_DOUBLE, MPI_MAX, mpicomm);
+
+    if (glob[0] > 0.0 && glob[1] == 0.0) {
+      if (rank == 0)
+        std::cerr << "ERROR: the linear solver returned the zero vector for a "
+                     "nonzero right-hand side.\n       Check solver_options "
+                     "(with -conv_cond 2 the -tol threshold is absolute).\n";
+      MPI_Abort (mpicomm, 1);
+    }
+  }
 
   if (size > 1)
     phi->assemble (replace_op);
