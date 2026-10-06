@@ -2548,6 +2548,10 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
 //  |du|_inf over the ion-accessible nodes (C != 0) is at most maxdu.
 //  Iteration 0 is unclamped so the jump to the linear solution is taken whole.
 //
+//  Stopping: |du|_inf <= newton_tol * max(1, |phi|_inf), both norms over
+//  the ion-accessible nodes; or stagnation at the accuracy of the linear
+//  solver (du small and no longer decreasing).
+//
 //  newton_compress = 1 (default): right after iteration 0, i.e. on the linear
 //  solution, solvent nodes are mapped phi -> 2 asinh(phi/2). This is the
 //  Grahame relation for a 1:1 electrolyte (sigma ~ phi in DH vs
@@ -2565,7 +2569,8 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
   MPI_Comm_rank (mpicomm, &rank);
 
   const int    newton_max_iter = 100;
-  const double newton_tol      = 1.0e-6;
+  const double newton_tol      = 1.0e-6; // on |du|_inf,solvent, see the test below
+  const double newton_stall    = 100.0;  // stagnation test active below newton_stall * tol
   const double maxdu           = 2.0;    // clamp: max |du|_inf per iteration
   const bool   newton_verbose  = true;   // per-iteration diagnostics
 
@@ -2595,8 +2600,9 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
   std::vector<double> phi_old (n, 0.0);
   std::vector<double> du (n, 0.0);
 
-  bool converged = false;
-  int  it_done   = 0;
+  bool   converged  = false;
+  int    it_done    = 0;
+  double dsolv_prev = 0.0;   // |du|_inf,solvent of the previous iteration
 
   for (int it = 0; it < newton_max_iter; ++it) {
     it_done = it;
@@ -2622,22 +2628,25 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     auto & Cd      = reaction_nodes->get_owned_data ();
 
     // --- Newton correction du = phi_new - phi_old ---
-    double local_du = 0.0, local_u = 0.0, local_du_solv = 0.0;
+    // Norms over all nodes (anorm) and over the ion-accessible nodes, C != 0
+    // (dsolv: correction, usolv: iterate).
+    double loc[3] = {0.0, 0.0, 0.0};   // anorm, dsolv, usolv
     for (std::size_t i = 0; i < n; ++i) {
       du[i] = phi_new[i] - phi_old[i];
       const double ad = std::fabs (du[i]);
-      if (ad > local_du) local_du = ad;
-      if (Cd[i] != 0.0 && ad > local_du_solv) local_du_solv = ad;
-      const double au = std::fabs (phi_old[i]);
-      if (au > local_u) local_u = au;
+      if (ad > loc[0]) loc[0] = ad;
+      if (Cd[i] != 0.0) {
+        if (ad > loc[1]) loc[1] = ad;
+        const double au = std::fabs (phi_old[i]);
+        if (au > loc[2]) loc[2] = au;
+      }
     }
 
-    double anorm = local_du, unorm = local_u, dsolv = local_du_solv;
-    if (size > 1) {
-      MPI_Allreduce (&local_du,      &anorm, 1, MPI_DOUBLE, MPI_MAX, mpicomm);
-      MPI_Allreduce (&local_u,       &unorm, 1, MPI_DOUBLE, MPI_MAX, mpicomm);
-      MPI_Allreduce (&local_du_solv, &dsolv, 1, MPI_DOUBLE, MPI_MAX, mpicomm);
-    }
+    double glob[3] = {loc[0], loc[1], loc[2]};
+    if (size > 1)
+      MPI_Allreduce (loc, glob, 3, MPI_DOUBLE, MPI_MAX, mpicomm);
+    const double anorm = glob[0], dsolv = glob[1], usolv = glob[2];
+    const double tol_s = newton_tol * std::max (1.0, usolv);
 
     // ---------------- diagnostics ----------------
     // Every line tagged "[Newton]" so one grep catches the whole trace.
@@ -2687,6 +2696,8 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
       std::cout << "  [Newton] iter " << it
                 << "   ||du||_inf = "         << std::setprecision (17) << anorm
                 << "   ||du||_inf,solvent = " << dsolv
+                << "   ||phi||_inf,solvent = " << usolv
+                << "   tol = " << tol_s
                 << std::setprecision (6) << std::endl;
 
     // --- divergence check: scan phi itself, not just the norm ---
@@ -2705,18 +2716,32 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
       break;
     }
 
-    // --- relative convergence test ---
-    // NOTE: unorm is max|phi| over ALL nodes and is dominated by the peak at
-    // the point charges INSIDE the molecule, where the problem is linear.
-    // Kept as-is for continuity with the recorded sphere results; the solvent
-    // norm printed above is the physically meaningful one.
-    if (it >= 1 && anorm < newton_tol * (unorm > 0.0 ? unorm : 1.0)) {
+    // --- convergence test, on the ion-accessible nodes only ---
+    // |du|_s <= tol * max(1, |phi|_s): absolute OR relative, whichever is
+    // looser. The norms over all nodes would be dominated by the potential
+    // at the point charges inside the molecule, which grows as 1/h and has
+    // nothing to do with the nonlinearity.
+    if (it >= 1 && dsolv <= tol_s) {
       converged = true;
       if (rank == 0)
         std::cout << "  [Newton] converged in " << it + 1
                   << " iterations." << std::endl;
       break;
     }
+
+    // --- stagnation: stop at the accuracy of the linear solver ---
+    // Each solve starts from zero, so du cannot go below the error of one
+    // linear solve. If du is already small and no longer decreases, stop.
+    if (it >= 2 && dsolv < newton_stall * tol_s && dsolv > 0.5 * dsolv_prev) {
+      converged = true;
+      if (rank == 0)
+        std::cout << "  [Newton] WARNING: stopped at the accuracy of the linear "
+                     "solver after " << it + 1 << " iterations, ||du||_inf,solvent = "
+                  << std::setprecision (17) << dsolv << " (tol = " << tol_s << ")"
+                  << std::setprecision (6) << std::endl;
+      break;
+    }
+    dsolv_prev = dsolv;
 
     // --- clamping globalization (iteration 0 unclamped) ---
     // The scale is set by the ion-accessible nodes only (dsolv). The next
