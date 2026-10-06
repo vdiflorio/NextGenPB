@@ -39,6 +39,21 @@
 #include <regex>
 #include <cctype>
 #include <unordered_map>
+#include <cstdint>
+#include <cstring>
+
+// NaN/Inf test that survives -Ofast. The optimized builds (local_setting/*_fast.mk,
+// recipe.def) use -Ofast, whose -ffinite-math-only lets the compiler assume
+// that no NaN or Inf exists and fold std::isfinite (x) to true (checked with
+// GCC 11.5). A double is NaN or Inf iff its 11 exponent bits are all set;
+// testing them is integer arithmetic, which that flag does not touch.
+static bool
+is_finite_bits (double x)
+{
+  std::uint64_t b;
+  std::memcpy (&b, &x, sizeof b);
+  return (b & 0x7ff0000000000000ULL) != 0x7ff0000000000000ULL;
+}
 
 
 void
@@ -2701,9 +2716,11 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
                 << std::setprecision (6) << std::endl;
 
     // --- divergence check: scan phi itself, not just the norm ---
-    bool bad = !std::isfinite (anorm);
+    // (is_finite_bits, not std::isfinite: see its definition.) The node scan
+    // is the test that matters: a NaN never wins the max in anorm.
+    bool bad = !is_finite_bits (anorm);
     for (std::size_t i = 0; i < n && !bad; ++i)
-      if (!std::isfinite (phi_new[i])) bad = true;
+      if (!is_finite_bits (phi_new[i])) bad = true;
     if (size > 1) {
       int b = bad ? 1 : 0, gb = 0;
       MPI_Allreduce (&b, &gb, 1, MPI_INT, MPI_MAX, mpicomm);
