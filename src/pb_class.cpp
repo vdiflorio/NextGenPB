@@ -2544,7 +2544,8 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
 //  reproduces the linear solve exactly (for both ion models). This is
 //  deliberate: it is a free regression check against the linear solver.
 //
-//  Globalization: |du|_inf is clamped to maxdu from iteration 1 onward.
+//  Globalization: from iteration 1 onward the step is scaled so that
+//  |du|_inf over the ion-accessible nodes (C != 0) is at most maxdu.
 //  Iteration 0 is unclamped so the jump to the linear solution is taken whole.
 //
 //  newton_compress = 1 (default): right after iteration 0, i.e. on the linear
@@ -2718,9 +2719,14 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     }
 
     // --- clamping globalization (iteration 0 unclamped) ---
+    // The scale is set by the ion-accessible nodes only (dsolv). The next
+    // Newton system depends on phi only where C != 0, so the step at the
+    // other nodes (molecule, Stern) is overwritten by the next solve and
+    // needs no damping. Clamping on all nodes let the linear jump inside the
+    // molecule after the compression (~25 kT/e) throttle the whole step.
     double scale = 1.0;
-    if (it >= 1 && anorm > maxdu) {
-      scale = maxdu / anorm;
+    if (it >= 1 && dsolv > maxdu) {
+      scale = maxdu / dsolv;
       if (rank == 0)
         std::cout << "  [Newton] CLAMP active: scale = " << scale << std::endl;
     }
