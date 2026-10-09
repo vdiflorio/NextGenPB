@@ -29,6 +29,7 @@
 
 const double p4esttol = 1 / std::pow (2, P8EST_QMAXLEVEL);
 
+#include <algorithm>
 #include <array>
 #include <string>
 #include <vector>
@@ -128,6 +129,220 @@ struct ion_model_t {
   const char *
   name () const
   { return nu > 0.0 ? "steric" : "sinh"; }
+};
+
+// ------------------------------------------------------------
+//  Size-modified model with non-uniform sizes, 1:1 salt: cation volume v_p,
+//  anion volume v_m and solvent volume v_w all different (Chu 2007,
+//  Li 2009b, Zhou 2011; manuscript eqs. smpb_density, s_equation).
+//  Same conventions as ion_model_t: u = e phi / kT, rho_ion = -2 e n_b g(u).
+//
+//  Unknown at each node: s = log(theta_w / theta_w^b). The ion densities are
+//      n_p = n_b e^{x_p},  x_p = -u + r_p s,      n_m = n_b e^{x_m},  x_m = u + r_m s,
+//  with r_p = v_p / v_w, r_m = v_m / v_w, and eq. s_equation reads
+//      F(s) = thb e^s + vf_p e^{x_p} + vf_m e^{x_m} = 1,
+//  thb = theta_w^b = 1 - vf_p - vf_m,  vf_p = v_p n_b,  vf_m = v_m n_b.
+//  Newton is applied to G(s) = log F(s), which has the same root: a log of a
+//  sum of exponentials of s is convex and increasing, so Newton converges
+//  from any start in a few steps, with no bisection (Newton on theta_w can
+//  step to theta_w < 0, and Newton on F is slow at large |u|).
+//  Start: s0 = min(sigma u, asymptotes): sigma u is the first-order root
+//  (manuscript eq. ds_lin), (u - log vf_p) / r_p and (-u - log vf_m) / r_m are
+//  the points where the cation or the anion alone fills the volume; the root
+//  lies left of both.
+//  Stop when |ds| <= 1e-8 |s| (|u| <= 1) or 1e-8 max(1,|s|) (|u| > 1):
+//  convergence is quadratic, so the remaining error is ~ds^2, i.e. round-off.
+//
+//  Quantities:
+//    g     = (n_m - n_p) / (2 n_b) = (expm1(x_m) - expm1(x_p)) / 2
+//    g'    = [v_w theta (n_p + n_m) + n_p n_m (v_p + v_m)^2]
+//            / [2 n_b (v_w theta + v_p^2 n_p + v_m^2 n_m)]
+//            (eq. c_models rewritten with the Lagrange identity: all terms
+//            >= 0, no cancellation when the counterions saturate, g' -> 0)
+//    osm   = (P - P0) / (2 n_b kT)
+//          = [osm_term(x_p) + osm_term(x_m)] / 2 + thb / (2 n_b v_w) osm_term(s)
+//    f_exc = u g / 2 - osm
+//          = [exc_term(x_p) + exc_term(x_m)] / 2 + thb / (2 n_b v_w) exc_term(s)
+//  osm_term(x) = e^x - 1 - x and exc_term(x) = (x/2 - 1) e^x + 1 + x/2 come
+//  from eqs. smpb_pressure and G_exc_smpb rewritten with the definition of
+//  theta_w and electroneutrality: the solvent enters as one more species of
+//  bulk density thb / v_w with x = s. Each term is O(u^2) (osm) or O(u^3)
+//  (f_exc), so the large cancellations of the direct formulas are gone; the
+//  one left inside osm_term and exc_term is handled by their Taylor series.
+//  For v_p = v_m = v_w this is the model of ion_model_t (which is what the
+//  solver uses in that case); for v_p = v_m = 0 it is the ideal (sinh) model.
+// ------------------------------------------------------------
+struct ion_model_nonuniform_t {
+  static constexpr int max_iter = 50;
+
+  // input
+  double n_b = 0.0;      // bulk density of each ion [1/A^3]
+  double v_p = 0.0;      // cation volume [A^3], 0 = point-like
+  double v_m = 0.0;      // anion volume [A^3], 0 = point-like
+  double v_w = 0.0;      // solvent volume [A^3]
+
+  // derived in init ()
+  double vf_p = 0.0, vf_m = 0.0;          // bulk volume fractions v_p n_b, v_m n_b
+  double log_vf_p = 0.0, log_vf_m = 0.0;  // their logs (only used if v > 0)
+  double r_p = 0.0, r_m = 0.0;            // v_p / v_w, v_m / v_w
+  double thb = 1.0, log_thb = 0.0;        // bulk free volume fraction theta_w^b
+  double w_s = 0.0;                       // thb / (2 n_b v_w): weight of the solvent terms
+  double sigma = 0.0;                     // ds/du at u = 0
+
+  // e^x - 1 - x: the term of each species in the osmotic pressure
+  static double
+  osm_term (double x)
+  {
+    if (std::fabs (x) < 0.5) {
+      double t = 0.0;                     // Horner: t = sum_{k>=1} x^k / (k+1)!
+      for (int m = 20; m >= 2; --m)
+        t = (t + 1.0) * x / m;
+      return t * x;
+    }
+    return std::expm1 (x) - x;
+  }
+
+  // (x/2 - 1) e^x + 1 + x/2 = sum_{m>=3} (m - 2) x^m / (2 m!):
+  // the term of each species in the excess free energy
+  static double
+  exc_term (double x)
+  {
+    if (std::fabs (x) < 0.5) {
+      double t = 0.0, f = 1.0, xm = 1.0;
+      for (int m = 1; m <= 20; ++m) {
+        f *= m;
+        xm *= x;
+        if (m >= 3)
+          t += (m - 2) * xm / (2.0 * f);
+      }
+      return t;
+    }
+    return (0.5 * x - 1.0) * std::expm1 (x) + x;
+  }
+
+  // Bulk density n_b [1/A^3] and volumes [A^3]; false if the bulk has no
+  // free volume left (theta_w^b <= 0) or the input is not valid.
+  bool
+  init (double nb, double vp, double vm, double vw)
+  {
+    n_b = nb;  v_p = vp;  v_m = vm;  v_w = vw;
+    if (!(n_b > 0.0) || !(v_w > 0.0) || v_p < 0.0 || v_m < 0.0)
+      return false;
+    vf_p = v_p * n_b;
+    vf_m = v_m * n_b;
+    thb = 1.0 - vf_p - vf_m;
+    if (!(thb > 0.0))
+      return false;
+    log_vf_p = v_p > 0.0 ? std::log (vf_p) : 0.0;
+    log_vf_m = v_m > 0.0 ? std::log (vf_m) : 0.0;
+    r_p = v_p / v_w;
+    r_m = v_m / v_w;
+    log_thb = std::log (thb);
+    w_s = thb / (2.0 * n_b * v_w);
+    sigma = v_w * n_b * (v_p - v_m) / (v_w * thb + n_b * (v_p * v_p + v_m * v_m));
+    return true;
+  }
+
+  // g'(0) = kappa_eff^2 / kappa^2 (manuscript eq. keff_sym), diagnostics only.
+  double
+  dg0 () const
+  {
+    const double vs = v_p + v_m;
+    return (v_w * thb * 2.0 * n_b + n_b * n_b * vs * vs)
+           / ((v_w * thb + n_b * (v_p * v_p + v_m * v_m)) * 2.0 * n_b);
+  }
+
+  // Root s(u) of G; returns the number of iterations, or -1 if Newton did
+  // not converge in max_iter (s is then the last iterate).
+  //   |u| <= 1: G = log1p(thb expm1(s) + vf_p expm1(x_p) + vf_m expm1(x_m)),
+  //             i.e. log F with thb + vf_p + vf_m = 1 used exactly: accurate
+  //             to relative round-off in s as u -> 0 (s = O(u), O(u^2) for
+  //             v_p = v_m). All exponents are O(1) there: no overflow.
+  //   |u| > 1 : G = log-sum-exp of log thb + s, log vf_p + x_p, log vf_m + x_m,
+  //             safe from overflow, accurate to absolute round-off in s.
+  int
+  solve_s (double u, double &s) const
+  {
+    s = sigma * u;
+    if (v_p > 0.0)
+      s = std::min (s, (u - log_vf_p) / r_p);
+    if (v_m > 0.0)
+      s = std::min (s, (-u - log_vf_m) / r_m);
+
+    const bool small = std::fabs (u) <= 1.0;
+    for (int it = 1; it <= max_iter; ++it) {
+      const double x_p = -u + r_p * s, x_m = u + r_m * s;
+      double G, dG;
+      if (small) {
+        const double f = thb * std::expm1 (s) + vf_p * std::expm1 (x_p)
+                         + vf_m * std::expm1 (x_m);
+        dG = (thb * std::exp (s) + r_p * vf_p * std::exp (x_p)
+              + r_m * vf_m * std::exp (x_m)) / (1.0 + f);
+        G  = std::log1p (f);
+      }
+      else {
+        // log-sum-exp: subtract the largest exponent before exp. A point-like
+        // ion (v = 0) has no term; no infinities are used (-Ofast assumes none).
+        const double L_w = log_thb + s;
+        const double L_p = log_vf_p + x_p, L_m = log_vf_m + x_m;
+        double m = L_w;
+        if (v_p > 0.0) m = std::max (m, L_p);
+        if (v_m > 0.0) m = std::max (m, L_m);
+        const double e_w = std::exp (L_w - m);
+        const double e_p = v_p > 0.0 ? std::exp (L_p - m) : 0.0;
+        const double e_m = v_m > 0.0 ? std::exp (L_m - m) : 0.0;
+        const double W = e_w + e_p + e_m;
+        G  = m + std::log (W);
+        dG = (e_w + r_p * e_p + r_m * e_m) / W;
+      }
+      const double ds = -G / dG;
+      s += ds;
+      // Quadratic convergence: after a step ds the error is ~ds^2.
+      // Relative to |s| near u = 0 (floor 1e-16 |u| where s crosses zero),
+      // relative to max(1, |s|) elsewhere.
+      const double scale = small ? std::max (std::fabs (s), 1.0e-8 * std::fabs (u))
+                                 : std::max (1.0, std::fabs (s));
+      if (std::fabs (ds) <= 1.0e-8 * scale)
+        return it;
+    }
+    return -1;
+  }
+
+  // g and g' for the Newton system; false if the root was not found.
+  bool
+  newton (double u, double &g, double &dg) const
+  {
+    double s;
+    const bool ok = solve_s (u, s) > 0;
+    const double x_p = -u + r_p * s, x_m = u + r_m * s;
+    const double n_p = n_b * std::exp (x_p), n_m = n_b * std::exp (x_m);
+    const double theta = thb * std::exp (s);
+    const double vs = v_p + v_m;
+    g  = 0.5 * (std::expm1 (x_m) - std::expm1 (x_p));
+    dg = (v_w * theta * (n_p + n_m) + n_p * n_m * vs * vs)
+         / (2.0 * n_b * (v_w * theta + v_p * v_p * n_p + v_m * v_m * n_m));
+    return ok;
+  }
+
+  // Everything the energy and Gamma+- need, from one root.
+  struct obs_t {
+    double g, osm, f_exc;
+    double dn_p, dn_m;           // n_p / n_b - 1, n_m / n_b - 1
+  };
+
+  bool
+  observables (double u, obs_t &o) const
+  {
+    double s;
+    const bool ok = solve_s (u, s) > 0;
+    const double x_p = -u + r_p * s, x_m = u + r_m * s;
+    o.dn_p  = std::expm1 (x_p);
+    o.dn_m  = std::expm1 (x_m);
+    o.g     = 0.5 * (o.dn_m - o.dn_p);
+    o.osm   = 0.5 * (osm_term (x_p) + osm_term (x_m)) + w_s * osm_term (s);
+    o.f_exc = 0.5 * (exc_term (x_p) + exc_term (x_m)) + w_s * exc_term (s);
+    return ok;
+  }
 };
 
 // ------------------------------------------------------------
