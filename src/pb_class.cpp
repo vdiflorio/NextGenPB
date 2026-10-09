@@ -980,6 +980,15 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   ionic_strength = g2 ( (model_options + "ionic_strength").c_str (), 0.145);
   ion_size = g2 ( (model_options + "ion_size").c_str (), 0.0);
 
+  // Negative values passed silently before: ion_size < 0 gives nu < 0 and
+  // D(u) = 1 + nu (cosh u - 1) can vanish in the Newton solver.
+  if (ionic_strength < 0.0 || ion_size < 0.0) {
+    if (rank == 0)
+      std::cerr << "ERROR: ionic_strength = " << ionic_strength << " M, ion_size = "
+                << ion_size << " A: both must be >= 0.\n";
+    return 1;
+  }
+
   // Bulk packing fraction nu = 2 a^3 n_b (1:1 salt, n_b in 1/Angs^3).
   // nu >= 1 leaves no solvent in the bulk (theta_FS = 1 - nu <= 0) and makes
   // g'(u) change sign at large |u|: the lattice-gas model is undefined there.
@@ -1009,6 +1018,28 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   potential_map = g2 ( (model_options + "potential_map").c_str (), 0);
   eps_map = g2 ( (model_options + "eps_map").c_str (), 0);
   dataset_write = g2 ( (model_options + "dataset_write").c_str (), 0);
+
+  // Every key of [model] has been read above. GetPot returns the default for
+  // a key it cannot find, so a misspelt key (e.g. ion_sise) would be ignored
+  // and the run would go on with the default model: list the keys of [model]
+  // that were never read and stop. The other sections are not checked: some
+  // of their keys are read only for some mesh_shape values.
+  {
+    std::vector<std::string> unknown;
+    for (const auto & name : g2.unidentified_variables ())
+      if (name.compare (0, model_options.size (), model_options) == 0)
+        unknown.push_back (name);
+    if (!unknown.empty ()) {
+      if (rank == 0) {
+        std::cerr << "ERROR: unknown key(s) in [model] of " << optionsfilename << ":";
+        for (const auto & name : unknown)
+          std::cerr << " " << name.substr (model_options.size ());
+        std::cerr << "\n       Check the spelling (the valid keys are listed in data/options.prm).\n";
+      }
+      return 1;
+    }
+  }
+
   const std::string surf_options = "surface/";
   surf_type_num = g2 ( (surf_options + "surface_type").c_str (), 0);
 
