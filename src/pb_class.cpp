@@ -2591,7 +2591,8 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
 //  Nonlinear PBE:  -div(eps grad phi) + C * g(phi) = rho_fixed
 //    where C = reaction_nodes (== 0 inside the molecule) and g is the
 //    ion model (ion_model_t): g = sinh for ideal ions, g = sinh/D for the
-//    steric model.
+//    steric model; with different ion and solvent sizes (nonuniform)
+//    ion_model_nonuniform_t gives g and g' from one root per node.
 //  "Full" Newton form (BCs identical to the linear case):
 //    [ A_stiff + M[C*g'(phi)] ] phi_new
 //        = rho_load + M[ C*(phi*g'(phi) - g(phi)) ]
@@ -2634,23 +2635,57 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
   auto & cosh_data  = cosh_coeff->get_owned_data ();
   auto & extra_data = rhs_extra->get_owned_data ();
 
-  for (std::size_t i = 0; i < n; ++i) {
-    const double Ci = C_data[i];
-    const double ui = phi_data[i];
-
-    // The ionic term lives only where C != 0 (the solvent). Inside the
-    // molecule C == 0, and the potential there can be huge near the point
-    // charge -> cosh/sinh would overflow and 0*inf = NaN. So skip them.
-    if (Ci == 0.0) {
-      cosh_data[i]  = 0.0;
-      extra_data[i] = 0.0;
-      continue;
+  // The model is chosen once, outside the loop: the uniform/ideal loop is
+  // the original one, untouched (bit-for-bit with ion_size runs).
+  if (nonuniform) {
+    // Different sizes: g and g' from the root s of the free-volume equation
+    // at each node (manuscript eq. s_equation; g' in the Lagrange form).
+    // A node where the root is not found is counted, not thrown on: the
+    // count is reduced below and newton_solve stops on it.
+    long nfail = 0;
+    double ufail = 0.0;
+    for (std::size_t i = 0; i < n; ++i) {
+      const double Ci = C_data[i];
+      const double ui = phi_data[i];
+      if (Ci == 0.0) {
+        cosh_data[i]  = 0.0;
+        extra_data[i] = 0.0;
+        continue;
+      }
+      double g, dg;
+      if (! ion_model_nu.newton (ui, g, dg)) {
+        ++nfail;
+        ufail = std::max (ufail, std::fabs (ui));
+      }
+      cosh_data[i]  = Ci * dg;
+      extra_data[i] = Ci * (ui * dg - g);
     }
+    ion_fail_nodes = nfail;
+    ion_fail_umax  = ufail;
+    if (size > 1) {
+      MPI_Allreduce (&nfail, &ion_fail_nodes, 1, MPI_LONG, MPI_SUM, mpicomm);
+      MPI_Allreduce (&ufail, &ion_fail_umax, 1, MPI_DOUBLE, MPI_MAX, mpicomm);
+    }
+  }
+  else {
+    for (std::size_t i = 0; i < n; ++i) {
+      const double Ci = C_data[i];
+      const double ui = phi_data[i];
 
-    const double dg = ion_model.dg (ui);
-    const double g  = ion_model.g (ui);
-    cosh_data[i]  = Ci * dg;
-    extra_data[i] = Ci * (ui * dg - g);
+      // The ionic term lives only where C != 0 (the solvent). Inside the
+      // molecule C == 0, and the potential there can be huge near the point
+      // charge -> cosh/sinh would overflow and 0*inf = NaN. So skip them.
+      if (Ci == 0.0) {
+        cosh_data[i]  = 0.0;
+        extra_data[i] = 0.0;
+        continue;
+      }
+
+      const double dg = ion_model.dg (ui);
+      const double g  = ion_model.g (ui);
+      cosh_data[i]  = Ci * dg;
+      extra_data[i] = Ci * (ui * dg - g);
+    }
   }
 
   if (size > 1) {
@@ -2708,7 +2743,8 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
 //    -div(eps grad phi) + C g(phi) = rho_fixed ,   C = reaction_nodes
 //
 //  g is the ion model (ion_model_t): sinh for ideal ions, sinh/D for the
-//  steric model (ion_size > 0). C == 0 inside the molecule, so the
+//  steric model (ion_size > 0); ion_model_nonuniform_t for different ion
+//  and solvent sizes (nonuniform). C == 0 inside the molecule, so the
 //  equation is LINEAR there: the entire nonlinearity lives in the solvent
 //  (C != 0). Convergence of this iteration is therefore governed by the
 //  solvent nodes alone.
@@ -2721,8 +2757,11 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
 //  clamped (globalization).
 //
 //  phi^0 = 0 => g'(0)=1 and the extra RHS term vanishes, so iteration 0
-//  reproduces the linear solve exactly (for both ion models). This is
-//  deliberate: it is a free regression check against the linear solver.
+//  reproduces the linear solve exactly (sinh and uniform steric models).
+//  This is deliberate: it is a free regression check against the linear
+//  solver. With different sizes g'(0) = kappa_eff^2/kappa^2 < 1 (manuscript
+//  eq. keff_sym): iteration 0 is the linear solve at ionic strength
+//  I g'(0), not at I.
 //
 //  Globalization: from iteration 1 onward the step is scaled so that
 //  |du|_inf over the ion-accessible nodes (C != 0) is at most maxdu.
@@ -2796,6 +2835,18 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
 
     assemble_newton_system (ray_cache, *phi);
 
+    // Non-uniform sizes: stop if the free-volume equation had no root at
+    // some node (count already reduced over the ranks, same on all of them).
+    if (nonuniform && ion_fail_nodes > 0) {
+      if (rank == 0)
+        std::cout << "  [Newton] DIVERGED (free-volume equation not solved at "
+                  << ion_fail_nodes << " nodes, max|psi| = " << std::setprecision (17)
+                  << ion_fail_umax << std::setprecision (6) << "; a+ = " << ion_size_pos
+                  << ", a- = " << ion_size_neg << ", a_w = " << solvent_size
+                  << " A) at iter " << it << std::endl;
+      break;
+    }
+
     // Solve J * phi_new = rhs.
     if (linear_solver_name == "mumps")
       mumps_compute_electric_potential (ray_cache);
@@ -2861,12 +2912,23 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
       report ("du     :", du.data ());
 
       double extramax = 0.0;
-      for (std::size_t i = 0; i < n; ++i)
-        if (Cd[i] != 0.0) {
-          const double e = std::fabs (Cd[i] * (phi_old[i] * ion_model.dg (phi_old[i])
-                                               - ion_model.g (phi_old[i])));
-          if (e > extramax) extramax = e;
-        }
+      if (nonuniform) {
+        for (std::size_t i = 0; i < n; ++i)
+          if (Cd[i] != 0.0) {
+            double g, dg;
+            ion_model_nu.newton (phi_old[i], g, dg);
+            const double e = std::fabs (Cd[i] * (phi_old[i] * dg - g));
+            if (e > extramax) extramax = e;
+          }
+      }
+      else {
+        for (std::size_t i = 0; i < n; ++i)
+          if (Cd[i] != 0.0) {
+            const double e = std::fabs (Cd[i] * (phi_old[i] * ion_model.dg (phi_old[i])
+                                                 - ion_model.g (phi_old[i])));
+            if (e > extramax) extramax = e;
+          }
+      }
       std::cout << "  [Newton]   max|rhs_extra| from phi_old = "
                 << std::setprecision (17) << extramax
                 << std::setprecision (6) << std::endl;
@@ -4137,29 +4199,60 @@ poisson_boltzmann::energy_excess_nonlinear (ray_cache_t & ray_cache)
   // G_exc is NOT recomputed as the difference of the two addends: for the
   // steric model they are both O(psi/nu) at large psi and would cancel.
   // n_pm/n_b - 1 = (expm1(-+psi) - nu coshm1(psi)) / D, without cancellation.
+  //
+  // Different sizes (nonuniform): all integrands from one root per node
+  // (ion_model_nonuniform_t::observables), with osm and f_exc written as
+  // sums of e^x - 1 - x and (x/2 - 1) e^x + 1 + x/2 over cations, anions and
+  // solvent (no cancellation between species), n_pm/n_b - 1 = expm1(x_pm).
   double loc[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  long efail = 0;   // nodes where the free-volume equation had no root
   {
     auto & Cd = reaction_nodes->get_owned_data ();
     auto & ud = phi->get_owned_data ();
     auto & wd = w.get_owned_data ();
 
-    for (std::size_t i = 0; i < n; ++i) {
-      const double Ci = Cd[i];
-      if (Ci == 0.0)
-        continue;
-      const double ui = ud[i];
-      const double g  = ion_model.g (ui);
-      const double cw = Ci * wd[i];
-      loc[0] += cw * ion_model.f_exc (ui);
-      loc[1] += cw * 0.5 * ui * g;
-      loc[2] += cw * ion_model.osm (ui);
-      loc[3] += cw * g;
-      const double d  = ion_model.D (ui);
-      const double sc = ion_model.nu * ion_model_t::coshm1 (ui);
-      loc[4] += cw * (std::expm1 (-ui) - sc) / d;
-      loc[5] += cw * (std::expm1 (ui) - sc) / d;
-      loc[6] += wd[i];
+    if (nonuniform) {
+      for (std::size_t i = 0; i < n; ++i) {
+        const double Ci = Cd[i];
+        if (Ci == 0.0)
+          continue;
+        const double ui = ud[i];
+        ion_model_nonuniform_t::obs_t o;
+        if (! ion_model_nu.observables (ui, o))
+          ++efail;
+        const double cw = Ci * wd[i];
+        loc[0] += cw * o.f_exc;
+        loc[1] += cw * 0.5 * ui * o.g;
+        loc[2] += cw * o.osm;
+        loc[3] += cw * o.g;
+        loc[4] += cw * o.dn_p;
+        loc[5] += cw * o.dn_m;
+        loc[6] += wd[i];
+      }
     }
+    else {
+      for (std::size_t i = 0; i < n; ++i) {
+        const double Ci = Cd[i];
+        if (Ci == 0.0)
+          continue;
+        const double ui = ud[i];
+        const double g  = ion_model.g (ui);
+        const double cw = Ci * wd[i];
+        loc[0] += cw * ion_model.f_exc (ui);
+        loc[1] += cw * 0.5 * ui * g;
+        loc[2] += cw * ion_model.osm (ui);
+        loc[3] += cw * g;
+        const double d  = ion_model.D (ui);
+        const double sc = ion_model.nu * ion_model_t::coshm1 (ui);
+        loc[4] += cw * (std::expm1 (-ui) - sc) / d;
+        loc[5] += cw * (std::expm1 (ui) - sc) / d;
+        loc[6] += wd[i];
+      }
+    }
+  }
+  if (nonuniform && size > 1) {
+    long l = efail;
+    MPI_Allreduce (&l, &efail, 1, MPI_LONG, MPI_SUM, mpicomm);
   }
 
   // Box volume, for the preferential interaction coefficients
@@ -4197,11 +4290,20 @@ poisson_boltzmann::energy_excess_nonlinear (ray_cache_t & ray_cache)
     constexpr int precision = 16;
 
     std::cout << "\n============ [ Nonlinear excess ionic energy ] ============\n";
-    std::cout << std::left << std::setw (label_width) << "  Ion model:"
-              << ion_model.name ();
-    if (ion_model.nu > 0.0)
-      std::cout << "  (a = " << ion_size << " A, nu = " << ion_model.nu << ")";
+    std::cout << std::left << std::setw (label_width) << "  Ion model:";
+    if (nonuniform)
+      std::cout << "steric non-uniform  (a+ = " << ion_size_pos << ", a- = " << ion_size_neg
+                << ", a_w = " << solvent_size << " A, 1 - theta_w^b = "
+                << 1.0 - ion_model_nu.thb << ")";
+    else {
+      std::cout << ion_model.name ();
+      if (ion_model.nu > 0.0)
+        std::cout << "  (a = " << ion_size << " A, nu = " << ion_model.nu << ")";
+    }
     std::cout << "\n";
+    if (efail > 0)
+      std::cout << "  WARNING: free-volume equation not solved at " << efail
+                << " nodes: the values below are not reliable.\n";
     std::cout << std::left << std::setw (label_width) << "  -1/2 int rho_s phi [kT]:"
               << std::setprecision (precision) << energy_half << "\n";
     std::cout << std::left << std::setw (label_width) << "  Osmotic term int (P-P0) [kT]:"

@@ -116,15 +116,6 @@ main (int argc, char **argv)
 
   pb.create_mesh ();
 
-  // The non-uniform model (ion_model_nu) is not connected to the solver yet:
-  // stop once create_mesh has printed its parameters.
-  if (pb.linearized == 0 && pb.nonuniform) {
-    if (rank == 0)
-      std::cerr << "ERROR: the non-uniform steric model (ion_size_pos, ion_size_neg,"
-                << " solvent_size not all equal) is not connected to the solver yet.\n";
-    return 1;
-  }
-
   // The radii are needed again only by the Stern layer (create_markers).
   if (pb.stern_layer_surf == 0)
     std::vector<double> ().swap (pb.r_atoms);
@@ -256,7 +247,7 @@ main (int argc, char **argv)
   if (pb.linearized == 0) {
     if (rank == 0)
       std::cout << "\n== [ Starting NONLINEAR solution: Newton on "
-                << pb.ion_model.name () << " ] ==\n";
+                << (pb.nonuniform ? "steric non-uniform" : pb.ion_model.name ()) << " ] ==\n";
 
     pb.newton_solve (ray_cache);
   } else if (pb.linear_solver_name == "mumps") {

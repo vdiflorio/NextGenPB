@@ -458,6 +458,10 @@ struct
   double ion_size_pos = 0.0, ion_size_neg = 0.0, solvent_size = 0.0;
   bool nonuniform = false;
   ion_model_nonuniform_t ion_model_nu;  // set in parse_options if nonuniform
+  // Nodes where ion_model_nu did not find the root of the free-volume
+  // equation in the last Newton assembly (all ranks), and their max |u|.
+  long ion_fail_nodes = 0;
+  double ion_fail_umax = 0.0;
   double T;
   int calc_energy;
   double energy_pol = 0.0;
