@@ -75,9 +75,16 @@ main (int argc, char **argv)
   if (pb.parse_options (argc, argv))
     return 1;
 
-  if (rank == 0 && pb.linearized == 1 && pb.ion_size > 0.0)
-    std::cout << "Warning: ion_size = " << pb.ion_size
-              << " is ignored by the linearized solver (set linearized = 0 for the steric model).\n";
+  if (rank == 0 && pb.linearized == 1) {
+    if (pb.per_species_sizes)
+      std::cout << "Warning: ion_size_pos = " << pb.ion_size_pos << ", ion_size_neg = "
+                << pb.ion_size_neg << ", solvent_size = " << pb.solvent_size
+                << " are ignored by the linearized solver, which solves the classical LPBE"
+                << " (set linearized = 0 for the steric model).\n";
+    else if (pb.ion_size > 0.0)
+      std::cout << "Warning: ion_size = " << pb.ion_size
+                << " is ignored by the linearized solver (set linearized = 0 for the steric model).\n";
+  }
 
   if (rank == 0) {
     std::ifstream inputfile (pb.pqrfilename);
@@ -108,6 +115,15 @@ main (int argc, char **argv)
   MPI_Barrier (mpicomm);
 
   pb.create_mesh ();
+
+  // The non-uniform model (ion_model_nu) is not connected to the solver yet:
+  // stop once create_mesh has printed its parameters.
+  if (pb.linearized == 0 && pb.nonuniform) {
+    if (rank == 0)
+      std::cerr << "ERROR: the non-uniform steric model (ion_size_pos, ion_size_neg,"
+                << " solvent_size not all equal) is not connected to the solver yet.\n";
+    return 1;
+  }
 
   // The radii are needed again only by the Stern layer (create_markers).
   if (pb.stern_layer_surf == 0)

@@ -111,8 +111,37 @@ poisson_boltzmann::create_mesh ()
     std::cout << "  Temperature        : " << T << " [K] \n";
     std::cout << "  Ionic strength     : " << ionic_strength << " [mol/L] \n";
     if (linearized == 0) {
-      std::cout << "  Ion model          : " << ion_model.name () << '\n';
-      if (ion_model.nu > 0.0) {
+      std::cout << "  Ion model          : "
+                << (nonuniform ? "steric non-uniform (free volume solved at each node)"
+                               : ion_model.name ()) << '\n';
+      if (per_species_sizes) {
+        std::cout << "  Ion sizes [A]      : a+ = " << ion_size_pos << ", a- = " << ion_size_neg
+                  << ", solvent = " << solvent_size;
+        if (ionic_strength == 0.0)
+          std::cout << " (no ions: sizes have no effect)";
+        else if (nonuniform && ion_size_pos == ion_size_neg)
+          std::cout << " (equal ions, different solvent: kappa_eff = kappa)";
+        else if (! nonuniform && ion_size > 0.0)
+          std::cout << " (all equal: uniform model, same as ion_size = " << ion_size << ")";
+        else if (! nonuniform)
+          std::cout << " (point-like ions: solvent_size has no effect)";
+        std::cout << '\n';
+      }
+      if (nonuniform) {
+        // Linear response at u = 0: kappa_eff^2 = kappa^2 g'(0) (manuscript
+        // eq. keff_sym), I_eq = I g'(0). Printed only, not used by the solver.
+        const ion_model_nonuniform_t & m = ion_model_nu;
+        const double dg0 = m.dg0 ();
+        std::cout << "  Ion volumes [A^3]  : v+ = " << m.v_p << ", v- = " << m.v_m
+                  << ", v_w = " << m.v_w << " (v+/v_w = " << m.r_p << ", v-/v_w = "
+                  << m.r_m << ")\n";
+        std::cout << "  Packing fraction   : " << 1.0 - m.thb
+                  << " (1 - theta_w^b, bulk ion volume fraction)\n";
+        std::cout << "  Linear response    : kappa_eff^2/kappa^2 = " << dg0
+                  << ", I_eq = " << ionic_strength * dg0 << " [mol/L] (diagnostic only)\n";
+        std::cout << "  Debye length       : 1/kappa_eff = " << 1.0 / (k * std::sqrt (dg0))
+                  << " [Å], 1/kappa = " << 1.0 / k << " [Å]\n";
+      } else if (ion_model.nu > 0.0) {
         std::cout << "  Ion size           : " << ion_size << " [Å] \n";
         std::cout << "  Packing fraction   : " << ion_model.nu << " (nu = 2 a^3 n_b)\n";
       }
@@ -989,20 +1018,11 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     return 1;
   }
 
-  // Bulk packing fraction nu = 2 a^3 n_b (1:1 salt, n_b in 1/Angs^3).
-  // nu >= 1 leaves no solvent in the bulk (theta_FS = 1 - nu <= 0) and makes
-  // g'(u) change sign at large |u|: the lattice-gas model is undefined there.
-  {
-    const double n_b = 1.0e3 * N_av * ionic_strength * Angs * Angs * Angs;
-    ion_model.nu = 2.0 * ion_size * ion_size * ion_size * n_b;
-    if (ion_model.nu >= 1.0) {
-      if (rank == 0)
-        std::cerr << "ERROR: ion_size = " << ion_size << " A at ionic_strength = "
-                  << ionic_strength << " M gives packing fraction nu = 2 a^3 n_b = "
-                  << ion_model.nu << " >= 1: no bulk solvent left, reduce ion_size.\n";
-      return 1;
-    }
-  }
+  // Second input form, for different sizes: checked below, after the
+  // unknown-key test.
+  ion_size_pos = g2 ( (model_options + "ion_size_pos").c_str (), 0.0);
+  ion_size_neg = g2 ( (model_options + "ion_size_neg").c_str (), 0.0);
+  solvent_size = g2 ( (model_options + "solvent_size").c_str (), 0.0);
 
   e_in = g2 ( (model_options + "molecular_dielectric_constant").c_str (), 2.);
   e_out = g2 ( (model_options + "solvent_dielectric_constant").c_str (), 80.);
@@ -1036,6 +1056,120 @@ poisson_boltzmann::parse_options (int argc, char **argv)
           std::cerr << " " << name.substr (model_options.size ());
         std::cerr << "\n       Check the spelling (the valid keys are listed in data/options.prm).\n";
       }
+      return 1;
+    }
+  }
+
+  // Second input form, for different sizes (1:1 salt): cation, anion and
+  // solvent, all cube sides (diameters) in A, volumes v = a^3. The three keys
+  // go together and exclude ion_size. Checked only now, after the unknown-key
+  // test, so that a misspelt size key is reported as unknown, not as missing.
+  // vector_variable_size () is 0 for a key that is not in the file.
+  {
+    const auto given = [&] (const char * key)
+      { return g2.vector_variable_size ( (model_options + key).c_str ()) > 0; };
+    const bool given_pos = given ("ion_size_pos");
+    const bool given_neg = given ("ion_size_neg");
+    const bool given_w   = given ("solvent_size");
+    per_species_sizes = given_pos || given_neg || given_w;
+
+    if (per_species_sizes) {
+      const char * hint = "       Sizes are cube sides (diameters) in A. Give either ion_size alone"
+                          " (one size for cations, anions and solvent)\n"
+                          "       or all of ion_size_pos, ion_size_neg (0 = point-like ion) and"
+                          " solvent_size (3.1 = water;\n"
+                          "       equal to the ion sizes for the uniform model).\n";
+      if (given ("ion_size")) {
+        if (rank == 0)
+          std::cerr << "ERROR: ion_size cannot be used together with"
+                    << " ion_size_pos, ion_size_neg, solvent_size.\n" << hint;
+        return 1;
+      }
+      if (! (given_pos && given_neg && given_w)) {
+        if (rank == 0)
+          std::cerr << "ERROR: missing key(s) in [model]:"
+                    << (given_pos ? "" : " ion_size_pos") << (given_neg ? "" : " ion_size_neg")
+                    << (given_w ? "" : " solvent_size") << "\n" << hint;
+        return 1;
+      }
+      if (ion_size_pos < 0.0 || ion_size_neg < 0.0 || ! (solvent_size > 0.0)) {
+        if (rank == 0)
+          std::cerr << "ERROR: ion_size_pos = " << ion_size_pos << " A, ion_size_neg = "
+                    << ion_size_neg << " A, solvent_size = " << solvent_size
+                    << " A: ion sizes must be >= 0 and solvent_size > 0.\n";
+        return 1;
+      }
+
+      // Bulk free volume theta_w^b = 1 - n_b (v+ + v-) (manuscript eq. s_equation
+      // at u = 0) must be positive, as nu < 1 for the uniform model below.
+      const double n_b = 1.0e3 * N_av * ionic_strength * Angs * Angs * Angs;
+      const double v_p = ion_size_pos * ion_size_pos * ion_size_pos;
+      const double v_m = ion_size_neg * ion_size_neg * ion_size_neg;
+      const double v_w = solvent_size * solvent_size * solvent_size;
+      const double packing = n_b * (v_p + v_m);
+      if (! (packing < 1.0)) {
+        if (rank == 0)
+          std::cerr << "ERROR: ion_size_pos = " << ion_size_pos << " A, ion_size_neg = "
+                    << ion_size_neg << " A at ionic_strength = " << ionic_strength
+                    << " M: bulk volume fractions v+ n_b = " << v_p * n_b << ", v- n_b = "
+                    << v_m * n_b << ",\n       theta_w^b = 1 - v+ n_b - v- n_b = "
+                    << 1.0 - packing << " <= 0: no bulk solvent left, reduce the ion sizes.\n";
+        return 1;
+      }
+
+      // Warnings, only for this form (the runs with ion_size are unchanged).
+      if (rank == 0) {
+        const std::pair<const char *, double> sizes[3] =
+          {{"ion_size_pos", ion_size_pos}, {"ion_size_neg", ion_size_neg},
+           {"solvent_size", solvent_size}};
+        for (const auto & s : sizes) {
+          if (s.second > 15.0)
+            std::cerr << "WARNING: " << s.first << " = " << s.second
+                      << " A is above 15 A: sizes are cube sides (diameters) in A,"
+                      << " not volumes in A^3 or lengths in pm.\n";
+          else if (s.second > 0.0 && s.second < 1.0)
+            std::cerr << "WARNING: " << s.first << " = " << s.second
+                      << " A is below 1 A: sizes are cube sides (diameters) in A, not nm.\n";
+        }
+        if (packing > 0.5)
+          std::cerr << "WARNING: bulk packing fraction 1 - theta_w^b = " << packing
+                    << " > 0.5: the ions fill more than half of the bulk,"
+                    << " where the lattice-gas model is crude.\n";
+        if (ionic_strength == 0.0)
+          std::cerr << "WARNING: ionic_strength = 0 (no ions): the ion sizes have no effect.\n";
+        else if (ion_size_pos == 0.0 && ion_size_neg == 0.0)
+          std::cerr << "WARNING: point-like ions (ion_size_pos = ion_size_neg = 0):"
+                    << " ideal (sinh) model, solvent_size has no effect.\n";
+      }
+
+      // Model choice, by exact equality of the input values.
+      if (ionic_strength == 0.0 || (ion_size_pos == 0.0 && ion_size_neg == 0.0))
+        ion_size = 0.0;                    // ideal model
+      else if (ion_size_pos == ion_size_neg && ion_size_neg == solvent_size)
+        ion_size = ion_size_pos;           // uniform model, same as ion_size = a
+      else {
+        nonuniform = true;
+        if (! ion_model_nu.init (n_b, v_p, v_m, v_w)) {
+          if (rank == 0)
+            std::cerr << "ERROR: invalid non-uniform ion model (n_b = " << n_b << " A^-3, v+ = "
+                      << v_p << ", v- = " << v_m << ", v_w = " << v_w << " A^3).\n";
+          return 1;
+        }
+      }
+    }
+  }
+
+  // Bulk packing fraction nu = 2 a^3 n_b (1:1 salt, n_b in 1/Angs^3).
+  // nu >= 1 leaves no solvent in the bulk (theta_FS = 1 - nu <= 0) and makes
+  // g'(u) change sign at large |u|: the lattice-gas model is undefined there.
+  {
+    const double n_b = 1.0e3 * N_av * ionic_strength * Angs * Angs * Angs;
+    ion_model.nu = 2.0 * ion_size * ion_size * ion_size * n_b;
+    if (ion_model.nu >= 1.0) {
+      if (rank == 0)
+        std::cerr << "ERROR: ion_size = " << ion_size << " A at ionic_strength = "
+                  << ionic_strength << " M gives packing fraction nu = 2 a^3 n_b = "
+                  << ion_model.nu << " >= 1: no bulk solvent left, reduce ion_size.\n";
       return 1;
     }
   }

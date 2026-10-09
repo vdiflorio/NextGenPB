@@ -450,6 +450,14 @@ struct
   double e_in, e_out, ionic_strength; //[M]
   double ion_size;        // [Angstrom] finite ion size a; 0 -> ideal (sinh) ions
   ion_model_t ion_model;  // nu = 2 a^3 n_b, set right after reading the options
+  // Second input form: ion_size_pos, ion_size_neg, solvent_size, cube sides
+  // (diameters) [Angstrom], volumes = their cubes. a+ = a- = a_w goes to
+  // ion_model with ion_size = a, a+ = a- = 0 to the ideal model; any other
+  // choice is non-uniform and uses ion_model_nu.
+  bool per_species_sizes = false;  // the three keys are in the options file
+  double ion_size_pos = 0.0, ion_size_neg = 0.0, solvent_size = 0.0;
+  bool nonuniform = false;
+  ion_model_nonuniform_t ion_model_nu;  // set in parse_options if nonuniform
   double T;
   int calc_energy;
   double energy_pol = 0.0;
