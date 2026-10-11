@@ -3203,6 +3203,24 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   lis_solve (A_lis, rhs_lis, phi_lis, solver);
 
+  // LIS does not stop when it fails (iteration limit, breakdown): it returns
+  // its last iterate and, with -print 0, says nothing. Report it, so that a
+  // failed linear solve (and a Newton step built on it) is visible in the log.
+  {
+    LIS_INT status = LIS_SUCCESS, iter = 0;
+    LIS_REAL resid = 0.0;
+    lis_solver_get_status (solver, &status);
+    lis_solver_get_iter (solver, &iter);
+    lis_solver_get_residualnorm (solver, &resid);
+    if (status != LIS_SUCCESS && rank == 0)
+      std::cout << "  [LIS] WARNING: the linear solver did not converge (status "
+                << status
+                << (status == LIS_MAXITER ? ", iteration limit"
+                    : status == LIS_BREAKDOWN ? ", breakdown" : "")
+                << ") after " << iter << " iterations, residual = "
+                << resid << std::endl;
+  }
+
   lis_solver_destroy (solver);
   lis_vector_destroy (rhs_lis);
 
