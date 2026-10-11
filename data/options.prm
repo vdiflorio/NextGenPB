@@ -52,8 +52,8 @@ mesh_shape = 0
 # perfil1 controls base resolution (smaller = finer grid)
 # perfil2 is used in derefined zones (used only if mesh_shape = 0 or mesh_shape = 1 && refine_box = 1)
 # scale = 1/(grid_size) (used only if mesh_shape = 0,3)
-perfil1 = 0.8
-perfil2 = 0.5
+perfil1 = 0.9
+perfil2 = 0.2
 scale   = 2.0
 
 # Used only if mesh_shape = 3 (focusing mesh):

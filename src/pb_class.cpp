@@ -958,7 +958,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   aligned = g2 ( (mesh_options + "aligned").c_str (), 0);
 
   if (mesh_shape < 2) {
-    perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.8);
+    perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.9);
     perfil2 = g2 ( (mesh_options + "perfil2").c_str (), 0.2);
     scale = g2 ( (mesh_options + "scale").c_str (), 2.0);
   }
@@ -979,7 +979,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   }
 
   if (mesh_shape == 3) {
-    perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.8);
+    perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.9);
     perfil2 = g2 ( (mesh_options + "perfil2").c_str (), 0.2);
     scale = g2 ( (mesh_options + "scale").c_str (), 2.0);
     cc_focusing[0] = g2 ( (mesh_options + "cx_foc").c_str (), 0.0);
@@ -989,7 +989,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   }
 
   if (mesh_shape == 4) {
-    perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.8);
+    perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.9);
     perfil2 = g2 ( (mesh_options + "perfil2").c_str (), 0.2);
     scale_min = g2 ( (mesh_options + "scale_min").c_str (), 0.5);
     scale_max = g2 ( (mesh_options + "scale_max").c_str (), 2.0);
@@ -1000,7 +1000,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
     num_trees [1] = g2 ( (mesh_options + "num_trees_y").c_str (), 10);
     num_trees [2] = g2 ( (mesh_options + "num_trees_z").c_str (), 10);
     len = g2 ( (mesh_options + "lato").c_str (), 50.0);
-    perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.8);
+    perfil1 = g2 ( (mesh_options + "perfil1").c_str (), 0.9);
   }
 
   const std::string model_options = "model/";
