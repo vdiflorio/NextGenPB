@@ -3224,6 +3224,12 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
   lis_solver_destroy (solver);
   lis_vector_destroy (rhs_lis);
 
+  // The CSR arrays belong to vals/jcol/irow: unset them before the destroy,
+  // which frees what LIS allocated itself (e.g. the SSOR split of A). Without
+  // it every Newton step leaked ~0.24 GB per rank on 21 M nodes.
+  lis_matrix_unset (A_lis);
+  lis_matrix_destroy (A_lis);
+
   phi = new_node_vector ();
 
   lis_vector_get_values (phi_lis, is, ln, phi->get_owned_data ().data ());
