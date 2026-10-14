@@ -487,7 +487,7 @@ struct
   //algorithm:
   std::string linear_solver_name;
   std::string linear_solver_options;
-  int newton_compress;   // 1 (default): after Newton it 0 (== linear solve) map solvent phi -> 2 asinh(phi/2)
+  int newton_compress;   // 1 (default): after Newton it 0 (== linear solve) map solvent phi with the planar Grahame map of the ion model
 
   MPI_Comm mpicomm;
   tmesh_3d tmsh;

@@ -2772,13 +2772,15 @@ poisson_boltzmann::assemble_newton_system (ray_cache_t & ray_cache,
 //  solver (du small and no longer decreasing).
 //
 //  newton_compress = 1 (default): right after iteration 0, i.e. on the linear
-//  solution, solvent nodes are mapped phi -> 2 asinh(phi/2). This is the
-//  Grahame relation for a 1:1 electrolyte (sigma ~ phi in DH vs
-//  sigma ~ 2 sinh(phi/2) nonlinear): same surface charge, nonlinear surface
-//  potential. It is ~identity where |phi| << 1 and only tames the thin layer
-//  |phi| >~ 1 at the surface, which otherwise costs one Newton iteration per
-//  unit of |phi| (the step on sinh is -+1 for large |phi|). Applied ONCE, at
-//  iteration 0 only; it is just a better initial guess for iteration 1.
+//  solution, solvent nodes are mapped with the planar Grahame relation of the
+//  ion model (same surface charge in the linear and in the nonlinear planar
+//  double layer): phi -> 2 asinh(phi/2) for ideal ions, the steric map
+//  cosh phi - 1 = (exp(nu phi^2/2) - 1)/nu for the steric model, the same
+//  with the largest ion for different sizes (see the block below). It is
+//  ~identity where |phi| << 1 and only tames the layer |phi| >~ 1 at the
+//  surface, which otherwise costs one Newton iteration per unit of |phi|
+//  (the step on sinh is -+1 for large |phi|). Applied ONCE, at iteration 0
+//  only; it is just a better initial guess for iteration 1.
 // ============================================================
 void
 poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
@@ -3003,16 +3005,40 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     for (std::size_t i = 0; i < n; ++i)
       phi_new[i] = phi_old[i] + scale * du[i];
 
-    // --- asinh compression of the linear solution (iteration 0 ONLY) ---
+    // --- compression of the linear solution (iteration 0 ONLY) ---
     // phi_new here is exactly the linear PB solution (scale == 1 at it 0).
     // Solvent nodes only (C != 0); the molecule is linear and re-adjusts
     // exactly at iteration 1.
+    // Planar map of the model in use (Grahame, same charge in the linear and
+    // in the nonlinear planar double layer, Pi(psi) = psi_L^2 / 2):
+    //   cosh psi - 1 = X,   X = (exp(nu psi_L^2 / 2) - 1) / nu  (steric, nu = 2 a^3 n_b)
+    //                       X = psi_L^2 / 2                     (ideal, nu = 0)
+    // i.e. psi = 2 asinh(sqrt(X / 2)); for nu = 0 this is 2 asinh(psi_L / 2).
+    // Different sizes: the uniform map with the largest ion, a = max(a+, a-).
+    // For nu psi_L^2 / 2 > 600 (exp overflow) the asymptote
+    // psi = nu psi_L^2 / 2 + log(2 / nu) is used (error ~ 1 / X).
     if (it == 0 && newton_compress == 1) {
+      double nu_c = 0.0;
+      if (nonuniform) {
+        const double a = std::max (ion_size_pos, ion_size_neg);
+        nu_c = 2.0 * a * a * a * ion_model_nu.n_b;
+      }
+      else
+        nu_c = ion_model.nu;
       double loc_before = 0.0, loc_after = 0.0;   // diagnostics only
       for (std::size_t i = 0; i < n; ++i)
         if (Cd[i] != 0.0) {
-          loc_before = std::max (loc_before, std::fabs (phi_new[i]));
-          phi_new[i] = 2.0 * std::asinh (0.5 * phi_new[i]);
+          const double p = phi_new[i];
+          loc_before = std::max (loc_before, std::fabs (p));
+          double q;
+          if (nu_c > 0.0) {
+            const double y = 0.5 * nu_c * p * p;
+            q = y > 600.0 ? y + std::log (2.0 / nu_c)
+                          : 2.0 * std::asinh (std::sqrt (0.5 * std::expm1 (y) / nu_c));
+          }
+          else
+            q = 2.0 * std::asinh (std::sqrt (0.5 * (0.5 * p * p)));
+          phi_new[i] = std::copysign (q, p);
           loc_after  = std::max (loc_after,  std::fabs (phi_new[i]));
         }
       double g_before = loc_before, g_after = loc_after;
@@ -3024,6 +3050,9 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
         std::cout << "  [Newton] COMPRESS (it 0, solvent): max|phi|_solv "
                   << std::setprecision (17) << g_before << " -> " << g_after
                   << std::setprecision (6) << std::endl;
+      if (rank == 0)
+        std::cout << "  [Newton] COMPRESS planar map: nu = " << std::setprecision (17)
+                  << nu_c << std::setprecision (6) << std::endl;
     }
 
     // phi comes from new_node_vector (via the solver): only the values move.
