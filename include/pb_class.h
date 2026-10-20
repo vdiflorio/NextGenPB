@@ -489,6 +489,7 @@ struct
   std::string linear_solver_options;
   int newton_compress;   // 1 (default): after Newton it 0 (== linear solve) map solvent phi with the planar Grahame map of the ion model
   int newton_verbose;    // 1: per-node Newton diagnostics in the log; 0 (default): one line per iteration
+  int newton_warm_start; // 1 (default): LIS starts each Newton solve from phi_k; 0: from 0
 
   MPI_Comm mpicomm;
   tmesh_3d tmsh;
@@ -1077,7 +1078,8 @@ struct
 
   void
   lis_compute_electric_potential (ray_cache_t & ray_cache,
-                                  lis_solve_info * info = nullptr);
+                                  lis_solve_info * info = nullptr,
+                                  bool warm_start = false);
 
   int
   classifyCube (tmesh_3d::quadrant_iterator& quadrant,double isolevel);

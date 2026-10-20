@@ -227,4 +227,14 @@ solver_options = -p\ ssor\ -ssor_omega\ 0.51\ -i\ cgs\ -tol\ 1.e-6\ -print\ 2\ -
 #     Default when the option is not given.
 newton_compress = 1
 
+# Nonlinear (Newton) solver with LIS only:
+# 1 = each LIS solve starts from the current Newton iterate phi_k (it solves
+#     for the correction), so it only reduces the residual of phi_k. Default.
+# 0 = each LIS solve starts from 0.
+newton_warm_start = 1
+
+# Newton log: 0 = one line per iteration (default); 1 = also per-iteration
+# maxima of phi and du (solvent/molecule) and the LIS residuals.
+newton_verbose = 0
+
 [../]

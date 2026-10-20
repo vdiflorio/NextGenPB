@@ -1192,6 +1192,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   linear_solver_options = g2 ( (alg_options + "solver_options").c_str (), "-p ssor -ssor_omega 0.51 -i cgs -tol 1.e-6 -print 2 -conv_cond 2 -tol_w 0");
   newton_compress = g2 ( (alg_options + "newton_compress").c_str (), 1);
   newton_verbose = g2 ( (alg_options + "newton_verbose").c_str (), 0);
+  newton_warm_start = g2 ( (alg_options + "newton_warm_start").c_str (), 1);
 
   const std::string out_options = "output/";
   p4estfilename = g2 ( (out_options + "p4estfilename").c_str (), "poisson_boltzmann_p4est");
@@ -2855,7 +2856,8 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
   }
   if (rank == 0)
     std::cout << "  [Newton] ||F||_1 = ||b - A phi_k||_1: error of the iterate phi_k the system is built from\n"
-              << "  [Newton] LIS it, ||r||_1: LIS iterations, residual ||b - A phi_new||_1 they leave (LIS stops at -tol)\n"
+              << "  [Newton] LIS it, ||r||_1: LIS iterations, residual ||b - A phi_new||_1 they leave (LIS stops at -tol); LIS starts from "
+              << (newton_warm_start == 1 && linear_solver_name != "mumps" ? "phi_k (warm start)" : "0") << "\n"
               << "  [Newton] du_s = max|phi_new - phi_k| on the solvent nodes; converged when du_s <= tol_s = "
               << newton_tol << " max(1, max|phi_k|_s)\n"
               << "  [Newton] CLAMP from iter 1 when du_s > " << maxdu << ": step scaled by "
@@ -2894,7 +2896,7 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     lis_solve_info linfo;
     const double t_sol0 = MPI_Wtime ();
     if (use_lis)
-      lis_compute_electric_potential (ray_cache, &linfo);
+      lis_compute_electric_potential (ray_cache, &linfo, newton_warm_start == 1);
     else
       mumps_compute_electric_potential (ray_cache);
     const double t_sol = use_lis ? linfo.time : MPI_Wtime () - t_sol0;
@@ -3018,8 +3020,8 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     }
 
     // --- stagnation: stop at the accuracy of the linear solver ---
-    // Each solve starts from zero, so du cannot go below the error of one
-    // linear solve. If du is already small and no longer decreases, stop.
+    // du cannot go below the error of one linear solve (-tol). If du is
+    // already small and no longer decreases, stop.
     if (it >= 2 && dsolv < newton_stall * tol_s && dsolv > 0.5 * dsolv_prev) {
       converged = true;
       if (rank == 0)
@@ -3205,7 +3207,8 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
 
 void
 poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache,
-                                                   lis_solve_info * info)
+                                                   lis_solve_info * info,
+                                                   bool warm_start)
 {
   int rank, size;
   MPI_Comm_size (mpicomm, &size);
@@ -3272,24 +3275,32 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache,
 
   lis_matrix_assemble (A_lis);
 
-  // Newton diagnostics: ||b||_1 and ||F(phi_k)||_1 = ||b - A phi_k||_1,
-  // phi_k = phi on entry (the iterate the system was built from).
-  if (info) {
-    LIS_VECTOR xk, r;
-    LIS_REAL nb = 0.0, nf = 0.0;
+  // phi_k = phi on entry (the iterate the Newton system was built from),
+  // r_k = b - A phi_k, ||r_k||_1 = ||F(phi_k)||_1 (Newton diagnostics).
+  //
+  // Warm start, in correction form: LIS solves A du = r_k from du = 0 and
+  // phi_new = phi_k + du. Same test as starting A phi = b from phi_k
+  // (||r_k - A du||_1 = ||b - A phi_new||_1 <= tol), so LIS only reduces
+  // ||F(phi_k)||_1, not ||b||_1. Not with -initx_zeros 0: LIS checks the
+  // INITIAL residual against tol divided by ||b||_1 (later iterations use
+  // the absolute value), so once ||F(phi_k)||_1 < tol ||b||_1 it returned
+  // phi_k untouched after 1 iteration (false Newton convergence).
+  LIS_VECTOR xk = nullptr, rk = nullptr;
+  if (info || warm_start) {
     lis_vector_duplicate (rhs_lis, &xk);
-    lis_vector_duplicate (rhs_lis, &r);
+    lis_vector_duplicate (rhs_lis, &rk);
     const auto & pk = phi->get_owned_data ();
     for (i=is; i<ie; i++)
       lis_vector_set_value (LIS_INS_VALUE, i, pk[i-is], xk);
-    lis_matvec (A_lis, xk, r);            // r = A phi_k
-    lis_vector_xpay (rhs_lis, -1.0, r);   // r = b - A phi_k
-    lis_vector_nrm1 (rhs_lis, &nb);
-    lis_vector_nrm1 (r, &nf);
-    info->bnorm = nb;
-    info->fnorm = nf;
-    lis_vector_destroy (xk);
-    lis_vector_destroy (r);
+    lis_matvec (A_lis, xk, rk);            // rk = A phi_k
+    lis_vector_xpay (rhs_lis, -1.0, rk);   // rk = b - A phi_k
+    if (info) {
+      LIS_REAL nb = 0.0, nf = 0.0;
+      lis_vector_nrm1 (rhs_lis, &nb);
+      lis_vector_nrm1 (rk, &nf);
+      info->bnorm = nb;
+      info->fnorm = nf;
+    }
   }
 
   //Solve linear system
@@ -3302,7 +3313,12 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache,
   lis_solver_set_option (&opts[0], solver);
 
   const double t_solve = MPI_Wtime ();
-  lis_solve (A_lis, rhs_lis, phi_lis, solver);
+  if (warm_start) {
+    lis_solve (A_lis, rk, phi_lis, solver);   // phi_lis = du
+    lis_vector_axpy (1.0, xk, phi_lis);       // phi_lis = phi_k + du
+  }
+  else
+    lis_solve (A_lis, rhs_lis, phi_lis, solver);
   if (info)
     info->time = MPI_Wtime () - t_solve;
 
@@ -3339,6 +3355,8 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache,
 
   lis_solver_destroy (solver);
   lis_vector_destroy (rhs_lis);
+  if (xk) lis_vector_destroy (xk);
+  if (rk) lis_vector_destroy (rk);
 
   // The CSR arrays belong to vals/jcol/irow: unset them before the destroy,
   // which frees what LIS allocated itself (e.g. the SSOR split of A). Without
