@@ -1191,6 +1191,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   linear_solver_name = g2 ( (alg_options + "linear_solver").c_str (), "lis");
   linear_solver_options = g2 ( (alg_options + "solver_options").c_str (), "-p ssor -ssor_omega 0.51 -i cgs -tol 1.e-6 -print 2 -conv_cond 2 -tol_w 0");
   newton_compress = g2 ( (alg_options + "newton_compress").c_str (), 1);
+  newton_verbose = g2 ( (alg_options + "newton_verbose").c_str (), 0);
 
   const std::string out_options = "output/";
   p4estfilename = g2 ( (out_options + "p4estfilename").c_str (), "poisson_boltzmann_p4est");
@@ -2793,7 +2794,6 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
   const double newton_tol      = 1.0e-6; // on |du|_inf,solvent, see the test below
   const double newton_stall    = 100.0;  // stagnation test active below newton_stall * tol
   const double maxdu           = 2.0;    // clamp: max |du|_inf per iteration
-  const bool   newton_verbose  = true;   // per-iteration diagnostics
 
   // --- preconditions: fail loudly instead of segfaulting or lying ---
   if (!reaction_nodes) {
@@ -2825,6 +2825,44 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
   int    it_done    = 0;
   double dsolv_prev = 0.0;   // |du|_inf,solvent of the previous iteration
 
+  // Totals over the iterations, for the summary line.
+  long   lis_it_tot = 0;
+  double t_asm_tot  = 0.0, t_lis_tot = 0.0;
+
+  // One line per iteration, 3 significant digits; the legend says what each
+  // column is. "[Newton] iter" starts every row: the analysis scripts count it.
+  auto e3 = [] (double v) {
+    char b[16];
+    std::snprintf (b, sizeof b, "%9.2e", v);
+    return std::string (b);
+  };
+  auto e6 = [] (double v) {   // details (newton_verbose = 1)
+    char b[20];
+    std::snprintf (b, sizeof b, "%12.5e", v);
+    return std::string (b);
+  };
+  if (newton_verbose) {
+    const auto & C = reaction_nodes->get_owned_data ();
+    long cnt[2] = {0, (long) n};   // solvent nodes, all nodes
+    for (std::size_t i = 0; i < n; ++i)
+      if (C[i] != 0.0) ++cnt[0];
+    long gcnt[2] = {cnt[0], cnt[1]};
+    if (size > 1)
+      MPI_Allreduce (cnt, gcnt, 2, MPI_LONG, MPI_SUM, mpicomm);
+    if (rank == 0)
+      std::cout << "  [Newton] solvent nodes (C != 0): " << gcnt[0] << " / " << gcnt[1]
+                << std::endl;
+  }
+  if (rank == 0)
+    std::cout << "  [Newton] ||F||_1 = ||b - A phi_k||_1: error of the iterate phi_k the system is built from\n"
+              << "  [Newton] LIS it, ||r||_1: LIS iterations, residual ||b - A phi_new||_1 they leave (LIS stops at -tol)\n"
+              << "  [Newton] du_s = max|phi_new - phi_k| on the solvent nodes; converged when du_s <= tol_s = "
+              << newton_tol << " max(1, max|phi_k|_s)\n"
+              << "  [Newton] CLAMP from iter 1 when du_s > " << maxdu << ": step scaled by "
+              << maxdu << " / du_s\n"
+              << "  [Newton] step     |  ||F||_1  | LIS it  ||r||_1  |   du_s      tol_s   |  t_asm  t_lis [s]"
+              << std::endl;
+
   for (int it = 0; it < newton_max_iter; ++it) {
     it_done = it;
 
@@ -2835,7 +2873,9 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
         phi_old[i] = phi_cur[i];
     }
 
+    const double t_asm0 = MPI_Wtime ();
     assemble_newton_system (ray_cache, *phi);
+    const double t_asm = MPI_Wtime () - t_asm0;
 
     // Non-uniform sizes: stop if the free-volume equation had no root at
     // some node (count already reduced over the ranks, same on all of them).
@@ -2850,10 +2890,17 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     }
 
     // Solve J * phi_new = rhs.
-    if (linear_solver_name == "mumps")
-      mumps_compute_electric_potential (ray_cache);
+    const bool use_lis = (linear_solver_name != "mumps");
+    lis_solve_info linfo;
+    const double t_sol0 = MPI_Wtime ();
+    if (use_lis)
+      lis_compute_electric_potential (ray_cache, &linfo);
     else
-      lis_compute_electric_potential (ray_cache);
+      mumps_compute_electric_potential (ray_cache);
+    const double t_sol = use_lis ? linfo.time : MPI_Wtime () - t_sol0;
+    lis_it_tot += linfo.iters;
+    t_asm_tot  += t_asm;
+    t_lis_tot  += t_sol;
 
     // IMPORTANT: both solvers REPLACE the phi object (make_unique), so this
     // reference must be taken AFTER the solve, never before.
@@ -2881,68 +2928,63 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     const double anorm = glob[0], dsolv = glob[1], usolv = glob[2];
     const double tol_s = newton_tol * std::max (1.0, usolv);
 
-    // ---------------- diagnostics ----------------
-    // Every line tagged "[Newton]" so one grep catches the whole trace.
-    // NOTE: rank 0's OWNED nodes only -- indicative, not a global reduction.
-    if (newton_verbose && rank == 0) {
-      auto report = [&] (const char * tag, const double * v) {
-        double m_all = 0.0, m_solv = 0.0, m_mol = 0.0;
-        std::size_t i_all = 0, i_solv = 0;
-        for (std::size_t i = 0; i < n; ++i) {
-          const double a = std::fabs (v[i]);
-          if (a > m_all)    { m_all  = a; i_all  = i; }
-          if (Cd[i] != 0.0) { if (a > m_solv) { m_solv = a; i_solv = i; } }
-          else              { if (a > m_mol)  { m_mol  = a; } }
-        }
-        std::cout << "  [Newton]   " << tag
-                  << " all=" << std::setprecision (17) << m_all
-                  << " (node " << i_all << ", C=" << Cd[i_all] << ")"
-                  << "  solvent=" << m_solv << " (node " << i_solv << ")"
-                  << "  molecule=" << m_mol
-                  << std::setprecision (6) << std::endl;
-      };
-
-      if (it == 0) {
-        std::size_t nsolv = 0;
-        for (std::size_t i = 0; i < n; ++i) if (Cd[i] != 0.0) ++nsolv;
-        std::cout << "  [Newton]   solvent nodes (rank 0): "
-                  << nsolv << " / " << n << std::endl;
-      }
-
-      report ("phi_old:", phi_old.data ());   // system was built from this; == 0 at it==0
-      report ("phi_new:", phi_new.data ());   // what the solve just returned
-      report ("du     :", du.data ());
-
-      double extramax = 0.0;
-      if (nonuniform) {
-        for (std::size_t i = 0; i < n; ++i)
-          if (Cd[i] != 0.0) {
-            double g, dg;
-            ion_model_nu.newton (phi_old[i], g, dg);
-            const double e = std::fabs (Cd[i] * (phi_old[i] * dg - g));
-            if (e > extramax) extramax = e;
-          }
-      }
-      else {
-        for (std::size_t i = 0; i < n; ++i)
-          if (Cd[i] != 0.0) {
-            const double e = std::fabs (Cd[i] * (phi_old[i] * ion_model.dg (phi_old[i])
-                                                 - ion_model.g (phi_old[i])));
-            if (e > extramax) extramax = e;
-          }
-      }
-      std::cout << "  [Newton]   max|rhs_extra| from phi_old = "
-                << std::setprecision (17) << extramax
-                << std::setprecision (6) << std::endl;
+    // ---------------- one row per iteration ----------------
+    if (rank == 0) {
+      char lis_col[32];
+      if (use_lis)
+        std::snprintf (lis_col, sizeof lis_col, "%9.2e | %6d %9.2e",
+                       linfo.fnorm, linfo.iters, linfo.rnorm);
+      else
+        std::snprintf (lis_col, sizeof lis_col, "%9s | %6s %9s", "-", "mumps", "-");
+      char times[32];
+      std::snprintf (times, sizeof times, "%6.2f %6.2f", t_asm, t_sol);
+      std::cout << "  [Newton] iter " << std::setw (3) << it << " | " << lis_col
+                << " | " << e3 (dsolv) << " " << e3 (tol_s) << " | " << times << std::endl;
     }
 
-    if (rank == 0)
-      std::cout << "  [Newton] iter " << it
-                << "   ||du||_inf = "         << std::setprecision (17) << anorm
-                << "   ||du||_inf,solvent = " << dsolv
-                << "   ||phi||_inf,solvent = " << usolv
-                << "   tol = " << tol_s
-                << std::setprecision (6) << std::endl;
+    // ---------------- details (newton_verbose = 1) ----------------
+    // Printed under the row of the same iteration. Global maxima over the
+    // ranks (collective: all ranks enter), solvent = C != 0, molecule = C == 0.
+    if (newton_verbose) {
+      // m[0..5]: phi_k, phi_new, du on solvent / molecule; m[6]: rhs_extra
+      double m[7] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+      for (std::size_t i = 0; i < n; ++i) {
+        const int o = (Cd[i] != 0.0) ? 0 : 1;
+        m[0 + o] = std::max (m[0 + o], std::fabs (phi_old[i]));
+        m[2 + o] = std::max (m[2 + o], std::fabs (phi_new[i]));
+        m[4 + o] = std::max (m[4 + o], std::fabs (du[i]));
+        if (o == 0) {
+          double g, dg;
+          if (nonuniform)
+            ion_model_nu.newton (phi_old[i], g, dg);
+          else {
+            g  = ion_model.g (phi_old[i]);
+            dg = ion_model.dg (phi_old[i]);
+          }
+          m[6] = std::max (m[6], std::fabs (Cd[i] * (phi_old[i] * dg - g)));
+        }
+      }
+      double gm[7];
+      std::copy (m, m + 7, gm);
+      if (size > 1)
+        MPI_Allreduce (m, gm, 7, MPI_DOUBLE, MPI_MAX, mpicomm);
+
+      if (rank == 0) {
+        auto pair = [&] (const char * tag, const double * v) {
+          std::cout << "  [Newton]       " << tag << "  solvent " << e6 (v[0])
+                    << "   molecule " << e6 (v[1]) << std::endl;
+        };
+        pair ("max|phi_k|  :", gm + 0);   // the system was built from phi_k
+        pair ("max|phi_new|:", gm + 2);   // what the solver returned
+        pair ("max|du|     :", gm + 4);
+        std::cout << "  [Newton]       max|C (phi_k g'(phi_k) - g(phi_k))| (rhs_extra) = "
+                  << e6 (gm[6]) << std::endl;
+        if (use_lis)
+          std::cout << "  [Newton]       ||b||_1 = " << e6 (linfo.bnorm)
+                    << "   LIS residual: reported " << e6 (linfo.lis_resid)
+                    << ", true " << e6 (linfo.rnorm) << std::endl;
+      }
+    }
 
     // --- divergence check: scan phi itself, not just the norm ---
     // (is_finite_bits, not std::isfinite: see its definition.) The node scan
@@ -2982,9 +3024,9 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
       converged = true;
       if (rank == 0)
         std::cout << "  [Newton] WARNING: stopped at the accuracy of the linear "
-                     "solver after " << it + 1 << " iterations, ||du||_inf,solvent = "
-                  << std::setprecision (17) << dsolv << " (tol = " << tol_s << ")"
-                  << std::setprecision (6) << std::endl;
+                     "solver after " << it + 1 << " iterations: du_s = "
+                  << e3 (dsolv) << " > tol_s = " << e3 (tol_s)
+                  << " but no longer decreasing" << std::endl;
       break;
     }
     dsolv_prev = dsolv;
@@ -2999,7 +3041,9 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     if (it >= 1 && dsolv > maxdu) {
       scale = maxdu / dsolv;
       if (rank == 0)
-        std::cout << "  [Newton] CLAMP active: scale = " << scale << std::endl;
+        std::cout << "  [Newton] CLAMP active: du_s = " << std::setprecision (3) << dsolv
+                  << " > " << maxdu << ", step scaled by " << scale
+                  << std::setprecision (6) << std::endl;
     }
 
     for (std::size_t i = 0; i < n; ++i)
@@ -3048,11 +3092,10 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
       }
       if (rank == 0)
         std::cout << "  [Newton] COMPRESS (it 0, solvent): max|phi|_solv "
-                  << std::setprecision (17) << g_before << " -> " << g_after
+                  << std::setprecision (3) << g_before << " -> " << g_after
                   << std::setprecision (6) << std::endl;
-      if (rank == 0)
-        std::cout << "  [Newton] COMPRESS planar map: nu = " << std::setprecision (17)
-                  << nu_c << std::setprecision (6) << std::endl;
+      if (newton_verbose && rank == 0)
+        std::cout << "  [Newton]       planar map: nu = " << e6 (nu_c) << std::endl;
     }
 
     // phi comes from new_node_vector (via the solver): only the values move.
@@ -3064,6 +3107,13 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     std::cout << "  [Newton] WARNING: did NOT converge in " << it_done + 1
               << " iterations. The reported potential is the last iterate."
               << std::endl;
+
+  if (rank == 0)
+    std::cout << "  [Newton] totals: " << it_done + 1 << " linear solves, "
+              << (linear_solver_name != "mumps" ? std::to_string (lis_it_tot) + " LIS iterations, "
+                                                : std::string ())
+              << "t_asm = " << std::setprecision (3) << t_asm_tot << " s, t_solve = "
+              << t_lis_tot << " s" << std::setprecision (6) << std::endl;
 }
 
 void
@@ -3154,7 +3204,8 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
 
 
 void
-poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
+poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache,
+                                                   lis_solve_info * info)
 {
   int rank, size;
   MPI_Comm_size (mpicomm, &size);
@@ -3221,6 +3272,26 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   lis_matrix_assemble (A_lis);
 
+  // Newton diagnostics: ||b||_1 and ||F(phi_k)||_1 = ||b - A phi_k||_1,
+  // phi_k = phi on entry (the iterate the system was built from).
+  if (info) {
+    LIS_VECTOR xk, r;
+    LIS_REAL nb = 0.0, nf = 0.0;
+    lis_vector_duplicate (rhs_lis, &xk);
+    lis_vector_duplicate (rhs_lis, &r);
+    const auto & pk = phi->get_owned_data ();
+    for (i=is; i<ie; i++)
+      lis_vector_set_value (LIS_INS_VALUE, i, pk[i-is], xk);
+    lis_matvec (A_lis, xk, r);            // r = A phi_k
+    lis_vector_xpay (rhs_lis, -1.0, r);   // r = b - A phi_k
+    lis_vector_nrm1 (rhs_lis, &nb);
+    lis_vector_nrm1 (r, &nf);
+    info->bnorm = nb;
+    info->fnorm = nf;
+    lis_vector_destroy (xk);
+    lis_vector_destroy (r);
+  }
+
   //Solve linear system
   LIS_SOLVER solver;
 
@@ -3230,7 +3301,10 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
 
   lis_solver_set_option (&opts[0], solver);
 
+  const double t_solve = MPI_Wtime ();
   lis_solve (A_lis, rhs_lis, phi_lis, solver);
+  if (info)
+    info->time = MPI_Wtime () - t_solve;
 
   // LIS does not stop when it fails (iteration limit, breakdown): it returns
   // its last iterate and, with -print 0, says nothing. Report it, so that a
@@ -3248,6 +3322,19 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache)
                     : status == LIS_BREAKDOWN ? ", breakdown" : "")
                 << ") after " << iter << " iterations, residual = "
                 << resid << std::endl;
+
+    if (info) {
+      LIS_VECTOR r;
+      LIS_REAL nr = 0.0;
+      lis_vector_duplicate (rhs_lis, &r);
+      lis_matvec (A_lis, phi_lis, r);       // r = A x
+      lis_vector_xpay (rhs_lis, -1.0, r);   // r = b - A x
+      lis_vector_nrm1 (r, &nr);
+      lis_vector_destroy (r);
+      info->rnorm     = nr;
+      info->lis_resid = resid;
+      info->iters     = iter;
+    }
   }
 
   lis_solver_destroy (solver);
