@@ -1193,6 +1193,7 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   newton_compress = g2 ( (alg_options + "newton_compress").c_str (), 1);
   newton_verbose = g2 ( (alg_options + "newton_verbose").c_str (), 0);
   newton_warm_start = g2 ( (alg_options + "newton_warm_start").c_str (), 1);
+  newton_inexact = g2 ( (alg_options + "newton_inexact").c_str (), 1);
 
   const std::string out_options = "output/";
   p4estfilename = g2 ( (out_options + "p4estfilename").c_str (), "poisson_boltzmann_p4est");
@@ -2826,6 +2827,60 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
   int    it_done    = 0;
   double dsolv_prev = 0.0;   // |du|_inf,solvent of the previous iteration
 
+  // --- inexact Newton (newton_inexact = 1): adaptive LIS tolerance,
+  //     Eisenstat-Walker choice 2 ---
+  //   tol_k = max(tol_in, eta_k ||F(phi_k)||_1),  tol_in = the LIS -tol,
+  //   eta_k = min(eta_max, gamma (||F_k|| / ||F_k-1||)^alpha),
+  //   eta = eta_0 on the first step and on the first step after COMPRESS
+  //   (the map changes phi: the ratio would not measure the Newton step);
+  //   full solve (tol_in) if ||F|| increased, or if the previous step already
+  //   had du_s <= tol_s from a loose solve. Convergence and stagnation are
+  //   accepted only after a full solve, so the result is as accurate as with
+  //   the fixed tolerance; the last rule bounds the extra cost to one step.
+  // Needs the LIS absolute test (-conv_cond 2 -tol_w 0).
+  // Only with bc_type <= 1 (phi_bc = 0): with phi_bc != 0 the Dirichlet
+  // penalty rows (~1e16 K_ii) dominate ||F||_1 (phi^0 = 0 and COMPRESS move
+  // the boundary, and P ulp(phi_bc) leaves a floor), so a loose solve only
+  // fixes the boundary; bc_type > 1 keeps the fixed tolerance.
+  const double ew_eta0 = 0.1, ew_eta_max = 0.1, ew_gamma = 0.9, ew_alpha = 2.0;
+  bool use_ew = (newton_inexact == 1 && linear_solver_name != "mumps");
+  double tol_in = 1.0e-12;   // LIS default -tol
+  if (use_ew) {
+    std::smatch m;
+    if (std::regex_search (linear_solver_options, m, std::regex ("-tol\\s+(\\S+)")))
+      tol_in = std::stod (m[1]);
+    const bool cc2 = std::regex_search (linear_solver_options, std::regex ("-conv_cond\\s+2\\b"));
+    const bool tw0 = std::regex_search (linear_solver_options, std::regex ("-tol_w\\s+0(\\.0*)?\\b"));
+    if (!cc2 || !tw0) {
+      use_ew = false;
+      if (rank == 0)
+        std::cout << "  [Newton] WARNING: newton_inexact = 1 ignored: it needs "
+                     "'-conv_cond 2 -tol_w 0' in solver_options" << std::endl;
+    }
+    else if (bc > 1) {
+      use_ew = false;
+      if (rank == 0)
+        std::cout << "  [Newton] newton_inexact off with bc_type > 1: fixed LIS tolerance"
+                  << std::endl;
+    }
+  }
+  double ew_fprev    = -1.0;    // ||F||_1 of the previous step; < 0: (re)start
+  bool   ew_full     = false;   // force a full solve at the next step
+  double ew_eta      = 0.0;     // eta of this step (log)
+  const char * ew_why = "";     // which rule set eta (log)
+  const std::function<double (double)> ew_tol = [&] (double f) {
+    if (ew_full)              { ew_eta = 0.0;     ew_why = "full: du_s <= tol_s"; }
+    else if (ew_fprev < 0.0)  { ew_eta = ew_eta0; ew_why = "start"; }
+    else if (f > ew_fprev)    { ew_eta = 0.0;     ew_why = "full: ||F|| increased"; }
+    else {
+      ew_eta = ew_gamma * std::pow (f / ew_fprev, ew_alpha);
+      ew_why = "EW";
+      if (ew_eta >= ew_eta_max) { ew_eta = ew_eta_max; ew_why = "cap"; }
+    }
+    ew_fprev = f;
+    return std::max (tol_in, ew_eta * f);
+  };
+
   // Totals over the iterations, for the summary line.
   long   lis_it_tot = 0;
   double t_asm_tot  = 0.0, t_lis_tot = 0.0;
@@ -2862,7 +2917,9 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
               << newton_tol << " max(1, max|phi_k|_s)\n"
               << "  [Newton] CLAMP from iter 1 when du_s > " << maxdu << ": step scaled by "
               << maxdu << " / du_s\n"
+              << (use_ew ? "  [Newton] adaptive LIS tolerance: tol_LIS = max(tol_in, eta ||F||_1), last column\n" : "")
               << "  [Newton] step     |  ||F||_1  | LIS it  ||r||_1  |   du_s      tol_s   |  t_asm  t_lis [s]"
+              << (use_ew ? " |  tol_LIS    eta" : "")
               << std::endl;
 
   for (int it = 0; it < newton_max_iter; ++it) {
@@ -2896,7 +2953,8 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     lis_solve_info linfo;
     const double t_sol0 = MPI_Wtime ();
     if (use_lis)
-      lis_compute_electric_potential (ray_cache, &linfo, newton_warm_start == 1);
+      lis_compute_electric_potential (ray_cache, &linfo, newton_warm_start == 1,
+                                      use_ew ? &ew_tol : nullptr);
     else
       mumps_compute_electric_potential (ray_cache);
     const double t_sol = use_lis ? linfo.time : MPI_Wtime () - t_sol0;
@@ -2941,7 +2999,10 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
       char times[32];
       std::snprintf (times, sizeof times, "%6.2f %6.2f", t_asm, t_sol);
       std::cout << "  [Newton] iter " << std::setw (3) << it << " | " << lis_col
-                << " | " << e3 (dsolv) << " " << e3 (tol_s) << " | " << times << std::endl;
+                << " | " << e3 (dsolv) << " " << e3 (tol_s) << " | " << times;
+      if (use_ew)
+        std::cout << " | " << e3 (linfo.tol) << " " << e3 (ew_eta) << " " << ew_why;
+      std::cout << std::endl;
     }
 
     // ---------------- details (newton_verbose = 1) ----------------
@@ -3011,7 +3072,10 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     // looser. The norms over all nodes would be dominated by the potential
     // at the point charges inside the molecule, which grows as 1/h and has
     // nothing to do with the nonlinearity.
-    if (it >= 1 && dsolv <= tol_s) {
+    // A full LIS solve (always without newton_inexact): with a loose one du_s may
+    // be small only because LIS stopped early.
+    const bool full_solve = !use_ew || linfo.tol <= tol_in;
+    if (it >= 1 && dsolv <= tol_s && full_solve) {
       converged = true;
       if (rank == 0)
         std::cout << "  [Newton] converged in " << it + 1
@@ -3022,7 +3086,7 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
     // --- stagnation: stop at the accuracy of the linear solver ---
     // du cannot go below the error of one linear solve (-tol). If du is
     // already small and no longer decreases, stop.
-    if (it >= 2 && dsolv < newton_stall * tol_s && dsolv > 0.5 * dsolv_prev) {
+    if (it >= 2 && dsolv < newton_stall * tol_s && dsolv > 0.5 * dsolv_prev && full_solve) {
       converged = true;
       if (rank == 0)
         std::cout << "  [Newton] WARNING: stopped at the accuracy of the linear "
@@ -3032,6 +3096,7 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
       break;
     }
     dsolv_prev = dsolv;
+    ew_full = (dsolv <= tol_s);   // converged on a loose solve: confirm with a full one
 
     // --- clamping globalization (iteration 0 unclamped) ---
     // The scale is set by the ion-accessible nodes only (dsolv). The next
@@ -3098,6 +3163,7 @@ poisson_boltzmann::newton_solve (ray_cache_t & ray_cache)
                   << std::setprecision (6) << std::endl;
       if (newton_verbose && rank == 0)
         std::cout << "  [Newton]       planar map: nu = " << e6 (nu_c) << std::endl;
+      ew_fprev = -1.0;   // EW restarts: the map, not Newton, changed phi
     }
 
     // phi comes from new_node_vector (via the solver): only the values move.
@@ -3208,7 +3274,8 @@ poisson_boltzmann::mumps_compute_electric_potential (ray_cache_t & ray_cache)
 void
 poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache,
                                                    lis_solve_info * info,
-                                                   bool warm_start)
+                                                   bool warm_start,
+                                                   const std::function<double (double)> * tol_of_fnorm)
 {
   int rank, size;
   MPI_Comm_size (mpicomm, &size);
@@ -3312,13 +3379,40 @@ poisson_boltzmann::lis_compute_electric_potential (ray_cache_t & ray_cache,
 
   lis_solver_set_option (&opts[0], solver);
 
+  // Adaptive tolerance (Newton, newton_inexact): tol_of_fnorm maps
+  // ||F(phi_k)||_1 to the absolute LIS tolerance of this solve. The system
+  // LIS solves is divided by s = the 1-norm of its right-hand side (r_k with
+  // the warm start, b without), so that right-hand side has norm 1 and the
+  // LIS -tol is tol / s: the initial LIS test (residual / ||b||_1 against
+  // -tol, see above) then fails as it should whenever tol < s; unscaled, any
+  // tol >= 1 would return the initial guess without iterating.
+  double s = 1.0;
+  if (tol_of_fnorm && info) {
+    const double tol = (*tol_of_fnorm) (info->fnorm);
+    info->tol = tol;
+    const double nrhs = warm_start ? info->fnorm : info->bnorm;
+    s = nrhs > 0.0 ? nrhs : 1.0;
+    lis_vector_scale (1.0 / s, warm_start ? rk : rhs_lis);
+    std::ostringstream o;
+    o << "-tol " << std::setprecision (17) << tol / s;
+    std::string ot = o.str ();
+    lis_solver_set_option (&ot[0], solver);
+  }
+
   const double t_solve = MPI_Wtime ();
   if (warm_start) {
-    lis_solve (A_lis, rk, phi_lis, solver);   // phi_lis = du
+    lis_solve (A_lis, rk, phi_lis, solver);   // phi_lis = du (/ s)
+    if (s != 1.0)
+      lis_vector_scale (s, phi_lis);
     lis_vector_axpy (1.0, xk, phi_lis);       // phi_lis = phi_k + du
   }
-  else
+  else {
     lis_solve (A_lis, rhs_lis, phi_lis, solver);
+    if (s != 1.0) {
+      lis_vector_scale (s, phi_lis);
+      lis_vector_scale (s, rhs_lis);   // back to b for ||b - A x||_1 below
+    }
+  }
   if (info)
     info->time = MPI_Wtime () - t_solve;
 

@@ -233,6 +233,14 @@ newton_compress = 1
 # 0 = each LIS solve starts from 0.
 newton_warm_start = 1
 
+# Nonlinear (Newton) solver with LIS only, bc_type <= 1 (ignored otherwise):
+# 1 = inexact Newton: each LIS solve stops at max(-tol, eta ||F(phi_k)||_1),
+#     eta from Eisenstat-Walker (choice 2), loose far from the solution and
+#     tight near it; convergence is accepted only after a full -tol solve.
+#     Needs -conv_cond 2 -tol_w 0 in solver_options. Default.
+# 0 = every LIS solve stops at -tol.
+newton_inexact = 1
+
 # Newton log: 0 = one line per iteration (default); 1 = also per-iteration
 # maxima of phi and du (solvent/molecule) and the LIS residuals.
 newton_verbose = 0

@@ -36,6 +36,7 @@ const double p4esttol = 1 / std::pow (2, P8EST_QMAXLEVEL);
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <functional>
 
 #include "raytracer.h"
 #include <nanoshaper.h>
@@ -490,6 +491,7 @@ struct
   int newton_compress;   // 1 (default): after Newton it 0 (== linear solve) map solvent phi with the planar Grahame map of the ion model
   int newton_verbose;    // 1: per-node Newton diagnostics in the log; 0 (default): one line per iteration
   int newton_warm_start; // 1 (default): LIS starts each Newton solve from phi_k; 0: from 0
+  int newton_inexact;    // 1 (default): inexact Newton, adaptive LIS tolerance (Eisenstat-Walker choice 2), bc_type <= 1 only; 0: fixed -tol
 
   MPI_Comm mpicomm;
   tmesh_3d tmsh;
@@ -1074,12 +1076,14 @@ struct
     double lis_resid = 0.0;  // residual reported by LIS
     int    iters     = 0;
     double time      = 0.0;  // lis_solve wall time [s]
+    double tol       = 0.0;  // LIS tolerance used (adaptive Newton tolerance only)
   };
 
   void
   lis_compute_electric_potential (ray_cache_t & ray_cache,
                                   lis_solve_info * info = nullptr,
-                                  bool warm_start = false);
+                                  bool warm_start = false,
+                                  const std::function<double (double)> * tol_of_fnorm = nullptr);
 
   int
   classifyCube (tmesh_3d::quadrant_iterator& quadrant,double isolevel);
