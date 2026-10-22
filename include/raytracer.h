@@ -55,7 +55,8 @@ struct
 
   // Sparse local storage populated by scatter_aligned_surface().
   // When use_local_maps is true, vertex_color() and aligned_edge_crossings()
-  // query these instead of the full aligned_surface arrays.
+  // query these instead of the full aligned_surface arrays. Only vertices with
+  // color != 0 and edges with at least one crossing are stored (missing = 0 / none).
   bool use_local_maps = false;
   std::unordered_map<int64_t, uint8_t> local_vertex_colors;
   std::array<std::unordered_map<int64_t, std::vector<NS::PBEdgeCrossing>>, 3> local_edge_crossings;

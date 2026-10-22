@@ -622,14 +622,18 @@ ray_cache_t::scatter_aligned_surface (tmesh_3d& tmsh)
   for (int d = 0; d < 3; ++d)
     my_elist[d].assign (esets[d].begin (), esets[d].end ());
 
-  // Rank 0 builds its own local maps directly from the full arrays
+  // Rank 0 builds its own local maps directly from the full arrays.
+  // Only vertices with color != 0 and edges with crossings are stored: a missing
+  // key already reads as color 0 / no crossing, and ~99% of the edges are empty.
   if (rank == 0) {
     for (int64_t vid : my_vlist)
-      local_vertex_colors[vid] = aligned_surface.vertex_colors[static_cast<size_t> (vid)];
+      if (aligned_surface.vertex_colors[static_cast<size_t> (vid)])
+        local_vertex_colors[vid] = aligned_surface.vertex_colors[static_cast<size_t> (vid)];
     for (unsigned d = 0; d < 3; ++d) {
       for (int64_t eid : my_elist[d]) {
         uint32_t beg = aligned_surface.edge_offsets[d][static_cast<size_t> (eid)];
         uint32_t end2 = aligned_surface.edge_offsets[d][static_cast<size_t> (eid) + 1];
+        if (end2 == beg) continue;
         auto& vec = local_edge_crossings[d][eid];
         vec.assign (aligned_surface.edge_crossings[d].begin () + beg,
                     aligned_surface.edge_crossings[d].begin () + end2);
@@ -694,7 +698,8 @@ ray_cache_t::scatter_aligned_surface (tmesh_3d& tmsh)
 
       if (rank != 0)
         for (size_t i = 0; i < my_vlist.size (); ++i)
-          local_vertex_colors[my_vlist[i]] = my_vcolors[i];
+          if (my_vcolors[i])
+            local_vertex_colors[my_vlist[i]] = my_vcolors[i];
     }
 
     // ---- Edge crossings exchange (per direction) ----
@@ -793,6 +798,7 @@ ray_cache_t::scatter_aligned_surface (tmesh_3d& tmsh)
       if (rank != 0) {
         size_t offset = 0;
         for (size_t i = 0; i < my_edir.size (); ++i) {
+          if (my_ec_counts[i] == 0) continue;
           auto& vec = local_edge_crossings[dir][my_edir[i]];
           vec.resize (my_ec_counts[i]);
           std::copy (my_crossings.begin () + static_cast<ptrdiff_t> (offset),
