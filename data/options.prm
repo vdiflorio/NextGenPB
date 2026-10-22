@@ -160,7 +160,17 @@ map_type      = vtu   # Output format: 'vtu' (for ParaView, vtk binary), 'oct' (
 potential_map = 0     # 1 = write full potential map to file
 eps_map       = 0     # 1 = write dielectric (epsilon) map to file
 dataset_write = 0     # 1 = export vertex dataset for AI/ML training (CSV)
-surf_write    = 0     # 1 = write potential on the molecular surface
+
+# Potential on the molecular surface:
+#   coupling_mode = 0: phi and the polarization charge q_pol on the vertices of the
+#                      NanoShaper triangulation (written to ns_surf_file), saved as
+#                      <ns_surf_file without extension>_phi.vtp / _phi_meshlab.ply / _phi_rgb.ply
+#   coupling_mode = 1: phi on the FEM-mesh surface (write_potential_on_surface)
+surf_potential          = 0                     # 1 = write potential on the molecular surface
+ns_surf_file            = triangulatedSurf.off  # NanoShaper OFF file (coupling_mode = 0 only)
+surf_output_vtp         = 1                     # 1 = write the .vtp file (ParaView, PyVista)
+surf_output_ply_meshlab = 0                     # 1 = write the MeshLab .ply file
+surf_output_ply_rgb     = 0                     # 1 = write the .ply file with RGB vertex colors
 
 [../]
 
@@ -169,6 +179,11 @@ surf_write    = 0     # 1 = write potential on the molecular surface
 # Surface Definition (NanoShaper)
 ######################################
 [surface]
+
+# NanoShaper coupling mode:
+# 0 = aligned (PBAlignedSurfaceData, default; supports cavity_filling + surf_potential PLY/VTP)
+# 1 = legacy (castAxisOrientedRay + raysArrayMap; surf_potential -> write_potential_on_surface)
+coupling_mode = 0
 
 # Surface type used to define dielectric boundaries:
 # 0 = Solvent Excluded Surface (SES)
@@ -185,6 +200,12 @@ surface_parameter = 1.4
 # Amber pbsa iprob). Works with the linear and the nonlinear solvers.
 stern_layer_surf      = 0     # 1 = include Stern layer (ion-free shell), 0 = no Stern layer
 stern_layer_thickness = 2.0   # Added to every atomic radius (in Å)
+
+# Internal cavities (coupling_mode = 0 only, ignored by the legacy coupling):
+# enclosed voids with volume <= cavity_vol_thresh are treated as solute interior
+# (eps_in, no mobile ions).
+cavity_filling    = 0         # 1 = fill small internal cavities, 0 = keep them as solvent
+cavity_vol_thresh = 11.4      # Maximum volume of a filled cavity (in Å^3)
 
 # Performance:
 number_of_threads = 1         # Number of CPU threads for NanoShaper

@@ -1,0 +1,432 @@
+diff --git a/build_no_octave.sh b/build_no_octave.sh
+new file mode 100755
+index 0000000..b2bc4e0
+--- /dev/null
++++ b/build_no_octave.sh
+@@ -0,0 +1,42 @@
++#!/bin/sh
++#
++# Build liboctave_file_io WITHOUT Octave (text backend).
++#
++# Compiles the single source octave_file_io.cpp with -DOFIO_NO_OCTAVE so that
++# octave_file_io.h pulls in octave_file_io_shim.h instead of <octave/oct.h>.
++# No autotools / mkoctfile required.
++#
++# Output (install prefix):
++#   octave_file_io/install_no_octave/lib/liboctave_file_io.dylib
++#   octave_file_io/install_no_octave/include/octave_file_io.h
++#   octave_file_io/install_no_octave/include/octave_file_io_shim.h
++#
++set -e
++
++# octave_file_io/  (directory containing this script; may contain '&')
++SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
++SRC="$SCRIPT_DIR/src"
++PREFIX="$SCRIPT_DIR/install_no_octave"
++INCDIR="$PREFIX/include"
++LIBDIR="$PREFIX/lib"
++
++# Use the same compiler as bimpp/NextGenPB for ABI compatibility.
++CXX="${CXX:-mpicxx}"
++LIBNAME="liboctave_file_io.dylib"
++
++mkdir -p "$INCDIR" "$LIBDIR"
++
++echo "Compiling text-backend octave_file_io with '$CXX' ..."
++"$CXX" -std=c++17 -O2 -fPIC -DOFIO_NO_OCTAVE \
++  -I"$SRC" \
++  -dynamiclib -install_name "$LIBDIR/$LIBNAME" \
++  -o "$LIBDIR/$LIBNAME" \
++  "$SRC/octave_file_io.cpp"
++
++cp "$SRC/octave_file_io.h"      "$INCDIR/"
++cp "$SRC/octave_file_io_shim.h" "$INCDIR/"
++
++echo "Installed:"
++echo "  $LIBDIR/$LIBNAME"
++echo "  $INCDIR/octave_file_io.h"
++echo "  $INCDIR/octave_file_io_shim.h"
+diff --git a/src/octave_file_io.cpp b/src/octave_file_io.cpp
+index c690996..49376e6 100644
+--- a/src/octave_file_io.cpp
++++ b/src/octave_file_io.cpp
+@@ -11,6 +11,10 @@
+ */
+ 
+ #include <iostream>
++#include <fstream>
++
++#ifndef OFIO_NO_OCTAVE
++
+ #include <octave/parse.h>
+ #include <octave/load-save.h>
+ #include <octave/builtin-defun-decls.h>
+@@ -196,4 +200,162 @@ octave_clear (void)
+   return res;
+ }
+ 
++#else // OFIO_NO_OCTAVE -------------------------------------------------------
++
++//---------------------------------------------------------------------
++//   Text backend (no Octave).
++//
++//   Implements the same API on top of plain std::ofstream/ifstream using the
++//   substitute types from octave_file_io_shim.h. Only the SAVE path is needed
++//   by NextGenPB (and only when map_type=="oct", which is not the default);
++//   it writes a human-readable text dump instead of Octave's binary format.
++//   gzip is ignored (gz_* modes behave like their plain counterparts).
++//   LOAD is unused by NextGenPB and aborts with a clear message rather than
++//   returning silently-empty data.
++//---------------------------------------------------------------------
++
++#include <iomanip>
++#include <cstdlib>
++
++namespace {
++
++  std::string    ofio_filename;
++  octave_io_mode ofio_mode = read_mode;
++
++  bool
++  ofio_fexists (const std::string& fname)
++  {
++    std::ifstream ifile (fname.c_str ());
++    return ifile.good ();
++  }
++
++  void
++  ofio_write_doubles (std::ofstream& ofs, const double* p, std::size_t n)
++  {
++    ofs << std::setprecision (17);
++    for (std::size_t i = 0; i < n; ++i)
++      ofs << p[i] << (((i + 1) % 8 == 0) ? '\n' : ' ');
++    if (n % 8 != 0)
++      ofs << '\n';
++  }
++
++  void
++  ofio_write_idx (std::ofstream& ofs, const octave_idx_type* p, std::size_t n)
++  {
++    for (std::size_t i = 0; i < n; ++i)
++      ofs << static_cast<long long> (p[i]) << (((i + 1) % 8 == 0) ? '\n' : ' ');
++    if (n % 8 != 0)
++      ofs << '\n';
++  }
++
++} // anonymous namespace
++
++int
++octave_io_open (const char* fname, const octave_io_mode mode_in,
++                octave_io_mode* mode_out)
++{
++  *mode_out = mode_in;
++  ofio_mode = mode_in;
++  ofio_filename = fname;
++
++  if (mode_in == write_mode || mode_in == gz_write_mode)
++    {
++      // Truncate / create the file (mirrors Octave creating the file on open).
++      std::ofstream ofs (ofio_filename.c_str (), std::ios::trunc);
++      if (! ofs.good ())
++        return -1;
++      ofs << "# octave_file_io text backend (no Octave)\n";
++      return 0;
++    }
++
++  // read_mode / gz_read_mode: just check the file is there (no gzip check,
++  // the text backend never gzips).
++  return ofio_fexists (fname) ? 0 : -1;
++}
++
++int
++octave_io_close (void)
++{
++  // Nothing to finalize: gzip is intentionally ignored.
++  return 0;
++}
++
++int
++octave_load (const char* /*varname*/, octave_value& /*data*/)
++{
++  std::cerr << "octave_file_io: octave_load is not supported in the no-octave "
++               "text backend (LOAD path is unused by NextGenPB).\n";
++  std::abort ();
++  return -1;
++}
++
++int
++octave_save (const char* varname, const octave_value& data)
++{
++  std::ofstream ofs (ofio_filename.c_str (), std::ios::app);
++  if (! ofs.good ())
++    return -1;
++
++  ofs << "VAR " << varname << '\n';
++
++  if (data.kind_ == octave_value::K_MAP && data.map_)
++    {
++      const std::map<std::string, octave_value>& fields = data.map_->fields_;
++      ofs << "MAP " << fields.size () << '\n';
++
++      for (std::map<std::string, octave_value>::const_iterator it
++             = fields.begin (); it != fields.end (); ++it)
++        {
++          const std::string&  name = it->first;
++          const octave_value& v    = it->second;
++
++          switch (v.kind_)
++            {
++            case octave_value::K_MATRIX:
++              ofs << "FIELD " << name << " matrix "
++                  << v.mat_.rows_ << ' ' << v.mat_.cols_ << '\n';
++              ofio_write_doubles (ofs, v.mat_.data_.data (),
++                                  v.mat_.data_.size ());
++              break;
++
++            case octave_value::K_COLUMN:
++              ofs << "FIELD " << name << " column "
++                  << v.col_.data_.size () << " 1\n";
++              ofio_write_doubles (ofs, v.col_.data_.data (),
++                                  v.col_.data_.size ());
++              break;
++
++            case octave_value::K_ARRAY_IDX:
++              ofs << "FIELD " << name << " array_idx "
++                  << v.arr_.rows_ << ' ' << v.arr_.cols_ << '\n';
++              ofio_write_idx (ofs, v.arr_.data_.data (),
++                              v.arr_.data_.size ());
++              break;
++
++            default:
++              ofs << "FIELD " << name << " empty 0 0\n";
++              break;
++            }
++        }
++
++      ofs << "ENDMAP\n";
++    }
++  else
++    {
++      // libbim only ever saves a scalar map; record anything else explicitly
++      // instead of writing wrong/empty data silently.
++      ofs << "UNSUPPORTED_VALUE\n";
++    }
++
++  return 0;
++}
++
++int
++octave_clear (void)
++{
++  return 0;
++}
++
++#endif // OFIO_NO_OCTAVE
++
+ 
+diff --git a/src/octave_file_io.h b/src/octave_file_io.h
+index 33aa62a..43f9ec9 100644
+--- a/src/octave_file_io.h
++++ b/src/octave_file_io.h
+@@ -7,7 +7,11 @@
+ #ifndef OCTAVE_FILE_IO_H
+ # define OCTAVE_FILE_IO_H
+ 
+-#include <octave/oct.h>
++#ifdef OFIO_NO_OCTAVE
++#  include "octave_file_io_shim.h"   // substitute types, no Octave required
++#else
++#  include <octave/oct.h>            // real Octave (dev / standard build)
++#endif
+ 
+ //---------------------------------------------------------------------
+ //                Singleton class
+diff --git a/src/octave_file_io_shim.h b/src/octave_file_io_shim.h
+new file mode 100644
+index 0000000..ff47d9d
+--- /dev/null
++++ b/src/octave_file_io_shim.h
+@@ -0,0 +1,183 @@
++/*
++  octave_file_io_shim.h
++
++  Substitute (shim) types used to build octave_file_io / bimpp WITHOUT a real
++  Octave installation. Activated by defining the macro OFIO_NO_OCTAVE at build
++  time (see octave_file_io.h).
++
++  Scope: this header only defines the *minimal* subset of the Octave API that
++  libbim (bimpp/src/tmesh.cpp and tmesh_3d.cpp) actually uses. It is NOT a
++  general Octave replacement. The bimpp tests/examples use a richer API and
++  are not built in the no-octave configuration.
++
++  Members actually used by libbim:
++    octave_idx_type                       integer index type
++    dim_vector(r, c)                      2-D shape
++    Matrix(r, c, fill), fortran_vec(), cols()
++    ColumnVector(n, fill), fortran_vec()
++    Array<octave_idx_type>(dim_vector, fill), copy, fortran_vec(), cols(), numel()
++    octave_scalar_map: assign(name, value), contents(name), scalar_map_value()
++    octave_value: ctor from {default, map, Matrix, ColumnVector, Array<idx>},
++                  matrix_value(), octave_idx_type_vector_value(b,b,b),
++                  scalar_map_value()
++
++  Matrix/ColumnVector/Array store their data column-major in a contiguous
++  std::vector; fortran_vec() returns the raw pointer, matching Octave.
++*/
++
++#ifndef OCTAVE_FILE_IO_SHIM_H
++#define OCTAVE_FILE_IO_SHIM_H
++
++#include <cstdint>
++#include <cstddef>
++#include <vector>
++#include <string>
++#include <map>
++#include <memory>
++
++typedef int64_t octave_idx_type;
++
++//---------------------------------------------------------------------
++//  Shape descriptor
++//---------------------------------------------------------------------
++struct dim_vector
++{
++  octave_idx_type rows_;
++  octave_idx_type cols_;
++
++  dim_vector (octave_idx_type r, octave_idx_type c) : rows_ (r), cols_ (c) {}
++};
++
++//---------------------------------------------------------------------
++//  Dense column vector of doubles
++//---------------------------------------------------------------------
++class ColumnVector
++{
++public:
++  std::vector<double> data_;
++
++  ColumnVector () {}
++  ColumnVector (octave_idx_type n, double fill = 0.0)
++    : data_ (static_cast<std::size_t> (n < 0 ? 0 : n), fill) {}
++
++  double*       fortran_vec ()       { return data_.data (); }
++  const double* fortran_vec () const { return data_.data (); }
++
++  octave_idx_type numel () const
++  { return static_cast<octave_idx_type> (data_.size ()); }
++};
++
++//---------------------------------------------------------------------
++//  Dense (rows x cols) matrix of doubles, column-major
++//---------------------------------------------------------------------
++class Matrix
++{
++public:
++  octave_idx_type    rows_;
++  octave_idx_type    cols_;
++  std::vector<double> data_;
++
++  Matrix () : rows_ (0), cols_ (0) {}
++  Matrix (octave_idx_type r, octave_idx_type c, double fill = 0.0)
++    : rows_ (r), cols_ (c),
++      data_ (static_cast<std::size_t> ((r < 0 ? 0 : r) * (c < 0 ? 0 : c)), fill) {}
++
++  double*       fortran_vec ()       { return data_.data (); }
++  const double* fortran_vec () const { return data_.data (); }
++
++  octave_idx_type rows  () const { return rows_; }
++  octave_idx_type cols  () const { return cols_; }
++  octave_idx_type numel () const
++  { return static_cast<octave_idx_type> (data_.size ()); }
++};
++
++//---------------------------------------------------------------------
++//  Dense (rows x cols) array of T, column-major
++//---------------------------------------------------------------------
++template <class T>
++class Array
++{
++public:
++  octave_idx_type rows_;
++  octave_idx_type cols_;
++  std::vector<T>  data_;
++
++  Array () : rows_ (0), cols_ (0) {}
++  Array (const dim_vector& dv, T fill)
++    : rows_ (dv.rows_), cols_ (dv.cols_),
++      data_ (static_cast<std::size_t> ((dv.rows_ < 0 ? 0 : dv.rows_)
++                                       * (dv.cols_ < 0 ? 0 : dv.cols_)), fill) {}
++
++  T*       fortran_vec ()       { return data_.data (); }
++  const T* fortran_vec () const { return data_.data (); }
++
++  octave_idx_type rows  () const { return rows_; }
++  octave_idx_type cols  () const { return cols_; }
++  octave_idx_type numel () const
++  { return static_cast<octave_idx_type> (data_.size ()); }
++};
++
++//---------------------------------------------------------------------
++//  Tagged value: empty | scalar_map | Matrix | ColumnVector | Array<idx>
++//---------------------------------------------------------------------
++class octave_scalar_map;   // forward (mutually recursive with octave_value)
++
++class octave_value
++{
++public:
++  enum kind_t { K_EMPTY, K_MAP, K_MATRIX, K_COLUMN, K_ARRAY_IDX };
++
++  kind_t                  kind_ = K_EMPTY;
++  Matrix                  mat_;
++  ColumnVector            col_;
++  Array<octave_idx_type>  arr_;
++  std::shared_ptr<octave_scalar_map> map_;
++
++  octave_value () : kind_ (K_EMPTY) {}
++
++  // Non-explicit on purpose: libbim relies on implicit conversion in
++  // the_map.assign("p", oct_p) and octave_value (the_map).
++  octave_value (const Matrix& m)                 : kind_ (K_MATRIX),    mat_ (m) {}
++  octave_value (const ColumnVector& c)           : kind_ (K_COLUMN),    col_ (c) {}
++  octave_value (const Array<octave_idx_type>& a) : kind_ (K_ARRAY_IDX), arr_ (a) {}
++  octave_value (const octave_scalar_map& m);     // out-of-line (see below)
++
++  Matrix matrix_value () const { return mat_; }
++
++  // The three bool flags select Octave conversion behaviour; here we always
++  // return the stored index array unchanged (we control the format).
++  Array<octave_idx_type>
++  octave_idx_type_vector_value (bool = false, bool = false, bool = false) const
++  { return arr_; }
++
++  octave_scalar_map scalar_map_value () const;   // out-of-line (see below)
++};
++
++//---------------------------------------------------------------------
++//  Struct (named fields -> octave_value)
++//---------------------------------------------------------------------
++class octave_scalar_map
++{
++public:
++  std::map<std::string, octave_value> fields_;
++
++  void assign (const std::string& name, const octave_value& val)
++  { fields_[name] = val; }
++
++  octave_value contents (const std::string& name) const
++  {
++    std::map<std::string, octave_value>::const_iterator it = fields_.find (name);
++    return (it == fields_.end ()) ? octave_value () : it->second;
++  }
++};
++
++//---------------------------------------------------------------------
++//  Out-of-line members of octave_value that need octave_scalar_map complete
++//---------------------------------------------------------------------
++inline octave_value::octave_value (const octave_scalar_map& m)
++  : kind_ (K_MAP), map_ (std::make_shared<octave_scalar_map> (m)) {}
++
++inline octave_scalar_map octave_value::scalar_map_value () const
++{ return map_ ? *map_ : octave_scalar_map (); }
++
++#endif // OCTAVE_FILE_IO_SHIM_H

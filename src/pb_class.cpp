@@ -835,6 +835,9 @@ poisson_boltzmann::levelsetfun (double x, double y, double z)
 double
 poisson_boltzmann::is_in_ns_surf (ray_cache_t & ray_cache, double x, double y, double z, int dir)
 {
+  if (ray_cache.aligned_mode)
+    return ray_cache.vertex_color (x, y, z);
+
   int rank;
   MPI_Comm_rank (mpicomm, &rank);
   double x1 = x;
@@ -1032,8 +1035,11 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   calc_potential_term = g2 ( (model_options + "calc_potential_terms").c_str (), 0);
   calc_field_term = g2 ( (model_options + "calc_field_terms").c_str (), 0);
   atoms_write = g2 ( (model_options + "atoms_write").c_str (), 0);
-  surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
-  surf_write = g2 ( (model_options + "surf_write").c_str (), 0);
+  surf_potential = g2 ( (model_options + "surf_potential").c_str (), 0);
+  ns_surf_file   = g2 ( (model_options + "ns_surf_file").c_str (), "triangulatedSurf.off");
+  surf_output_vtp         = g2 ( (model_options + "surf_output_vtp").c_str (), 1);
+  surf_output_ply_meshlab = g2 ( (model_options + "surf_output_ply_meshlab").c_str (), 0);
+  surf_output_ply_rgb     = g2 ( (model_options + "surf_output_ply_rgb").c_str (), 0);
   map_type = g2 ( (model_options + "map_type").c_str (), "vtu");
   potential_map = g2 ( (model_options + "potential_map").c_str (), 0);
   eps_map = g2 ( (model_options + "eps_map").c_str (), 0);
@@ -1186,6 +1192,10 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   stern_layer_surf = g2 ( (surf_options + "stern_layer_surf").c_str (), 0);
   stern_layer = g2 ( (surf_options + "stern_layer_thickness").c_str (), 2.);
   num_threads = g2 ( (surf_options + "number_of_threads").c_str (), 1);
+  cavity_filling = g2 ( (surf_options + "cavity_filling").c_str (), 0);
+  cavity_vol_thresh = g2 ( (surf_options + "cavity_vol_thresh").c_str (), 11.4);
+  coupling_mode = g2 ( (surf_options + "coupling_mode").c_str (), 0);
+  if (coupling_mode != 0 && coupling_mode != 1) coupling_mode = 0;
 
   const std::string alg_options = "algorithm/";
   linear_solver_name = g2 ( (alg_options + "linear_solver").c_str (), "lis");
@@ -1817,7 +1827,7 @@ poisson_boltzmann::refine_surface (ray_cache_t & ray_cache)
 
   int num_cycles = 2;
 
-  if (size == 1 || surf_type_num == 2)
+  if (size == 1 || surf_type_num == 2 || ray_cache.aligned_mode)
     num_cycles = 1;
 
   int coars_ref_cycles = (maxlevel - unilevel) > (unilevel - minlevel) ? (maxlevel - unilevel) : (unilevel - minlevel);
@@ -2215,7 +2225,7 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
 
   int num_cycles = 2;
 
-  if (size == 1) {
+  if (size == 1 || ray_cache.aligned_mode) {
     num_cycles = 1;
   }
 
@@ -3606,6 +3616,7 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
   int i1, i2;
   double x1, x2;
   std::array<double,2> ray;
+  NS::PBEdgeCrossing aligned_crossing;
 
   if (marker[quadrant->get_forest_quad_idx ()] == 0.5) {
     for (int j: {
@@ -3623,6 +3634,14 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
 
       for (unsigned i = 0; i < direzioni.size (); ++i) {
         ray[i] = quadrant->p (direzioni[i], i1);
+      }
+
+      if (ray_cache.aligned_mode) {
+        double f;
+        if (ray_cache.aligned_edge_crossing (dir, x1, x2, ray, aligned_crossing, f))
+          fraction[j] = f;
+
+        continue;
       }
 
       auto it0 = ray_cache.rays[dir].find (ray);
@@ -3652,6 +3671,14 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
         ray[i] = quadrant->p (direzioni[i], i1);
       }
 
+      if (ray_cache.aligned_mode) {
+        double f;
+        if (ray_cache.aligned_edge_crossing (dir, x1, x2, ray, aligned_crossing, f))
+          fraction[j] = f;
+
+        continue;
+      }
+
       auto it0 = ray_cache.rays[dir].find (ray);
       auto inters = it0->second.inters;
 
@@ -3677,6 +3704,14 @@ poisson_boltzmann::cube_fraction_intersection (tmesh_3d::quadrant_iterator& quad
 
       for (unsigned i = 0; i < direzioni.size (); ++i) {
         ray[i] = quadrant->p (direzioni[i], i1);
+      }
+
+      if (ray_cache.aligned_mode) {
+        double f;
+        if (ray_cache.aligned_edge_crossing (dir, x1, x2, ray, aligned_crossing, f))
+          fraction[j] = f;
+
+        continue;
       }
 
       auto it0 = ray_cache.rays[dir].find (ray);
@@ -3711,6 +3746,17 @@ poisson_boltzmann::normal_intersection (tmesh_3d::quadrant_iterator& quadrant,
 
   for (unsigned i = 0; i < direzioni.size (); ++i) {
     ray[i] = quadrant->p (direzioni[i], i1);
+  }
+
+  if (ray_cache.aligned_mode) {
+    NS::PBEdgeCrossing crossing;
+    frac = 0.5;
+    if (ray_cache.aligned_edge_crossing (dir, x1, x2, ray, crossing, frac)) {
+      norm[0] = crossing.normal[0];
+      norm[1] = crossing.normal[1];
+      norm[2] = crossing.normal[2];
+    }
+    return;
   }
 
   auto it0 = ray_cache.rays[dir].find (ray);
@@ -4764,6 +4810,427 @@ poisson_boltzmann::write_potential_on_surface (ray_cache_t & ray_cache)
   // phi_surf_txt.close();
   // std::fclose(phi_nod_delphi);
   // std::fclose(phi_sup_delphi);
+}
+
+
+void
+poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
+                                            ray_cache_t& ray_cache)
+{
+  int rank, size;
+  MPI_Comm_rank (mpicomm, &rank);
+  MPI_Comm_size (mpicomm, &size);
+
+  // Step 1: compute phi0 and the polarization charge q_pol at every border edge
+  // crossing (same logic as write_potential_on_surface) — each rank processes
+  // its local border_quad.
+  // vidx = OFF vertex of this crossing, exported by NanoShaper in aligned mode
+  // (PBEdgeCrossing::vertex_index); -1 if unavailable.
+  struct Crossing { double x, y, z, nx, ny, nz, phi, qpol; long long g1, g2; int vidx; };
+  std::vector<Crossing> local_crossings;
+
+  if (!border_quad.empty ()) {
+    auto quadrant = this->tmsh.begin_quadrant_sweep ();
+    std::array<double,8> tmp_phi, tmp_eps;
+    std::vector<int> edg, fl_dir;
+
+    for (const int ii : border_quad) {
+      quadrant[ii];
+      // Same edge classification and flux as classifyCube_flux_fast /
+      // pot_field_fast: raw nodal eps/phi (no hanging averaging), edges selected
+      // by dielectric jump. This is what makes q_pol and phi0 reproduce the
+      // solver (energy_fast / pot_field_fast) exactly, hanging nodes included.
+      std::tie (tmp_phi, tmp_eps, edg, fl_dir) =
+        classifyCube_flux_fast (quadrant, tmp_phi, tmp_eps);
+
+      const std::array<double,3> hh = {
+        quadrant->p (0,7) - quadrant->p (0,0),
+        quadrant->p (1,7) - quadrant->p (1,0),
+        quadrant->p (2,7) - quadrant->p (2,0)
+      };
+      const std::array<double,3> area_h = {
+        hh[1]*hh[2]/hh[0]*0.25, hh[0]*hh[2]/hh[1]*0.25, hh[0]*hh[1]/hh[2]*0.25};
+
+      for (int ip = 0; ip < (int)edg.size (); ++ip) {
+        const int e    = edg[ip];
+        const int axis = edge_axis[e];
+        const int i1   = edge2nodes[2*e], i2 = edge2nodes[2*e+1];
+
+        std::array<double,3> N;
+        double frac;
+        normal_intersection (quadrant, ray_cache, e, N, frac);
+        std::array<double,3> V = {quadrant->p (0,i1), quadrant->p (1,i1), quadrant->p (2,i1)};
+        V[axis] += frac * hh[axis];
+
+        // Per-cube polarization charge (flux of D). Each shared edge is visited
+        // from up to 4 cubes (each weighted 0.25 in area_h); the full per-node
+        // q_pol is recovered by summing over cubes downstream (cmap_q below).
+        const double qpol = -(tmp_phi[i2] - tmp_phi[i1])
+                            * wha (tmp_eps[i1], tmp_eps[i2], frac)
+                            * fl_dir[ip] * area_h[axis];
+
+        // OFF vertex index of the crossing: same selection as normal_intersection.
+        int vidx = -1;
+        if (ray_cache.aligned_mode) {
+          const double x1 = quadrant->p (axis, i1), x2 = quadrant->p (axis, i2);
+          std::array<double,2> ray;
+          for (int d = 0, r = 0; d < 3; ++d)
+            if (d != axis) ray[r++] = quadrant->p (d, i1);
+          NS::PBEdgeCrossing xc;
+          double f;
+          if (ray_cache.aligned_edge_crossing (axis, x1, x2, ray, xc, f))
+            vidx = xc.vertex_index;
+        }
+
+        local_crossings.push_back ({V[0], V[1], V[2], N[0], N[1], N[2],
+          phi0 (tmp_eps[i1], tmp_eps[i2], tmp_phi[i1], tmp_phi[i2], frac), qpol,
+          (long long) quadrant->gt (i1), (long long) quadrant->gt (i2), vidx});
+      }
+    }
+  }
+
+  // Step 2: gather all crossings to rank 0.
+  const int local_n = (int)local_crossings.size ();
+  std::vector<int> all_n (size, 0);
+  MPI_Gather (&local_n, 1, MPI_INT, all_n.data (), 1, MPI_INT, 0, mpicomm);
+
+  std::vector<Crossing> all_crossings;
+  std::vector<int> byte_counts (size, 0), byte_displs (size, 0);
+  if (rank == 0) {
+    int total = 0;
+    for (int r = 0; r < size; ++r) {
+      byte_displs[r] = total;
+      byte_counts[r] = all_n[r] * (int)sizeof (Crossing);
+      total += byte_counts[r];
+    }
+    all_crossings.resize (total / (int)sizeof (Crossing));
+  }
+  MPI_Gatherv (local_crossings.data (), local_n * (int)sizeof (Crossing), MPI_BYTE,
+               rank == 0 ? all_crossings.data () : nullptr,
+               byte_counts.data (), byte_displs.data (), MPI_BYTE, 0, mpicomm);
+
+  // Steps 3-5: rank 0 parses the OFF file, matches vertices to crossings, writes PLY.
+  if (rank == 0) {
+    struct SurfVert { double x, y, z, nx, ny, nz; int atom_idx; };
+    struct SurfFace { int v0, v1, v2; };
+    std::vector<SurfVert> verts;
+    std::vector<SurfFace> faces;
+
+    {
+      std::ifstream fin (off_file);
+      if (!fin.is_open ()) {
+        std::cerr << "write_ns_vert_potential: cannot open " << off_file << "\n";
+      } else {
+        std::string fmt_line;
+        std::getline (fin, fmt_line);
+        const bool has_normals = (fmt_line.find ("+N") != std::string::npos);
+        const bool has_atom    = (fmt_line.find ("+A") != std::string::npos);
+
+        std::string line;
+        while (std::getline (fin, line))
+          if (!line.empty () && line[0] != '#') break;
+
+        int nv_f = 0, nf_f = 0, dummy = 0;
+        std::istringstream (line) >> nv_f >> nf_f >> dummy;
+
+        verts.reserve (nv_f);
+        for (int i = 0; i < nv_f; ++i) {
+          SurfVert v = {};
+          fin >> v.x >> v.y >> v.z;
+          if (has_normals) fin >> v.nx >> v.ny >> v.nz;
+          if (has_atom)    fin >> v.atom_idx;
+          verts.push_back (v);
+        }
+        faces.reserve (nf_f);
+        for (int i = 0; i < nf_f; ++i) {
+          int cnt; SurfFace f;
+          fin >> cnt >> f.v0 >> f.v1 >> f.v2;
+          faces.push_back (f);
+        }
+      }
+    }
+
+    const int nv = (int)verts.size ();
+    const int nf = (int)faces.size ();
+
+    if (nv == 0) {
+      std::cerr << "write_ns_vert_potential: no vertices in " << off_file << "\n";
+      return;
+    }
+
+    // Build spatial hash of p4est crossings.
+    // Snap size = 5% of NS grid spacing, well within the minimum crossing separation.
+    const double h_ns  = ray_cache.aligned_surface.grid.h;
+    const double snap  = h_ns * 0.05;
+
+    struct Key3 {
+      long long x, y, z;
+      bool operator== (const Key3& o) const { return x==o.x && y==o.y && z==o.z; }
+    };
+    struct Hash3 {
+      size_t operator() (const Key3& k) const {
+        size_t h = std::hash<long long> () (k.x);
+        h ^= std::hash<long long> () (k.y) + 0x9e3779b97f4a7c15ULL + (h<<6) + (h>>2);
+        h ^= std::hash<long long> () (k.z) + 0x9e3779b97f4a7c15ULL + (h<<6) + (h>>2);
+        return h;
+      }
+    };
+
+    auto make_key = [&](double x, double y, double z) -> Key3 {
+      return { std::llround (x / snap), std::llround (y / snap), std::llround (z / snap) };
+    };
+
+    std::vector<double> phi_vert (nv, 0.0);
+    std::vector<double> qpol_vert (nv, 0.0);
+
+    // Primary path: exact association by index. In aligned mode every p4est
+    // crossing carries the OFF vertex it came from (NanoShaper vertList index),
+    // so each border edge maps to exactly one NS vertex. q_pol is summed over
+    // the (up to 4) cubes sharing the edge; phi0, position and normal are taken
+    // from the crossing at full precision (the OFF stores 3 decimals only).
+    // A nearest-position search cannot do this reliably: where the surface
+    // passes ~1e-3 A from a grid node, distinct crossings of different edges
+    // are closer than the OFF rounding and would be merged.
+    bool by_index = !all_crossings.empty ();
+    {
+      struct EKey2 { long long a, b; };
+      std::vector<EKey2> vedge (nv, EKey2 {-1, -1});
+      std::vector<char> hit (nv, 0);
+      long long n_noidx = 0, n_conflict = 0;
+      double max_dev = 0.0;
+      for (const auto& c : all_crossings) {
+        if (c.vidx < 0 || c.vidx >= nv) { ++n_noidx; continue; }
+        const EKey2 k { std::min (c.g1, c.g2), std::max (c.g1, c.g2) };
+        const int v = c.vidx;
+        if (!hit[v]) {
+          hit[v] = 1;
+          vedge[v] = k;
+          phi_vert[v] = c.phi;
+          const double ex = c.x - verts[v].x, ey = c.y - verts[v].y, ez = c.z - verts[v].z;
+          max_dev = std::max (max_dev, std::sqrt (ex*ex + ey*ey + ez*ez));
+        } else if (vedge[v].a != k.a || vedge[v].b != k.b) {
+          ++n_conflict;
+          continue;
+        }
+        qpol_vert[v] += c.qpol;
+      }
+      int n_missing = 0;
+      for (int i = 0; i < nv; ++i) n_missing += hit[i] ? 0 : 1;
+
+      if (n_noidx > 0 || n_conflict > 0 || n_missing > 0 || max_dev > 1.0e-2) {
+        std::cerr << "write_ns_vert_potential: ERROR: index association failed "
+                  << "(crossings without index " << n_noidx
+                  << ", vertices claimed by two edges " << n_conflict
+                  << ", vertices without crossing " << n_missing << "/" << nv
+                  << ", max |OFF - crossing| " << max_dev << " A); "
+                  << "falling back to nearest-position matching\n";
+        by_index = false;
+        std::fill (phi_vert.begin (), phi_vert.end (), 0.0);
+        std::fill (qpol_vert.begin (), qpol_vert.end (), 0.0);
+      } else {
+        // full-precision geometry from the crossings (same points as the OFF)
+        for (const auto& c : all_crossings) {
+          SurfVert& sv = verts[c.vidx];
+          sv.x = c.x; sv.y = c.y; sv.z = c.z;
+          const double nn = std::sqrt (c.nx*c.nx + c.ny*c.ny + c.nz*c.nz);
+          if (nn > 0.0) { sv.nx = c.nx / nn; sv.ny = c.ny / nn; sv.nz = c.nz / nn; }
+        }
+        std::cout << "write_ns_vert_potential: q_pol/phi associated by vertex index ("
+                  << nv << " vertices, max |OFF - crossing| = " << max_dev << " A)\n";
+      }
+    }
+
+    // Fallback: nearest distinct crossing (legacy; not one-to-one near grid nodes).
+    if (!by_index) {
+      // De-duplicate the per-cube crossings into DISTINCT surface crossings, keyed
+      // by the p4est global edge (gt(i1),gt(i2)) -- NOT by spatial position. The
+      // same border edge is visited from up to 4 cubes: q_pol must be SUMMED over
+      // them (multiplicity), while phi0/position are identical. Keying on position
+      // with a coarse snap would merge near-degenerate but DISTINCT crossings
+      // (which can be ~1e-5 A apart on a folded surface) and double-count q_pol.
+      struct EKey { long long a, b;
+        bool operator== (const EKey& o) const { return a == o.a && b == o.b; } };
+      struct EHash { size_t operator() (const EKey& k) const {
+        size_t h = std::hash<long long> () (k.a);
+        h ^= std::hash<long long> () (k.b) + 0x9e3779b97f4a7c15ULL + (h<<6) + (h>>2);
+        return h; } };
+      struct UCross { double x, y, z, phi, qpol; };
+
+      std::unordered_map<EKey, int, EHash> emap;
+      std::vector<UCross> ucross;
+      emap.reserve (all_crossings.size ());
+      ucross.reserve (all_crossings.size ());
+      for (const auto& c : all_crossings) {
+        const EKey k { std::min (c.g1, c.g2), std::max (c.g1, c.g2) };
+        auto it = emap.find (k);
+        if (it == emap.end ()) {
+          emap.emplace (k, (int) ucross.size ());
+          ucross.push_back ({ c.x, c.y, c.z, c.phi, c.qpol });
+        } else {
+          ucross[it->second].qpol += c.qpol;   // multiplicity sum
+        }
+      }
+
+      // Spatial bucket over the distinct crossings for NS-vertex matching (NS
+      // surface vertices differ from p4est crossings by up to ~snap). Each NS
+      // vertex takes the nearest distinct crossing in the 3x3x3 cell neighbourhood.
+      std::unordered_map<Key3, std::vector<int>, Hash3> bucket;
+      bucket.reserve (ucross.size ());
+      for (int u = 0; u < (int) ucross.size (); ++u)
+        bucket[make_key (ucross[u].x, ucross[u].y, ucross[u].z)].push_back (u);
+
+      int n_unmatched = 0;
+      for (int i = 0; i < nv; ++i) {
+        const Key3 b0 = make_key (verts[i].x, verts[i].y, verts[i].z);
+        int best = -1;
+        double best_d2 = std::numeric_limits<double>::max ();
+        for (int dx = -1; dx <= 1; ++dx)
+          for (int dy = -1; dy <= 1; ++dy)
+            for (int dz = -1; dz <= 1; ++dz) {
+              auto it = bucket.find ({ b0.x + dx, b0.y + dy, b0.z + dz });
+              if (it == bucket.end ()) continue;
+              for (int u : it->second) {
+                const double ex = ucross[u].x - verts[i].x;
+                const double ey = ucross[u].y - verts[i].y;
+                const double ez = ucross[u].z - verts[i].z;
+                const double d2 = ex*ex + ey*ey + ez*ez;
+                if (d2 < best_d2) { best_d2 = d2; best = u; }
+              }
+            }
+        if (best < 0) {
+          ++n_unmatched;
+        } else {
+          phi_vert[i]  = ucross[best].phi;
+          qpol_vert[i] = ucross[best].qpol;
+        }
+      }
+
+      if (n_unmatched > 0)
+        std::cerr << "write_ns_vert_potential: ERROR: " << n_unmatched << "/" << nv
+                  << " NS vertices not matched to any p4est crossing "
+                  << "(surface or grid mismatch)\n";
+    }
+
+    const std::string base = off_file.substr (0, off_file.rfind ('.'));
+
+    // VTK XML PolyData (.vtp) — ParaView, PyVista
+    if (surf_output_vtp) {
+      const std::string out = base + "_phi.vtp";
+      std::ofstream ofs (out);
+      ofs << "<?xml version=\"1.0\"?>\n"
+          << "<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n"
+          << "  <PolyData>\n"
+          << "    <Piece NumberOfPoints=\"" << nv << "\""
+          << " NumberOfVerts=\"0\" NumberOfLines=\"0\""
+          << " NumberOfStrips=\"0\" NumberOfPolys=\"" << nf << "\">\n"
+          << "      <Points>\n"
+          << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\""
+          << " format=\"ascii\">\n";
+      ofs << std::scientific << std::setprecision (6);
+      for (int i = 0; i < nv; ++i)
+        ofs << "          " << verts[i].x << ' ' << verts[i].y << ' ' << verts[i].z << '\n';
+      ofs << "        </DataArray>\n"
+          << "      </Points>\n"
+          << "      <PointData Normals=\"Normals\">\n"
+          << "        <DataArray type=\"Float32\" Name=\"Normals\""
+          << " NumberOfComponents=\"3\" format=\"ascii\">\n";
+      for (int i = 0; i < nv; ++i)
+        ofs << "          " << verts[i].nx << ' ' << verts[i].ny << ' ' << verts[i].nz << '\n';
+      ofs << "        </DataArray>\n"
+          << "        <DataArray type=\"Float32\" Name=\"phi\" format=\"ascii\">\n";
+      for (int i = 0; i < nv; ++i)
+        ofs << "          " << phi_vert[i] << '\n';
+      ofs << "        </DataArray>\n"
+          << "        <DataArray type=\"Float64\" Name=\"q_pol\" format=\"ascii\">\n";
+      ofs << std::setprecision (15);
+      for (int i = 0; i < nv; ++i)
+        ofs << "          " << qpol_vert[i] << '\n';
+      ofs << std::setprecision (6);
+      ofs << "        </DataArray>\n"
+          << "        <DataArray type=\"Int32\" Name=\"atom_idx\" format=\"ascii\">\n";
+      for (int i = 0; i < nv; ++i)
+        ofs << "          " << verts[i].atom_idx << '\n';
+      ofs << "        </DataArray>\n"
+          << "      </PointData>\n"
+          << "      <Polys>\n"
+          << "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+      for (const auto& f : faces)
+        ofs << "          " << f.v0 << ' ' << f.v1 << ' ' << f.v2 << '\n';
+      ofs << "        </DataArray>\n"
+          << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+      for (int i = 0; i < nf; ++i)
+        ofs << "          " << 3 * (i + 1) << '\n';
+      ofs << "        </DataArray>\n"
+          << "      </Polys>\n"
+          << "    </Piece>\n"
+          << "  </PolyData>\n"
+          << "</VTKFile>\n";
+      ofs.close ();
+      std::cout << "Surface potential written to " << out << "\n";
+    }
+
+    // PLY with "quality" property — MeshLab
+    if (surf_output_ply_meshlab) {
+      const std::string out = base + "_phi_meshlab.ply";
+      std::ofstream ofs (out);
+      ofs << "ply\nformat ascii 1.0\n"
+          << "element vertex " << nv << "\n"
+          << "property float x\nproperty float y\nproperty float z\n"
+          << "property float nx\nproperty float ny\nproperty float nz\n"
+          << "property float quality\n"
+          << "property float q_pol\n"
+          << "element face " << nf << "\n"
+          << "property list uchar int vertex_indices\nend_header\n";
+      ofs << std::scientific << std::setprecision (6);
+      for (int i = 0; i < nv; ++i)
+        ofs << verts[i].x  << ' ' << verts[i].y  << ' ' << verts[i].z  << ' '
+            << verts[i].nx << ' ' << verts[i].ny << ' ' << verts[i].nz << ' '
+            << phi_vert[i] << ' ' << qpol_vert[i] << '\n';
+      for (const auto& f : faces)
+        ofs << "3 " << f.v0 << ' ' << f.v1 << ' ' << f.v2 << '\n';
+      ofs.close ();
+      std::cout << "Surface potential written to " << out << "\n";
+    }
+
+    // PLY with RGB vertex colors (blue-white-red centred at phi=0) — PyMOL, VMD, Jmol
+    if (surf_output_ply_rgb) {
+      double phi_abs_max = 0.0;
+      for (int i = 0; i < nv; ++i)
+        phi_abs_max = std::max (phi_abs_max, std::abs (phi_vert[i]));
+      const double r = (phi_abs_max > 0.0) ? phi_abs_max : 1.0;
+
+      const std::string out = base + "_phi_rgb.ply";
+      std::ofstream ofs (out);
+      ofs << "ply\nformat ascii 1.0\n"
+          << "element vertex " << nv << "\n"
+          << "property float x\nproperty float y\nproperty float z\n"
+          << "property float nx\nproperty float ny\nproperty float nz\n"
+          << "property uchar red\nproperty uchar green\nproperty uchar blue\n"
+          << "property float q_pol\n"
+          << "element face " << nf << "\n"
+          << "property list uchar int vertex_indices\nend_header\n";
+      ofs << std::scientific << std::setprecision (6);
+      for (int i = 0; i < nv; ++i) {
+        const double t = std::clamp ((phi_vert[i] + r) / (2.0 * r), 0.0, 1.0);
+        int R, G, B;
+        if (t <= 0.5) {                        // blue → white
+          const int v = (int)std::round (255.0 * 2.0 * t);
+          R = v; G = v; B = 255;
+        } else {                               // white → red
+          const int v = (int)std::round (255.0 * 2.0 * (1.0 - t));
+          R = 255; G = v; B = v;
+        }
+        ofs << verts[i].x  << ' ' << verts[i].y  << ' ' << verts[i].z  << ' '
+            << verts[i].nx << ' ' << verts[i].ny << ' ' << verts[i].nz << ' '
+            << R << ' ' << G << ' ' << B << ' ' << qpol_vert[i] << '\n';
+      }
+      for (const auto& f : faces)
+        ofs << "3 " << f.v0 << ' ' << f.v1 << ' ' << f.v2 << '\n';
+      ofs.close ();
+      std::cout << "Surface potential written to " << out
+                << " (phi range +-" << r << " kT)\n";
+    }
+  }
 }
 
 
