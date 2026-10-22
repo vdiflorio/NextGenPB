@@ -39,6 +39,7 @@
 #include <regex>
 #include <cctype>
 #include <unordered_map>
+#include <numeric>
 #include <cstdint>
 #include <cstring>
 
@@ -1044,6 +1045,14 @@ poisson_boltzmann::parse_options (int argc, char **argv)
   potential_map = g2 ( (model_options + "potential_map").c_str (), 0);
   eps_map = g2 ( (model_options + "eps_map").c_str (), 0);
   dataset_write = g2 ( (model_options + "dataset_write").c_str (), 0);
+  calc_forces = g2 ( (model_options + "calc_forces").c_str (), 0);
+  force_offset = g2 ( (model_options + "force_offset").c_str (), 0.0);
+
+  if (force_offset < 0.0) {
+    if (rank == 0)
+      std::cerr << "ERROR: force_offset = " << force_offset << " A must be >= 0 (0 = automatic).\n";
+    return 1;
+  }
 
   // Every key of [model] has been read above. GetPot returns the default for
   // a key it cannot find, so a misspelt key (e.g. ion_sise) would be ignored
@@ -1473,6 +1482,8 @@ poisson_boltzmann::read_atoms_from_pqr (std::basic_istream<char> &inputfile)
       max_iter->pos[1],
       max_iter->pos[2]
     };
+    // The dummy atoms belong to the body (chain) of the atom they sit on.
+    const std::string max_chain = max_iter->ai.chain;
 
     const double epsilon = 0.001;
 
@@ -1498,6 +1509,7 @@ poisson_boltzmann::read_atoms_from_pqr (std::basic_istream<char> &inputfile)
       dummy.pos[2] = new_pos[2];
       dummy.charge = 0.0;
       dummy.radius = 0.0;
+      dummy.ai.chain = max_chain;
       atoms.push_back (dummy);
     }
   }
@@ -1531,6 +1543,22 @@ poisson_boltzmann::read_atoms_from_class ()
       r_atoms.push_back (i.radius);
     }
   }
+
+  // Bodies of the forces: one per chain, numbered in order of appearance.
+  if (calc_forces == 1) {
+    std::map<std::string, int> body_of_chain;
+
+    for (const NS::Atom& i : atoms) {
+      auto it = body_of_chain.find (i.ai.chain);
+
+      if (it == body_of_chain.end ()) {
+        it = body_of_chain.emplace (i.ai.chain, static_cast<int> (body_names.size ())).first;
+        body_names.push_back (i.ai.chain);
+      }
+
+      body_atoms.push_back (it->second);
+    }
+  }
 }
 
 void
@@ -1550,6 +1578,28 @@ poisson_boltzmann::broadcast_vectors ()
   MPI_Bcast (charge_atoms.data (), size_vec, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast (r_atoms.data (), size_vec, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   MPI_Bcast (index_atoms.data (), size_vec, MPI_INT, 0, MPI_COMM_WORLD);
+
+  if (calc_forces == 1) {
+    body_atoms.resize (size_vec);
+    MPI_Bcast (body_atoms.data (), size_vec, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Chain names, joined by '\n' (a chain has no blanks).
+    std::string names;
+
+    for (const auto & s : body_names)
+      names += s + '\n';
+
+    int len = names.size ();
+    MPI_Bcast (&len, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    names.resize (len);
+    MPI_Bcast (&names[0], len, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+    body_names.clear ();
+    std::istringstream is (names);
+
+    for (std::string s; std::getline (is, s); )
+      body_names.push_back (s);
+  }
 }
 
 void
@@ -2186,6 +2236,133 @@ stern_grid_t::inside (double x, double y, double z) const
   return false;
 }
 
+void
+force_grid_t::build (const std::vector<std::array<double,3>> &pos,
+                     const std::vector<double> &rad, const std::vector<int> &body,
+                     double d_)
+{
+  const std::size_t na = pos.size ();
+  d = d_;
+  at.clear ();
+  start.assign (1, 0);
+  n = {0, 0, 0};
+
+  if (na == 0)
+    return;
+
+  L = *std::max_element (rad.begin (), rad.end ()) + d;
+
+  for (int k = 0; k < 3; ++k) {
+    lo[k] = hi[k] = pos[0][k];
+
+    for (const auto &p : pos) {
+      lo[k] = std::min (lo[k], p[k]);
+      hi[k] = std::max (hi[k], p[k]);
+    }
+
+    lo[k] -= L;
+    hi[k] += L;
+    n[k] = std::max (1, static_cast<int> (std::ceil ((hi[k] - lo[k]) / L)));
+  }
+
+  auto cell_of = [&] (const std::array<double,3> &p) {
+    int c[3];
+
+    for (int k = 0; k < 3; ++k)
+      c[k] = std::min (n[k] - 1, static_cast<int> ((p[k] - lo[k]) / L));
+
+    return (c[0] * n[1] + c[1]) * n[2] + c[2];
+  };
+
+  // Counting sort of the atoms by cell (CSR layout), as in stern_grid_t.
+  start.assign (static_cast<std::size_t> (n[0]) * n[1] * n[2] + 1, 0);
+  std::vector<int> cell (na);
+
+  for (std::size_t i = 0; i < na; ++i) {
+    cell[i] = cell_of (pos[i]);
+    ++start[cell[i] + 1];
+  }
+
+  for (std::size_t c = 1; c < start.size (); ++c)
+    start[c] += start[c - 1];
+
+  at.resize (na);
+  std::vector<int> fill (start.begin (), start.end () - 1);
+
+  for (std::size_t i = 0; i < na; ++i)
+    at[fill[cell[i]]++] = {pos[i][0], pos[i][1], pos[i][2], rad[i],
+                           body[i], static_cast<int> (i)};
+}
+
+int
+force_grid_t::owner (double x, double y, double z) const
+{
+  if (at.empty () || x < lo[0] || x > hi[0] || y < lo[1] || y > hi[1]
+      || z < lo[2] || z > hi[2])
+    return -1;
+
+  const int c0 = std::min (n[0] - 1, static_cast<int> ((x - lo[0]) / L));
+  const int c1 = std::min (n[1] - 1, static_cast<int> ((y - lo[1]) / L));
+  const int c2 = std::min (n[2] - 1, static_cast<int> ((z - lo[2]) / L));
+
+  double best = d;   // only the spheres R_i + d that contain x count
+  int best_idx = -1, best_body = -1;
+
+  for (int i = std::max (0, c0 - 1); i <= std::min (n[0] - 1, c0 + 1); ++i)
+    for (int j = std::max (0, c1 - 1); j <= std::min (n[1] - 1, c1 + 1); ++j)
+      for (int k = std::max (0, c2 - 1); k <= std::min (n[2] - 1, c2 + 1); ++k) {
+        const int c = (i * n[1] + j) * n[2] + k;
+
+        for (int a = start[c]; a < start[c + 1]; ++a) {
+          const double dx = x - at[a].x;
+          const double dy = y - at[a].y;
+          const double dz = z - at[a].z;
+          const double r2 = dx * dx + dy * dy + dz * dz;
+          const double rb = at[a].R + best;
+
+          // |x - r_a| - R_a > best for sure: skip the square root (with a
+          // margin, so that the ties are still resolved below).
+          if (rb < 0.0 || r2 > rb * rb * (1.0 + 1.e-12))
+            continue;
+
+          const double s = std::sqrt (r2) - at[a].R;
+
+          if (s < best || (s == best && best_idx >= 0 && at[a].index < best_idx)) {
+            best = s;
+            best_idx = at[a].index;
+            best_body = at[a].body;
+          }
+        }
+      }
+
+  return best_body;
+}
+
+bool
+force_grid_t::any_near (const std::array<double,3> &a, const std::array<double,3> &b) const
+{
+  if (at.empty () || ! box_near (a, b))
+    return false;
+
+  int c0[3], c1[3];
+
+  for (int k = 0; k < 3; ++k) {
+    c0[k] = std::max (0, static_cast<int> (std::floor ((a[k] - lo[k]) / L)) - 1);
+    c1[k] = std::min (n[k] - 1, static_cast<int> (std::floor ((b[k] - lo[k]) / L)) + 1);
+  }
+
+  for (int i = c0[0]; i <= c1[0]; ++i)
+    for (int j = c0[1]; j <= c1[1]; ++j)
+      for (int k = c0[2]; k <= c1[2]; ++k) {
+        const int c = (i * n[1] + j) * n[2] + k;
+
+        if (start[c + 1] > start[c])
+          return true;
+      }
+
+  return false;
+}
+
 
 void
 poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
@@ -2214,7 +2391,9 @@ poisson_boltzmann::create_markers (ray_cache_t & ray_cache)
 
   if (stern_layer_surf == 1) {
     stern.build (pos_atoms, r_atoms, stern_layer);
-    std::vector<double> ().swap (r_atoms);
+
+    if (calc_forces == 0)
+      std::vector<double> ().swap (r_atoms);
   }
 
   epsilon_nodes = std::make_unique<distributed_vector> (tmsh.num_owned_nodes (),mpicomm);
@@ -2542,8 +2721,10 @@ poisson_boltzmann::assemple_system_matrix (ray_cache_t & ray_cache)
   // and in the Stern layer)
   bim3a_reaction_frac (tmsh, (*reaction_nodes), *ones, *A, func_frac);
 
-  // Reaction-related vectors are no longer required
-  reaction_nodes.reset();
+  // Reaction-related vectors are no longer required (the forces read
+  // reaction_nodes to tell the nodes with ions)
+  if (calc_forces == 0)
+    reaction_nodes.reset();
   ones.reset();
   std::vector<double>().swap (marker);
 
@@ -4621,6 +4802,339 @@ poisson_boltzmann::energy_excess_nonlinear (ray_cache_t & ray_cache)
               << (energy_pol + energy_react + coul_energy + energy_exc) << "\n";
     std::cout << "===========================================================\n";
   }
+}
+
+// ============================================================
+//  Forces by the stress tensor (calc_forces = 1)
+//
+//  The surface of body A is the boundary of the nodes owned by A
+//  (force_grid_t: inside R_i + d, closest atom surface in A). With chi_A
+//  the Q1 function equal to 1 on the nodes of A and 0 elsewhere (the mean of
+//  the parents on a hanging node), the surface integral of a
+//  divergence-free tensor T is
+//      F_A = oint T n dA = - int T grad(chi_A) dV,
+//  a sum over the layer of quadrants where chi_A is not constant: the mean
+//  of the surface integrals over the level surfaces of chi_A. Each quadrant
+//  belongs to one rank, so nothing is counted twice; the nodal vectors are
+//  read on the 8 nodes of the local quadrants (ghosts included, as in
+//  energy_pot_field). 2x2x2 Gauss points.
+//
+//  d = force_offset, or stern_layer + sqrt(3) h if 0: the layer then lies
+//  one cell diagonal outside the Stern surface R_i + stern_layer.
+//
+//  Checks, for each body:
+//    - int grad(chi_A) dV = 0 (closed surface), up to round-off;
+//    - int |grad(chi_A)| dV ~ the area of the surface;
+//    - every node of the layer is solvent with ions (epsilon = eps_out,
+//      reaction = eps_out k^2), where the stress tensor holds. If not, the
+//      run stops.
+//  Bodies in contact (their wall crosses the solute) are merged first into
+//  one body with one surface around all of them.
+// ============================================================
+int
+poisson_boltzmann::compute_forces ()
+{
+  int rank, size;
+  MPI_Comm_rank (mpicomm, &rank);
+  MPI_Comm_size (mpicomm, &size);
+
+  const double eps_out = 4.0 * pi * e_0 * e_out * kb * T * Angs / (e * e);
+  const double C0 = 1.0e3 * N_av * ionic_strength;
+  const double k2 = 2.0 * C0 * Angs * Angs * e * e / (e_0 * e_out * kb * T);
+  const double c_bulk = eps_out * k2;   // reaction_nodes in the solvent with ions
+
+  const double h = 1.0 / scale;         // finest mesh step
+  const double d = force_offset > 0.0 ? force_offset : stern_layer + std::sqrt (3.0) * h;
+  const int nb = body_names.size ();
+
+  force_grid_t grid;
+  grid.build (pos_atoms, r_atoms, body_atoms, d);
+
+  // Owner of each node: body + 1, 0 outside the surface. Only the owned
+  // entries are written, once per node; the ghosts are updated from their
+  // owners.
+  auto own = new_node_vector ();
+  own->get_owned_data ().assign (tmsh.num_owned_nodes (), 0.0);
+  const int is = own->get_range_start (), ie = own->get_range_end ();
+  std::vector<char> done (ie - is, 0);
+
+  for (auto quadrant = tmsh.begin_quadrant_sweep ();
+       quadrant != tmsh.end_quadrant_sweep ();
+       ++quadrant) {
+    if (! grid.any_near ({quadrant->p (0, 0), quadrant->p (1, 0), quadrant->p (2, 0)},
+                         {quadrant->p (0, 7), quadrant->p (1, 7), quadrant->p (2, 7)}))
+      continue;
+
+    for (int ii = 0; ii < 8; ++ii) {
+      const int g = quadrant->gt (ii);
+
+      if (! quadrant->is_hanging (ii) && g >= is && g < ie && ! done[g - is]) {
+        done[g - is] = 1;
+        (*own)[g] = 1 + grid.owner (quadrant->p (0, ii), quadrant->p (1, ii), quadrant->p (2, ii));
+      }
+    }
+  }
+
+  std::vector<char> ().swap (done);
+
+  if (size > 1)
+    own->assemble (replace_op);
+
+  // Bodies after the merge of the bodies in contact: body b is merged body
+  // merged[b]. At the start every body is on its own.
+  std::vector<int> merged (nb);
+  std::iota (merged.begin (), merged.end (), 0);
+  int nbm = nb;
+
+  // Per merged body: layer quadrants, layer quadrants with a node that is
+  // not solvent with ions, int |grad chi|, int grad chi, min and max cell size.
+  std::vector<double> nq, nbad, area, gint, hmin, hmax;
+  // Pairs of bodies whose wall crosses the solute (contact = 1).
+  std::vector<int> contact (nb * nb, 0);
+
+  const double gp[2] = {0.5 - 0.5 / std::sqrt (3.0), 0.5 + 0.5 / std::sqrt (3.0)};
+  const bool have_c = static_cast<bool> (reaction_nodes);
+
+  // Sweep of the layer. pass 0: find the bodies in contact, i.e. two bodies
+  // in a layer quadrant with a node that is not solvent with ions (their
+  // wall crosses the solute). pass 1: integrate over the layer of each
+  // merged body.
+  auto sweep = [&] (int pass) {
+    for (auto quadrant = tmsh.begin_quadrant_sweep ();
+         quadrant != tmsh.end_quadrant_sweep ();
+         ++quadrant) {
+      // The parents of a hanging node lie within one cell of the quadrant.
+      const double hc = quadrant->p (0, 7) - quadrant->p (0, 0);
+
+      if (! grid.any_near ({quadrant->p (0, 0) - hc, quadrant->p (1, 0) - hc, quadrant->p (2, 0) - hc},
+                           {quadrant->p (0, 7) + hc, quadrant->p (1, 7) + hc, quadrant->p (2, 7) + hc}))
+        continue;
+
+      // Nodes (or parents of a hanging node, at most 4) of the quadrant and
+      // their label: merged body + 1, 0 outside the surface.
+      std::array<std::array<int,4>,8> nodes, lab;
+      std::array<int,8> np;
+      bool any = false, same = true;
+
+      for (int ii = 0; ii < 8; ++ii) {
+        if (! quadrant->is_hanging (ii)) {
+          np[ii] = 1;
+          nodes[ii][0] = quadrant->gt (ii);
+        } else {
+          np[ii] = quadrant->num_parents (ii);
+
+          for (int jj = 0; jj < np[ii]; ++jj)
+            nodes[ii][jj] = quadrant->gparent (jj, ii);
+        }
+
+        for (int jj = 0; jj < np[ii]; ++jj) {
+          const int o = static_cast<int> (std::lround ((*own)[nodes[ii][jj]]));
+          lab[ii][jj] = o > 0 ? 1 + merged[o - 1] : 0;
+          any = any || lab[ii][jj] > 0;
+          same = same && lab[ii][jj] == lab[0][0];
+        }
+      }
+
+      // chi is constant for every body
+      if (! any || same)
+        continue;
+
+      // Solvent with ions on every node?
+      bool ok = true;
+
+      for (int ii = 0; ii < 8 && ok; ++ii)
+        for (int jj = 0; jj < np[ii]; ++jj) {
+          const int g = nodes[ii][jj];
+          const double ep = (*epsilon_nodes)[g];
+          const double cr = have_c ? (*reaction_nodes)[g] : c_bulk;
+
+          if (std::fabs (ep - eps_out) > 1.e-12 * eps_out
+              || std::fabs (cr - c_bulk) > 1.e-12 * c_bulk)
+            ok = false;
+        }
+
+      if (pass == 0) {
+        if (! ok)
+          for (int ii = 0; ii < 8; ++ii)
+            for (int jj = 0; jj < np[ii]; ++jj)
+              for (int kk = 0; kk < 8; ++kk)
+                for (int ll = 0; ll < np[kk]; ++ll)
+                  if (lab[ii][jj] > 0 && lab[kk][ll] > 0 && lab[ii][jj] != lab[kk][ll])
+                    contact[(lab[ii][jj] - 1) * nb + lab[kk][ll] - 1] = 1;
+
+        continue;
+      }
+
+      std::array<double,3> hq, t0;
+
+      for (int k = 0; k < 3; ++k) {
+        t0[k] = quadrant->p (k, 0);
+        hq[k] = quadrant->p (k, 7) - t0[k];
+      }
+
+      // Local coordinates (0 or 1) of the 8 nodes.
+      std::array<std::array<int,3>,8> tl;
+
+      for (int ii = 0; ii < 8; ++ii)
+        for (int k = 0; k < 3; ++k)
+          tl[ii][k] = quadrant->p (k, ii) - t0[k] > 0.5 * hq[k];
+
+      const double wg = hq[0] * hq[1] * hq[2] / 8.0;
+
+      for (int b = 0; b < nbm; ++b) {
+        std::array<double,8> chi;
+        bool all_one = true, all_zero = true;
+
+        for (int ii = 0; ii < 8; ++ii) {
+          double c = 0.0;
+
+          for (int jj = 0; jj < np[ii]; ++jj)
+            c += lab[ii][jj] == b + 1;
+
+          chi[ii] = c / np[ii];
+          all_one = all_one && chi[ii] == 1.0;
+          all_zero = all_zero && chi[ii] == 0.0;
+        }
+
+        if (all_one || all_zero)
+          continue;
+
+        nq[b] += 1.0;
+        nbad[b] += ok ? 0.0 : 1.0;
+        hmin[b] = std::min (hmin[b], hq[0]);
+        hmax[b] = std::max (hmax[b], hq[0]);
+
+        for (int ig = 0; ig < 8; ++ig) {
+          const double xi[3] = {gp[ig & 1], gp[(ig >> 1) & 1], gp[(ig >> 2) & 1]};
+          double gc[3] = {0.0, 0.0, 0.0};
+
+          for (int ii = 0; ii < 8; ++ii) {
+            double f[3];
+
+            for (int k = 0; k < 3; ++k)
+              f[k] = tl[ii][k] ? xi[k] : 1.0 - xi[k];
+
+            for (int k = 0; k < 3; ++k) {
+              const double s = (tl[ii][k] ? 1.0 : -1.0) / hq[k];
+              gc[k] += chi[ii] * s * f[(k + 1) % 3] * f[(k + 2) % 3];
+            }
+          }
+
+          area[b] += wg * std::sqrt (gc[0] * gc[0] + gc[1] * gc[1] + gc[2] * gc[2]);
+
+          for (int k = 0; k < 3; ++k)
+            gint[3 * b + k] += wg * gc[k];
+        }
+      }
+    }
+  };
+
+  // Merge the bodies in contact (union-find on the contact pairs of all
+  // the ranks), numbered by their first body. One pass is enough: the wall
+  // between a merged body and another one is made of walls already checked.
+  if (nb > 1) {
+    sweep (0);
+    MPI_Allreduce (MPI_IN_PLACE, contact.data (), nb * nb, MPI_INT, MPI_MAX, mpicomm);
+
+    std::vector<int> root (nb);
+    std::iota (root.begin (), root.end (), 0);
+    std::function<int (int)> find = [&] (int b) { return root[b] == b ? b : root[b] = find (root[b]); };
+
+    for (int a = 0; a < nb; ++a)
+      for (int b = 0; b < nb; ++b)
+        if (contact[a * nb + b] || contact[b * nb + a])
+          root[std::max (find (a), find (b))] = std::min (find (a), find (b));
+
+    std::vector<int> id (nb, -1);
+    nbm = 0;
+
+    for (int b = 0; b < nb; ++b) {
+      const int r = find (b);
+
+      if (id[r] < 0)
+        id[r] = nbm++;
+
+      merged[b] = id[r];
+    }
+  }
+
+  nq.assign (nbm, 0.0);
+  nbad.assign (nbm, 0.0);
+  area.assign (nbm, 0.0);
+  gint.assign (3 * nbm, 0.0);
+  hmin.assign (nbm, 1.e300);
+  hmax.assign (nbm, 0.0);
+  sweep (1);
+
+  auto reduce = [&] (std::vector<double> &v, MPI_Op op) {
+    MPI_Allreduce (MPI_IN_PLACE, v.data (), static_cast<int> (v.size ()), MPI_DOUBLE, op, mpicomm);
+  };
+
+  reduce (nq, MPI_SUM);
+  reduce (nbad, MPI_SUM);
+  reduce (area, MPI_SUM);
+  reduce (gint, MPI_SUM);
+  reduce (hmin, MPI_MIN);
+  reduce (hmax, MPI_MAX);
+
+  long nbad_tot = 0;
+
+  for (int b = 0; b < nbm; ++b)
+    nbad_tot += static_cast<long> (nbad[b]);
+
+  if (rank == 0) {
+    constexpr int label_width = 50;
+    std::cout << "\n================ [ Forces: surface ] ======================\n";
+    std::cout << std::left << std::setw (label_width) << "  Surface offset d [A]:" << d
+              << (force_offset > 0.0 ? "" : "  (stern_layer + sqrt(3) h)") << "\n";
+    std::cout << std::left << std::setw (label_width) << "  Finest mesh step h [A]:" << h << "\n";
+
+    for (int b = 0; b < nbm; ++b) {
+      int na = 0;
+      std::array<double,3> cg {0.0, 0.0, 0.0};
+
+      // Radius 0: the dummy atoms added by read_atoms_from_pqr, not counted.
+      for (std::size_t i = 0; i < body_atoms.size (); ++i)
+        if (merged[body_atoms[i]] == b && r_atoms[i] > 0.0) {
+          ++na;
+
+          for (int k = 0; k < 3; ++k)
+            cg[k] += pos_atoms[i][k];
+        }
+
+      for (int k = 0; k < 3; ++k)
+        cg[k] /= na;
+
+      // Chains of the merged body, joined by '+'.
+      std::string chains;
+      int nc = 0;
+
+      for (int c = 0; c < nb; ++c)
+        if (merged[c] == b) {
+          chains += (nc++ ? "+" : "") + body_names[c];
+        }
+
+      std::cout << "  Body " << b << " (chain '" << chains << "'" << (nc > 1 ? ", merged: in contact" : "")
+                << ", " << na << " atoms, centre [" << cg[0] << ", " << cg[1] << ", " << cg[2] << "])\n";
+      std::cout << std::left << std::setw (label_width) << "    Layer quadrants:"
+                << static_cast<long> (nq[b]) << "  (cell size " << hmin[b] << " - " << hmax[b] << " A)\n";
+      std::cout << std::left << std::setw (label_width) << "    int |grad chi| dV (~ area) [A^2]:"
+                << std::setprecision (10) << area[b] << "\n";
+      std::cout << std::left << std::setw (label_width) << "    int grad chi dV (closed: 0) [A^2]:"
+                << std::setprecision (3) << gint[3 * b] << "  " << gint[3 * b + 1] << "  "
+                << gint[3 * b + 2] << "\n" << std::setprecision (6);
+      std::cout << std::left << std::setw (label_width) << "    Layer quadrants not in solvent with ions:"
+                << static_cast<long> (nbad[b]) << "\n";
+    }
+
+    if (nbad_tot > 0)
+      std::cerr << "ERROR: the force surface crosses the molecule, the Stern layer or the ion-free "
+                << "region at " << nbad_tot << " quadrants: increase force_offset.\n";
+
+    std::cout << "===========================================================\n";
+  }
+
+  return nbad_tot > 0 ? 1 : 0;
 }
 
 void

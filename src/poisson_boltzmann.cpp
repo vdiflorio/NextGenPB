@@ -116,8 +116,9 @@ main (int argc, char **argv)
 
   pb.create_mesh ();
 
-  // The radii are needed again only by the Stern layer (create_markers).
-  if (pb.stern_layer_surf == 0)
+  // The radii are needed again only by the Stern layer (create_markers)
+  // and by the forces.
+  if (pb.stern_layer_surf == 0 && pb.calc_forces == 0)
     std::vector<double> ().swap (pb.r_atoms);
 
   TIC ();
@@ -287,6 +288,14 @@ main (int argc, char **argv)
     std::cout << "============================================\n";
 
   TOC ("Compute numerical solution");
+
+  // Before energy_pot_field, which frees the atom positions and charges.
+  if (pb.calc_forces == 1) {
+    TIC ();
+    if (pb.compute_forces ())
+      return 1;
+    TOC ("Compute forces");
+  }
 
   if (pb.atoms_write == 1) {
     TIC ();

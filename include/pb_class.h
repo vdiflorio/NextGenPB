@@ -381,6 +381,49 @@ struct stern_grid_t {
   inside (double x, double y, double z) const;
 };
 
+// ------------------------------------------------------------
+//  Integration surface of the forces (calc_forces): union of the spheres
+//  |x - r_i| < R_i + d, with the cell list of stern_grid_t. A query returns
+//  the owner of x, i.e. the body of the atom whose surface is the closest
+//  (smallest |x - r_i| - R_i, ties to the lowest atom index), or -1 if x is
+//  outside every sphere. Using the distance to the surface and not to the
+//  centre keeps the wall between two bodies in the solvent gap (as in MaZe).
+// ------------------------------------------------------------
+struct force_grid_t {
+  struct atom_t {
+    double x, y, z, R;
+    int body, index;
+  };
+
+  double L = 1.0, d = 0.0;
+  std::array<double,3> lo {}, hi {};       // atom box enlarged by L
+  std::array<int,3> n {};                  // cells per direction
+  std::vector<int> start;                  // atoms of cell c: [start[c], start[c+1])
+  std::vector<atom_t> at;                  // sorted by cell
+
+  void
+  build (const std::vector<std::array<double,3>> &pos,
+         const std::vector<double> &rad, const std::vector<int> &body, double d);
+
+  bool
+  box_near (const std::array<double,3> &a, const std::array<double,3> &b) const
+  {
+    for (int k = 0; k < 3; ++k)
+      if (b[k] < lo[k] || a[k] > hi[k])
+        return false;
+
+    return true;
+  }
+
+  // True if an atom lies in the cells touched by the box [a - L, b + L]:
+  // a point of the box can be inside a sphere R_i + d only then.
+  bool
+  any_near (const std::array<double,3> &a, const std::array<double,3> &b) const;
+
+  int
+  owner (double x, double y, double z) const;
+};
+
 
 struct
   poisson_boltzmann {
@@ -473,6 +516,15 @@ struct
   int calc_coulombic;
   int calc_potential_term;
   int calc_field_term;
+
+  // Forces by the stress tensor on the surface R_i + force_offset of each
+  // body. A body is the set of atoms with the same chain in the input file
+  // (one body if there are no chains). The chains and the radii are kept in
+  // memory only if calc_forces = 1.
+  int calc_forces = 0;
+  double force_offset = 0.0;            // [Angstrom], 0 = stern_layer + sqrt(3) h
+  std::vector<int> body_atoms;          // body of each atom
+  std::vector<std::string> body_names;  // chain of each body
 
 
 
@@ -1117,6 +1169,9 @@ struct
 
   void
   energy_excess_nonlinear (ray_cache_t & ray_cache);
+
+  int
+  compute_forces ();
 
   void
   write_potential_on_surface (ray_cache_t & ray_cache);

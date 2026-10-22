@@ -172,6 +172,15 @@ surf_output_vtp         = 1                     # 1 = write the .vtp file (ParaV
 surf_output_ply_meshlab = 0                     # 1 = write the MeshLab .ply file
 surf_output_ply_rgb     = 0                     # 1 = write the .ply file with RGB vertex colors
 
+# Electrostatic forces by the stress tensor, on the surface R_i + d around each
+# body. A body is the set of atoms with the same chain in the input file (one
+# body if the file has no chains). Bodies in contact (no solvent with ions
+# between them) are merged into one body. d = force_offset; 0 =
+# stern_layer_thickness + sqrt(3) h (one cell diagonal outside the Stern
+# surface). The run stops if the surface is not in the solvent with ions.
+calc_forces  = 0      # 1 = compute the forces on the bodies
+force_offset = 0      # d [A], 0 = automatic
+
 [../]
 
 
