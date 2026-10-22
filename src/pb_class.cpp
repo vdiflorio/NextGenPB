@@ -4846,6 +4846,7 @@ poisson_boltzmann::compute_forces ()
   const double h = 1.0 / scale;         // finest mesh step
   const double d = force_offset > 0.0 ? force_offset : stern_layer + std::sqrt (3.0) * h;
   const int nb = body_names.size ();
+  const double kT_kcal = kb * T * N_av / 4184.0;   // 1 kT in kcal/mol
 
   force_grid_t grid;
   grid.build (pos_atoms, r_atoms, body_atoms, d);
@@ -4889,6 +4890,9 @@ poisson_boltzmann::compute_forces ()
   // Per merged body: layer quadrants, layer quadrants with a node that is
   // not solvent with ions, int |grad chi|, int grad chi, min and max cell size.
   std::vector<double> nq, nbad, area, gint, hmin, hmax;
+  // Per merged body: centre x0 (geometric centre of the atoms), Maxwell
+  // force and its torque about x0.
+  std::vector<double> x0, fmax, tmax;
   // Pairs of bodies whose wall crosses the solute (contact = 1).
   std::vector<int> contact (nb * nb, 0);
 
@@ -4981,6 +4985,49 @@ poisson_boltzmann::compute_forces ()
 
       const double wg = hq[0] * hq[1] * hq[2] / 8.0;
 
+      // u on the 8 nodes (the mean of the parents on a hanging node).
+      std::array<double,8> uq;
+
+      for (int ii = 0; ii < 8; ++ii) {
+        uq[ii] = 0.0;
+
+        for (int jj = 0; jj < np[ii]; ++jj)
+          uq[ii] += (*phi)[nodes[ii][jj]];
+
+        uq[ii] /= np[ii];
+      }
+
+      // At each Gauss point: position, gradients of the 8 shape functions
+      // and the Maxwell tensor (eps_out / 4 pi) (grad u grad u - |grad u|^2 I / 2),
+      // in kT/A^3 (u = e phi / kT, lengths in A).
+      double xg[8][3], dN[8][8][3], Tm[8][3][3];
+
+      for (int ig = 0; ig < 8; ++ig) {
+        const double xi[3] = {gp[ig & 1], gp[(ig >> 1) & 1], gp[(ig >> 2) & 1]};
+        double gu[3] = {0.0, 0.0, 0.0};
+
+        for (int k = 0; k < 3; ++k)
+          xg[ig][k] = t0[k] + xi[k] * hq[k];
+
+        for (int ii = 0; ii < 8; ++ii) {
+          double f[3];
+
+          for (int k = 0; k < 3; ++k)
+            f[k] = tl[ii][k] ? xi[k] : 1.0 - xi[k];
+
+          for (int k = 0; k < 3; ++k) {
+            dN[ig][ii][k] = (tl[ii][k] ? 1.0 : -1.0) / hq[k] * f[(k + 1) % 3] * f[(k + 2) % 3];
+            gu[k] += uq[ii] * dN[ig][ii][k];
+          }
+        }
+
+        const double g2 = gu[0] * gu[0] + gu[1] * gu[1] + gu[2] * gu[2];
+
+        for (int i = 0; i < 3; ++i)
+          for (int j = 0; j < 3; ++j)
+            Tm[ig][i][j] = eps_out / (4.0 * pi) * (gu[i] * gu[j] - (i == j ? 0.5 * g2 : 0.0));
+      }
+
       for (int b = 0; b < nbm; ++b) {
         std::array<double,8> chi;
         bool all_one = true, all_zero = true;
@@ -5005,25 +5052,26 @@ poisson_boltzmann::compute_forces ()
         hmax[b] = std::max (hmax[b], hq[0]);
 
         for (int ig = 0; ig < 8; ++ig) {
-          const double xi[3] = {gp[ig & 1], gp[(ig >> 1) & 1], gp[(ig >> 2) & 1]};
           double gc[3] = {0.0, 0.0, 0.0};
 
-          for (int ii = 0; ii < 8; ++ii) {
-            double f[3];
-
+          for (int ii = 0; ii < 8; ++ii)
             for (int k = 0; k < 3; ++k)
-              f[k] = tl[ii][k] ? xi[k] : 1.0 - xi[k];
-
-            for (int k = 0; k < 3; ++k) {
-              const double s = (tl[ii][k] ? 1.0 : -1.0) / hq[k];
-              gc[k] += chi[ii] * s * f[(k + 1) % 3] * f[(k + 2) % 3];
-            }
-          }
+              gc[k] += chi[ii] * dN[ig][ii][k];
 
           area[b] += wg * std::sqrt (gc[0] * gc[0] + gc[1] * gc[1] + gc[2] * gc[2]);
 
-          for (int k = 0; k < 3; ++k)
+          // F = - int T grad(chi) dV, torque = - int (x - x0) x (T grad(chi)) dV
+          double tg[3], r[3];
+
+          for (int k = 0; k < 3; ++k) {
             gint[3 * b + k] += wg * gc[k];
+            tg[k] = Tm[ig][k][0] * gc[0] + Tm[ig][k][1] * gc[1] + Tm[ig][k][2] * gc[2];
+            r[k] = xg[ig][k] - x0[3 * b + k];
+            fmax[3 * b + k] -= wg * tg[k];
+          }
+
+          for (int k = 0; k < 3; ++k)
+            tmax[3 * b + k] -= wg * (r[(k + 1) % 3] * tg[(k + 2) % 3] - r[(k + 2) % 3] * tg[(k + 1) % 3]);
         }
       }
     }
@@ -5064,6 +5112,27 @@ poisson_boltzmann::compute_forces ()
   gint.assign (3 * nbm, 0.0);
   hmin.assign (nbm, 1.e300);
   hmax.assign (nbm, 0.0);
+  fmax.assign (3 * nbm, 0.0);
+  tmax.assign (3 * nbm, 0.0);
+
+  // Atoms and geometric centre of each merged body. Radius 0: the dummy
+  // atoms added by read_atoms_from_pqr, not counted.
+  std::vector<int> na (nbm, 0);
+  x0.assign (3 * nbm, 0.0);
+
+  for (std::size_t i = 0; i < body_atoms.size (); ++i)
+    if (r_atoms[i] > 0.0) {
+      const int b = merged[body_atoms[i]];
+      ++na[b];
+
+      for (int k = 0; k < 3; ++k)
+        x0[3 * b + k] += pos_atoms[i][k];
+    }
+
+  for (int b = 0; b < nbm; ++b)
+    for (int k = 0; k < 3; ++k)
+      x0[3 * b + k] /= na[b];
+
   sweep (1);
 
   auto reduce = [&] (std::vector<double> &v, MPI_Op op) {
@@ -5076,6 +5145,8 @@ poisson_boltzmann::compute_forces ()
   reduce (gint, MPI_SUM);
   reduce (hmin, MPI_MIN);
   reduce (hmax, MPI_MAX);
+  reduce (fmax, MPI_SUM);
+  reduce (tmax, MPI_SUM);
 
   long nbad_tot = 0;
 
@@ -5090,20 +5161,7 @@ poisson_boltzmann::compute_forces ()
     std::cout << std::left << std::setw (label_width) << "  Finest mesh step h [A]:" << h << "\n";
 
     for (int b = 0; b < nbm; ++b) {
-      int na = 0;
-      std::array<double,3> cg {0.0, 0.0, 0.0};
-
-      // Radius 0: the dummy atoms added by read_atoms_from_pqr, not counted.
-      for (std::size_t i = 0; i < body_atoms.size (); ++i)
-        if (merged[body_atoms[i]] == b && r_atoms[i] > 0.0) {
-          ++na;
-
-          for (int k = 0; k < 3; ++k)
-            cg[k] += pos_atoms[i][k];
-        }
-
-      for (int k = 0; k < 3; ++k)
-        cg[k] /= na;
+      const double *cg = &x0[3 * b];
 
       // Chains of the merged body, joined by '+'.
       std::string chains;
@@ -5115,7 +5173,7 @@ poisson_boltzmann::compute_forces ()
         }
 
       std::cout << "  Body " << b << " (chain '" << chains << "'" << (nc > 1 ? ", merged: in contact" : "")
-                << ", " << na << " atoms, centre [" << cg[0] << ", " << cg[1] << ", " << cg[2] << "])\n";
+                << ", " << na[b] << " atoms, centre [" << cg[0] << ", " << cg[1] << ", " << cg[2] << "])\n";
       std::cout << std::left << std::setw (label_width) << "    Layer quadrants:"
                 << static_cast<long> (nq[b]) << "  (cell size " << hmin[b] << " - " << hmax[b] << " A)\n";
       std::cout << std::left << std::setw (label_width) << "    int |grad chi| dV (~ area) [A^2]:"
@@ -5125,6 +5183,44 @@ poisson_boltzmann::compute_forces ()
                 << gint[3 * b + 2] << "\n" << std::setprecision (6);
       std::cout << std::left << std::setw (label_width) << "    Layer quadrants not in solvent with ions:"
                 << static_cast<long> (nbad[b]) << "\n";
+      std::cout << std::left << std::setw (label_width) << "    Force, Maxwell [kT/A]:"
+                << std::setprecision (8) << fmax[3 * b] << "  " << fmax[3 * b + 1] << "  " << fmax[3 * b + 2] << "\n";
+      std::cout << std::left << std::setw (label_width) << "    Force, Maxwell [kcal/(mol A)]:"
+                << fmax[3 * b] * kT_kcal << "  " << fmax[3 * b + 1] * kT_kcal << "  " << fmax[3 * b + 2] * kT_kcal << "\n";
+      std::cout << std::left << std::setw (label_width) << "    Torque about the centre, Maxwell [kT]:"
+                << tmax[3 * b] << "  " << tmax[3 * b + 1] << "  " << tmax[3 * b + 2] << "\n"
+                << std::setprecision (6);
+    }
+
+    if (ionic_strength > 0.0)
+      std::cout << "  WARNING: the ionic pressure term is not included yet: the forces are not valid with ions.\n";
+
+    // forces.dat: one row per (merged) body.
+    std::ofstream out ("forces.dat");
+    out << "# Electrostatic forces by the stress tensor on the surface R_i + d, d = " << d << " A\n"
+        << "# body chains atoms  F_total[kT/A] x y z  F_total[kcal/(mol A)] x y z  F_Maxwell[kT/A] x y z"
+        << "  F_ions[kT/A] x y z  torque[kT] x y z  layer_quadrants  |int grad chi|[A^2]\n";
+    out << std::setprecision (10);
+
+    for (int b = 0; b < nbm; ++b) {
+      std::string chains;
+
+      for (int c = 0; c < nb; ++c)
+        if (merged[c] == b)
+          chains += (chains.empty () ? "" : "+") + body_names[c];
+
+      // The ionic pressure term is not computed yet: F_total = F_Maxwell.
+      const double *fm = &fmax[3 * b], *tq = &tmax[3 * b], *gi = &gint[3 * b];
+      out << b << " " << (chains.empty () ? "-" : chains) << " " << na[b];
+
+      for (int k = 0; k < 3; ++k) out << " " << fm[k];
+      for (int k = 0; k < 3; ++k) out << " " << fm[k] * kT_kcal;
+      for (int k = 0; k < 3; ++k) out << " " << fm[k];
+      for (int k = 0; k < 3; ++k) out << " " << 0.0;
+      for (int k = 0; k < 3; ++k) out << " " << tq[k];
+
+      out << " " << static_cast<long> (nq[b]) << " "
+          << std::sqrt (gi[0] * gi[0] + gi[1] * gi[1] + gi[2] * gi[2]) << "\n";
     }
 
     if (nbad_tot > 0)
