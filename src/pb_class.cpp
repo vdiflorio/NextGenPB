@@ -4824,8 +4824,10 @@ poisson_boltzmann::energy_excess_nonlinear (ray_cache_t & ray_cache)
 //
 //  T = T_Maxwell - Pi I, with T_Maxwell = (eps_out / 4 pi) (grad u grad u -
 //  |grad u|^2 I / 2) and the ionic pressure Pi = C osm(u) / 4 pi, C =
-//  reaction_nodes. osm(u) = u^2 / 2 in the linear model; Pi is interpolated
-//  from its nodal values. The nonlinear models have Pi = 0 for now.
+//  reaction_nodes. osm(u) = u^2 / 2 in the linear model, cosh u - 1 (sinh),
+//  log D(u) / nu (steric), the NU osm of ion_model_nu; Pi is interpolated
+//  from its nodal values. T is divergence-free in the solvent because
+//  osm'(u) = g(u).
 //
 //  d = force_offset, or stern_layer + sqrt(3) h if 0: the layer then lies
 //  one cell diagonal outside the Stern surface R_i + stern_layer.
@@ -4904,6 +4906,8 @@ poisson_boltzmann::compute_forces ()
   std::vector<double> x0, fmax, tmax, fion, tion;
   // Pairs of bodies whose wall crosses the solute (contact = 1).
   std::vector<int> contact (nb * nb, 0);
+  // NU: node values where the free-volume equation had no root.
+  long ofail = 0;
 
   const double gp[2] = {0.5 - 0.5 / std::sqrt (3.0), 0.5 + 0.5 / std::sqrt (3.0)};
   const bool have_c = static_cast<bool> (reaction_nodes);
@@ -5004,21 +5008,39 @@ poisson_boltzmann::compute_forces ()
         uq[ii] /= np[ii];
       }
 
-      // Ionic pressure on the 8 nodes, Pi = C osm(u) / 4 pi in kT/A^3, with
-      // osm(u) = u^2 / 2 in the linear model (the mean of the parents on a
-      // hanging node). The nonlinear models are not done yet: Pi = 0.
+      // Ionic pressure on the 8 nodes, Pi = C osm(u) / 4 pi in kT/A^3 (the
+      // mean of the parents on a hanging node), with osm(u) = u^2 / 2 in the
+      // linear model, ion_model.osm (sinh, steric) or ion_model_nu (NU).
+      // C == 0 (no ions): Pi = 0, and u may be huge there.
       std::array<double,8> pq;
 
       for (int ii = 0; ii < 8; ++ii) {
         pq[ii] = 0.0;
 
-        if (linearized)
-          for (int jj = 0; jj < np[ii]; ++jj) {
-            const int g = nodes[ii][jj];
-            const double cr = have_c ? (*reaction_nodes)[g] : c_bulk;
-            const double ug = (*phi)[g];
-            pq[ii] += cr * 0.5 * ug * ug / (4.0 * pi);
+        for (int jj = 0; jj < np[ii]; ++jj) {
+          const int g = nodes[ii][jj];
+          const double cr = have_c ? (*reaction_nodes)[g] : c_bulk;
+          const double ug = (*phi)[g];
+          double osm;
+
+          if (cr == 0.0)
+            continue;
+
+          if (linearized)
+            osm = 0.5 * ug * ug;
+          else if (nonuniform) {
+            ion_model_nonuniform_t::obs_t o;
+
+            if (! ion_model_nu.observables (ug, o))
+              ++ofail;
+
+            osm = o.osm;
           }
+          else
+            osm = ion_model.osm (ug);
+
+          pq[ii] += cr * osm / (4.0 * pi);
+        }
 
         pq[ii] /= np[ii];
       }
@@ -5193,6 +5215,8 @@ poisson_boltzmann::compute_forces ()
   reduce (fion, MPI_SUM);
   reduce (tion, MPI_SUM);
 
+  MPI_Allreduce (MPI_IN_PLACE, &ofail, 1, MPI_LONG, MPI_SUM, mpicomm);
+
   long nbad_tot = 0;
 
   for (int b = 0; b < nbm; ++b)
@@ -5247,9 +5271,9 @@ poisson_boltzmann::compute_forces ()
                 << tmax[3 * b + 2] + tion[3 * b + 2] << "\n" << std::setprecision (6);
     }
 
-    if (ionic_strength > 0.0 && ! linearized)
-      std::cout << "  WARNING: the ionic pressure term of the nonlinear models is not included yet: "
-                << "the forces are not valid with ions.\n";
+    if (ofail > 0)
+      std::cout << "  WARNING: free-volume equation not solved at " << ofail
+                << " node values of the force surface (NU model).\n";
 
     // forces.dat: one row per (merged) body.
     std::ofstream out ("forces.dat");

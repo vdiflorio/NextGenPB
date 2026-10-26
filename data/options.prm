@@ -178,7 +178,7 @@ surf_output_ply_rgb     = 0                     # 1 = write the .ply file with R
 # between them) are merged into one body. d = force_offset; 0 =
 # stern_layer_thickness + sqrt(3) h (one cell diagonal outside the Stern
 # surface). The run stops if the surface is not in the solvent with ions.
-# With ions, the ionic pressure term is done only for linearized = 1 for now.
+# Every ion model (linear, sinh, steric, NU) has its ionic pressure term.
 calc_forces  = 0      # 1 = compute the forces on the bodies
 force_offset = 0      # d [A], 0 = automatic
 
