@@ -4807,24 +4807,32 @@ poisson_boltzmann::energy_excess_nonlinear (ray_cache_t & ray_cache)
 // ============================================================
 //  Forces by the stress tensor (calc_forces = 1)
 //
-//  The surface of body A is the boundary of the nodes owned by A
-//  (force_grid_t: inside R_i + d, closest atom surface in A). With chi_A
-//  the Q1 function equal to 1 on the nodes of A and 0 elsewhere (the mean of
-//  the parents on a hanging node), the surface integral of a
-//  divergence-free tensor T is
-//      F_A = oint T n dA = - int T grad(chi_A) dV,
-//  a sum over the layer of quadrants where chi_A is not constant: the mean
-//  of the surface integrals over the level surfaces of chi_A. Each quadrant
-//  belongs to one rank, so nothing is counted twice; the nodal vectors are
-//  read on the 8 nodes of the local quadrants (ghosts included, as in
-//  energy_pot_field). 2x2x2 Gauss points.
+//  The surface of body A is the Manhattan surface between the nodes owned
+//  by A (force_grid_t: inside R_i + d, closest atom surface in A) and the
+//  other nodes, made of the dual faces: for each mesh edge from a node of A
+//  to a node not of A, the square of side h at the middle of the edge, with
+//  the normal along the edge, outwards. Then
+//      F_A = oint T n dA = sum over the dual faces of T n dA.
+//  Each dual face is split into four quarters, one in each quadrant around
+//  the edge, so the faces are found in the layer of quadrants where chi_A
+//  (1 on the nodes of A, 0 elsewhere) is not constant. On a quarter T comes
+//  from the Q1 of its quadrant, at 2x2 Gauss points. On a hanging node chi_A
+//  is the mean of the parents and the weight chi_a - chi_b of the edge is a
+//  fraction. Each quadrant belongs to one rank, so nothing is counted twice;
+//  the nodal vectors are read on the 8 nodes of the local quadrants (ghosts
+//  included, as in energy_pot_field).
+//
+//  T = T_Maxwell - Pi I, with T_Maxwell = (eps_out / 4 pi) (grad u grad u -
+//  |grad u|^2 I / 2) and the ionic pressure Pi = C osm(u) / 4 pi, C =
+//  reaction_nodes. osm(u) = u^2 / 2 in the linear model; Pi is interpolated
+//  from its nodal values. The nonlinear models have Pi = 0 for now.
 //
 //  d = force_offset, or stern_layer + sqrt(3) h if 0: the layer then lies
 //  one cell diagonal outside the Stern surface R_i + stern_layer.
 //
 //  Checks, for each body:
-//    - int grad(chi_A) dV = 0 (closed surface), up to round-off;
-//    - int |grad(chi_A)| dV ~ the area of the surface;
+//    - sum of n dA = 0 (closed surface), up to round-off;
+//    - the area of the surface;
 //    - every node of the layer is solvent with ions (epsilon = eps_out,
 //      reaction = eps_out k^2), where the stress tensor holds. If not, the
 //      run stops.
@@ -4888,11 +4896,12 @@ poisson_boltzmann::compute_forces ()
   int nbm = nb;
 
   // Per merged body: layer quadrants, layer quadrants with a node that is
-  // not solvent with ions, int |grad chi|, int grad chi, min and max cell size.
-  std::vector<double> nq, nbad, area, gint, hmin, hmax;
+  // not solvent with ions, area and sum of n dA of the surface, min and max
+  // cell size.
+  std::vector<double> nq, nbad, area, nsum, hmin, hmax;
   // Per merged body: centre x0 (geometric centre of the atoms), Maxwell
-  // force and its torque about x0.
-  std::vector<double> x0, fmax, tmax;
+  // force and its torque about x0, ionic pressure force and its torque.
+  std::vector<double> x0, fmax, tmax, fion, tion;
   // Pairs of bodies whose wall crosses the solute (contact = 1).
   std::vector<int> contact (nb * nb, 0);
 
@@ -4901,7 +4910,7 @@ poisson_boltzmann::compute_forces ()
 
   // Sweep of the layer. pass 0: find the bodies in contact, i.e. two bodies
   // in a layer quadrant with a node that is not solvent with ions (their
-  // wall crosses the solute). pass 1: integrate over the layer of each
+  // wall crosses the solute). pass 1: integrate over the dual faces of each
   // merged body.
   auto sweep = [&] (int pass) {
     for (auto quadrant = tmsh.begin_quadrant_sweep ();
@@ -4983,8 +4992,6 @@ poisson_boltzmann::compute_forces ()
         for (int k = 0; k < 3; ++k)
           tl[ii][k] = quadrant->p (k, ii) - t0[k] > 0.5 * hq[k];
 
-      const double wg = hq[0] * hq[1] * hq[2] / 8.0;
-
       // u on the 8 nodes (the mean of the parents on a hanging node).
       std::array<double,8> uq;
 
@@ -4997,35 +5004,23 @@ poisson_boltzmann::compute_forces ()
         uq[ii] /= np[ii];
       }
 
-      // At each Gauss point: position, gradients of the 8 shape functions
-      // and the Maxwell tensor (eps_out / 4 pi) (grad u grad u - |grad u|^2 I / 2),
-      // in kT/A^3 (u = e phi / kT, lengths in A).
-      double xg[8][3], dN[8][8][3], Tm[8][3][3];
+      // Ionic pressure on the 8 nodes, Pi = C osm(u) / 4 pi in kT/A^3, with
+      // osm(u) = u^2 / 2 in the linear model (the mean of the parents on a
+      // hanging node). The nonlinear models are not done yet: Pi = 0.
+      std::array<double,8> pq;
 
-      for (int ig = 0; ig < 8; ++ig) {
-        const double xi[3] = {gp[ig & 1], gp[(ig >> 1) & 1], gp[(ig >> 2) & 1]};
-        double gu[3] = {0.0, 0.0, 0.0};
+      for (int ii = 0; ii < 8; ++ii) {
+        pq[ii] = 0.0;
 
-        for (int k = 0; k < 3; ++k)
-          xg[ig][k] = t0[k] + xi[k] * hq[k];
-
-        for (int ii = 0; ii < 8; ++ii) {
-          double f[3];
-
-          for (int k = 0; k < 3; ++k)
-            f[k] = tl[ii][k] ? xi[k] : 1.0 - xi[k];
-
-          for (int k = 0; k < 3; ++k) {
-            dN[ig][ii][k] = (tl[ii][k] ? 1.0 : -1.0) / hq[k] * f[(k + 1) % 3] * f[(k + 2) % 3];
-            gu[k] += uq[ii] * dN[ig][ii][k];
+        if (linearized)
+          for (int jj = 0; jj < np[ii]; ++jj) {
+            const int g = nodes[ii][jj];
+            const double cr = have_c ? (*reaction_nodes)[g] : c_bulk;
+            const double ug = (*phi)[g];
+            pq[ii] += cr * 0.5 * ug * ug / (4.0 * pi);
           }
-        }
 
-        const double g2 = gu[0] * gu[0] + gu[1] * gu[1] + gu[2] * gu[2];
-
-        for (int i = 0; i < 3; ++i)
-          for (int j = 0; j < 3; ++j)
-            Tm[ig][i][j] = eps_out / (4.0 * pi) * (gu[i] * gu[j] - (i == j ? 0.5 * g2 : 0.0));
+        pq[ii] /= np[ii];
       }
 
       for (int b = 0; b < nbm; ++b) {
@@ -5051,28 +5046,74 @@ poisson_boltzmann::compute_forces ()
         hmin[b] = std::min (hmin[b], hq[0]);
         hmax[b] = std::max (hmax[b], hq[0]);
 
-        for (int ig = 0; ig < 8; ++ig) {
-          double gc[3] = {0.0, 0.0, 0.0};
-
-          for (int ii = 0; ii < 8; ++ii)
-            for (int k = 0; k < 3; ++k)
-              gc[k] += chi[ii] * dN[ig][ii][k];
-
-          area[b] += wg * std::sqrt (gc[0] * gc[0] + gc[1] * gc[1] + gc[2] * gc[2]);
-
-          // F = - int T grad(chi) dV, torque = - int (x - x0) x (T grad(chi)) dV
-          double tg[3], r[3];
-
+        // Edges ea -> eb along direction k with chi_ea != chi_eb. The quarter
+        // of their dual face in this quadrant is xi_k = 1/2, xi_m in [0, 1/2]
+        // or [1/2, 1] on the side of the edge. Weight chi_ea - chi_eb: +1
+        // from a node inside to a node outside, n = +e_k.
+        for (int ea = 0; ea < 8; ++ea)
           for (int k = 0; k < 3; ++k) {
-            gint[3 * b + k] += wg * gc[k];
-            tg[k] = Tm[ig][k][0] * gc[0] + Tm[ig][k][1] * gc[1] + Tm[ig][k][2] * gc[2];
-            r[k] = xg[ig][k] - x0[3 * b + k];
-            fmax[3 * b + k] -= wg * tg[k];
-          }
+            if (tl[ea][k])
+              continue;
 
-          for (int k = 0; k < 3; ++k)
-            tmax[3 * b + k] -= wg * (r[(k + 1) % 3] * tg[(k + 2) % 3] - r[(k + 2) % 3] * tg[(k + 1) % 3]);
-        }
+            const int m1 = (k + 1) % 3, m2 = (k + 2) % 3;
+            int eb = -1;
+
+            for (int ii = 0; ii < 8; ++ii)
+              if (tl[ii][k] == 1 && tl[ii][m1] == tl[ea][m1] && tl[ii][m2] == tl[ea][m2])
+                eb = ii;
+
+            const double w = chi[ea] - chi[eb];
+
+            if (w == 0.0)
+              continue;
+
+            // Weight of one Gauss point: the quarter is (h/2)^2.
+            const double ag = w * 0.25 * hq[m1] * hq[m2] / 4.0;
+
+            for (int q = 0; q < 4; ++q) {
+              double xi[3];
+              xi[k] = 0.5;
+              xi[m1] = 0.5 * tl[ea][m1] + 0.5 * gp[q & 1];
+              xi[m2] = 0.5 * tl[ea][m2] + 0.5 * gp[(q >> 1) & 1];
+
+              // grad u and Pi from the Q1 of the quadrant.
+              double gu[3] = {0.0, 0.0, 0.0}, pp = 0.0;
+
+              for (int ii = 0; ii < 8; ++ii) {
+                double f[3];
+
+                for (int kk = 0; kk < 3; ++kk)
+                  f[kk] = tl[ii][kk] ? xi[kk] : 1.0 - xi[kk];
+
+                pp += pq[ii] * f[0] * f[1] * f[2];
+
+                for (int kk = 0; kk < 3; ++kk)
+                  gu[kk] += uq[ii] * (tl[ii][kk] ? 1.0 : -1.0) / hq[kk] * f[(kk + 1) % 3] * f[(kk + 2) % 3];
+              }
+
+              // T_Maxwell n = (eps_out / 4 pi) (grad u (du/dx_k) - |grad u|^2 e_k / 2)
+              // and -Pi n, in kT/A^3 (u = e phi / kT, lengths in A).
+              const double g2 = gu[0] * gu[0] + gu[1] * gu[1] + gu[2] * gu[2];
+              double tn[3], pn[3] = {0.0, 0.0, 0.0}, r[3];
+
+              for (int i = 0; i < 3; ++i) {
+                tn[i] = eps_out / (4.0 * pi) * (gu[i] * gu[k] - (i == k ? 0.5 * g2 : 0.0));
+                r[i] = t0[i] + xi[i] * hq[i] - x0[3 * b + i];
+              }
+
+              pn[k] = -pp;
+              nsum[3 * b + k] += ag;
+              area[b] += std::fabs (ag);
+
+              // F = sum T n dA, torque = sum (x - x0) x (T n) dA
+              for (int i = 0; i < 3; ++i) {
+                fmax[3 * b + i] += ag * tn[i];
+                fion[3 * b + i] += ag * pn[i];
+                tmax[3 * b + i] += ag * (r[(i + 1) % 3] * tn[(i + 2) % 3] - r[(i + 2) % 3] * tn[(i + 1) % 3]);
+                tion[3 * b + i] += ag * (r[(i + 1) % 3] * pn[(i + 2) % 3] - r[(i + 2) % 3] * pn[(i + 1) % 3]);
+              }
+            }
+          }
       }
     }
   };
@@ -5109,11 +5150,13 @@ poisson_boltzmann::compute_forces ()
   nq.assign (nbm, 0.0);
   nbad.assign (nbm, 0.0);
   area.assign (nbm, 0.0);
-  gint.assign (3 * nbm, 0.0);
+  nsum.assign (3 * nbm, 0.0);
   hmin.assign (nbm, 1.e300);
   hmax.assign (nbm, 0.0);
   fmax.assign (3 * nbm, 0.0);
   tmax.assign (3 * nbm, 0.0);
+  fion.assign (3 * nbm, 0.0);
+  tion.assign (3 * nbm, 0.0);
 
   // Atoms and geometric centre of each merged body. Radius 0: the dummy
   // atoms added by read_atoms_from_pqr, not counted.
@@ -5142,11 +5185,13 @@ poisson_boltzmann::compute_forces ()
   reduce (nq, MPI_SUM);
   reduce (nbad, MPI_SUM);
   reduce (area, MPI_SUM);
-  reduce (gint, MPI_SUM);
+  reduce (nsum, MPI_SUM);
   reduce (hmin, MPI_MIN);
   reduce (hmax, MPI_MAX);
   reduce (fmax, MPI_SUM);
   reduce (tmax, MPI_SUM);
+  reduce (fion, MPI_SUM);
+  reduce (tion, MPI_SUM);
 
   long nbad_tot = 0;
 
@@ -5176,30 +5221,41 @@ poisson_boltzmann::compute_forces ()
                 << ", " << na[b] << " atoms, centre [" << cg[0] << ", " << cg[1] << ", " << cg[2] << "])\n";
       std::cout << std::left << std::setw (label_width) << "    Layer quadrants:"
                 << static_cast<long> (nq[b]) << "  (cell size " << hmin[b] << " - " << hmax[b] << " A)\n";
-      std::cout << std::left << std::setw (label_width) << "    int |grad chi| dV (~ area) [A^2]:"
+      std::cout << std::left << std::setw (label_width) << "    Surface area (dual faces) [A^2]:"
                 << std::setprecision (10) << area[b] << "\n";
-      std::cout << std::left << std::setw (label_width) << "    int grad chi dV (closed: 0) [A^2]:"
-                << std::setprecision (3) << gint[3 * b] << "  " << gint[3 * b + 1] << "  "
-                << gint[3 * b + 2] << "\n" << std::setprecision (6);
+      std::cout << std::left << std::setw (label_width) << "    Sum of n dA (closed: 0) [A^2]:"
+                << std::setprecision (3) << nsum[3 * b] << "  " << nsum[3 * b + 1] << "  "
+                << nsum[3 * b + 2] << "\n" << std::setprecision (6);
       std::cout << std::left << std::setw (label_width) << "    Layer quadrants not in solvent with ions:"
                 << static_cast<long> (nbad[b]) << "\n";
       std::cout << std::left << std::setw (label_width) << "    Force, Maxwell [kT/A]:"
                 << std::setprecision (8) << fmax[3 * b] << "  " << fmax[3 * b + 1] << "  " << fmax[3 * b + 2] << "\n";
       std::cout << std::left << std::setw (label_width) << "    Force, Maxwell [kcal/(mol A)]:"
                 << fmax[3 * b] * kT_kcal << "  " << fmax[3 * b + 1] * kT_kcal << "  " << fmax[3 * b + 2] * kT_kcal << "\n";
+      std::cout << std::left << std::setw (label_width) << "    Force, ions [kT/A]:"
+                << fion[3 * b] << "  " << fion[3 * b + 1] << "  " << fion[3 * b + 2] << "\n";
+      std::cout << std::left << std::setw (label_width) << "    Force, total [kT/A]:"
+                << fmax[3 * b] + fion[3 * b] << "  " << fmax[3 * b + 1] + fion[3 * b + 1] << "  "
+                << fmax[3 * b + 2] + fion[3 * b + 2] << "\n";
+      std::cout << std::left << std::setw (label_width) << "    Force, total [kcal/(mol A)]:"
+                << (fmax[3 * b] + fion[3 * b]) * kT_kcal << "  " << (fmax[3 * b + 1] + fion[3 * b + 1]) * kT_kcal
+                << "  " << (fmax[3 * b + 2] + fion[3 * b + 2]) * kT_kcal << "\n";
       std::cout << std::left << std::setw (label_width) << "    Torque about the centre, Maxwell [kT]:"
-                << tmax[3 * b] << "  " << tmax[3 * b + 1] << "  " << tmax[3 * b + 2] << "\n"
-                << std::setprecision (6);
+                << tmax[3 * b] << "  " << tmax[3 * b + 1] << "  " << tmax[3 * b + 2] << "\n";
+      std::cout << std::left << std::setw (label_width) << "    Torque about the centre, total [kT]:"
+                << tmax[3 * b] + tion[3 * b] << "  " << tmax[3 * b + 1] + tion[3 * b + 1] << "  "
+                << tmax[3 * b + 2] + tion[3 * b + 2] << "\n" << std::setprecision (6);
     }
 
-    if (ionic_strength > 0.0)
-      std::cout << "  WARNING: the ionic pressure term is not included yet: the forces are not valid with ions.\n";
+    if (ionic_strength > 0.0 && ! linearized)
+      std::cout << "  WARNING: the ionic pressure term of the nonlinear models is not included yet: "
+                << "the forces are not valid with ions.\n";
 
     // forces.dat: one row per (merged) body.
     std::ofstream out ("forces.dat");
     out << "# Electrostatic forces by the stress tensor on the surface R_i + d, d = " << d << " A\n"
         << "# body chains atoms  F_total[kT/A] x y z  F_total[kcal/(mol A)] x y z  F_Maxwell[kT/A] x y z"
-        << "  F_ions[kT/A] x y z  torque[kT] x y z  layer_quadrants  |int grad chi|[A^2]\n";
+        << "  F_ions[kT/A] x y z  torque_total[kT] x y z  layer_quadrants  |sum n dA|[A^2]\n";
     out << std::setprecision (10);
 
     for (int b = 0; b < nbm; ++b) {
@@ -5209,15 +5265,15 @@ poisson_boltzmann::compute_forces ()
         if (merged[c] == b)
           chains += (chains.empty () ? "" : "+") + body_names[c];
 
-      // The ionic pressure term is not computed yet: F_total = F_Maxwell.
-      const double *fm = &fmax[3 * b], *tq = &tmax[3 * b], *gi = &gint[3 * b];
+      const double *fm = &fmax[3 * b], *fi = &fion[3 * b], *tq = &tmax[3 * b], *ti = &tion[3 * b],
+                   *gi = &nsum[3 * b];
       out << b << " " << (chains.empty () ? "-" : chains) << " " << na[b];
 
+      for (int k = 0; k < 3; ++k) out << " " << fm[k] + fi[k];
+      for (int k = 0; k < 3; ++k) out << " " << (fm[k] + fi[k]) * kT_kcal;
       for (int k = 0; k < 3; ++k) out << " " << fm[k];
-      for (int k = 0; k < 3; ++k) out << " " << fm[k] * kT_kcal;
-      for (int k = 0; k < 3; ++k) out << " " << fm[k];
-      for (int k = 0; k < 3; ++k) out << " " << 0.0;
-      for (int k = 0; k < 3; ++k) out << " " << tq[k];
+      for (int k = 0; k < 3; ++k) out << " " << fi[k];
+      for (int k = 0; k < 3; ++k) out << " " << tq[k] + ti[k];
 
       out << " " << static_cast<long> (nq[b]) << " "
           << std::sqrt (gi[0] * gi[0] + gi[1] * gi[1] + gi[2] * gi[2]) << "\n";
