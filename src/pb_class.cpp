@@ -5584,20 +5584,32 @@ poisson_boltzmann::write_ns_vert_potential (const std::string& off_file,
   std::vector<int> all_n (size, 0);
   MPI_Gather (&local_n, 1, MPI_INT, all_n.data (), 1, MPI_INT, 0, mpicomm);
 
+  // Counts and displacements are in Crossing elements (one MPI datatype per
+  // Crossing), not bytes: with byte counts the int total/displs overflow
+  // 2^31 at ~24M crossings (sizeof (Crossing) = 88), e.g. 229M-node meshes.
+  MPI_Datatype crossing_t;
+  MPI_Type_contiguous ((int)sizeof (Crossing), MPI_BYTE, &crossing_t);
+  MPI_Type_commit (&crossing_t);
+
   std::vector<Crossing> all_crossings;
-  std::vector<int> byte_counts (size, 0), byte_displs (size, 0);
+  std::vector<int> displs (size, 0);
   if (rank == 0) {
-    int total = 0;
+    long long total = 0;
     for (int r = 0; r < size; ++r) {
-      byte_displs[r] = total;
-      byte_counts[r] = all_n[r] * (int)sizeof (Crossing);
-      total += byte_counts[r];
+      if (total > std::numeric_limits<int>::max ()) {
+        std::cerr << "write_ns_vert_potential: too many crossings to gather ("
+                  << total << ")" << std::endl;
+        MPI_Abort (mpicomm, 1);
+      }
+      displs[r] = (int)total;
+      total += all_n[r];
     }
-    all_crossings.resize (total / (int)sizeof (Crossing));
+    all_crossings.resize ((std::size_t)total);
   }
-  MPI_Gatherv (local_crossings.data (), local_n * (int)sizeof (Crossing), MPI_BYTE,
+  MPI_Gatherv (local_crossings.data (), local_n, crossing_t,
                rank == 0 ? all_crossings.data () : nullptr,
-               byte_counts.data (), byte_displs.data (), MPI_BYTE, 0, mpicomm);
+               all_n.data (), displs.data (), crossing_t, 0, mpicomm);
+  MPI_Type_free (&crossing_t);
 
   // Steps 3-5: rank 0 parses the OFF file, matches vertices to crossings, writes PLY.
   if (rank == 0) {
