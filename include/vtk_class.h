@@ -71,7 +71,9 @@ private:
   std::vector<double> p;
   std::vector<double> f_loc;
   std::vector<int> t;
-  int offsetCounter;
+  // Byte offset into the appended-data block. 64 bit: per-rank pieces can exceed 2 GiB
+  // (an int here wrapped negative, producing unreadable .vtu files).
+  uint64_t offsetCounter;
   int rank;
 
   void preparingData (const distributed_vector& field, tmesh_3d& tmsh);

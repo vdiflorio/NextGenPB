@@ -66,7 +66,7 @@ VTKWriter::createPvtuFile (std::vector<std::string> &fieldNames, std::vector<std
 
     // Scrivi l'intestazione
     pvtuFile << "<?xml version=\"1.0\"?>\n";
-    pvtuFile << "<VTKFile type=\"PUnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    pvtuFile << "<VTKFile type=\"PUnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">\n";
     pvtuFile << "  <PUnstructuredGrid>\n";
 
     // Scrivi le sezioni PPoints, PCells e PPointData
@@ -272,7 +272,8 @@ VTKWriter::initializeFile()
 
   // Scrive l'intestazione del file
   file << "<?xml version=\"1.0\"?>\n";
-  file << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+  // version 1.0 + header_type UInt64: 64-bit block headers (see serializeDataWithHeader)
+  file << "<VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">\n";
   file << "<UnstructuredGrid>\n";
 }
 
@@ -302,10 +303,12 @@ template <typename T>
 ByteArray serializeDataWithHeader (const std::vector<T>& data)
 {
   ByteArray rawData;
-  // Intestazione con la dimensione del blocco (in byte)
-  int32_t blockSize = static_cast<int32_t> (data.size() * sizeof (T));
+  // Block header = block size in bytes, as UInt64 (matches header_type="UInt64" in <VTKFile>).
+  // A 32-bit header overflows for any single array larger than 2 GiB.
+  uint64_t blockSize = static_cast<uint64_t> (data.size()) * sizeof (T);
+  rawData.reserve (sizeof (uint64_t) + blockSize);
   const char* headerBytes = reinterpret_cast<const char*> (&blockSize);
-  rawData.insert (rawData.end(), headerBytes, headerBytes + sizeof (int32_t));
+  rawData.insert (rawData.end(), headerBytes, headerBytes + sizeof (uint64_t));
 
   // Aggiungere i dati veri e propri
   const char* dataBytes = reinterpret_cast<const char*> (data.data());
@@ -355,6 +358,11 @@ void VTKWriter::writeOffsets()
 {
   std::vector<int> offsets (nelems);
   int nodesPerCell = 8; // Supponendo celle cubiche 3D
+
+  // Cell offsets are written as Int32 (as declared in the .pvtu): fail loudly instead of wrapping.
+  if (static_cast<int64_t> (nelems) * nodesPerCell > INT32_MAX)
+    throw std::runtime_error ("VTKWriter: too many cells on rank " + std::to_string (rank) +
+                              " for Int32 cell offsets (" + std::to_string (nelems) + ")");
 
   for (int i = 0; i < nelems; ++i) {
     offsets[i] = (i + 1) * nodesPerCell;
